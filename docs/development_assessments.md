@@ -222,7 +222,11 @@ them does not implement a depletion solver.
 These are planning ranges, not additive project commitments. A sample
 Serpent case, CMSLINK version/specification or export, group structure,
 branch matrix and expected validation quantities are prerequisites for a
-firmer estimate. No converters were implemented during these assessments.
+firmer estimate. No converters were implemented during those assessments.
+The subsequent [fixed-state Serpent interface](serpent_xs.md) now implements
+literal results-file import and validates zero-leakage point-reactor eigenpairs
+for the supplied 2, 4, 7, 14 and 23 group datasets on CPU and AMD. Branch
+interpolation and the broader interfaces discussed here remain future work.
 
 ## Thermal hydraulics capability and coupling schemes
 
@@ -461,6 +465,6 @@ Recommended next steps, with the AMD feature now integrated:
    Investigate detailed external CFD and later pebble-bed/heat-pipe models
    where the application requires their additional physics.
 
-These are proposed priorities. The current documentation change records
-findings and integrates the completed AMD feature; it does not implement
-XS converters, new TH models or expanded DF capability.
+These are proposed priorities from the assessment. The fixed-state Serpent
+import and point-reactor checks are now implemented; the remaining branch,
+TH and expanded DF work has not been implemented by that interface.

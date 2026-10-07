@@ -1,0 +1,1446 @@
+{
+  "requested_device": "gpu",
+  "require_rocm": true,
+  "software": {
+    "python": "3.13.15",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "cupy": "14.2.0"
+  },
+  "solver": {
+    "class": "DiffusionEigenSolver",
+    "dtype": "float64",
+    "grid_shape": [
+      1,
+      1,
+      1
+    ],
+    "grid_size_cm": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "boundary": "reflective",
+    "diffusion": "cmm",
+    "tol_k": 1e-11,
+    "tol_source": 1e-10,
+    "max_outer": 2000,
+    "inner_rtol_floor": 1e-10
+  },
+  "validation_limits": {
+    "dense_k_absolute": 1e-08,
+    "dense_flux_max_absolute": 1e-08,
+    "balance_relative_residual": 1e-08,
+    "serpent_k": "max(1e-5, 3*reference_absolute_error)",
+    "serpent_flux_max_absolute": 0.0001,
+    "serpent_flux_relative_l2": 0.0005
+  },
+  "normalization": "group flux sums to one",
+  "uncertainty_note": "Sigma units use reference-only uncertainty; no combined covariance is inferred.",
+  "cases": [
+    {
+      "source_file": "i2_cro_e71_2g_res.m",
+      "source_sha256": "2548603db271aee2426bc46ce92e65c4df3f04dbee40c884a8429ec1f0d57106",
+      "serpent_version": "Serpent 2.2.0",
+      "universe": "0",
+      "record_index": 0,
+      "n_groups": 2,
+      "solves": {
+        "cpu": {
+          "k_eff": 1.1831958632802522,
+          "converged": true,
+          "outer_iterations": 6,
+          "inner_iterations": 10,
+          "solve_seconds": 0.0006987070082686841,
+          "device": "cpu (numpy)",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 1.5973444789096902e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 3.3306690738754696e-16,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.5863280252179663e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.739303350765904,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 3.3060934894246774e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 5.949649247736525e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.3498781368794142e-11,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00015586328025207763,
+              "reference_only_sigma_units": 1.3582279050100319
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00023586328025215764,
+              "reference_only_sigma_units": 2.9758803902499777
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_off": {
+          "k_eff": 1.1831958632802522,
+          "converged": true,
+          "outer_iterations": 6,
+          "inner_iterations": 10,
+          "solve_seconds": 0.013690362975466996,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 1.5973444789096902e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 3.3306690738754696e-16,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.5863280252179663e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.739303350765904,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 3.3060934894246774e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 5.949649247736525e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.3498781368794142e-11,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00015586328025207763,
+              "reference_only_sigma_units": 1.3582279050100319
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00023586328025215764,
+              "reference_only_sigma_units": 2.9758803902499777
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_on": {
+          "k_eff": 1.1831958632802522,
+          "converged": true,
+          "outer_iterations": 6,
+          "inner_iterations": 10,
+          "solve_seconds": 0.006937684025615454,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": true,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 1.5973444789096902e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 3.3306690738754696e-16,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.5863280252179663e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.739303350765904,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 3.3060934894246774e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 5.949649247736525e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.3498781368794142e-11,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00015586328025207763,
+              "reference_only_sigma_units": 1.3582279050100319
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00023586328025215764,
+              "reference_only_sigma_units": 2.9758803902499777
+            }
+          },
+          "passed": true
+        }
+      },
+      "errors": [],
+      "TOT_LEAKRATE": {
+        "mean": 0.0,
+        "relative_error": 0.0,
+        "absolute_error": 0.0
+      },
+      "B1_CALCULATION": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dense": {
+        "k_eff": 1.1831958632962256,
+        "relative_balance_residual": 1.0564331196967513e-16,
+        "balance_limit": 1e-08,
+        "passed": true
+      },
+      "INF_FLX": {
+        "mean": [
+          37.8295,
+          13.1232
+        ],
+        "relative_error": [
+          6.5e-05,
+          7.4e-05
+        ],
+        "absolute_error": [
+          0.0024589175,
+          0.0009711168
+        ]
+      },
+      "references": {
+        "IMP_KEFF": {
+          "mean": 1.18316,
+          "relative_error": 4.1e-05,
+          "absolute_error": 4.850956e-05
+        },
+        "ANA_KEFF": {
+          "mean": 1.18304,
+          "relative_error": 9.7e-05,
+          "absolute_error": 0.00011475488000000001
+        },
+        "INF_KINF": {
+          "mean": 1.18296,
+          "relative_error": 6.7e-05,
+          "absolute_error": 7.925832e-05
+        }
+      },
+      "balance_diagnostics": {
+        "collision_total_minus_absorption_scatter_out": {
+          "per_group_cm_inv": [
+            1.620000000035482e-06,
+            9.166000000115915e-06
+          ],
+          "max_abs_cm_inv": 9.166000000115915e-06
+        },
+        "production_total_minus_reduced_absorption_production_out": {
+          "per_group_cm_inv": [
+            1.180000000045034e-06,
+            9.166000000115915e-06
+          ],
+          "max_abs_cm_inv": 9.166000000115915e-06
+        },
+        "reduction_minus_scattering_multiplication": {
+          "per_group_cm_inv": [
+            -4.39999999959223e-07,
+            0.0
+          ],
+          "max_abs_cm_inv": 4.39999999959223e-07
+        }
+      },
+      "passed": true
+    },
+    {
+      "source_file": "i2_cro_e71_4g_res.m",
+      "source_sha256": "bf24643f925b9e0603572a6bc2cb2769700fadf81ff969195296c58773f8b465",
+      "serpent_version": "Serpent 2.2.0",
+      "universe": "0",
+      "record_index": 0,
+      "n_groups": 4,
+      "solves": {
+        "cpu": {
+          "k_eff": 1.183194952107554,
+          "converged": true,
+          "outer_iterations": 50,
+          "inner_iterations": 138,
+          "solve_seconds": 0.01038028096081689,
+          "device": "cpu (numpy)",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.1524316490560977e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.357114669062412e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.4952107553998246e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.7205199872766986,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.062473064103678e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.684655725167943e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.9875293188871626e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.0001549521075538962,
+              "reference_only_sigma_units": 1.3502877398668902
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00023495210755397622,
+              "reference_only_sigma_units": 2.9643841498782235
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_off": {
+          "k_eff": 1.183194952107554,
+          "converged": true,
+          "outer_iterations": 50,
+          "inner_iterations": 138,
+          "solve_seconds": 0.13545519503531978,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.1524316490560977e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.357114669062412e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.4952107553998246e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.7205199872766986,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.062473064103678e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.684655725167943e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.9875293188871626e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.0001549521075538962,
+              "reference_only_sigma_units": 1.3502877398668902
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00023495210755397622,
+              "reference_only_sigma_units": 2.9643841498782235
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_on": {
+          "k_eff": 1.1831949521075549,
+          "converged": true,
+          "outer_iterations": 50,
+          "inner_iterations": 138,
+          "solve_seconds": 0.10837467998499051,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": true,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.1524227672719007e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.357114669062412e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 3.4952107554886425e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.720519987295008,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.062473064103678e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.684655725167943e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 1.9875293185560321e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.0001549521075547844,
+              "reference_only_sigma_units": 1.35028773987463
+            },
+            "INF_KINF": {
+              "signed_delta": 0.0002349521075548644,
+              "reference_only_sigma_units": 2.9643841498894297
+            }
+          },
+          "passed": true
+        }
+      },
+      "errors": [],
+      "TOT_LEAKRATE": {
+        "mean": 0.0,
+        "relative_error": 0.0,
+        "absolute_error": 0.0
+      },
+      "B1_CALCULATION": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dense": {
+        "k_eff": 1.1831949524227972,
+        "relative_balance_residual": 7.326609214984949e-16,
+        "balance_limit": 1e-08,
+        "passed": true
+      },
+      "INF_FLX": {
+        "mean": [
+          24.7563,
+          12.6608,
+          7.09501,
+          6.44058
+        ],
+        "relative_error": [
+          9.4e-05,
+          3.7e-05,
+          7.9e-05,
+          9.1e-05
+        ],
+        "absolute_error": [
+          0.0023270922,
+          0.0004684496,
+          0.00056050579,
+          0.00058609278
+        ]
+      },
+      "references": {
+        "IMP_KEFF": {
+          "mean": 1.18316,
+          "relative_error": 4.1e-05,
+          "absolute_error": 4.850956e-05
+        },
+        "ANA_KEFF": {
+          "mean": 1.18304,
+          "relative_error": 9.7e-05,
+          "absolute_error": 0.00011475488000000001
+        },
+        "INF_KINF": {
+          "mean": 1.18296,
+          "relative_error": 6.7e-05,
+          "absolute_error": 7.925832e-05
+        }
+      },
+      "balance_diagnostics": {
+        "collision_total_minus_absorption_scatter_out": {
+          "per_group_cm_inv": [
+            -1.394549999977901e-06,
+            5.959999999971544e-06,
+            4.244000000097614e-06,
+            1.8000000001627825e-06
+          ],
+          "max_abs_cm_inv": 5.959999999971544e-06
+        },
+        "production_total_minus_reduced_absorption_production_out": {
+          "per_group_cm_inv": [
+            -1.5145499999702494e-06,
+            5.959999999971544e-06,
+            4.244000000097614e-06,
+            1.8000000001627825e-06
+          ],
+          "max_abs_cm_inv": 5.959999999971544e-06
+        },
+        "reduction_minus_scattering_multiplication": {
+          "per_group_cm_inv": [
+            -1.20000000009262e-07,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_cm_inv": 1.20000000009262e-07
+        }
+      },
+      "passed": true
+    },
+    {
+      "source_file": "i2_cro_e71_7g_res.m",
+      "source_sha256": "3c5e543da7b17e708421a5ec181cfe3b7db4b7f18e6b89ffa87b3a98b5be30c7",
+      "serpent_version": "Serpent 2.2.0",
+      "universe": "0",
+      "record_index": 0,
+      "n_groups": 7,
+      "solves": {
+        "cpu": {
+          "k_eff": 1.183201773346478,
+          "converged": true,
+          "outer_iterations": 55,
+          "inner_iterations": 214,
+          "solve_seconds": 0.015509343997109681,
+          "device": "cpu (numpy)",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.0069324807868725e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 2.8467395107867333e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.177334647792463e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.8611363714270885,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.2647359677885337e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.956022228931318e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.1485615911456845e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.0001617733464778226,
+              "reference_only_sigma_units": 1.4097295598916804
+            },
+            "INF_KINF": {
+              "signed_delta": 0.0002417733464779026,
+              "reference_only_sigma_units": 3.050447530024641
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_off": {
+          "k_eff": 1.183201773346478,
+          "converged": true,
+          "outer_iterations": 55,
+          "inner_iterations": 214,
+          "solve_seconds": 0.18735779996495694,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.0069324807868725e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 2.8467395107867333e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.177334647792463e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.8611363714270885,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.2647359677885337e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.956022228931318e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.1485615911456845e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.0001617733464778226,
+              "reference_only_sigma_units": 1.4097295598916804
+            },
+            "INF_KINF": {
+              "signed_delta": 0.0002417733464779026,
+              "reference_only_sigma_units": 3.050447530024641
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_on": {
+          "k_eff": 1.1832017733464777,
+          "converged": true,
+          "outer_iterations": 55,
+          "inner_iterations": 214,
+          "solve_seconds": 0.14235265902243555,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": true,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 3.0069347012329217e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 2.8467422863442948e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.177334647770259e-05,
+              "limit": 0.00014552867999999999,
+              "reference_only_sigma_units": 0.8611363714225112,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.2647359677829826e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.956022228905396e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.1485577074126082e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00016177334647760055,
+              "reference_only_sigma_units": 1.4097295598897452
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00024177334647768056,
+              "reference_only_sigma_units": 3.0504475300218394
+            }
+          },
+          "passed": true
+        }
+      },
+      "errors": [],
+      "TOT_LEAKRATE": {
+        "mean": 0.0,
+        "relative_error": 0.0,
+        "absolute_error": 0.0
+      },
+      "B1_CALCULATION": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dense": {
+        "k_eff": 1.1832017736471712,
+        "relative_balance_residual": 4.235536277137107e-16,
+        "balance_limit": 1e-08,
+        "passed": true
+      },
+      "INF_FLX": {
+        "mean": [
+          14.1346,
+          10.6217,
+          10.7395,
+          1.59315,
+          1.05743,
+          6.36576,
+          6.44058
+        ],
+        "relative_error": [
+          0.00013,
+          8.8e-05,
+          4.9e-05,
+          0.00014,
+          0.00015,
+          7.6e-05,
+          9.1e-05
+        ],
+        "absolute_error": [
+          0.001837498,
+          0.0009347096,
+          0.0005262355,
+          0.000223041,
+          0.0001586145,
+          0.00048379776,
+          0.00058609278
+        ]
+      },
+      "references": {
+        "IMP_KEFF": {
+          "mean": 1.18316,
+          "relative_error": 4.1e-05,
+          "absolute_error": 4.850956e-05
+        },
+        "ANA_KEFF": {
+          "mean": 1.18304,
+          "relative_error": 9.7e-05,
+          "absolute_error": 0.00011475488000000001
+        },
+        "INF_KINF": {
+          "mean": 1.18296,
+          "relative_error": 6.7e-05,
+          "absolute_error": 7.925832e-05
+        }
+      },
+      "balance_diagnostics": {
+        "collision_total_minus_absorption_scatter_out": {
+          "per_group_cm_inv": [
+            -3.306991999685316e-07,
+            -9.470709999570559e-07,
+            4.5300000000025875e-06,
+            7.060000000058686e-06,
+            5.240000000128475e-06,
+            7.249999999903167e-06,
+            1.8000000001627825e-06
+          ],
+          "max_abs_cm_inv": 7.249999999903167e-06
+        },
+        "production_total_minus_reduced_absorption_production_out": {
+          "per_group_cm_inv": [
+            -7.369919996502716e-08,
+            -9.470709999570559e-07,
+            4.5300000000025875e-06,
+            7.060000000058686e-06,
+            5.240000000128475e-06,
+            7.249999999903167e-06,
+            1.8000000001627825e-06
+          ],
+          "max_abs_cm_inv": 7.249999999903167e-06
+        },
+        "reduction_minus_scattering_multiplication": {
+          "per_group_cm_inv": [
+            2.5700000000036024e-07,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_cm_inv": 2.5700000000036024e-07
+        }
+      },
+      "passed": true
+    },
+    {
+      "source_file": "i2_cro_e71_14g_res.m",
+      "source_sha256": "2cdfbbf1274b343b3fce72537361ac04f849a9fb88e42be468191388c1e92895",
+      "serpent_version": "Serpent 2.2.0",
+      "universe": "0",
+      "record_index": 0,
+      "n_groups": 14,
+      "solves": {
+        "cpu": {
+          "k_eff": 1.1831753293327936,
+          "converged": true,
+          "outer_iterations": 82,
+          "inner_iterations": 541,
+          "solve_seconds": 0.04037496098317206,
+          "device": "cpu (numpy)",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 4.859124214107169e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.3901729473994067e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.5329332793553334e-05,
+              "limit": 0.00013842621,
+              "reference_only_sigma_units": 0.9823861996991755,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.132829094433908e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.318164022359535e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.3116142971295813e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00026532933279366233,
+              "reference_only_sigma_units": 2.312393966004528
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00022532933279362233,
+              "reference_only_sigma_units": 3.174680992344314
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_off": {
+          "k_eff": 1.1831753293327936,
+          "converged": true,
+          "outer_iterations": 82,
+          "inner_iterations": 541,
+          "solve_seconds": 0.4684723669779487,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 4.859124214107169e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.3901729473994067e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.5329332793553334e-05,
+              "limit": 0.00013842621,
+              "reference_only_sigma_units": 0.9823861996991755,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.132829094433908e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.318164022359535e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.3116142971295813e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00026532933279366233,
+              "reference_only_sigma_units": 2.312393966004528
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00022532933279362233,
+              "reference_only_sigma_units": 3.174680992344314
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_on": {
+          "k_eff": 1.1831753293327936,
+          "converged": true,
+          "outer_iterations": 82,
+          "inner_iterations": 541,
+          "solve_seconds": 0.2893619969836436,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": true,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 4.859124214107169e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.3901743351781874e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 4.5329332793553334e-05,
+              "limit": 0.00013842621,
+              "reference_only_sigma_units": 0.9823861996991755,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 2.13282909443252e-05,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 8.318164022349098e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 2.3116125971534958e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 0.00026532933279366233,
+              "reference_only_sigma_units": 2.312393966004528
+            },
+            "INF_KINF": {
+              "signed_delta": 0.00022532933279362233,
+              "reference_only_sigma_units": 3.174680992344314
+            }
+          },
+          "passed": true
+        }
+      },
+      "errors": [],
+      "TOT_LEAKRATE": {
+        "mean": 0.0,
+        "relative_error": 0.0,
+        "absolute_error": 0.0
+      },
+      "B1_CALCULATION": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dense": {
+        "k_eff": 1.183175329818706,
+        "relative_balance_residual": 3.936703874427176e-16,
+        "balance_limit": 1e-08,
+        "passed": true
+      },
+      "INF_FLX": {
+        "mean": [
+          14.1343,
+          5.66624,
+          1.2272,
+          3.7281,
+          4.92308,
+          5.8166,
+          1.59314,
+          0.154046,
+          0.174079,
+          0.729148,
+          0.596848,
+          3.63497,
+          5.84185,
+          2.73233
+        ],
+        "relative_error": [
+          0.00012,
+          9.5e-05,
+          0.00011,
+          0.00013,
+          6.4e-05,
+          6.4e-05,
+          0.00014,
+          0.0003,
+          0.00039,
+          0.00024,
+          0.00022,
+          7.4e-05,
+          9e-05,
+          8.2e-05
+        ],
+        "absolute_error": [
+          0.001696116,
+          0.0005382928000000001,
+          0.000134992,
+          0.00048465299999999993,
+          0.00031507712,
+          0.0003722624,
+          0.00022303959999999998,
+          4.6213799999999994e-05,
+          6.789081e-05,
+          0.00017499552,
+          0.00013130656000000002,
+          0.00026898777999999996,
+          0.0005257665000000001,
+          0.00022405106000000002
+        ]
+      },
+      "references": {
+        "IMP_KEFF": {
+          "mean": 1.18313,
+          "relative_error": 3.9e-05,
+          "absolute_error": 4.614207e-05
+        },
+        "ANA_KEFF": {
+          "mean": 1.18291,
+          "relative_error": 9.7e-05,
+          "absolute_error": 0.00011474226999999999
+        },
+        "INF_KINF": {
+          "mean": 1.18295,
+          "relative_error": 6e-05,
+          "absolute_error": 7.0977e-05
+        }
+      },
+      "balance_diagnostics": {
+        "collision_total_minus_absorption_scatter_out": {
+          "per_group_cm_inv": [
+            2.036516960624013e-07,
+            -2.365165600037855e-06,
+            -2.282217699933753e-06,
+            3.1949369999617616e-06,
+            4.049800000016646e-06,
+            1.2744175601486774e-06,
+            9.319999999535256e-07,
+            2.9100000000115145e-05,
+            1.6710000000030867e-05,
+            1.243399999628636e-07,
+            -1.1784061000108537e-05,
+            6.339999998328238e-07,
+            2.4138289860031747e-05,
+            1.780000000728421e-07
+          ],
+          "max_abs_cm_inv": 2.9100000000115145e-05
+        },
+        "production_total_minus_reduced_absorption_production_out": {
+          "per_group_cm_inv": [
+            5.981516960351652e-07,
+            -2.365165600037855e-06,
+            -2.282217699933753e-06,
+            3.1949369999617616e-06,
+            4.049800000016646e-06,
+            1.2744175601486774e-06,
+            9.319999999535256e-07,
+            2.9100000000115145e-05,
+            1.6710000000030867e-05,
+            1.243399999628636e-07,
+            -1.1784061000108537e-05,
+            6.339999998328238e-07,
+            2.4138289860031747e-05,
+            1.780000000728421e-07
+          ],
+          "max_abs_cm_inv": 2.9100000000115145e-05
+        },
+        "reduction_minus_scattering_multiplication": {
+          "per_group_cm_inv": [
+            3.944999999977005e-07,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_cm_inv": 3.944999999977005e-07
+        }
+      },
+      "passed": true
+    },
+    {
+      "source_file": "i2_cro_e71_23g_res.m",
+      "source_sha256": "dd241a047835c8525e6dd96561a5bac01a561471cf33c7f3c4761855aa934fe7",
+      "serpent_version": "Serpent 2.2.0",
+      "universe": "0",
+      "record_index": 0,
+      "n_groups": 23,
+      "solves": {
+        "cpu": {
+          "k_eff": 1.1830793792964271,
+          "converged": true,
+          "outer_iterations": 114,
+          "inner_iterations": 1376,
+          "solve_seconds": 0.0984664440038614,
+          "device": "cpu (numpy)",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 8.488452163391003e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.9751050501534166e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 1.062070357282785e-05,
+              "limit": 0.00013487226,
+              "reference_only_sigma_units": -0.23623916970386313,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.863996840756557e-06,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 3.5266115779689795e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 4.322286432743026e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 2.9379296427212154e-05,
+              "reference_only_sigma_units": 0.2483352049973556
+            },
+            "INF_KINF": {
+              "signed_delta": 3.937929642705562e-05,
+              "reference_only_sigma_units": 0.277387749829927
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_off": {
+          "k_eff": 1.1830793792964271,
+          "converged": true,
+          "outer_iterations": 114,
+          "inner_iterations": 1376,
+          "solve_seconds": 1.074711926979944,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": false,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 8.488452163391003e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.9751050501534166e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 1.062070357282785e-05,
+              "limit": 0.00013487226,
+              "reference_only_sigma_units": -0.23623916970386313,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.863996840756557e-06,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 3.5266115779689795e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 4.322286432743026e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 2.9379296427212154e-05,
+              "reference_only_sigma_units": 0.2483352049973556
+            },
+            "INF_KINF": {
+              "signed_delta": 3.937929642705562e-05,
+              "reference_only_sigma_units": 0.277387749829927
+            }
+          },
+          "passed": true
+        },
+        "gpu_fusion_on": {
+          "k_eff": 1.1830793792964276,
+          "converged": true,
+          "outer_iterations": 114,
+          "inner_iterations": 1376,
+          "solve_seconds": 0.5614518540096469,
+          "device": "rocm (cupy): AMD Radeon 8060S Graphics",
+          "fusion_enabled": true,
+          "checks": {
+            "dense_k": {
+              "absolute_error": 8.488447722498904e-10,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "dense_flux": {
+              "max_absolute_error": 4.975109213489759e-11,
+              "limit": 1e-08,
+              "passed": true
+            },
+            "serpent_k": {
+              "absolute_error": 1.062070357238376e-05,
+              "limit": 0.00013487226,
+              "reference_only_sigma_units": -0.23623916969398512,
+              "passed": true
+            },
+            "serpent_flux": {
+              "max_absolute_error": 4.863996840742679e-06,
+              "max_absolute_limit": 0.0001,
+              "relative_l2_error": 3.5266115779292265e-05,
+              "relative_l2_limit": 0.0005,
+              "passed": true
+            },
+            "balance": {
+              "relative_residual": 4.3222902693909594e-10,
+              "limit": 1e-08,
+              "passed": true
+            }
+          },
+          "informational": {
+            "ANA_KEFF": {
+              "signed_delta": 2.9379296427656243e-05,
+              "reference_only_sigma_units": 0.24833520500110937
+            },
+            "INF_KINF": {
+              "signed_delta": 3.937929642749971e-05,
+              "reference_only_sigma_units": 0.27738774983305514
+            }
+          },
+          "passed": true
+        }
+      },
+      "errors": [],
+      "TOT_LEAKRATE": {
+        "mean": 0.0,
+        "relative_error": 0.0,
+        "absolute_error": 0.0
+      },
+      "B1_CALCULATION": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dense": {
+        "k_eff": 1.1830793801452724,
+        "relative_balance_residual": 7.1242217461954e-16,
+        "balance_limit": 1e-08,
+        "passed": true
+      },
+      "INF_FLX": {
+        "mean": [
+          1.7843,
+          6.14249,
+          6.20594,
+          5.66651,
+          1.22725,
+          3.72751,
+          4.92227,
+          5.81556,
+          1.19812,
+          0.394475,
+          0.0614128,
+          0.0926142,
+          0.174004,
+          0.729133,
+          0.350793,
+          0.245879,
+          0.333833,
+          0.515106,
+          1.37127,
+          1.41441,
+          2.13366,
+          3.70741,
+          2.73228
+        ],
+        "relative_error": [
+          0.00052,
+          0.00019,
+          0.00016,
+          0.00012,
+          0.00018,
+          0.00015,
+          0.0001,
+          0.00013,
+          0.00013,
+          0.00025,
+          0.00073,
+          0.00056,
+          0.00019,
+          0.00022,
+          0.00026,
+          0.00045,
+          0.00021,
+          0.00018,
+          0.00011,
+          0.00015,
+          7.6e-05,
+          7.4e-05,
+          0.00011
+        ],
+        "absolute_error": [
+          0.0009278359999999999,
+          0.0011670731,
+          0.0009929504000000002,
+          0.0006799812,
+          0.000220905,
+          0.0005591264999999999,
+          0.000492227,
+          0.0007560227999999999,
+          0.0001557556,
+          9.861875000000001e-05,
+          4.483134399999999e-05,
+          5.186395199999999e-05,
+          3.306076e-05,
+          0.00016040926000000002,
+          9.120617999999999e-05,
+          0.00011064554999999999,
+          7.010493e-05,
+          9.271908e-05,
+          0.0001508397,
+          0.00021216149999999997,
+          0.00016215816,
+          0.00027434834,
+          0.0003005508
+        ]
+      },
+      "references": {
+        "IMP_KEFF": {
+          "mean": 1.18309,
+          "relative_error": 3.8e-05,
+          "absolute_error": 4.495742e-05
+        },
+        "ANA_KEFF": {
+          "mean": 1.18305,
+          "relative_error": 0.0001,
+          "absolute_error": 0.000118305
+        },
+        "INF_KINF": {
+          "mean": 1.18304,
+          "relative_error": 0.00012,
+          "absolute_error": 0.0001419648
+        }
+      },
+      "balance_diagnostics": {
+        "collision_total_minus_absorption_scatter_out": {
+          "per_group_cm_inv": [
+            -5.432640400038213e-06,
+            -2.0651548995886948e-07,
+            -2.5284972100525493e-06,
+            -1.838469699977363e-06,
+            -1.075847999687518e-06,
+            1.4984229999015497e-06,
+            9.230200000209798e-06,
+            4.380852130170254e-06,
+            6.009000000029019e-06,
+            1.830999999985483e-05,
+            -6.906286000007977e-05,
+            2.684252200002568e-05,
+            -7.0300000000189655e-06,
+            -3.075519000006466e-05,
+            2.0644413599946176e-05,
+            1.2459282199950295e-05,
+            1.1039999999962191e-05,
+            -1.1949999999871785e-05,
+            -1.3304999999963485e-05,
+            5.124321000860022e-07,
+            6.647999999831455e-06,
+            1.2584898750001017e-05,
+            -1.0627000000207332e-05
+          ],
+          "max_abs_cm_inv": 6.906286000007977e-05
+        },
+        "production_total_minus_reduced_absorption_production_out": {
+          "per_group_cm_inv": [
+            -5.35465039999683e-06,
+            -2.0651548995886948e-07,
+            -2.5284972100525493e-06,
+            -1.838469699977363e-06,
+            -1.075847999687518e-06,
+            1.4984229999015497e-06,
+            9.230200000209798e-06,
+            4.380852130170254e-06,
+            6.009000000029019e-06,
+            1.830999999985483e-05,
+            -6.906286000007977e-05,
+            2.684252200002568e-05,
+            -7.0300000000189655e-06,
+            -3.075519000006466e-05,
+            2.0644413599946176e-05,
+            1.2459282199950295e-05,
+            1.1039999999962191e-05,
+            -1.1949999999871785e-05,
+            -1.3304999999963485e-05,
+            5.124321000860022e-07,
+            6.647999999831455e-06,
+            1.2584898750001017e-05,
+            -1.0627000000207332e-05
+          ],
+          "max_abs_cm_inv": 6.906286000007977e-05
+        },
+        "reduction_minus_scattering_multiplication": {
+          "per_group_cm_inv": [
+            7.799000001145959e-08,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_cm_inv": 7.799000001145959e-08
+        }
+      },
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "gpu_device": "rocm (cupy): AMD Radeon 8060S Graphics",
+  "gpu_is_hip": true,
+  "passed": true
+}
