@@ -48,4 +48,10 @@ GPU equality is recorded in the summary.
 
 ![Power comparison](power-comparison.png)
 
+The [annotated difference heatmap](power-difference-annotated.png)
+([vector PDF](power-difference-annotated.pdf)) uses mean fuel-pin power = 1.
+Each cell lists Serpent power, NDgpu power and NDgpu minus Serpent on three
+rows, with three decimals. Color represents the difference in normalized
+power units, evaluated before rounding.
+
 ![Spectrum and mesh refinement](spectrum-and-refinement.png)

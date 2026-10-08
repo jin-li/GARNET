@@ -44,6 +44,36 @@ def main():
     fig.savefig(args.report_dir/'power-comparison.png', dpi=180)
     plt.close(fig)
 
+    serpent_power, ndgpu_power = ref*factor, actual*factor
+    difference = ndgpu_power-serpent_power
+    limit = max(float(np.max(abs(difference))), 1e-12)
+    fig, ax = plt.subplots(figsize=(19,18), layout='constrained')
+    im = ax.pcolormesh(x, y, difference, vmin=-limit, vmax=limit,
+                      cmap='coolwarm', edgecolors='#777777', linewidth=.35)
+    fig.colorbar(im, ax=ax, fraction=.035, pad=.025,
+                 label='NDgpu − Serpent (normalized power units)')
+    for row in range(17):
+        for column in range(17):
+            values = (serpent_power[row,column], ndgpu_power[row,column],
+                      difference[row,column])
+            # Rounding before formatting avoids misleading negative zero.
+            labels = [f'{round(float(v), 3) or 0.:.3f}' for v in values[:2]]
+            labels.append(f'{round(float(values[2]), 3) or 0.:+.3f}')
+            rgba = im.cmap(im.norm(difference[row,column]))
+            luminance = .2126*rgba[0]+.7152*rgba[1]+.0722*rgba[2]
+            ax.text((x[column]+x[column+1])/2, (y[row]+y[row+1])/2,
+                    '\n'.join(labels), ha='center', va='center', fontsize=8.5,
+                    fontfamily='monospace', linespacing=1.25,
+                    color='white' if luminance < .45 else 'black')
+    ax.set_aspect('equal')
+    ax.set_xlabel('x (cm)'); ax.set_ylabel('y (cm)')
+    ax.set_title(f'Normalized pin power comparison — {17*refinement}×{17*refinement} NDgpu mesh\n'
+                 'Cell rows: Serpent / NDgpu / difference (NDgpu − Serpent)\n'
+                 'Mean fuel-pin power = 1; non-fissile cells = 0', pad=16)
+    fig.savefig(args.report_dir/'power-difference-annotated.png', dpi=220)
+    fig.savefig(args.report_dir/'power-difference-annotated.pdf')
+    plt.close(fig)
+
     fig, axes = plt.subplots(1,2, figsize=(10,4), layout='constrained')
     axes[0].plot([17*s['refinement'] for s in solves], [s['k_eff'] for s in solves], 'o-', label='NDgpu')
     axes[0].axhline(report['reference']['IMP_KEFF'],color='black',label='Serpent IMP_KEFF')
