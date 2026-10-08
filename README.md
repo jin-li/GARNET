@@ -180,7 +180,8 @@ unsuccessfully unless actual AMD arrays and the required numerical checks pass.
 ## Documentation
 
 - **[Serpent fixed-state XS interface](docs/serpent_xs.md)** — safe results-file
-  import and CPU/AMD point-reactor checks for 2–23 energy groups.
+  import, CPU/AMD point-reactor checks for 2–23 energy groups, and reflective
+  2-D assembly validation with regional cross sections.
 - **[Development findings and priorities](docs/development_assessments.md)** —
   NixOS and GPU validation, branch libraries and Serpent/CASMO5 interfaces,
   thermal-hydraulics coupling, discontinuity factors and performance limits.

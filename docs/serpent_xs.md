@@ -5,6 +5,9 @@ executing MATLAB or requiring an additional parser package. The initial
 interface supports a fixed-state, homogenized infinite-spectrum diffusion
 eigenvalue problem. It has been validated with the supplied Serpent 2.2.0
 assembly datasets containing 2, 4, 7, 14 and 23 groups.
+The [2-D assembly example](../examples/serpent-xs/fa-2d/README.md) also
+reconstructs 289 regional four-group materials with exact nonuniform cell
+dimensions and compares CPU/AMD diffusion results against Serpent.
 
 ```python
 from ndgpu import DiffusionEigenSolver, Grid
@@ -57,11 +60,21 @@ The diffusion adapter uses these conventions:
 | `chi` | `INF_CHIT` | Total fission spectrum |
 | `sigma_t` | `INF_TOT` | Total collision cross section |
 | `diffusion` | `CMM_DIFFCOEF` | Default CMM diffusion coefficient |
+| `kappa_fission` | `INF_KAPPA × INF_FISS` | Optional fission-energy cross section in MeV/cm |
 
 Macroscopic cross sections use cm⁻¹ and diffusion coefficients use cm.
 `diffusion="inf"` explicitly selects `INF_DIFFCOEF`; missing requested
 coefficients raise an error. Chi is normalized only after its sum passes a
 `1e-5` tolerance, without modifying the record.
+Non-fissile regions may have absent or zero chi; their material receives a
+benign first-group spectrum with zero fission source. `INF_FISS` and
+`INF_KAPPA` must both be present or both absent. Their product supports
+normalized power shapes; its uncertainty is not propagated without covariance.
+
+The CMM default is appropriate for the whole-assembly infinite-lattice use
+case. It must not be assumed valid for pin subregions. The 2-D example
+explicitly selects `diffusion="inf"` as an approximation study and records
+that limitation; it does not silently replace missing regional coefficients.
 
 Physical absorption (`INF_ABS`) and collision scattering (`INF_S0`) remain
 available separately. Replacing reduced absorption and production scattering
