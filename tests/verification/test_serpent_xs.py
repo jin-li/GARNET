@@ -208,6 +208,91 @@ def test_invalid_chi_rejected(tmp_path, chi):
         read_serpent_xs(_write(tmp_path, overrides={"INF_CHIT": chi})).to_diffusion_material()
 
 
+@pytest.mark.parametrize("chi", [None, "[ 0 0 0 0 ]", "[ .95 .01 .05 .02 ]"])
+def test_nonfissile_chi_and_zero_power(tmp_path, chi):
+    record = read_serpent_xs(_write(tmp_path, overrides={
+        "INF_NSF": "[ 0 0 0 0 ]", "INF_CHIT": chi,
+        "INF_FISS": "[ 0 0 0 0 ]", "INF_KAPPA": "[ 0 0 0 0 ]",
+    }))
+    raw = {key: value.copy() for key, value in record.fields.items()
+           if isinstance(value, np.ndarray)}
+    material = record.to_diffusion_material()
+    assert not material.is_fissile
+    np.testing.assert_array_equal(material.chi, [0.95, 0.05] if chi and ".95" in chi
+                                  else [1., 0.])
+    np.testing.assert_array_equal(np.outer(material.chi, material.nu_sigma_f),
+                                  np.zeros((2, 2)))
+    np.testing.assert_array_equal(material.kappa_fission, [0., 0.])
+    for key, value in raw.items():
+        np.testing.assert_array_equal(record.fields[key], value)
+
+
+def test_missing_fissile_chi_and_invalid_nonfissile_chi_rejected(tmp_path):
+    with pytest.raises(ValueError, match="INF_CHIT"):
+        read_serpent_xs(_write(tmp_path, overrides={"INF_CHIT": None}))
+    with pytest.raises(ValueError, match="INF_CHIT"):
+        read_serpent_xs(_write(tmp_path, overrides={
+            "INF_NSF": "[ 0 0 0 0 ]", "INF_CHIT": "[ .5 0 0 0 ]",
+        }))
+
+
+def test_power_mapping_preserves_paired_statistics(tmp_path):
+    record = read_serpent_xs(_write(tmp_path, overrides={
+        "INF_FISS": "[ .002 .03 .06 .04 ]",
+        "INF_KAPPA": "[ 205 .005 200 .006 ]",
+    }))
+    raw_fiss = record.fields["INF_FISS"].copy()
+    raw_kappa = record.fields["INF_KAPPA"].copy()
+    material = record.to_diffusion_material()
+    np.testing.assert_allclose(material.kappa_fission, [.41, 12.])
+    np.testing.assert_allclose(record.estimate("INF_FISS").relative_error, [.03, .04])
+    np.testing.assert_allclose(record.estimate("INF_KAPPA").relative_error, [.005, .006])
+    np.testing.assert_array_equal(record.fields["INF_FISS"], raw_fiss)
+    np.testing.assert_array_equal(record.fields["INF_KAPPA"], raw_kappa)
+    assert read_serpent_xs(_write(tmp_path)).to_diffusion_material().kappa_fission is None
+
+
+@pytest.mark.parametrize("field,value", [
+    ("INF_FISS", None), ("INF_KAPPA", None),
+    ("INF_FISS", "[ .002 .03 ]"), ("INF_KAPPA", "[ 205 .005 200 ]"),
+    ("INF_FISS", "[ -.002 .03 .06 .04 ]"),
+    ("INF_KAPPA", "[ 205 -.005 200 .006 ]"),
+    ("INF_FISS", "[ NaN .03 .06 .04 ]"),
+    ("INF_KAPPA", "[ 205 .005 Inf .006 ]"),
+    ("INF_FISS", "ones(1, 4)"), ("INF_KAPPA", "ones(1, 4)"),
+])
+def test_incomplete_or_malformed_power_fields_rejected(tmp_path, field, value):
+    with pytest.raises(ValueError, match="INF_FISS|INF_KAPPA"):
+        read_serpent_xs(_write(tmp_path, overrides={
+            "INF_FISS": "[ .002 .03 .06 .04 ]",
+            "INF_KAPPA": "[ 205 .005 200 .006 ]", field: value,
+        }))
+
+
+def test_local_assembly_nonfissile_regions():
+    path = (Path(__file__).resolve().parents[2] / "examples" / "serpent-xs"
+            / "fa-2d" / "i2_cro_e71_2d_4g_res.m")
+    if not path.exists():
+        pytest.skip(f"optional local Serpent result absent: {path.name}")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    records = read_serpent_results(path)
+    assert len(records) == 289
+    nonfissile = []
+    for record in records:
+        material = record.to_diffusion_material()
+        assert record.n_groups == 4
+        np.testing.assert_allclose(material.kappa_fission,
+                                   record.estimate("INF_FISS").mean
+                                   * record.estimate("INF_KAPPA").mean)
+        if not material.is_fissile:
+            nonfissile.append(record)
+            np.testing.assert_array_equal(record.estimate("INF_CHIT").mean, np.zeros(4))
+            np.testing.assert_array_equal(material.kappa_fission, np.zeros(4))
+            assert material.chi.sum() == 1.
+    assert nonfissile
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == digest
+
+
 def test_required_expressions_fail_and_payloads_never_execute(tmp_path):
     sentinel = tmp_path / "executed"
     payload = f"__import__('pathlib').Path('{sentinel}').touch()"

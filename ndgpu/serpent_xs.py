@@ -20,13 +20,13 @@ from .materials import Material
 
 _VECTOR_FIELDS = {
     "INF_TOT", "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_CHIT", "INF_FLX",
-    "CMM_DIFFCOEF", "INF_DIFFCOEF",
+    "CMM_DIFFCOEF", "INF_DIFFCOEF", "INF_FISS", "INF_KAPPA",
 }
 _MATRIX_FIELDS = {"INF_S0", "INF_SP0"}
 _REFERENCE_FIELDS = {"IMP_KEFF", "INF_KINF", "ANA_KEFF", "TOT_LEAKRATE"}
 _REQUIRED = {
     "VERSION", "GC_UNIVERSE_NAME", "MACRO_NG", "MACRO_E", "INF_TOT",
-    "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_CHIT", "INF_FLX",
+    "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_FLX",
     "INF_S0", "INF_SP0",
 }
 _KNOWN = _REQUIRED | _VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS
@@ -163,9 +163,16 @@ class SerpentXSRecord:
                 raise self._error(key, "means/errors must be finite and nonnegative")
             if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
                 raise self._error(key, "values must be strictly positive")
-        chi = self.estimate("INF_CHIT").mean
-        if abs(float(chi.sum()) - 1.) > 1e-5:
-            raise self._error("INF_CHIT", "spectrum must sum to one within 1e-5")
+        fissile = np.any(self.estimate("INF_NSF").mean > 0)
+        if "INF_CHIT" not in self.fields:
+            if fissile:
+                raise self._error("INF_CHIT", "missing required field for fissile material")
+        else:
+            chi = self.estimate("INF_CHIT").mean
+            if not (not fissile and np.all(chi == 0)) and abs(float(chi.sum()) - 1.) > 1e-5:
+                raise self._error("INF_CHIT", "spectrum must sum to one within 1e-5")
+        if ("INF_FISS" in self.fields) != ("INF_KAPPA" in self.fields):
+            raise self._error("INF_FISS/INF_KAPPA", "power fields must both be present or both absent")
         if self.estimate("INF_FLX").mean.sum() <= 0:
             raise self._error("INF_FLX", "flux must have a positive sum")
 
@@ -177,19 +184,30 @@ class SerpentXSRecord:
         uncorrected data have been validated for SPN/SN or thermal feedback.
         CMM is the default; ``diffusion='inf'`` explicitly opts into Serpent's
         out-scattering diffusion approximation. Neither selection falls back.
+        Paired INF_FISS and INF_KAPPA supply kappa_fission in MeV/cm for
+        normalized power shapes; raw estimates and errors remain unchanged.
+        Nonfissile regions with absent/zero chi use a benign first-group
+        spectrum, which contributes no fission source.
         """
         self._validate()
         keys = {"cmm": "CMM_DIFFCOEF", "inf": "INF_DIFFCOEF"}
         if diffusion not in keys:
             raise self._error("diffusion", "use 'cmm' or 'inf'")
-        chi = self.estimate("INF_CHIT").mean
-        chi /= chi.sum()
+        chi = (self.estimate("INF_CHIT").mean if "INF_CHIT" in self.fields
+               else np.zeros(self.n_groups))
+        if chi.sum() == 0:
+            chi[0] = 1.
+        else:
+            chi /= chi.sum()
+        kappa_fission = (self.estimate("INF_FISS").mean * self.estimate("INF_KAPPA").mean
+                         if "INF_FISS" in self.fields else None)
         return Material(
             diffusion=self.estimate(keys[diffusion]).mean,
             sigma_a=self.estimate("INF_RABSXS").mean,
             nu_sigma_f=self.estimate("INF_NSF").mean,
             sigma_s=self.estimate("INF_SP0").mean.reshape(self.n_groups, self.n_groups),
             chi=chi, total=self.estimate("INF_TOT").mean,
+            kappa_fission=kappa_fission,
             name=f"Serpent universe {self.universe} (reduced absorption, production scattering)")
 
     def balance_diagnostics(self):
