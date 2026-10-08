@@ -8,11 +8,13 @@ escape hatch: where the structured Cartesian/hex operators need a lattice, this
 one needs only cells, their vertices, and per-cell materials.
 
 The scheme is a cell-centred two-point-flux finite volume: for a face shared by
-cells i and j, the coupling is D_face * A_face / d(centroid_i, centroid_j) with
-A_face the shared face measure (edge length in 2D, polygon area in 3D) and
-D_face the harmonic mean of the cell diffusion coefficients; boundary faces get
-the Robin/albedo term (vacuum alpha = 1/2). The 2D and 3D assemblers produce the
-same face quantities, so the operator and solver below are dimension-agnostic.
+cells i and j, the 2D coupling is A_face / (d_i / D_i + d_j / D_j), where
+d_i and d_j are centroid-to-face distances projected on the face normal.
+This is consistent on orthogonal meshes; skewed interfaces (including hanging
+nodes) retain a conservative TPFA approximation without a nonorthogonal flux
+correction. Legacy/manual and 3D meshes without these distances use the harmonic
+mean coefficient times face measure over centroid separation. Boundary faces
+get the Robin/albedo term (vacuum alpha = 1/2).
 The connectivity is irregular, but
 the within-group operator is still applied matrix-free as a pure *gather*: the
 faces are stored as a row-wise ELLPACK adjacency (each cell's neighbours padded
@@ -47,6 +49,11 @@ class Mesh:
     ``area`` holds the cell measure (area in 2D, volume in 3D) and each face its
     measure (edge length in 2D, face area in 3D); the two-point-flux operator
     consumes these identically in either dimension.
+
+    ``face_distances``, when provided, stores the normal distance from each
+    face's two cell centroids to its plane, in the same i/j order as ``faces``.
+    Omitting it preserves the harmonic-mean centroid-separation formula used
+    by manual and 3D meshes.
     """
 
     coords: np.ndarray              # (n_nodes, 2) or (n_nodes, 3)
@@ -56,6 +63,7 @@ class Mesh:
     area: np.ndarray                # (n_cells,) cell measure (2D area / 3D volume)
     faces: list                     # (i, j, face_measure, centroid_distance) interior
     bfaces: list                    # (i, face_measure, centroid_to_face_distance) boundary
+    face_distances: np.ndarray | None = None  # (n_faces, 2) normal distances for i, j
 
     @property
     def n_cells(self) -> int:
@@ -140,7 +148,17 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
     def dist(a, b):
         return float(np.hypot(*(centroid[a] - centroid[b])))
 
-    faces, bfaces, consumed = [], [], set()
+    faces, face_distances, bfaces, consumed = [], [], [], set()
+
+    def add_face(i, j, edge):
+        p0, p1 = coords[list(edge)]
+        tangent = p1 - p0
+        L = float(np.hypot(*tangent))
+        normal = np.array([-tangent[1], tangent[0]]) / L
+        midpoint = 0.5 * (p0 + p1)
+        faces.append((i, j, L, dist(i, j)))
+        face_distances.append((abs(float(np.dot(centroid[i] - midpoint, normal))),
+                               abs(float(np.dot(centroid[j] - midpoint, normal)))))
     for e, ci in one_cell.items():
         if e in consumed:
             continue
@@ -152,8 +170,7 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
         if e1 in one_cell and e2 in one_cell:      # coarse edge over two fine cells
             for half in (e1, e2):
                 cj = one_cell[half]
-                L = float(np.hypot(*(coords[half[0]] - coords[half[1]])))
-                faces.append((ci, cj, L, dist(ci, cj)))
+                add_face(ci, cj, half)
             consumed.update((e, e1, e2))
 
     for e, lst in edge_cells.items():
@@ -163,13 +180,14 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
         L = float(np.hypot(*(p1 - p0)))
         if len(lst) == 2:
             i, j = lst
-            faces.append((i, j, L, dist(i, j)))
+            add_face(i, j, e)
         else:
             i = lst[0]
             db = float(np.hypot(*(centroid[i] - 0.5 * (p0 + p1))))
             bfaces.append((i, L, db))
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
-               area=area, faces=faces, bfaces=bfaces)
+               area=area, faces=faces, bfaces=bfaces,
+               face_distances=np.asarray(face_distances).reshape(-1, 2))
 
 
 # Local face node-orderings per 3D element type, keyed by node count. Orientation
@@ -322,7 +340,7 @@ class _MeshGroupOperator:
     pure *gather*: for every cell read its neighbours' flux and combine with the
     per-slot weights, ``A phi = diag*phi - sum_s w[s]*phi[nbr[s]]``. No scatter,
     so no GPU atomics and the write is coalesced. The assembled operator --
-    volume-integrated harmonic-mean two-point-flux leakage, plus removal and the
+    volume-integrated resistance-weighted two-point-flux leakage, plus removal and the
     Robin boundary term on the diagonal -- is symmetric and diagonally dominant,
     hence SPD, so CG converges.
     """
@@ -377,6 +395,11 @@ class UnstructuredDiffusionSolver:
         fj = np.array([f[1] for f in mesh.faces], dtype=np.int64)
         fL = np.array([f[2] for f in mesh.faces], dtype=dtype)
         fd = np.array([f[3] for f in mesh.faces], dtype=dtype)
+        face_distances = None
+        if mesh.face_distances is not None:
+            face_distances = np.asarray(mesh.face_distances, dtype=dtype)
+            if face_distances.shape != (len(mesh.faces), 2):
+                raise ValueError("face_distances must have shape (n_faces, 2)")
         bi = np.array([b[0] for b in mesh.bfaces], dtype=np.int64)
         bL = np.array([b[1] for b in mesh.bfaces], dtype=dtype)
         bd = np.array([b[2] for b in mesh.bfaces], dtype=dtype)
@@ -390,7 +413,10 @@ class UnstructuredDiffusionSolver:
         for g in range(G):
             Dg = D[g]
             Di, Dj = Dg[fi], Dg[fj]
-            face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd       # harmonic-mean coupling
+            if face_distances is None:
+                face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd
+            else:
+                face_w = fL / (face_distances[:, 0] / Di + face_distances[:, 1] / Dj)
             # per-slot weights (0 where padded); diag from the same face weights.
             w_ell = np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
             diag = removal[g] * area
