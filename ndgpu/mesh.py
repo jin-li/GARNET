@@ -37,6 +37,7 @@ import numpy as np
 
 from .backend import asnumpy, device_name, get_backend, synchronize
 from .linalg import get_linear_solver, neumann_preconditioner
+from .stencil import _face_valid, face_alpha
 
 
 _VACUUM_ALPHA = 0.5
@@ -68,6 +69,136 @@ class Mesh:
     @property
     def n_cells(self) -> int:
         return len(self.cells)
+
+
+class MeshGrid:
+    """Shape-preserving finite-volume grid with authoritative boundary classes.
+
+    Fields have shape ``(n_cells, 1, 1)``; these axes are storage only. Boundary
+    conditions are a scalar or a sequence in ``mesh.bfaces`` order. Vacuum
+    faces may represent outer or explicitly exposed void surfaces. No active
+    mask or discontinuity-factor interface is inferred from this facade.
+    """
+
+    geometry = "mesh"
+
+    def __init__(self, mesh: Mesh, boundary_conditions="vacuum"):
+        self.mesh = mesh
+        self.shape = (mesh.n_cells, 1, 1)
+        self.n_cells = mesh.n_cells
+        self.integration_weights = np.asarray(mesh.area, dtype=float).reshape(self.shape)
+        if self.n_cells < 1 or not np.all(np.isfinite(self.integration_weights)) or np.any(self.integration_weights <= 0):
+            raise ValueError("mesh cell volumes must be finite and positive")
+        for faces, interior in ((mesh.faces, True), (mesh.bfaces, False)):
+            for face in faces:
+                owners = face[:2] if interior else face[:1]
+                if any(int(c) != c or c < 0 or c >= self.n_cells for c in owners):
+                    raise ValueError("mesh face has an invalid cell owner")
+                if interior and owners[0] == owners[1]:
+                    raise ValueError("interior face must join different cells")
+                if any(not np.isfinite(x) or x <= 0 for x in face[2 if interior else 1:]):
+                    raise ValueError("mesh face measures and distances must be finite and positive")
+        if mesh.face_distances is not None:
+            distances = np.asarray(mesh.face_distances)
+            if distances.shape != (len(mesh.faces), 2) or not np.all(np.isfinite(distances)) or np.any(distances <= 0):
+                raise ValueError("face_distances must be positive with shape (n_faces, 2)")
+        self.boundary_conditions = self.classify_boundary(boundary_conditions)
+
+    def classify_boundary(self, bc=None):
+        """Resolve exactly one boundary class for each physical boundary face."""
+        if bc is None:
+            return self.boundary_conditions
+        if isinstance(bc, (str, int, float, np.number)):
+            specs = [bc] * len(self.mesh.bfaces)
+        else:
+            specs = list(bc)
+            if len(specs) != len(self.mesh.bfaces):
+                raise ValueError("mesh boundary_conditions must have one entry per boundary face")
+        result = tuple(_face_valid(s) for s in specs)
+        if any(np.isnan(face_alpha(s)) for s in result):
+            raise ValueError("mesh boundary coefficients must not be NaN")
+        return result
+
+    def moment_boundary_conditions(self, bc=None, strip_vacuum=False):
+        specs = self.classify_boundary(bc)
+        return tuple("reflective" if strip_vacuum and s == "vacuum" else s for s in specs)
+
+    def boundary_blocks(self, xp, bc, D_list, g):
+        """Integrated Marshak loss, summed on host by unique cell owner.
+
+        Trace elimination uses the same geometric normal distance for every
+        moment: ``K = S G solve(diag(D/d) + G, diag(D/d))``. Aggregating before
+        device indexing avoids repeated-index scatter loss on GPU backends.
+        """
+        specs = self.classify_boundary(bc)
+        M = len(D_list)
+        D = [asnumpy(d).reshape(-1) for d in D_list]
+        gm = np.asarray(g, dtype=D[0].dtype)
+        blocks = {}
+        for (owner, measure, distance), spec in zip(self.mesh.bfaces, specs):
+            if spec != "vacuum":
+                continue
+            A = np.diag([d[owner] / distance for d in D])
+            K = measure * gm @ np.linalg.solve(A + gm, A)
+            blocks[owner] = blocks.get(owner, np.zeros((M, M), dtype=gm.dtype)) + K
+        if not blocks:
+            return []
+        owners = np.asarray(sorted(blocks), dtype=np.int32)
+        sl = (xp.asarray(owners), 0, 0)
+        return [(sl, xp.asarray(np.stack([blocks[c] for c in owners]))) ]
+
+
+class MeshGroupOperator:
+    """Integrated conservative TPFA loss with density-valued coefficients.
+
+    Reactions and the RHS carry the cell volume exactly once. On orthogonal
+    faces the resistance is ``d_i/D_i + d_j/D_j``; legacy geometry without
+    normal distances retains harmonic-centroid TPFA. ``apply`` and ``diag``
+    preserve the facade shape used by the shared moment and eigen drivers.
+    """
+
+    symmetric = True
+
+    def __init__(self, xp, grid, D, removal, bc=None, active=None,
+                 mask_bc="vacuum", symmetric=True):
+        if active is not None:
+            raise ValueError("mesh active masks are unsupported; expose boundary faces explicitly")
+        if not symmetric:
+            raise ValueError("mesh operators use the integrated symmetric form")
+        self.xp = xp
+        self.grid = grid
+        mesh = grid.mesh
+        n = grid.n_cells
+        Dh = asnumpy(D).reshape(-1)
+        rh = asnumpy(removal).reshape(-1)
+        if Dh.size != n or rh.size != n or not np.all(np.isfinite(Dh)) or np.any(Dh <= 0):
+            raise ValueError("mesh diffusion must have one finite positive value per cell")
+        fi = np.asarray([f[0] for f in mesh.faces], dtype=np.int64)
+        fj = np.asarray([f[1] for f in mesh.faces], dtype=np.int64)
+        measure = np.asarray([f[2] for f in mesh.faces])
+        if mesh.face_distances is None:
+            distance = np.asarray([f[3] for f in mesh.faces])
+            weights = measure * 2 * Dh[fi] * Dh[fj] / ((Dh[fi] + Dh[fj]) * distance)
+        else:
+            distances = np.asarray(mesh.face_distances)
+            weights = measure / (distances[:, 0] / Dh[fi] + distances[:, 1] / Dh[fj])
+        nbr, fmap = _build_ell(fi, fj, n)
+        # A sentinel handles one-cell and other meshes with no interior faces.
+        padded = np.append(weights, 0)
+        well = padded[np.where(fmap >= 0, fmap, len(weights))]
+        diag = rh * mesh.area + np.bincount(fi, weights=weights, minlength=n) + np.bincount(fj, weights=weights, minlength=n)
+        for (owner, area, distance), spec in zip(mesh.bfaces, grid.classify_boundary(bc)):
+            alpha = face_alpha(spec)
+            diag[owner] += (area * Dh[owner] / distance if np.isinf(alpha)
+                            else area * alpha * Dh[owner] / (distance * alpha + Dh[owner]))
+        self._flat = _MeshGroupOperator(xp, xp.asarray(nbr, dtype=np.int32),
+                                        xp.asarray(well, dtype=D.dtype), xp.asarray(diag, dtype=D.dtype))
+        self.diag = self._flat.diag.reshape(grid.shape)
+        self.inv_diag = 1 / self.diag
+        self.rhs_weight = xp.asarray(grid.integration_weights, dtype=D.dtype)
+
+    def apply(self, phi):
+        return self._flat.apply(phi.reshape(-1)).reshape(self.grid.shape)
 
 
 # Gmsh element type -> node count, split by dimension.
@@ -183,7 +314,9 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
             add_face(i, j, e)
         else:
             i = lst[0]
-            db = float(np.hypot(*(centroid[i] - 0.5 * (p0 + p1))))
+            tangent = p1 - p0
+            normal = np.array([-tangent[1], tangent[0]]) / L
+            db = abs(float(np.dot(centroid[i] - 0.5 * (p0 + p1), normal)))
             bfaces.append((i, L, db))
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
                area=area, faces=faces, bfaces=bfaces,
@@ -233,7 +366,7 @@ def _cell_volume_centroid_3d(cell_pts, faces_local):
     return vtot, (csum / vtot if vtot > 0 else g)
 
 
-def assemble_mesh_3d(coords, cells, tags) -> Mesh:
+def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
     """Build a 3D Mesh (volumes, centroids, interior/boundary faces) from cells.
 
     coords : (n_nodes, 3) node coordinates. cells : list of node-index tuples,
@@ -246,6 +379,9 @@ def assemble_mesh_3d(coords, cells, tags) -> Mesh:
     does -- so `Mesh.area` holds the cell *volume* and each face its *area* and
     centroid-to-centroid (or centroid-to-face) distance -- and drives the exact
     same operator and solver.
+
+    ``normal_distances=True`` supplies face-normal interior resistances and
+    normal boundary distances. The default retains legacy centroid distances.
     """
     coords = np.asarray(coords, dtype=float)
     cells = [tuple(c) for c in cells]
@@ -267,22 +403,30 @@ def assemble_mesh_3d(coords, cells, tags) -> Mesh:
     def dist(a, b):
         return float(np.linalg.norm(centroid[a] - centroid[b]))
 
-    faces, bfaces = [], []
+    faces, face_distances, bfaces = [], [], []
     for lst in face_cells.values():
         gface = lst[0][1]
         A, fcent = _poly_area_centroid_3d(coords[list(gface)])
+        fp = coords[list(gface)]
+        normal = np.cross(fp[1] - fp[0], fp[2] - fp[0])
+        normal /= np.linalg.norm(normal)
         if len(lst) == 2:
             i, j = lst[0][0], lst[1][0]
             faces.append((i, j, A, dist(i, j)))
+            face_distances.append((abs(float(np.dot(centroid[i] - fcent, normal))),
+                                   abs(float(np.dot(centroid[j] - fcent, normal)))))
         elif len(lst) == 1:
             i = lst[0][0]
-            db = float(np.linalg.norm(centroid[i] - fcent))
+            db = (abs(float(np.dot(centroid[i] - fcent, normal))) if normal_distances
+                  else float(np.linalg.norm(centroid[i] - fcent)))
             bfaces.append((i, A, db))
         else:
             raise ValueError(f"face {lst[0][1]} is shared by {len(lst)} cells "
                              "(non-manifold or non-conforming mesh)")
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags),
-                centroid=centroid, area=volume, faces=faces, bfaces=bfaces)
+                centroid=centroid, area=volume, faces=faces, bfaces=bfaces,
+                face_distances=(np.asarray(face_distances).reshape(-1, 2)
+                                if normal_distances else None))
 
 
 @dataclass
@@ -418,7 +562,7 @@ class UnstructuredDiffusionSolver:
             else:
                 face_w = fL / (face_distances[:, 0] / Di + face_distances[:, 1] / Dj)
             # per-slot weights (0 where padded); diag from the same face weights.
-            w_ell = np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
+            w_ell = np.append(face_w, 0.0)[np.where(fmap >= 0, fpad, len(face_w))].astype(dtype)
             diag = removal[g] * area
             diag = diag + np.bincount(fi, weights=face_w, minlength=n)
             diag = diag + np.bincount(fj, weights=face_w, minlength=n)

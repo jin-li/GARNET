@@ -41,13 +41,14 @@ from .grid import Grid
 from . import kernels
 from .linalg import get_linear_solver, neumann_preconditioner, pcg
 from .materials import Material
+from .mesh import Mesh, MeshGrid, MeshGroupOperator
 from .sp3 import SP3GroupOperator
 from .spn import (CongruentSDPNOperator, SDPNGroupOperator, _SDPN_C, _SDPN_G,
                   _SPN_C, _SPN_G, _congruence_available, _diag_similarity)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
 
 
-def _anderson_source(hist, raw, xp):
+def _anderson_source(hist, raw, xp, integration_weights=None):
     """Anderson-accelerated next iterate from a history of (input, raw_output).
 
     Given the recent (S_j, G(S_j)) pairs (latest last) and the latest raw iterate
@@ -61,8 +62,11 @@ def _anderson_source(hist, raw, xp):
     res = [Gj - Sj for Sj, Gj in hist]                    # residuals f_j = G_j - S_j
     dres = [res[i] - res[-1] for i in range(len(res) - 1)]
     m = len(dres)
-    A = np.array([[float(xp.sum(dres[i] * dres[j])) for j in range(m)] for i in range(m)])
-    b = np.array([-float(xp.sum(dres[i] * res[-1])) for i in range(m)])
+    def inner(a, b):
+        product = a * b
+        return float(xp.sum(product if integration_weights is None else product * integration_weights))
+    A = np.array([[inner(dres[i], dres[j]) for j in range(m)] for i in range(m)])
+    b = np.array([-inner(dres[i], res[-1]) for i in range(m)])
     A[np.diag_indices(m)] += 1e-12 * (np.trace(A) + 1e-300)
     try:
         gamma = np.linalg.solve(A, b)
@@ -323,6 +327,8 @@ class _PowerIterationSolver:
         # isotropic source must carry the same per-cell metric factor
         # (None on Cartesian grids -- the source is used as-is).
         self._src_weight = getattr(self.ops[0], "rhs_weight", None)
+        weights = getattr(grid, "integration_weights", None)
+        self.integration_weights = None if weights is None else xp.asarray(weights, dtype=self.dtype)
         self.preconds = [neumann_preconditioner(op.apply, op.inv_diag,
                                                 int(precond_degree))
                          for op in self.ops]
@@ -415,6 +421,12 @@ class _PowerIterationSolver:
         for adjoint-weighted kinetics and first-order perturbation theory.
         """
         xp, G = self.xp, self.n_groups
+        if adjoint and getattr(self.grid, "geometry", None) == "mesh":
+            raise ValueError("mesh adjoints require a separately verified volume inner product")
+        weights = self.integration_weights
+        def integral(field):
+            return xp.sum(field if weights is None else weights * field)
+        norm_measure = self.grid.n_cells if weights is None else xp.sum(weights)
         synchronize(xp)
         t0 = time.perf_counter()
 
@@ -448,7 +460,7 @@ class _PowerIterationSolver:
             return kernels.group_accumulate(xp, out, batch["W"], batch["phi"])
 
         fsrc = fission_source()
-        total = xp.sum(fsrc)
+        total = integral(fsrc)
         if float(total) <= 0:
             raise RuntimeError("initial fission source is zero")
         k = float(k_guess)
@@ -495,15 +507,15 @@ class _PowerIterationSolver:
                 inner_total += n_it
 
             fsrc_new = fission_source()
-            total_new = xp.sum(fsrc_new)
+            total_new = integral(fsrc_new)
             k_new = k * float(total_new / total)
 
             diff = fsrc_new / total_new - fsrc / total
-            src_err = float(xp.sqrt(xp.sum(diff * diff) / xp.sum((fsrc_new / total_new) ** 2)))
+            src_err = float(xp.sqrt(integral(diff * diff) / integral((fsrc_new / total_new) ** 2)))
             dk = abs(k_new - k)
 
             # Normalize so the mean fission source stays at 1 (avoids drift).
-            scale = self.grid.n_cells / total_new
+            scale = norm_measure / total_new
             for g in range(G):
                 state[g] *= scale
             if batch is not None:
@@ -529,10 +541,10 @@ class _PowerIterationSolver:
                 hist.append((fsrc_in, g_fsrc))
                 if len(hist) > anderson_depth:
                     hist.pop(0)
-                fsrc = _anderson_source(hist, g_fsrc, xp)
-                fsrc = fsrc * (self.grid.n_cells / float(xp.sum(fsrc)))
+                fsrc = _anderson_source(hist, g_fsrc, xp, weights)
+                fsrc = fsrc * (norm_measure / float(integral(fsrc)))
             prev_src_err = src_err
-            total = xp.sum(fsrc)
+            total = integral(fsrc)
 
         synchronize(xp)
         # Retain the converged per-group state (moment vectors for the block
@@ -871,3 +883,95 @@ class SP7EigenSolver(SPNEigenSolver):
     """Standard SP7 k-eigenvalue solver (4-moment block)."""
 
     _order = 3
+
+
+class _MeshSolverMixin:
+    """DF-off mesh setup and explicit capability gates for the shared drivers."""
+
+    def __init__(self, mesh, materials, cell_material=None, *,
+                 boundary_conditions=None, bc=None, material_map=None, **kwargs):
+        if kwargs.get("active") is not None or kwargs.get("hybrid_mask") is not None or kwargs.get("hybrid_confine", False):
+            raise ValueError("mesh active/hybrid masks are unsupported; classify exposed faces explicitly")
+        if kwargs.pop("df", None) is not None or kwargs.pop("bcf", None) is not None:
+            raise ValueError("mesh moment discontinuity factors are unsupported (DF-off only)")
+        if kwargs.get("spn_precondition", 0):
+            raise ValueError("mesh SPN companion preconditioning is not yet verified")
+        if boundary_conditions is not None and bc is not None:
+            raise ValueError("pass boundary_conditions or bc, not both")
+        specs = boundary_conditions if boundary_conditions is not None else bc
+        if isinstance(mesh, MeshGrid):
+            grid = mesh if specs is None else MeshGrid(mesh.mesh, specs)
+        elif isinstance(mesh, Mesh):
+            grid = MeshGrid(mesh, "vacuum" if specs is None else specs)
+        else:
+            raise TypeError("mesh solver expects a Mesh or MeshGrid")
+        if cell_material is not None and material_map is not None:
+            raise ValueError("pass cell_material or material_map, not both")
+        mapping = cell_material if cell_material is not None else material_map
+        if mapping is not None:
+            mapping = np.asarray(mapping)
+            if mapping.size != grid.n_cells:
+                raise ValueError("cell_material must have one entry per mesh cell")
+            mapping = mapping.reshape(grid.shape)
+        if isinstance(self, SDPNEigenSolver):
+            coeffs = self._coeffs if self._coeffs is not None else _SDPN_C
+            if self._order not in coeffs:
+                raise ValueError(f"order must be one of {sorted(coeffs)}")
+            if kwargs.get("symmetrize") and _diag_similarity(coeffs[self._order]) is None:
+                raise ValueError("mesh symmetrizing congruence lacks integrated reaction/source weighting")
+        super().__init__(grid, materials, material_map=mapping,
+                         bc=grid.boundary_conditions, **kwargs)
+        if self._linsolve is pcg and any(not op.symmetric for op in self.ops):
+            raise ValueError("CG cannot solve a nonsymmetric mesh moment operator; use bicgstab or gmres")
+
+
+class MeshDiffusionEigenSolver(_MeshSolverMixin, DiffusionEigenSolver):
+    """Integrated DF-off mesh diffusion; flux shape is ``(G,n_cells,1,1)``."""
+
+    def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
+        self.ops = [MeshGroupOperator(self.xp, grid, diffusion[g], removal[g], bc=bc,
+                                      symmetric=self.symmetric_operator)
+                    for g in range(self.n_groups)]
+
+
+class MeshSDPNEigenSolver(_MeshSolverMixin, SDPNEigenSolver):
+    """General integrated mesh SDPN using the existing coefficient tables.
+
+    ``order=1`` is SDP1, ``order=2`` SDP2 and ``order=3`` SDP3. The last
+    supports only the plain nonsymmetric path. Coupled Marshak vacuum is
+    selected by ``marshak_vacuum=True``; default scalar Robin is also available.
+    """
+
+    _moment_op_cls = MeshGroupOperator
+
+    def __init__(self, *args, order=1, **kwargs):
+        self._order = order
+        super().__init__(*args, **kwargs)
+
+
+class MeshSPNEigenSolver(MeshSDPNEigenSolver):
+    """General integrated mesh SPN: order 0/1/2/3 gives SP1/SP3/SP5/SP7."""
+
+    _coeffs = _SPN_C
+    _g_coeffs = _SPN_G
+
+
+class MeshSP1EigenSolver(MeshSPNEigenSolver):
+    """One-moment mesh SP1, equivalent to integrated mesh diffusion."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=0, **kwargs)
+
+
+class MeshSP3EigenSolver(MeshSPNEigenSolver):
+    """Mesh SP3 through the general order-1 SPN block (coupled Marshak ready)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=1, **kwargs)
+
+
+class MeshSDP1EigenSolver(MeshSDPNEigenSolver):
+    """Mesh SDP1 through the general order-1 SDPN block."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=1, **kwargs)
