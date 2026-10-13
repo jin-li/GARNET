@@ -164,3 +164,25 @@ def test_optional_unqualified_core_probe_preserves_strict_xs_gate():
     assert Path(source).is_file()
     with pytest.raises(ValueError,match="INF_(?:DIFFCOEF|TOT): values must be strictly positive"):
         read_serpent_results(source)
+
+
+def test_explicit_trc_preserves_native_values_and_default_cmm(tmp_path):
+    raw=fields();raw['TRC_DIFFCOEF']=paired([1.3,.26],[.02,.04])
+    record=read_serpent_xs(write(tmp_path,raw))
+    np.testing.assert_allclose(record.to_diffusion_material(diffusion='trc').diffusion,[1.3,.26])
+    np.testing.assert_allclose(record.to_diffusion_material().diffusion,[1.25,.25])
+    np.testing.assert_array_equal(record.fields['TRC_DIFFCOEF'],raw['TRC_DIFFCOEF'])
+    np.testing.assert_allclose(record.estimate('TRC_DIFFCOEF').relative_error,[.02,.04])
+
+
+def test_missing_trc_rejects_without_cmm_fallback(tmp_path):
+    record=read_serpent_xs(write(tmp_path))
+    with pytest.raises(ValueError,match='TRC_DIFFCOEF.*missing'):
+        record.to_diffusion_material(diffusion='trc')
+
+
+@pytest.mark.parametrize('means', [[0,.2],[-1,.2],[float('nan'),.2]])
+def test_invalid_native_trc_rejects(tmp_path,means):
+    raw=fields();raw['TRC_DIFFCOEF']=paired(means)
+    with pytest.raises(ValueError,match='TRC_DIFFCOEF'):
+        read_serpent_xs(write(tmp_path,raw))

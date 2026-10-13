@@ -20,7 +20,7 @@ from .materials import Material
 
 _VECTOR_FIELDS = {
     "INF_TOT", "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_CHIT", "INF_FLX",
-    "CMM_DIFFCOEF", "INF_DIFFCOEF", "INF_FISS", "INF_KAPPA",
+    "CMM_DIFFCOEF", "INF_DIFFCOEF", "TRC_DIFFCOEF", "INF_FISS", "INF_KAPPA",
 }
 _MATRIX_FIELDS = {"INF_S0", "INF_SP0"}
 _REFERENCE_FIELDS = {"IMP_KEFF", "INF_KINF", "ANA_KEFF", "TOT_LEAKRATE"}
@@ -213,7 +213,7 @@ class SerpentXSRecord:
                     or np.any(est.relative_error < 0)):
                 raise self._error(key, "means must be finite (nonnegative except net current); "
                                   "relative errors must be finite and nonnegative")
-            if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
+            if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "TRC_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
                 raise self._error(key, "values must be strictly positive")
         fissile = np.any(self.estimate("INF_NSF").mean > 0)
         if "INF_CHIT" not in self.fields:
@@ -235,16 +235,18 @@ class SerpentXSRecord:
         ``Material.sigma_a`` as a physical absorption tally, or assume these
         uncorrected data have been validated for SPN/SN or thermal feedback.
         CMM is the default; ``diffusion='inf'`` explicitly opts into Serpent's
-        out-scattering diffusion approximation. Neither selection falls back.
+        out-scattering diffusion approximation. ``diffusion='trc'`` selects native
+        TRC_DIFFCOEF and requires documented correction data/provenance.
+        No selection falls back or establishes physical applicability by itself.
         Paired INF_FISS and INF_KAPPA supply kappa_fission in MeV/cm for
         normalized power shapes; raw estimates and errors remain unchanged.
         Nonfissile regions with absent/zero chi use a benign first-group
         spectrum, which contributes no fission source.
         """
         self._validate()
-        keys = {"cmm": "CMM_DIFFCOEF", "inf": "INF_DIFFCOEF"}
+        keys = {"cmm": "CMM_DIFFCOEF", "inf": "INF_DIFFCOEF", "trc": "TRC_DIFFCOEF"}
         if diffusion not in keys:
-            raise self._error("diffusion", "use 'cmm' or 'inf'")
+            raise self._error("diffusion", "use 'cmm', 'inf' or 'trc'")
         chi = (self.estimate("INF_CHIT").mean if "INF_CHIT" in self.fields
                else np.zeros(self.n_groups))
         if chi.sum() == 0:
