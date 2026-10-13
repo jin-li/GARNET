@@ -123,24 +123,28 @@ class MeshGrid:
         specs = self.classify_boundary(bc)
         return tuple("reflective" if strip_vacuum and s == "vacuum" else s for s in specs)
 
-    def boundary_blocks(self, xp, bc, D_list, g):
+    def boundary_blocks(self, xp, bc, D_list, g, boundary_df=None):
         """Integrated Marshak loss, summed on host by unique cell owner.
 
         Trace elimination uses the same geometric normal distance for every
-        moment: ``K = S G solve(diag(D/d) + G, diag(D/d))``. Aggregating before
+        moment: ``K = S f G solve(diag(D/d) + f G, diag(D/d))``.
+        The optional positive scalar factor corrects every moment trace alike.
+        Aggregating before
         device indexing avoids repeated-index scatter loss on GPU backends.
         """
         specs = self.classify_boundary(bc)
         M = len(D_list)
         D = [asnumpy(d).reshape(-1) for d in D_list]
         gm = np.asarray(g, dtype=D[0].dtype)
+        factors = _mesh_df(boundary_df, (len(self.mesh.bfaces),), "moment_boundary_df")
         blocks = {}
-        for (owner, measure, distance), spec in zip(self.mesh.bfaces, specs):
+        for (owner, measure, distance), spec, factor in zip(self.mesh.bfaces, specs, factors):
             owner = int(owner)  # validated integer-like mesh identifiers
             if spec != "vacuum":
                 continue
             A = np.diag([d[owner] / distance for d in D])
-            K = measure * gm @ np.linalg.solve(A + gm, A)
+            fg = factor * gm
+            K = measure * fg @ np.linalg.solve(A + fg, A)
             blocks[owner] = blocks.get(owner, np.zeros((M, M), dtype=gm.dtype)) + K
         if not blocks:
             return []

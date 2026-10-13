@@ -893,7 +893,16 @@ class _MeshSolverMixin:
         face_df = kwargs.pop("face_df", None)
         boundary_df = kwargs.pop("boundary_df", None)
         if (face_df is not None or boundary_df is not None) and not isinstance(self, DiffusionEigenSolver):
-            raise ValueError("mesh moment discontinuity factors are unsupported; scalar DF is diffusion-only")
+            raise ValueError("ambiguous scalar face_df/boundary_df on a mesh moment solver (scalar DF is diffusion-only); use moment_df_model='common_trace' and moment factors")
+        model = kwargs.pop("moment_df_model", None)
+        moment_face_df = kwargs.pop("moment_face_df", None)
+        moment_boundary_df = kwargs.pop("moment_boundary_df", None)
+        if model is None and (moment_face_df is not None or moment_boundary_df is not None):
+            raise ValueError("moment factors require moment_df_model='common_trace'")
+        if model is not None and (model != "common_trace" or
+                                  not isinstance(self, SDPNEigenSolver) or self._order != 1):
+            raise ValueError("moment_df_model supports only 'common_trace' on order-1 mesh SP3/SDP1")
+        self.moment_df_model = model
         if kwargs.get("active") is not None or kwargs.get("hybrid_mask") is not None or kwargs.get("hybrid_confine", False):
             raise ValueError("mesh active/hybrid masks are unsupported; classify exposed faces explicitly")
         if kwargs.pop("df", None) is not None or kwargs.pop("bcf", None) is not None:
@@ -909,6 +918,19 @@ class _MeshSolverMixin:
             grid = MeshGrid(mesh, "vacuum" if specs is None else specs)
         else:
             raise TypeError("mesh solver expects a Mesh or MeshGrid")
+        if model is not None:
+            from .mesh import _mesh_df
+            if any(spec not in ("reflective", "zero-flux", "vacuum")
+                   for spec in grid.boundary_conditions):
+                raise ValueError("common_trace supports only reflective, zero-flux, or coupled Marshak vacuum boundaries")
+            if "vacuum" in grid.boundary_conditions and not kwargs.get("marshak_vacuum", False):
+                raise ValueError("common_trace vacuum requires marshak_vacuum=True")
+            G = materials.n_groups if isinstance(materials, Material) else materials[0].n_groups
+            self.moment_face_df = _mesh_df(moment_face_df, (G, len(grid.mesh.faces), 2), "moment_face_df")
+            self.moment_boundary_df = _mesh_df(moment_boundary_df, (G, len(grid.mesh.bfaces)), "moment_boundary_df")
+            unequal = np.any(self.moment_face_df[..., 0] != self.moment_face_df[..., 1])
+            if unequal and kwargs.get("linear_solver") is None:
+                kwargs["linear_solver"] = "bicgstab"
         if cell_material is not None and material_map is not None:
             raise ValueError("pass cell_material or material_map, not both")
         mapping = cell_material if cell_material is not None else material_map
@@ -927,6 +949,21 @@ class _MeshSolverMixin:
                          bc=grid.boundary_conditions, **kwargs)
         if self._linsolve is pcg and any(not op.symmetric for op in self.ops):
             raise ValueError("CG cannot solve a nonsymmetric mesh moment operator; use bicgstab or gmres")
+
+    def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
+        if self.moment_df_model is None:
+            return super()._build_operators(grid, diffusion, sigma_t, removal, bc)
+        if not self.symmetric_operator:
+            raise ValueError("symmetric_operator=False is diffusion-only")
+        bg = self._g_coeffs[self._order] if self.marshak_vacuum else None
+        self.ops = [SDPNGroupOperator(
+            self.xp, grid, diffusion[g], sigma_t[g], removal[g],
+            order=self._order, bc=bc, op_cls=self._moment_op_cls,
+            coeffs=self._coeffs, boundary_g=bg, symmetrize=self._symmetrize,
+            moment_df_model=self.moment_df_model,
+            moment_face_df=self.moment_face_df[g],
+            moment_boundary_df=self.moment_boundary_df[g])
+            for g in range(self.n_groups)]
 
 
 class MeshDiffusionEigenSolver(_MeshSolverMixin, DiffusionEigenSolver):
@@ -967,6 +1004,15 @@ class MeshSDPNEigenSolver(_MeshSolverMixin, SDPNEigenSolver):
     ``order=1`` is SDP1, ``order=2`` SDP2 and ``order=3`` SDP3. The last
     supports only the plain nonsymmetric path. Coupled Marshak vacuum is
     selected by ``marshak_vacuum=True``; default scalar Robin is also available.
+
+    Order 1 accepts opt-in ``moment_df_model='common_trace'`` with finite
+    positive ``moment_face_df`` of shape ``(G,n_interior_faces,2)`` and
+    ``moment_boundary_df`` of shape ``(G,n_boundary_faces)`` (default ones).
+    One scalar factor corrects every stored moment trace. Unequal face sides
+    select BiCGSTAB by default and reject CG. This generic algebraic
+    closure does not qualify Serpent scalar DFs as SP3 EPDFs or SDP1 factors.
+    Vacuum requires coupled Marshak; reflective and zero-flux are supported.
+    Numeric Robin boundaries are excluded from this opt-in closure.
     """
 
     _moment_op_cls = MeshGroupOperator
