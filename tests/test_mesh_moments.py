@@ -272,3 +272,17 @@ def test_unequal_three_dimensional_multigroup_pencil_and_scalar_flux(family,solv
     # physical scalar fission density and reaction rows are integrated once.
     source = sum(solver.nu_sigma_f[g]*result.flux[g] for g in range(2))
     np.testing.assert_allclose(np.sum(source*solver.integration_weights),mesh.area.sum(),rtol=2e-12)
+
+
+@pytest.mark.parametrize('solver_cls', [MeshDiffusionEigenSolver,MeshSP3EigenSolver,MeshSDP1EigenSolver])
+def test_integer_like_float_boundary_owners_preserve_operator_action(solver_cls):
+    from dataclasses import replace
+    mesh=boxes()
+    floating=replace(mesh,bfaces=[(float(owner),area,distance) for owner,area,distance in mesh.bfaces])
+    kwargs={} if solver_cls is MeshDiffusionEigenSolver else {'marshak_vacuum':True,'symmetrize':False}
+    expected=solver_cls(mesh,materials(),[0,1],device='cpu',**kwargs)
+    actual=solver_cls(floating,materials(),[0,1],device='cpu',**kwargs)
+    for op,ref in zip(actual.ops,expected.ops):
+        shape=actual._initial_state()[0].shape
+        probe=np.arange(np.prod(shape),dtype=float).reshape(shape)+1
+        np.testing.assert_allclose(op.apply(probe),ref.apply(probe))

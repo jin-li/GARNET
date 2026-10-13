@@ -136,6 +136,7 @@ class MeshGrid:
         gm = np.asarray(g, dtype=D[0].dtype)
         blocks = {}
         for (owner, measure, distance), spec in zip(self.mesh.bfaces, specs):
+            owner = int(owner)  # validated integer-like mesh identifiers
             if spec != "vacuum":
                 continue
             A = np.diag([d[owner] / distance for d in D])
@@ -209,6 +210,7 @@ class MeshGroupOperator:
         well = np.where(owner_left, np.append(right, 0)[safe], np.append(left, 0)[safe])
         diag = rh * mesh.area + np.bincount(fi, weights=left, minlength=n) + np.bincount(fj, weights=right, minlength=n)
         for (owner, area, distance), spec, factor in zip(mesh.bfaces, grid.classify_boundary(bc), bfactors):
+            owner = int(owner)  # validated integer-like mesh identifiers
             alpha = face_alpha(spec)
             diag[owner] += (area * Dh[owner] / distance if np.isinf(alpha)
                             else area * alpha * factor * Dh[owner] / (distance * alpha * factor + Dh[owner]))
