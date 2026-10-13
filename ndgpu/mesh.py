@@ -36,7 +36,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .backend import asnumpy, device_name, get_backend, synchronize
-from .linalg import get_linear_solver, neumann_preconditioner
+from .linalg import get_linear_solver, neumann_preconditioner, pcg
 from .stencil import _face_valid, face_alpha
 
 
@@ -148,19 +148,31 @@ class MeshGrid:
         return [(sl, xp.asarray(np.stack([blocks[c] for c in owners]))) ]
 
 
+def _mesh_df(value, shape, name):
+    """Validate scalar diffusion factors on host, including empty face lists."""
+    factors = np.ones(shape) if value is None else np.asarray(asnumpy(value), dtype=float)
+    if factors.shape != shape or not np.all(np.isfinite(factors)) or np.any(factors <= 0):
+        raise ValueError(f"{name} must be finite positive factors with shape {shape}")
+    return factors
+
+
 class MeshGroupOperator:
     """Integrated conservative TPFA loss with density-valued coefficients.
 
     Reactions and the RHS carry the cell volume exactly once. On orthogonal
     faces the resistance is ``d_i/D_i + d_j/D_j``; legacy geometry without
-    normal distances retains harmonic-centroid TPFA. ``apply`` and ``diag``
+    normal distances splits the centroid separation equally (d/2 per side),
+    retaining harmonic-centroid TPFA for unit factors. Scalar face factors
+    enforce continuity of the corrected trace f*phi; the same face current
+    enters the two rows with opposite signs. At a boundary the corrected trace
+    is f_B*phi_surface; eliminating it gives S*alpha*f_B*D/(D+alpha*f_B*d).
+    Reflective leakage is zero and the zero-flux limit is S*D/d.
+    ``apply`` and ``diag``
     preserve the facade shape used by the shared moment and eigen drivers.
     """
 
-    symmetric = True
-
     def __init__(self, xp, grid, D, removal, bc=None, active=None,
-                 mask_bc="vacuum", symmetric=True):
+                 mask_bc="vacuum", symmetric=True, face_df=None, boundary_df=None):
         if active is not None:
             raise ValueError("mesh active masks are unsupported; expose boundary faces explicitly")
         if not symmetric:
@@ -176,21 +188,30 @@ class MeshGroupOperator:
         fi = np.asarray([f[0] for f in mesh.faces], dtype=np.int64)
         fj = np.asarray([f[1] for f in mesh.faces], dtype=np.int64)
         measure = np.asarray([f[2] for f in mesh.faces])
+        factors = _mesh_df(face_df, (len(mesh.faces), 2), "face_df")
+        bfactors = _mesh_df(boundary_df, (len(mesh.bfaces),), "boundary_df")
         if mesh.face_distances is None:
             distance = np.asarray([f[3] for f in mesh.faces])
-            weights = measure * 2 * Dh[fi] * Dh[fj] / ((Dh[fi] + Dh[fj]) * distance)
+            distances = np.column_stack((distance / 2, distance / 2))
         else:
             distances = np.asarray(mesh.face_distances)
-            weights = measure / (distances[:, 0] / Dh[fi] + distances[:, 1] / Dh[fj])
+        weights = measure / (factors[:, 0] * distances[:, 0] / Dh[fi]
+                             + factors[:, 1] * distances[:, 1] / Dh[fj])
+        if mesh.face_distances is None and np.all(factors == 1):
+            # Preserve the historical harmonic expression and roundoff.
+            weights = measure * 2 * Dh[fi] * Dh[fj] / ((Dh[fi] + Dh[fj]) * distance)
+        left, right = weights * factors[:, 0], weights * factors[:, 1]
+        self.symmetric = bool(np.array_equal(left, right))
         nbr, fmap = _build_ell(fi, fj, n)
         # A sentinel handles one-cell and other meshes with no interior faces.
-        padded = np.append(weights, 0)
-        well = padded[np.where(fmap >= 0, fmap, len(weights))]
-        diag = rh * mesh.area + np.bincount(fi, weights=weights, minlength=n) + np.bincount(fj, weights=weights, minlength=n)
-        for (owner, area, distance), spec in zip(mesh.bfaces, grid.classify_boundary(bc)):
+        safe = np.where(fmap >= 0, fmap, len(weights))
+        owner_left = np.arange(n)[None, :] == np.append(fi, -1)[safe]
+        well = np.where(owner_left, np.append(right, 0)[safe], np.append(left, 0)[safe])
+        diag = rh * mesh.area + np.bincount(fi, weights=left, minlength=n) + np.bincount(fj, weights=right, minlength=n)
+        for (owner, area, distance), spec, factor in zip(mesh.bfaces, grid.classify_boundary(bc), bfactors):
             alpha = face_alpha(spec)
             diag[owner] += (area * Dh[owner] / distance if np.isinf(alpha)
-                            else area * alpha * Dh[owner] / (distance * alpha + Dh[owner]))
+                            else area * alpha * factor * Dh[owner] / (distance * alpha * factor + Dh[owner]))
         self._flat = _MeshGroupOperator(xp, xp.asarray(nbr, dtype=np.int32),
                                         xp.asarray(well, dtype=D.dtype), xp.asarray(diag, dtype=D.dtype))
         self.diag = self._flat.diag.reshape(grid.shape)
@@ -485,8 +506,8 @@ class _MeshGroupOperator:
     per-slot weights, ``A phi = diag*phi - sum_s w[s]*phi[nbr[s]]``. No scatter,
     so no GPU atomics and the write is coalesced. The assembled operator --
     volume-integrated resistance-weighted two-point-flux leakage, plus removal and the
-    Robin boundary term on the diagonal -- is symmetric and diagonally dominant,
-    hence SPD, so CG converges.
+    Robin boundary term on the diagonal -- is symmetric for equal face-side
+    factors. Unequal scalar factors produce a conservative nonsymmetric matrix.
     """
 
     def __init__(self, xp, nbr, w_ell, diag):
@@ -512,23 +533,33 @@ class UnstructuredDiffusionSolver:
     precond_degree : Neumann-polynomial preconditioner degree for the inner CG
                      (0 = plain Jacobi, the default), as on the structured
                      solvers.
-    linear_solver  : "cg" (default), "gmres", or "bicgstab", as on the
-                     structured solvers.
+    face_df        : optional (G,n_interior_faces,2) corrected trace factors.
+    boundary_df    : optional (G,n_boundary_faces) corrected trace factors.
+    linear_solver  : None (CG for equal factors, BiCGSTAB for unequal factors),
+                     "cg", "gmres", or "bicgstab".
     """
 
     def __init__(self, mesh: Mesh, materials, cell_material,
                  alpha_boundary=_VACUUM_ALPHA, device="auto",
-                 precond_degree=0, dtype=np.float64, linear_solver="cg"):
+                 precond_degree=0, dtype=np.float64, linear_solver=None,
+                 face_df=None, boundary_df=None):
         self.xp = xp = get_backend(device)
         self.device = device_name(xp)
         self.dtype = dtype
-        self._linsolve = get_linear_solver(linear_solver)
         self.mesh = mesh
         self.mats = list(materials)
         self.cm = cm = np.asarray(cell_material)
         self.alpha = float(alpha_boundary)
         self.G = G = self.mats[0].n_groups
         n = mesh.n_cells
+        use_df = face_df is not None or boundary_df is not None
+        self.face_df = _mesh_df(face_df, (G, len(mesh.faces), 2), "face_df")
+        self.boundary_df = _mesh_df(boundary_df, (G, len(mesh.bfaces)), "boundary_df")
+        nonsymmetric = np.any(self.face_df[..., 0] != self.face_df[..., 1])
+        self._linsolve = get_linear_solver(linear_solver or ("bicgstab" if nonsymmetric else "cg"))
+        if nonsymmetric and self._linsolve is pcg:
+            raise ValueError("CG cannot solve a nonsymmetric mesh diffusion DF operator; use bicgstab or gmres")
+        df_grid = MeshGrid(mesh, self.alpha) if use_df else None
 
         area = np.asarray(mesh.area, dtype=dtype)
         D = [np.array([self.mats[m].diffusion[g] for m in cm], dtype=dtype) for g in range(G)]
@@ -555,6 +586,12 @@ class UnstructuredDiffusionSolver:
 
         self.ops = []
         for g in range(G):
+            if use_df:
+                op = MeshGroupOperator(xp, df_grid, xp.asarray(D[g]), xp.asarray(removal[g]),
+                                       face_df=self.face_df[g], boundary_df=self.boundary_df[g])
+                op._flat.symmetric = op.symmetric
+                self.ops.append(op._flat)
+                continue
             Dg = D[g]
             Di, Dj = Dg[fi], Dg[fj]
             if face_distances is None:

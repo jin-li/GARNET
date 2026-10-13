@@ -886,10 +886,14 @@ class SP7EigenSolver(SPNEigenSolver):
 
 
 class _MeshSolverMixin:
-    """DF-off mesh setup and explicit capability gates for the shared drivers."""
+    """Mesh setup and explicit capability gates for the shared drivers."""
 
     def __init__(self, mesh, materials, cell_material=None, *,
                  boundary_conditions=None, bc=None, material_map=None, **kwargs):
+        face_df = kwargs.pop("face_df", None)
+        boundary_df = kwargs.pop("boundary_df", None)
+        if (face_df is not None or boundary_df is not None) and not isinstance(self, DiffusionEigenSolver):
+            raise ValueError("mesh moment discontinuity factors are unsupported; scalar DF is diffusion-only")
         if kwargs.get("active") is not None or kwargs.get("hybrid_mask") is not None or kwargs.get("hybrid_confine", False):
             raise ValueError("mesh active/hybrid masks are unsupported; classify exposed faces explicitly")
         if kwargs.pop("df", None) is not None or kwargs.pop("bcf", None) is not None:
@@ -926,11 +930,34 @@ class _MeshSolverMixin:
 
 
 class MeshDiffusionEigenSolver(_MeshSolverMixin, DiffusionEigenSolver):
-    """Integrated DF-off mesh diffusion; flux shape is ``(G,n_cells,1,1)``."""
+    """Integrated mesh diffusion; flux shape is ``(G,n_cells,1,1)``.
+
+    ``face_df`` has shape ``(G,n_interior_faces,2)`` in face i/j order;
+    ``boundary_df`` has shape ``(G,n_boundary_faces)``. Both default to ones.
+    Factors are finite and positive. Unequal face factors require a
+    nonsymmetric solver; the default chooses BiCGSTAB, otherwise CG.
+    """
+
+    def __init__(self, mesh, materials, cell_material=None, *, face_df=None,
+                 boundary_df=None, linear_solver=None, **kwargs):
+        from .mesh import _mesh_df
+        raw_mesh = mesh.mesh if isinstance(mesh, MeshGrid) else mesh
+        if not isinstance(raw_mesh, Mesh):
+            raise TypeError("mesh solver expects a Mesh or MeshGrid")
+        G = materials.n_groups if isinstance(materials, Material) else materials[0].n_groups
+        self.face_df = _mesh_df(face_df, (G, len(raw_mesh.faces), 2), "face_df")
+        self.boundary_df = _mesh_df(boundary_df, (G, len(raw_mesh.bfaces)), "boundary_df")
+        nonsymmetric = np.any(self.face_df[..., 0] != self.face_df[..., 1])
+        if linear_solver is None:
+            linear_solver = "bicgstab" if nonsymmetric else "cg"
+        if nonsymmetric and get_linear_solver(linear_solver) is pcg:
+            raise ValueError("CG cannot solve a nonsymmetric mesh diffusion DF operator; use bicgstab or gmres")
+        super().__init__(mesh, materials, cell_material, linear_solver=linear_solver, **kwargs)
 
     def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
         self.ops = [MeshGroupOperator(self.xp, grid, diffusion[g], removal[g], bc=bc,
-                                      symmetric=self.symmetric_operator)
+                                      symmetric=self.symmetric_operator,
+                                      face_df=self.face_df[g], boundary_df=self.boundary_df[g])
                     for g in range(self.n_groups)]
 
 
