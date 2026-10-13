@@ -305,9 +305,27 @@ solvers otherwise use scalar Robin conditions. For orthogonal 3D meshes,
 resistances explicitly. General skew meshes retain the two-point-flux
 approximation. Source normalization uses the volume-mean fission density.
 The mesh moment API currently supports steady DF-off calculations; masks,
-adjoints, discontinuity factors and symmetrizing SDP3 congruence are rejected.
+adjoints, moment discontinuity factors and symmetrizing SDP3 congruence are rejected.
 `MeshSPNEigenSolver(order=...)` and `MeshSDPNEigenSolver(order=...)` expose
 higher orders with the same stated restrictions.
+
+Scalar diffusion also accepts `face_df` with shape `(G, n_faces, 2)` and
+`boundary_df` with shape `(G, n_boundary_faces)`. Factors enforce continuity of
+the corrected face trace while preserving opposite integrated currents.
+Unequal factors automatically select BiCGSTAB; explicit CG is rejected.
+Boundary factors correct the trace in the Robin law. Apply factors at original
+XS node interfaces and use unity on artificial interfaces within one node;
+the solver does not infer this mapping. Both arrays default to unity.
+
+`SerpentXSRecord.adf_estimate(...)` preserves native four-/six-face estimates,
+including signed inward-positive integrated net currents. The auxiliary
+`ndgpu.serpent_adf.cuboid_flat_source_factors(...)` reconstructs homogeneous
+face means from node-average flux and six currents, using uniform within-group
+source and uniform current density on each face. It checks continuous-field
+positivity and accepts an uncertainty margin. These are explicit reconstruction
+closures: nominal factors are not automatically qualified for production or
+transfer to another state. No XS or eigenvalues are fitted. Moment DF support
+requires a separate verified interface formulation.
 
 A `Model` also runs **transients**. It solves the steady state first (its
 eigenvalue `k0` normalises the fission source, so an unperturbed run stays at
