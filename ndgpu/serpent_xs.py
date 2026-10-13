@@ -24,12 +24,20 @@ _VECTOR_FIELDS = {
 }
 _MATRIX_FIELDS = {"INF_S0", "INF_SP0"}
 _REFERENCE_FIELDS = {"IMP_KEFF", "INF_KINF", "ANA_KEFF", "TOT_LEAKRATE"}
+_ADF_VOLUME_FIELDS = {"DF_HET_VOL_FLUX", "DF_HOM_VOL_FLUX"}
+_ADF_SURFACE_FIELDS = {
+    "DF_HET_SURF_FLUX", "DF_HOM_SURF_FLUX", "DF_SURF_DF",
+    "DF_SURF_NET_CURR", "DF_SURF_IN_CURR", "DF_SURF_OUT_CURR",
+}
+_STATISTICAL_FIELDS = (_VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS
+                       | _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS)
+_ADF_GEOMETRY_FIELDS = {"DF_N_SURF", "DF_VOLUME", "DF_SURF_AREA"}
 _REQUIRED = {
     "VERSION", "GC_UNIVERSE_NAME", "MACRO_NG", "MACRO_E", "INF_TOT",
     "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_FLX",
     "INF_S0", "INF_SP0",
 }
-_KNOWN = _REQUIRED | _VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS
+_KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS
 _ASSIGNMENT = re.compile(
     r"^([A-Z][A-Z0-9_]*)\s*\(\s*idx\s*,\s*(1|\[\s*1\s*:\s*(\d+)\s*\])"
     r"\s*\)\s*=\s*(.*?)\s*$", re.S)
@@ -87,7 +95,10 @@ def _literal(rhs):
 
 @dataclass(frozen=True)
 class SerpentEstimate:
-    """Means and relative standard errors; no covariance is inferred."""
+    """Means and printed relative errors; no covariance is inferred.
+
+    A printed zero error is preserved and does not establish exactness.
+    """
 
     mean: np.ndarray
     relative_error: np.ndarray
@@ -123,9 +134,16 @@ class SerpentXSRecord:
     def energy_bounds_mev(self):
         return self.fields["MACRO_E"].copy()
 
+    @property
+    def n_surfaces(self):
+        """Number of ADF faces, preserving Serpent's native face order."""
+        if "DF_N_SURF" not in self.fields:
+            raise self._error("DF_N_SURF", "missing field for ADF surface data")
+        return int(self.fields["DF_N_SURF"][0])
+
     def estimate(self, field):
         """Decode a recognized paired statistical field, preserving raw values."""
-        if field not in _VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS:
+        if field not in _STATISTICAL_FIELDS:
             raise self._error(field, "not a recognized mean/error field")
         if field not in self.fields:
             raise self._error(field, "missing field")
@@ -133,6 +151,26 @@ class SerpentXSRecord:
         if not isinstance(raw, np.ndarray) or raw.size % 2:
             raise self._error(field, "expected interleaved mean/relative-error pairs")
         return SerpentEstimate(raw[::2].copy(), raw[1::2].copy())
+
+    def adf_estimate(self, field):
+        """Decode native ADF means/errors without rescaling or reordering.
+
+        Surface estimates have shape (n_surfaces, G), face-major with group
+        innermost; volume estimates have shape (G,). This supports both four
+        and six faces. Heterogeneous surface fluxes are surface-average
+        densities; partial and net currents are surface-integrated. Serpent
+        2.2.2 net current is inward minus outward, so negative values are valid.
+        DF_SURF_DF is the heterogeneous/homogeneous surface-flux ratio.
+        Printed zero relative errors do not imply exact values.
+        """
+        if field not in _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS:
+            raise self._error(field, "not a recognized ADF mean/error field")
+        est = self.estimate(field)
+        shape = ((self.n_surfaces, self.n_groups) if field in _ADF_SURFACE_FIELDS
+                 else (self.n_groups,))
+        if est.mean.size != int(np.prod(shape)):
+            raise self._error(field, f"expected {int(np.prod(shape))} mean/error pairs")
+        return SerpentEstimate(est.mean.reshape(shape), est.relative_error.reshape(shape))
 
     def _validate(self):
         for key in sorted(_REQUIRED):
@@ -150,17 +188,31 @@ class SerpentXSRecord:
                 or not np.all(np.isfinite(edges)) or np.any(edges < 0)
                 or not np.all(np.diff(edges) < 0)):
             raise self._error("MACRO_E", "expected G+1 finite nonnegative descending boundaries in MeV")
-        for key in (_VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS) & self.fields.keys():
+        if "DF_N_SURF" in self.fields:
+            ns = self.fields["DF_N_SURF"]
+            if (not isinstance(ns, np.ndarray) or ns.size != 1
+                    or not np.isfinite(ns[0]) or ns[0] < 1 or ns[0] != int(ns[0])):
+                raise self._error("DF_N_SURF", "expected a positive integer")
+        for key in {"DF_VOLUME", "DF_SURF_AREA"} & self.fields.keys():
+            values = self.fields[key]
+            expected = 1 if key == "DF_VOLUME" else self.n_surfaces
+            if (not isinstance(values, np.ndarray) or values.size != expected
+                    or not np.all(np.isfinite(values)) or np.any(values <= 0)):
+                raise self._error(key, f"expected {expected} finite strictly positive values")
+        for key in _STATISTICAL_FIELDS & self.fields.keys():
             est = self.estimate(key)
             expected = (self.n_groups ** 2 if key in _MATRIX_FIELDS else
-                        self.n_groups if key in _VECTOR_FIELDS else
+                        self.n_surfaces * self.n_groups if key in _ADF_SURFACE_FIELDS else
+                        self.n_groups if key in _VECTOR_FIELDS | _ADF_VOLUME_FIELDS else
                         3 if key == "ANA_KEFF" else 1)
             if est.mean.size != expected:
                 raise self._error(key, f"expected {expected} mean/error pairs")
-            if (not np.all(np.isfinite(est.mean)) or np.any(est.mean < 0)
+            if (not np.all(np.isfinite(est.mean))
+                    or (key != "DF_SURF_NET_CURR" and np.any(est.mean < 0))
                     or not np.all(np.isfinite(est.relative_error))
                     or np.any(est.relative_error < 0)):
-                raise self._error(key, "means/errors must be finite and nonnegative")
+                raise self._error(key, "means must be finite (nonnegative except net current); "
+                                  "relative errors must be finite and nonnegative")
             if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
                 raise self._error(key, "values must be strictly positive")
         fissile = np.any(self.estimate("INF_NSF").mean > 0)
