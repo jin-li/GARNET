@@ -18,6 +18,8 @@ from .materials import Material
 
 __all__ = ['coupled_neumann_cuboid_reference_modal']
 
+_FACE_TANGENTS = ((1, 2), (0, 2), (1, 2), (0, 2), (0, 1), (0, 1))
+
 
 def _laplacian(field, steps):
     """Independent conservative cell-centered Neumann graph stencil, -laplace."""
@@ -55,7 +57,8 @@ def _tensor_geometry(counts, steps, widths, cell_volume):
 
 
 def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widths, *, subdivisions=8,
-                                           native_mean_flux=None, condition_limit=1e12, rtol=1e-10):
+                                           native_mean_flux=None, condition_limit=1e12, rtol=1e-10,
+                                           net_inward_current_sign_moments=None):
     """Solve the same fixed-k Neumann problem as coupled_neumann_cuboid_reference.
 
     Arguments, return dataclasses and failure semantics match the sparse-LU
@@ -63,6 +66,14 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     float64 CPU arrays, orthonormal DCT-II and workers=1. Spatial modes are
     coupled only within their GxG blocks M+lambda_p*diag(D); none are omitted.
     Boundary profiles follow the rectilinear factory's owner/side ordering.
+
+    Optional ``net_inward_current_sign_moments`` has shape (6,2,G), signed
+    integrated inward-current moments integral(sign(t)*j_in*dA), not flux
+    moments. Tangents are (y,z) on W/E, (x,z) on S/N and (x,y) on bottom/top,
+    centered and positive along global axes. The prescribed density is
+    j_in=I/A+4*M1*t1/(A*L1)+4*M2*t2/(A*L2). No profile is fitted or rescaled.
+    Each nonzero moment requires an even count >=2 along its own tangent;
+    other counts are unrestricted. None/zero moments retain the uniform path.
 
     Full all-mode structural2-norm conditioning is checked before solving.
     Backward error uses an independently evaluated physical-space FV stencil;
@@ -93,6 +104,15 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     counts = _counts(subdivisions)
     widths = _array(widths, (3,), 'widths')
     currents = _array(net_inward_current, (6, groups), 'net_inward_current')
+    moments = (None if net_inward_current_sign_moments is None else
+               _array(net_inward_current_sign_moments, (6, 2, groups), 'net_inward_current_sign_moments'))
+    active_moments = moments is not None and bool(np.any(moments != 0))
+    if active_moments:
+        for side, tangents in enumerate(_FACE_TANGENTS):
+            for tangent, axis in enumerate(tangents):
+                if np.any(moments[side, tangent] != 0) and (counts[axis] < 2 or counts[axis] % 2):
+                    raise ValueError('Nonzero current sign moment requires even tangential subdivisions >=2 '
+                                     f'(side={side}, tangent={tangent}, axis={axis})')
     if np.any(widths <= 0):
         raise ValueError('widths must be strictly positive')
     native = None if native_mean_flux is None else _array(native_mean_flux, (groups,), 'native_mean_flux')
@@ -110,7 +130,12 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     diagnostics = _modal_conditioning(matrix, diffusion, counts, steps, cell_volume)
     diagnostics.update(condition_limit=condition_limit, rtol=rtol, dtype='float64', device='cpu (numpy/scipy)',
         continuous_positivity_certified=False, linear_solver='orthonormal_DCT_II_batched_group_solve',
-        transform_workers=1, mesh_object_constructed=False)
+        transform_workers=1, mesh_object_constructed=False,
+        input_net_inward_current_sign_moments=moments,
+        input_net_inward_currents=currents.copy(),
+        boundary_current_profile_model='prescribed_affine_sign_moments' if active_moments else 'uniform',
+        sign_moment_definition='integral(sign(centered positive global tangent)*inward_current_density*dA)',
+        sign_moment_tangent_axes=_FACE_TANGENTS)
     if not math.isfinite(diagnostics['condition_number_2']) or diagnostics['condition_number_2'] > condition_limit:
         raise CuboidReferenceError('Full coupled Neumann operator is singular or exceeds condition_limit', diagnostics)
     if not all(math.isfinite(diagnostics[key]) and diagnostics[key] > 0 for key in
@@ -127,6 +152,49 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     native_areas = np.array([widths[1]*widths[2], widths[0]*widths[2], widths[1]*widths[2],
                             widths[0]*widths[2], widths[0]*widths[1], widths[0]*widths[1]])
     inward_density = currents[sides]/native_areas[sides, None]
+    # Integer tensor indices give an exact zero sign at an odd central cell.
+    # Nonzero moments forbid such crossing cells on the active tangent.
+    cell_indices = (owners % counts[0], owners//counts[0] % counts[1], owners//(counts[0]*counts[1]))
+    signs = np.empty((owners.size, 2), dtype=int)
+    for tangent in range(2):
+        for side, axes in enumerate(_FACE_TANGENTS):
+            mask = sides == side
+            axis = axes[tangent]
+            twice_center = 2*cell_indices[axis][mask]+1-counts[axis]
+            signs[mask, tangent] = np.sign(twice_center)
+            if active_moments:
+                coordinate = twice_center*steps[axis]/2
+                inward_density[mask] += (4*moments[side, tangent][None]*coordinate[:, None]/
+                                         (native_areas[side]*widths[axis]))
+    expected_moments = np.zeros((6, 2, groups)) if moments is None else moments
+    recovered_currents = np.array([(inward_density[sides == side]*areas[sides == side, None]).sum(axis=0)
+                                    for side in range(6)])
+    recovered_moments = np.array([[(inward_density[sides == side]*areas[sides == side, None]*
+                                    signs[sides == side, tangent, None]).sum(axis=0)
+                                   for tangent in range(2)] for side in range(6)])
+    current_error = recovered_currents-currents
+    moment_error = recovered_moments-expected_moments
+    # Integral absolute-profile upper bound, shared by totals and moments; no
+    # denominator floor or post-integration normalization is introduced.
+    normalization_scale = abs(currents)+2*abs(expected_moments).sum(axis=1)
+    current_relative = np.divide(abs(current_error), normalization_scale, out=np.zeros_like(currents),
+                                 where=normalization_scale > 0)
+    moment_relative = np.divide(abs(moment_error), normalization_scale[:, None, :],
+                                out=np.zeros_like(expected_moments), where=normalization_scale[:, None, :] > 0)
+    normalization_error = max(float(current_relative.max()), float(moment_relative.max()))
+    if np.any((normalization_scale == 0) & ((current_error != 0) | np.any(moment_error != 0, axis=1))):
+        normalization_error = math.inf
+    normalization_tolerance = max(4096*np.finfo(float).eps, 64*np.finfo(float).eps*max(counts))
+    diagnostics.update(recovered_net_inward_currents=recovered_currents,
+        recovered_net_inward_current_sign_moments=recovered_moments,
+        current_normalization_absolute_error=current_error, current_sign_moment_normalization_absolute_error=moment_error,
+        boundary_current_normalization_relative_error=normalization_error,
+        boundary_current_normalization_tolerance=normalization_tolerance,
+        boundary_current_normalization_scale=normalization_scale,
+        boundary_current_normalization_passed=bool(math.isfinite(normalization_error) and normalization_error <= normalization_tolerance),
+        current_recovery_method='Exact affine subface averages integrated with subface area; no flux moments used')
+    if not diagnostics['boundary_current_normalization_passed']:
+        raise CuboidReferenceError('Prescribed boundary current/sign-moment normalization failed', diagnostics)
     rhs = np.zeros((groups, ncell))
     for group in range(groups):
         np.add.at(rhs[group], owners, inward_density[:, group]*areas)
