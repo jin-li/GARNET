@@ -13,9 +13,10 @@ Two angular approximations share this machinery:
 - SP3EigenSolver: simplified P3; group state = (Phi1, phi2) moment pair,
   solved as one SPD block system per group (see SP3GroupOperator).
 
-The inner CG tolerance is adapted to the outer residual, so early outers are
-cheap and the final ones are tight; combined with warm starts, late outer
-iterations cost only a handful of stencil applications.
+Each outer settles all intergroup scattering equations for its fixed fission
+source before updating k or Anderson history. Within-group solves use a fixed
+tight tolerance and warm starts. Convergence additionally requires the complete
+current-state eigen-equations to balance.
 
 The same outer loop solves the adjoint (importance) problem via
 ``solve(adjoint=True)``: the leakage+removal operator is self-adjoint, so only
@@ -91,6 +92,14 @@ class Result:
     device: str
     k_history: list = field(default_factory=list)
     source_error_history: list = field(default_factory=list)
+    balance_error: float = float('inf')
+    failure_reason: str | None = None
+    fixed_source_error: float = float('inf')
+    fixed_source_tolerance: float = float('nan')
+    group_rtol: float = float('nan')
+    scalar_flux_min: float = float('nan')
+    scalar_flux_scale: float = float('nan')
+    scalar_flux_negative_tolerance: float = float('nan')
 
     @property
     def flux_numpy(self) -> np.ndarray:
@@ -400,9 +409,28 @@ class _PowerIterationSolver:
               max_outer: int = 2000, inner_rtol_floor: float = 1e-10,
               k_guess: float = 1.0, verbose: bool = False,
               adjoint: bool = False, anderson_depth: int = 8,
-              state0=None) -> Result:
+              state0=None, tol_balance: float | None = None,
+              tol_fixed_source: float | None = None, max_group_sweeps: int = 100) -> Result:
         """Run power iteration until |dk| < tol_k and the relative L2 change of
-        the normalized fission source < tol_source.
+        the normalized fission source < tol_source, with the full current-state
+        group equation residual < tol_balance (default: tol_source).
+
+        The balance norm is ||loss-RHS||_2/||loss||_2 across all group-state
+        components, including moment RHS transforms and source metric weights.
+        It uses the actual current flux's fission and scattering sources, not
+        the extrapolated fission source supplied to a previous group sweep.
+
+        Each outer first solves the complete fixed-fission-source intergroup
+        problem to ``tol_fixed_source`` using at most ``max_group_sweeps``
+        Gauss-Seidel sweeps. None selects max(1e-11, 100*eps(dtype)); an explicit
+        fixed-source threshold is never relaxed. The fixed within-group rtol
+        is max(8*eps(dtype), min(inner_rtol_floor, 0.1*tol_fixed_source)). These
+        internal precision defaults do not relax the caller's source, k or
+        final balance thresholds. Result records both resolved tolerances.
+        Scalar flux permits only 64*eps(dtype)*max(abs(phi0)) negative roundoff,
+        without clipping; zero source groups may be empty. An exhausted group
+        budget returns an unconverged result without advancing k or Anderson
+        history. Invalid extrapolated sources are rejected whole, not clipped.
 
         The fission-source fixed point is Anderson-accelerated (a short history of
         source residuals, the same scheme used in the transient step and SPH
@@ -421,6 +449,19 @@ class _PowerIterationSolver:
         for adjoint-weighted kinetics and first-order perturbation theory.
         """
         xp, G = self.xp, self.n_groups
+        dtype_eps = np.finfo(self.dtype).eps
+        tol_balance = tol_source if tol_balance is None else tol_balance
+        tol_fixed_source = max(1e-11, 100*dtype_eps) if tol_fixed_source is None else tol_fixed_source
+        if not np.isfinite(tol_balance) or tol_balance <= 0:
+            raise ValueError('tol_balance must be finite and positive')
+        if not np.isfinite(tol_fixed_source) or tol_fixed_source <= 0:
+            raise ValueError('tol_fixed_source must be finite and positive')
+        if not np.isfinite(inner_rtol_floor) or inner_rtol_floor <= 0:
+            raise ValueError('inner_rtol_floor must be finite and positive')
+        if isinstance(max_group_sweeps, (bool, np.bool_)) or not isinstance(max_group_sweeps, (int, np.integer)) or max_group_sweeps < 1:
+            raise ValueError('max_group_sweeps must be a positive integer')
+        if not np.isfinite(k_guess) or k_guess <= 0:
+            raise ValueError('k_guess must be finite and positive')
         if adjoint and getattr(self.grid, "geometry", None) == "mesh":
             raise ValueError("mesh adjoints require a separately verified volume inner product")
         weights = self.integration_weights
@@ -459,56 +500,104 @@ class _PowerIterationSolver:
             out = xp.zeros_like(batch["phi"][0])
             return kernels.group_accumulate(xp, out, batch["W"], batch["phi"])
 
+        def group_rhs(g, current_source, current_k):
+            q0 = xp.asarray((emit[g] / current_k) * current_source, dtype=self.dtype)
+            if batch is not None:
+                kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
+            else:
+                for gf in range(G):
+                    s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
+                    if gf != g and s is not None:
+                        q0 += s * self._phi(state[gf])
+            if self._src_weight is not None:
+                q0 = q0 * self._src_weight
+            return self._rhs(g, q0)
+
+        def current_balance(fixed_source=None):
+            actual_source = fission_source() if fixed_source is None else fixed_source
+            residual2 = loss2 = 0.
+            for g in range(G):
+                loss = self.ops[g].apply(state[g])
+                rhs = group_rhs(g, actual_source, k if fixed_source is None else 1.)
+                residual2 += xp.sum((loss-rhs)**2)
+                loss2 += xp.sum(loss**2)
+            residual2, loss2 = float(residual2), float(loss2)
+            if not np.isfinite(residual2) or not np.isfinite(loss2) or loss2 <= 0:
+                return float('inf')
+            return float(np.sqrt(residual2/loss2))
+
+        def admissible_source(source):
+            return (bool(xp.all(xp.isfinite(source))) and bool(xp.all(source >= 0))
+                    and np.isfinite(float(integral(source))) and float(integral(source)) > 0)
+
+        def physical_scalar_flux():
+            # Check the physical scalar trace, never the signed moments. Zero
+            # source groups may be empty; permit only rounding-scale negatives
+            # relative to the largest physical scalar flux, without clipping.
+            nonlocal scalar_min, scalar_scale, scalar_negative_tolerance
+            phi = [self._phi(s) for s in state]
+            scalar_min = min(float(xp.min(p)) for p in phi)
+            scalar_scale = max(float(xp.max(xp.abs(p))) for p in phi)
+            scalar_negative_tolerance = 64 * dtype_eps * scalar_scale
+            return (all(bool(xp.all(xp.isfinite(p))) for p in phi)
+                    and scalar_min >= -scalar_negative_tolerance)
+
         fsrc = fission_source()
         total = integral(fsrc)
-        if float(total) <= 0:
-            raise RuntimeError("initial fission source is zero")
+        if not admissible_source(fsrc):
+            raise RuntimeError("initial fission source must be finite nonnegative with positive integral")
         k = float(k_guess)
 
         k_hist, err_hist = [], []
         inner_total = 0
         src_err = prev_src_err = 1.0
         converged = False
+        balance_error = float('inf')
+        fixed_source_error = float('inf')
+        failure_reason = 'maximum outer iterations exhausted'
+        scalar_min = scalar_scale = scalar_negative_tolerance = float('nan')
+        rtol = max(8*dtype_eps, min(inner_rtol_floor, .1*tol_fixed_source))
         hist = []                                # (fsrc_in, raw_iterate) for Anderson
 
         for outer in range(1, max_outer + 1):
-            # Inner tolerance tracks the *outer residual* (src_err): cheap early,
-            # tight late. Not tied to tol_source (that pinned the inner solve loose
-            # when converging on k alone, stalling k and letting Anderson drift).
-            rtol = min(1e-3, max(0.1 * src_err, inner_rtol_floor))
             fsrc_in = fsrc                       # this iteration's input (for Anderson)
-
-            for g in range(G):
-                # Keep an FP32 solve genuinely FP32. Host kinetics/eigenvalue
-                # scalars may otherwise promote the seeded source before the
-                # fused group contraction sees it.
-                q0 = xp.asarray((emit[g] / k) * fsrc, dtype=self.dtype)
-                if batch is not None:
-                    # One kernel for the whole in-scatter row. batch["phi"] is
-                    # kept current group by group below, so this reads the
-                    # updated flux for g' < g and the previous one for g' > g --
-                    # the same Gauss-Seidel sweep the Python loop performed.
-                    kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
-                else:
-                    for gf in range(G):
-                        # forward: in-scatter g'->g uses sigma_s[g'][g];
-                        # adjoint transposes to sigma_s[g][g'].
-                        s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
-                        if gf != g and s is not None:
-                            q0 += s * self._phi(state[gf])
-                if self._src_weight is not None:
-                    q0 = q0 * self._src_weight
-                state[g], n_it = self._linsolve(
-                    self.ops[g].apply, self._rhs(g, q0), state[g],
-                    self.ops[g].inv_diag, xp, rtol=rtol,
-                    precond=self.preconds[g])
-                if batch is not None:
-                    batch["phi"][g] = self._phi(state[g])
-                inner_total += n_it
+            # Anderson's map is P L^-1 E S, not one group sweep with hidden
+            # intergroup state. Settle scattering from the FIRST outer and do
+            # not use k to scale this fixed-source solve: its production ratio
+            # determines the next k after all group equations have balanced.
+            scattering_settled = False
+            for group_sweep in range(max_group_sweeps):
+                for g in range(G):
+                    # Keep the FP32 RHS and the batched scalar flux current.
+                    rhs = group_rhs(g, fsrc, 1.)
+                    if not bool(xp.any(rhs)):
+                        # The exact homogeneous solution avoids a Krylov
+                        # relative-to-zero stopping target in empty groups.
+                        state[g], n_it = xp.zeros_like(state[g]), 0
+                    else:
+                        state[g], n_it = self._linsolve(
+                            self.ops[g].apply, rhs, state[g],
+                            self.ops[g].inv_diag, xp, rtol=rtol,
+                            precond=self.preconds[g])
+                    if batch is not None:
+                        batch["phi"][g] = self._phi(state[g])
+                    inner_total += n_it
+                fixed_source_error = current_balance(fsrc)
+                if fixed_source_error <= tol_fixed_source:
+                    scattering_settled = True
+                    break
+            if not scattering_settled:
+                hist = []
+                failure_reason = 'fixed-source group budget exhausted before requested balance'
+                break
 
             fsrc_new = fission_source()
+            if not admissible_source(fsrc_new) or not physical_scalar_flux():
+                hist = []
+                failure_reason = 'nonphysical fixed-source iterate'
+                break
             total_new = integral(fsrc_new)
-            k_new = k * float(total_new / total)
+            k_new = float(total_new / total)
 
             diff = fsrc_new / total_new - fsrc / total
             src_err = float(xp.sqrt(integral(diff * diff) / integral((fsrc_new / total_new) ** 2)))
@@ -530,8 +619,20 @@ class _PowerIterationSolver:
 
             if dk < tol_k and src_err < tol_source:
                 fsrc = g_fsrc
-                converged = True
-                break
+                balance_error = current_balance()
+                if (np.isfinite(k) and k > 0 and balance_error < tol_balance
+                        and physical_scalar_flux() and admissible_source(fission_source())):
+                    converged = True
+                    failure_reason = None
+                    break
+                # A fission-only extrapolation can stagnate while another
+                # group's flux is still changing. Discard its stale history,
+                # restore the source consistent with this state, and sweep
+                # again instead of accepting the apparent fixed point.
+                hist = []
+                prev_src_err = src_err
+                total = integral(fsrc)
+                continue
 
             # Anderson update of the fission source (state stays the plain iterate).
             fsrc = g_fsrc
@@ -541,12 +642,20 @@ class _PowerIterationSolver:
                 hist.append((fsrc_in, g_fsrc))
                 if len(hist) > anderson_depth:
                     hist.pop(0)
-                fsrc = _anderson_source(hist, g_fsrc, xp, weights)
-                fsrc = fsrc * (norm_measure / float(integral(fsrc)))
+                proposed = _anderson_source(hist, g_fsrc, xp, weights)
+                if admissible_source(proposed):
+                    fsrc = proposed * (norm_measure / float(integral(proposed)))
+                else:
+                    # Restore the admissible raw power iterate as a whole;
+                    # higher-moment state is untouched and never positivity-clipped.
+                    hist = []
             prev_src_err = src_err
             total = integral(fsrc)
 
         synchronize(xp)
+        if not converged:
+            balance_error = current_balance()
+        physical_scalar_flux()
         # Retain the converged per-group state (moment vectors for the block
         # solvers) so a transient can start from the exact steady moments.
         self.state = state
@@ -560,6 +669,14 @@ class _PowerIterationSolver:
             device=self.device,
             k_history=k_hist,
             source_error_history=err_hist,
+            balance_error=balance_error,
+            failure_reason=failure_reason,
+            fixed_source_error=fixed_source_error,
+            fixed_source_tolerance=float(tol_fixed_source),
+            group_rtol=float(rtol),
+            scalar_flux_min=scalar_min,
+            scalar_flux_scale=scalar_scale,
+            scalar_flux_negative_tolerance=scalar_negative_tolerance,
         )
 
 
