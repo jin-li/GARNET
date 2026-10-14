@@ -9,6 +9,7 @@ from .analytic import (geometric_buckling_box, k_bare_box, k_bare_box_sp3,
 from .backend import asnumpy, device_name, get_backend
 from .cuboid_reference import (CoupledCuboidReference, CuboidBoundaryProfiles,
                                CuboidReferenceError, coupled_neumann_cuboid_reference)
+from .cuboid_reference_modal import coupled_neumann_cuboid_reference_modal
 from .femffusion import read_material_xml, read_xsec
 from .griffin_xs import (read_library as read_griffin_library,
                         read_material as read_griffin_material,
@@ -72,7 +73,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "CoupledCuboidReference", "CuboidBoundaryProfiles", "CuboidReferenceError",
-    "coupled_neumann_cuboid_reference",
+    "coupled_neumann_cuboid_reference", "coupled_neumann_cuboid_reference_modal",
     "MeshGrid", "MeshGroupOperator", "MeshDiffusionEigenSolver",
     "MeshSPNEigenSolver", "MeshSDPNEigenSolver", "MeshSP1EigenSolver",
     "MeshSP3EigenSolver", "MeshSDP1EigenSolver",

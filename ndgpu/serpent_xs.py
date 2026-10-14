@@ -161,6 +161,12 @@ class SerpentXSRecord:
         densities; partial and net currents are surface-integrated. Serpent
         2.2.2 net current is inward minus outward, so negative values are valid.
         DF_SURF_DF is the heterogeneous/homogeneous surface-flux ratio.
+        This decoder returns raw scores, not receiver-method compatibility.
+        At nonzero current, a usable ratio requires a homogeneous denominator
+        consistent with the receiving method's auxiliary boundary-value solve.
+        In Serpent 2.2.2, disabled reconstruction (DFS=1) may leave the printed
+        homogeneous surface score as a volume-flux proxy; decoding neither
+        replaces that denominator nor qualifies the printed factor for use.
         Printed zero relative errors do not imply exact values.
         """
         if field not in _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS:
