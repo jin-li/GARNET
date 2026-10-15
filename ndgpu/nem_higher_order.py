@@ -11,15 +11,15 @@ from .nem_polynomial_axis import NEMPolynomialAxisResponse,profile_minimum
 
 
 class NEMHigherOrderDiffusionSolver(NEMDiffusionSolver):
-    """Legendre NEM degree4/6/8/10/12/14; mean/J retained, P-2 moments per axis.
+    """Legendre NEM degree4/6/8/10/12/14/16; mean/J retained, P-2 moments per axis.
 
     Default degree14 is supported by focal-reference convergence only; this
     does not qualify a full-core calculation. All boundary policies remain
     explicit properties of CuboidNodalGrid. Negative physical states survive.
     """
     def __init__(self,*args,degree=14,**kwargs):
-        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14):
-            raise ValueError('degree must be one of 4,6,8,10,12,14')
+        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14,16):
+            raise ValueError('degree must be one of 4,6,8,10,12,14,16')
         self.degree=int(degree);self.n_moments=self.degree-2
         super().__init__(*args,**kwargs)
 

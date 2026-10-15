@@ -47,8 +47,8 @@ def _roots_on_interval(coeff):
 def profile_minimum(coefficients):
     """Return minimum and its t=x/L location for one Legendre coefficient row."""
     c = _array(coefficients,'coefficients')
-    if c.ndim != 1 or not 1 <= len(c) <= 15:
-        raise ValueError('coefficients must be a vector of degree at most fourteen')
+    if c.ndim != 1 or not 1 <= len(c) <= 17:
+        raise ValueError('coefficients must be a vector of degree at most sixteen')
     scale = np.max(abs(c))
     if scale == 0:
         return 0.,-.5
@@ -80,8 +80,8 @@ class NEMPolynomialAxisResponse:
         D,C = _array(D,'D'),_array(C,'C')
         L = _positive_scalar(L,'L')
         limit = _positive_scalar(condition_limit,'condition_limit')
-        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14):
-            raise ValueError('degree must be one of 4,6,8,10,12,14')
+        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14,16):
+            raise ValueError('degree must be one of 4,6,8,10,12,14,16')
         if D.ndim != 1 or not D.size or np.any(D <= 0) or C.shape != (len(D),len(D)):
             raise ValueError('D/C must be positive vector / square matching matrix')
         if limit < 1:

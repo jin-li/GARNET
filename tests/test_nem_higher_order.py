@@ -82,7 +82,7 @@ def recovered_vector(r,P):
     return np.r_[r.means.ravel(),c.ravel(),r.currents.ravel()]
 
 
-@pytest.mark.parametrize('P',[4,6,8,14])
+@pytest.mark.parametrize('P',[4,6,8,14,16])
 @pytest.mark.parametrize('G',[2,4])
 def test_full_uncondensed_signed_sources_factors_robin(P,G):
     grid=tensor_grid(([0.,.7,1.9],[0.,1.3],[0.,.8]))
@@ -117,7 +117,7 @@ def test_degree4_matches_existing_solver(boundary_policy):
     np.testing.assert_allclose(old.diagnostics['profile_minima'],new.diagnostics['profile_minima'],atol=1e-12)
 
 
-@pytest.mark.parametrize('P',[6,8,14])
+@pytest.mark.parametrize('P',[6,8,14,16])
 def test_all_moment_fission_against_independent_eigenpencil(P):
     grid=tensor_grid(([0.,.7,1.9],[0.,1.3],[0.,.8]));G=2;N=grid.n_nodes
     mat=materials(grid,G);factors=np.ones((N,6,G))

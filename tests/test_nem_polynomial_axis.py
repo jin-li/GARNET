@@ -6,8 +6,8 @@ from ndgpu.nem_polynomial_axis import NEMPolynomialAxisResponse, NEMPolynomialAx
 from ndgpu.nodal_polynomial_reference import coupled_nodal_polynomial_axis_reference
 
 
-@pytest.mark.parametrize('degree',[4,6,8,10,12,14])
-@pytest.mark.parametrize('groups',[2,4])
+@pytest.mark.parametrize('degree',[4,6,8,10,12,14,16])
+@pytest.mark.parametrize('groups',[2,4,7,14,23])
 def test_manufactured_full_degree_coupled(degree,groups):
     rng=np.random.default_rng(100+degree+groups)
     D=np.linspace(.7,1.4,groups); L=2.3
@@ -72,7 +72,7 @@ def test_stationary_repeated_roots_and_dense_extrema(root_multiplicity):
     assert minimum<=min(leg.legval(np.linspace(-1,1,20001),c))+1e-12
 
 
-@pytest.mark.parametrize('degree',[4,6,8,10,12,14])
+@pytest.mark.parametrize('degree',[4,6,8,10,12,14,16])
 def test_negative_profile_retained_with_signed_sources(degree):
     response=NEMPolynomialAxisResponse([1.],[[.1]],1.,degree)
     q=np.zeros((degree-2,1));q[0]=4
@@ -81,7 +81,7 @@ def test_negative_profile_retained_with_signed_sources(degree):
     assert result.diagnostics['minimum_profile_flux']<0
 
 
-@pytest.mark.parametrize('degree',[True,3,5,16,4.5])
+@pytest.mark.parametrize('degree',[True,3,5,18,4.5])
 def test_invalid_degree(degree):
     with pytest.raises(ValueError):NEMPolynomialAxisResponse([1.],[[1.]],1.,degree)
 
