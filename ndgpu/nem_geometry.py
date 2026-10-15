@@ -2,8 +2,9 @@
 
 Faces are exact, conforming whole cuboid faces. Coordinates are matched exactly;
 callers should reuse shared coordinates rather than rely on geometric tolerance.
-The consecutive-neighbor one-sided quadratic closure is a prototype choice, not
-an assertion that it is the boundary closure of a published NEM formulation.
+The default consecutive-neighbor one-sided quadratic closure is a prototype
+choice. The explicit primary_rule option uses boundary interpolation rules
+from Di Pasquale, Appendix A.2 (printed pp. 123-125), and Bandini (1990, p. 41).
 """
 from __future__ import annotations
 
@@ -32,9 +33,15 @@ class CuboidNodalGrid:
     ``boundary_faces`` order. Array attributes and returned leakage arrays are
     independent read-only copies. Disconnected cuboids and true void gaps are
     allowed; overlapping volumes and hanging/partial faces are rejected.
+    ``leakage_boundary`` selects ``one_sided`` (the default) or ``primary_rule``;
+    see :meth:`leakage_weights` for the boundary interpolation constraints.
+    ``boundary_kinds`` records the conditions in ``boundary_faces`` order.
     """
 
-    def __init__(self, bounds, boundary_conditions='vacuum'):
+    def __init__(self, bounds, boundary_conditions='vacuum', *, leakage_boundary='one_sided'):
+        if not isinstance(leakage_boundary, str) or leakage_boundary not in ('one_sided', 'primary_rule'):
+            raise ValueError('leakage_boundary must be one_sided or primary_rule')
+        self.leakage_boundary = leakage_boundary
         if hasattr(bounds, '__cuda_array_interface__'):
             raise ValueError('bounds must be a CPU array')
         raw = np.asarray(bounds)
@@ -129,6 +136,7 @@ class CuboidNodalGrid:
             ('node_faces', nf, np.int64), ('neighbors', neighbors, np.int64),
             ('boundary_faces', boundary_faces, np.int64), ('boundary_nodes', boundary_nodes, np.int64),
             ('boundary_sides', boundary_sides, np.int64),
+            ('boundary_kinds', conditions, str),
             ('boundary_alpha', [.5 if c == 'vacuum' else 0. for c in conditions], float),
             ('node_face_areas', np.array(face_areas)[nf], float),
             ('normal_signs', [-1, -1, 1, 1, -1, 1], np.int64),
@@ -137,9 +145,48 @@ class CuboidNodalGrid:
         degrees = np.empty((self.n_nodes, 3), dtype=np.int64)
         condition = np.empty((self.n_nodes, 3))
         self._leakage = {}
+        boundary_kind = dict(zip(zip(boundary_nodes, boundary_sides), conditions))
         for node in range(self.n_nodes):
             for axis, (minus_side, plus_side) in enumerate(_SIDE_PAIRS):
                 minus, plus = neighbors[node, [minus_side, plus_side]]
+                if leakage_boundary == 'primary_rule':
+                    # Three interpolation constraints: the center interval mean
+                    # and one immediate interval/face point on each side. These
+                    # are not physical ghost cells and never bridge a void.
+                    rows = [[1., 0., 1/12]]
+                    sources = [node]
+                    for end, side, neighbor in ((0, minus_side, minus), (1, plus_side, plus)):
+                        if neighbor >= 0:
+                            lo, hi = (b[neighbor, axis] - centers[node, axis])/widths[node, axis]
+                            rows.append([1., (lo+hi)/2, (lo*lo+lo*hi+hi*hi)/3])
+                            sources.append(int(neighbor))
+                        elif boundary_kind[node, side] == 'reflective':
+                            # The mirrored center-width interval copies the
+                            # center leakage mean, rather than a new unknown.
+                            rows.append([1., -1. if end == 0 else 1., 13/12])
+                            sources.append(node)
+                        else:
+                            t = -.5 if end == 0 else .5
+                            rows.append([1., t, t*t])
+                            sources.append(None)  # prescribed zero face leakage
+                    vandermonde = np.asarray(rows)
+                    if not np.all(np.isfinite(vandermonde)):
+                        raise ValueError('nonfinite leakage interval-mean reconstruction')
+                    cond = np.linalg.cond(vandermonde)
+                    if not np.isfinite(cond) or cond > 1e12:
+                        raise ValueError('ill-conditioned leakage interval-mean reconstruction')
+                    target = np.array([[0., 1/12, 0.], [0., 0., 1/60]])
+                    constraint_weights = np.linalg.solve(vandermonde.T, target.T).T
+                    samples = list(dict.fromkeys(s for s in sources if s is not None))
+                    weights = np.zeros((2, len(samples)))
+                    for column, source in enumerate(sources):
+                        if source is not None:
+                            weights[:, samples.index(source)] += constraint_weights[:, column]
+                    if not np.all(np.isfinite(weights)):
+                        raise ValueError('nonfinite leakage reconstruction weights')
+                    self._leakage[node, axis] = (_readonly(samples, np.int64), _readonly(weights))
+                    degrees[node, axis], condition[node, axis] = 2, cond
+                    continue
                 samples = [node]
                 if minus >= 0 and plus >= 0:
                     samples += [minus, plus]
@@ -183,6 +230,16 @@ class CuboidNodalGrid:
         against ``t`` and ``3*t**2-1/4`` on [-1/2,1/2]. Use both immediate
         neighbors when possible, otherwise up to two consecutive neighbors on
         the available side. Short chains reduce to linear or constant fits.
+
+        With ``leakage_boundary='primary_rule'``, always fit a quadratic using
+        immediate neighbors. An absent vacuum neighbor supplies a zero leakage
+        point at the physical face; an absent reflective neighbor supplies a
+        mirrored center-width interval with the center leakage value. These
+        are interpolation constraints, not physical ghost cells. Zero face
+        leakage approximates the zero-incoming Robin boundary; the actual
+        boundary condition retains alpha=0.5. Returned IDs are physical nodes
+        only: zero-point columns are dropped and repeated center coefficients
+        are combined. Thus K can be 1 or 2 while leakage_degrees remains 2.
         """
         if (not isinstance(node, (int, np.integer)) or isinstance(node, (bool, np.bool_))
                 or not 0 <= node < self.n_nodes):

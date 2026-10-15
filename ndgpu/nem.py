@@ -274,12 +274,12 @@ class NEMDiffusionSolver:
         arrays += [getattr(self.grid,name) for name in (
             'bounds','widths','volumes','face_nodes','face_axes','face_areas',
             'node_faces','neighbors','boundary_faces','boundary_nodes',
-            'boundary_sides','boundary_alpha','normal_signs')]
+            'boundary_sides','boundary_alpha','boundary_kinds','normal_signs')]
         for node in range(self.n_nodes):
             for axis in range(3):
                 arrays.extend(self.grid.leakage_weights(node,axis))
         digest.update(str((self.grid.n_nodes,self.n_nodes,self.n_faces,self.n_groups,
-                           self.rtol,self.condition_limit)).encode())
+                           self.rtol,self.condition_limit,self.grid.leakage_boundary)).encode())
         for array in arrays:
             digest.update(str((array.shape,array.dtype.str)).encode())
             digest.update(array.tobytes())
