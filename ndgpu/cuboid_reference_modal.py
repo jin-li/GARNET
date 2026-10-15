@@ -1,8 +1,10 @@
 """Uniform-tensor DCT backend for the existing fixed-k cuboid reference PDE.
 
-The spatial transform is orthonormal DCT-II. Every group block is conditioned
-and solved, including nonconstant modes and modes with a zero transformed RHS.
-No mesh objects, sparse factorization, source offsets or factors are created.
+The spatial transform is orthonormal DCT-II. Every group block is conditioned;
+all nonconstant modes are solved, including modes with a zero transformed RHS.
+The constant mode is solved by default or explicitly prescribed when requested.
+No mesh objects, sparse factorization or factors are created. An explicit
+opt-in native-mean constraint adds a diagnosed uniform auxiliary source.
 """
 from __future__ import annotations
 
@@ -58,11 +60,11 @@ def _tensor_geometry(counts, steps, widths, cell_volume):
 
 def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widths, *, subdivisions=8,
                                            native_mean_flux=None, condition_limit=1e12, rtol=1e-10,
-                                           net_inward_current_sign_moments=None):
+                                           net_inward_current_sign_moments=None, preserve_native_mean=False):
     """Solve the same fixed-k Neumann problem as coupled_neumann_cuboid_reference.
 
     Arguments, return dataclasses and failure semantics match the sparse-LU
-    implementation. Native means remain diagnostic only. All transforms use
+    implementation. By default native means remain diagnostic only. All transforms use
     float64 CPU arrays, orthonormal DCT-II and workers=1. Spatial modes are
     coupled only within their GxG blocks M+lambda_p*diag(D); none are omitted.
     Boundary profiles follow the rectilinear factory's owner/side ordering.
@@ -75,12 +77,27 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     Each nonzero moment requires an even count >=2 along its own tangent;
     other counts are unrestricted. None/zero moments retain the uniform path.
 
+    ``preserve_native_mean`` must be a Python bool; True requires positive ``native_mean_flux`` and
+    replaces only the constant spatial mode by that mean. The changed auxiliary
+    equation is -D*laplace(H)+M*H=delta, where
+    delta=M*native_mean_flux-sum(net_inward_current)/volume. All nonconstant
+    current-driven modes are retained. This prescribed source is diagnostic;
+    it is not a physical source or a core/eigenproblem correction. Positivity
+    is checked only on the final field, without clipping or group rescaling.
+    Diagnostics report physical and auxiliary residual norms separately;
+    ``normwise_backward_error`` and integrated-balance gates refer to the
+    auxiliary equation when enabled. The returned dataclass is unchanged.
+
     Full all-mode structural2-norm conditioning is checked before solving.
     Backward error uses an independently evaluated physical-space FV stencil;
     integrated group balance and strict cell/boundary positivity are separate
-    gates. There is no clipping, source adjustment, eigenvalue search, fitted
+    gates. There is no clipping, source fitting, eigenvalue search, fitted
     factor or continuous positivity certificate.
     """
+    if not isinstance(preserve_native_mean, bool):
+        raise ValueError('preserve_native_mean must be a bool')
+    if preserve_native_mean and native_mean_flux is None:
+        raise ValueError('preserve_native_mean requires native_mean_flux')
     if not isinstance(material, Material):
         raise ValueError('material must be one constant Material')
     groups = material.n_groups
@@ -206,8 +223,19 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
     lambdas = [4*np.sin(np.pi*np.arange(n)/(2*n))**2/h**2 for n, h in zip(counts, steps)]
     nx, ny, nz = counts
     diagonal_diffusion = np.diag(diffusion)
+    auxiliary_source = None
+    if preserve_native_mean:
+        auxiliary_source = matrix@native-currents.sum(axis=0)/native_volume
+        diagnostics.update(native_mean_imposed=True, delta_uniform_auxiliary_source_density=auxiliary_source,
+            auxiliary_equation='-D*laplace(H)+M*H=delta; prescribed boundary currents unchanged',
+            physical_accuracy_qualified=False)
+        if not np.all(np.isfinite(auxiliary_source)):
+            raise CuboidReferenceError('Nonfinite native-mean auxiliary source', diagnostics)
+        # Orthonormal constant mode is sqrt(N)*mean. Do not solve or test
+        # positivity of an intermediate source-free field.
+        modal[:, 0] = native*math.sqrt(ncell)
     try:
-        for start in range(0, ncell, 256):
+        for start in range(1 if preserve_native_mean else 0, ncell, 256):
             indices = np.arange(start, min(start+256, ncell))
             px, py, pz = indices % nx, indices//nx % ny, indices//(nx*ny)
             lam = lambdas[0][px]+lambdas[1][py]+lambdas[2][pz]
@@ -222,13 +250,23 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
         raise CuboidReferenceError('DCT solve returned nonfinite flux', diagnostics)
     # Independent physical-space stencil, rather than a transformed residual.
     applied = (diffusion[:, None]*_laplacian(flux_tensor, steps).reshape(groups, ncell)+matrix@flux)*cell_volume
-    algebra_residual = applied-rhs
-    backward_scale = diagnostics['maximum_singular_value']*float(np.linalg.norm(flux))+float(np.linalg.norm(rhs))
+    physical_residual = applied-rhs
+    algebra_residual = physical_residual
+    residual_rhs = rhs
+    if preserve_native_mean:
+        algebra_residual = physical_residual-auxiliary_source[:, None]*cell_volume
+        residual_rhs = rhs+auxiliary_source[:, None]*cell_volume
+    backward_scale = diagnostics['maximum_singular_value']*float(np.linalg.norm(flux))+float(np.linalg.norm(residual_rhs))
     backward_error = float(np.linalg.norm(algebra_residual)/backward_scale) if backward_scale > 0 else 0.0
     volume_mean = flux.mean(axis=1)
     integrated_residual = matrix@volume_mean*native_volume-currents.sum(axis=0)
+    physical_integrated_residual = integrated_residual.copy()
+    if preserve_native_mean:
+        integrated_residual = integrated_residual-auxiliary_source*native_volume
     integrated_scale = (np.abs(removal*volume_mean)*native_volume+
                         np.abs(coupling@volume_mean)*native_volume+np.abs(currents).sum(axis=0))
+    if preserve_native_mean:
+        integrated_scale += np.abs(auxiliary_source)*native_volume
     integrated_relative = np.divide(integrated_residual, integrated_scale, out=np.zeros(groups), where=integrated_scale > 0)
     diagnostics.update(normwise_backward_error=backward_error,
         algebra_residual_l2=float(np.linalg.norm(algebra_residual)),
@@ -236,6 +274,25 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
         integrated_group_balance_relative=integrated_relative,
         integrated_group_balance_max_relative=float(np.max(abs(integrated_relative))),
         residual_evaluation='independent conservative physical-space Neumann stencil plus coupled material matrix')
+    if preserve_native_mean:
+        mean_relative = volume_mean/native-1
+        diagnostics.update(
+            physical_algebra_residual_l2=float(np.linalg.norm(physical_residual)),
+            physical_algebra_residual_max_absolute=float(np.max(abs(physical_residual))),
+            auxiliary_algebra_residual_l2=float(np.linalg.norm(algebra_residual)),
+            auxiliary_algebra_residual_max_absolute=float(np.max(abs(algebra_residual))),
+            physical_integrated_group_balance_residual=physical_integrated_residual,
+            auxiliary_integrated_group_balance_residual=integrated_residual.copy(),
+            auxiliary_normwise_backward_error=backward_error,
+            measured_volume_mean_flux=volume_mean.copy(), native_mean_relative_difference=mean_relative,
+            native_mean_max_relative_difference=float(np.max(abs(mean_relative))),
+            residual_equation='auxiliary: physical stencil residual minus delta*cell_volume',
+            physical_auxiliary_residual_identity_max_absolute_error=float(np.max(abs(
+                physical_residual-algebra_residual-auxiliary_source[:, None]*cell_volume))))
+        if not np.all(np.isfinite(residual_rhs)) or not np.all(np.isfinite(algebra_residual)) or not np.all(np.isfinite(integrated_relative)):
+            raise CuboidReferenceError('Nonfinite native-mean auxiliary residual or RHS', diagnostics)
+        if np.max(abs(mean_relative)) > rtol:
+            raise CuboidReferenceError('Measured native mean preservation exceeds rtol', diagnostics)
     if not math.isfinite(backward_error) or backward_error > rtol or np.max(abs(integrated_relative)) > rtol:
         raise CuboidReferenceError('Modal backward error or independent integrated group balance exceeds rtol', diagnostics)
     boundary_flux = flux[:, owners].T+distances[:, None]*inward_density/diffusion[None]
@@ -253,7 +310,7 @@ def coupled_neumann_cuboid_reference_modal(material, k, net_inward_current, widt
             normwise_compatibility_backward_error=float(np.linalg.norm(native_defect)/native_scale) if native_scale > 0 else 0.0,
             computed_minus_native_mean_flux=volume_mean-native, computed_relative_difference=volume_mean/native-1,
             computed_vs_native_relative_l2=float(np.linalg.norm(volume_mean-native)/np.linalg.norm(native)),
-            native_mean_imposed=False)
+            native_mean_imposed=preserve_native_mean)
     face_means = np.array([(boundary_flux[sides == side]*areas[sides == side, None]).sum(axis=0)/
                            areas[sides == side].sum() for side in range(6)])
     profiles = CuboidBoundaryProfiles(owners, sides, areas, distances, boundary_centers, inward_density, boundary_flux)
