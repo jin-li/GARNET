@@ -86,6 +86,7 @@ class NEMDiffusionSolver:
             raise TypeError('grid must be a CuboidNodalGrid')
         self.grid = grid
         self.n_nodes = N = grid.n_nodes
+        self.n_moments = getattr(self,'n_moments',2)
         self.n_faces = F = len(grid.face_nodes)
         raw = _array(D, 'D')
         if raw.ndim not in (1, 2) or not raw.shape[-1]:
@@ -204,6 +205,10 @@ class NEMDiffusionSolver:
         self._face_from_moments = sparse.coo_matrix((tv,(tr,tc)),shape=(6*N*G,6*N*G)).tocsr()
         direct = sparse.coo_matrix((dv,(dr,dc)),shape=(6*N*G,F*G)).tocsr()
         self._face_current = self._face_from_moments@self._moment_current+direct
+        self._assemble_constraints()
+
+    def _assemble_constraints(self):
+        grid,G,N,F = self.grid,self.n_groups,self.n_nodes,self.n_faces
         mean_map = sparse.coo_matrix((np.ones(6*N*G),(np.arange(6*N*G),
             np.repeat(np.arange(N),6*G)*G+np.tile(np.arange(G),6*N))),shape=(6*N*G,N*G)).tocsr()
         self._face_mean = mean_map
@@ -279,7 +284,7 @@ class NEMDiffusionSolver:
             for axis in range(3):
                 arrays.extend(self.grid.leakage_weights(node,axis))
         digest.update(str((self.grid.n_nodes,self.n_nodes,self.n_faces,self.n_groups,
-                           self.rtol,self.condition_limit,self.grid.leakage_boundary)).encode())
+                           self.rtol,self.condition_limit,self.grid.leakage_boundary,self.n_moments)).encode())
         for array in arrays:
             digest.update(str((array.shape,array.dtype.str)).encode())
             digest.update(array.tobytes())
@@ -471,7 +476,7 @@ class NEMDiffusionSolver:
             raise ValueError('max_iterations must be a positive integer')
         N,G,F = self.n_nodes,self.n_groups,self.n_faces
         means = np.ones((N,G)) if initial_means is None else _field(initial_means,'initial_means',(N,G))
-        moments = np.zeros((N,3,2,G)) if initial_moments is None else _field(initial_moments,'initial_moments',(N,3,2,G))
+        moments = np.zeros((N,3,self.n_moments,G)) if initial_moments is None else _field(initial_moments,'initial_moments',(N,3,self.n_moments,G))
         current = NEMResult(means,moments,np.zeros((F,G)),np.repeat(means[:,None,:],6,axis=1),np.zeros((F,G)),{})
         production = self._production(current)
         if not np.isfinite(production) or production <= 0:
