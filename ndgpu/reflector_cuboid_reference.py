@@ -1,14 +1,18 @@
-"""Independent CPU tensor-FV reflector diagnostic with prescribed uniform currents.
+"""Independent CPU tensor-FV reflector diagnostic with prescribed face-current profiles.
 
 The native mean fixes the constant mode using an explicit auxiliary delta. This
 is neither a physical core source nor a continuum positivity qualification.
-There are no leakage moments, neighbor interpolation, or fitted coefficients.
+Optional signed-current moments prescribe affine face densities. There are no
+leakage moments, neighbor interpolation, or fitted coefficients.
 """
 from dataclasses import dataclass
 from types import MappingProxyType
 
 import numpy as np
 from scipy.fft import dctn, idctn
+
+
+_FACE_TANGENTS = ((1, 2), (0, 2), (1, 2), (0, 2), (0, 1), (0, 1))
 
 
 class ReflectorCuboidReferenceError(ValueError):
@@ -69,14 +73,23 @@ def _relative(error, scale):
 
 def solve_reflector_cuboid_reference(
         diffusion, loss, widths, native_mean, net_inward_integrated, *,
-        subdivisions=8, condition_limit=1e12, rtol=1e-10, require_positive=True):
+        subdivisions=8, condition_limit=1e12, rtol=1e-10, require_positive=True,
+        net_inward_sign_moments=None):
     """Solve -diag(D) laplace(phi)+R phi=delta with fixed native mean.
 
     D is (G,), R is a nonsingular nonfission M-matrix (G,G): a Z-matrix
     with positive-stable eigenvalues; column diagonal dominance is not required.
     Widths are
     (Lx,Ly,Lz), and currents are (6,G), positive inward, W/S/E/N/bottom/top.
-    Every face has the explicitly prescribed UNIFORM density I/face_area.
+    By default each face has prescribed uniform density I/A. Optional moments
+    (6,2,G) are M_k=integral(sign(t_k)*j_in*dA), with centered physical
+    tangents W/E(y,z), S/N(x,z), bottom/top(x,y), positive along global axes.
+    They prescribe j_in=I/A+4*M_1*t_1/(A*L_1)+4*M_2*t_2/(A*L_2).
+    Centroid patch densities integrate this affine model exactly. Each nonzero
+    moment requires an even count >=2 along its tangent, so no patch straddles
+    the sign discontinuity. No field moments or higher moments are inferred.
+    Face patch arrays use (G,second_tangent,first_tangent) order; diagnosed
+    patch signs use (2,second_tangent,first_tangent).
     delta=R@native_mean-sum(I)/volume is an auxiliary constant source.
     Subdivisions are a positive integer or (nx,ny,nz). The graph-Neumann
     tensor operator uses orthonormal DCT-II, one thread, float64 CPU arrays.
@@ -110,6 +123,17 @@ def solve_reflector_cuboid_reference(
         raise ReflectorCuboidReferenceError('subdivisions must be integer or three integers') from exc
     if len(counts) != 3 or any(isinstance(n, (bool, np.bool_)) or not isinstance(n, (int, np.integer)) or n < 1 for n in counts):
         raise ReflectorCuboidReferenceError('subdivisions must be positive integers')
+    moments = (np.zeros((6, 2, G)) if net_inward_sign_moments is None else
+               _array(net_inward_sign_moments, 'net_inward_sign_moments'))
+    if moments.shape != (6, 2, G):
+        raise ReflectorCuboidReferenceError('net_inward_sign_moments must have shape (6,2,G)')
+    active_moments = bool(np.any(moments != 0))
+    for side, tangents in enumerate(_FACE_TANGENTS):
+        for tangent, axis in enumerate(tangents):
+            if np.any(moments[side, tangent] != 0) and (counts[axis] < 2 or counts[axis] % 2):
+                raise ReflectorCuboidReferenceError(
+                    f'nonzero sign moment requires even tangential subdivisions >=2 '
+                    f'(side={side}, tangent={tangent}, axis={axis})')
     nx, ny, nz = counts
     with np.errstate(over='ignore', under='ignore', invalid='ignore', divide='ignore'):
         h = L/np.asarray(counts)
@@ -140,8 +164,23 @@ def solve_reflector_cuboid_reference(
              (slice(None), 0, slice(None), slice(None)),
              (slice(None), -1, slice(None), slice(None)))
     axes = (0, 1, 0, 1, 2, 2)
+    patch_densities, patch_signs = [], []
     for side, (selection, axis) in enumerate(zip(faces, axes)):
-        rhs[selection] += density[side, :, None, None]/h[axis]
+        tangents = _FACE_TANGENTS[side]
+        # Integer centered indices provide exact signs, including odd zero cells.
+        centered = [2*np.arange(counts[a])+1-counts[a] for a in tangents]
+        indices = np.meshgrid(centered[1], centered[0], indexing='ij')
+        signs = np.stack((np.sign(indices[1]), np.sign(indices[0])))
+        patch_density = np.broadcast_to(density[side, :, None, None], rhs[selection].shape)
+        if active_moments:
+            patch_density = patch_density.copy()
+            for tangent, a in enumerate(tangents):
+                coordinate = indices[1-tangent]*h[a]/2
+                patch_density += (4*moments[side, tangent, :, None, None]*coordinate/
+                                  (areas[side]*L[a]))
+        patch_densities.append(patch_density)
+        patch_signs.append(_readonly(signs))
+        rhs[selection] += patch_density/h[axis]
     if not np.all(np.isfinite(rhs)):
         raise ReflectorCuboidReferenceError('nonfinite boundary right hand side')
     transformed = dctn(rhs, axes=(1, 2, 3), norm='ortho', workers=1)
@@ -169,24 +208,33 @@ def solve_reflector_cuboid_reference(
     measured_mean = phi.mean(axis=(1, 2, 3))
     mean_error = _relative(measured_mean-mean, mean)
     traces, patch_areas, patch_currents, recovered, trace_current_errors = [], [], [], [], []
+    recovered_moments = []
     for side, (selection, axis) in enumerate(zip(faces, axes)):
         owner = phi[selection]
-        trace = owner+(h[axis]/2)*density[side, :, None, None]/D[:, None, None]
+        patch_density = patch_densities[side]
+        trace = owner+(h[axis]/2)*patch_density/D[:, None, None]
         area = np.full(owner.shape[1:], cv/h[axis])
-        current = np.broadcast_to(density[side, :, None, None], owner.shape)*area
+        current = patch_density*area
         reconstructed_density = D[:, None, None]*(trace-owner)/(h[axis]/2)
-        trace_current_errors.append(_relative(reconstructed_density-density[side, :, None, None],
-            abs(density[side, :, None, None])+D[:, None, None]*(abs(trace)+abs(owner))/(h[axis]/2)))
+        trace_current_errors.append(_relative(reconstructed_density-patch_density,
+            abs(patch_density)+D[:, None, None]*(abs(trace)+abs(owner))/(h[axis]/2)))
         traces.append(_readonly(trace)); patch_areas.append(_readonly(area)); patch_currents.append(_readonly(current))
         recovered.append(current.sum(axis=(1, 2)))
+        recovered_moments.append(np.array([
+            (current*sign).sum(axis=(1, 2)) for sign in patch_signs[side]]))
     recovered = np.array(recovered)
-    current_error = _relative(recovered-currents, abs(currents))
+    recovered_moments = np.array(recovered_moments)
+    # Absolute-profile upper bound permits cancellation of signed currents.
+    # No denominator floor, current renormalization, or moment adjustment.
+    normalization_scale = abs(currents)+2*abs(moments).sum(axis=1)
+    current_error = _relative(recovered-currents, normalization_scale)
+    moment_error = _relative(recovered_moments-moments, normalization_scale[:, None, :])
     balance = volume*(R@measured_mean-delta)-recovered.sum(axis=0)
     balance_error = _relative(balance, volume*(abs(R)@abs(measured_mean)+abs(delta))+abs(recovered).sum(axis=0))
     face_means = np.array([t.mean(axis=(1, 2)) for t in traces])
     if not all(np.all(np.isfinite(a)) for a in (phi, face_means, measured_mean, residual, balance)):
         raise ReflectorCuboidReferenceError('nonfinite solved field or diagnostics')
-    if max(residual_error, mean_error, current_error, balance_error, *trace_current_errors) > rtol:
+    if max(residual_error, mean_error, current_error, moment_error, balance_error, *trace_current_errors) > rtol:
         raise ReflectorCuboidReferenceError('independent FV residual/current/balance/mean checks failed')
     positive = bool(np.all(phi > 0) and all(np.all(t > 0) for t in traces))
     diagnostics = MappingProxyType(dict(
@@ -196,10 +244,19 @@ def solve_reflector_cuboid_reference(
         current_relative=current_error, trace_current_relative=max(trace_current_errors),
         balance_relative=balance_error, mean_relative=mean_error,
         recovered_net_inward_integrated=_readonly(recovered),
+        recovered_net_inward_sign_moments=_readonly(recovered_moments),
+        input_net_inward_sign_moments=_readonly(moments),
+        current_integral_residual=_readonly(recovered-currents),
+        current_sign_moment_residual=_readonly(recovered_moments-moments),
+        boundary_current_normalization_scale=_readonly(normalization_scale),
+        sign_moment_relative=moment_error, face_patch_signs=tuple(patch_signs),
+        sign_moment_tangent_axes=_FACE_TANGENTS,
+        sign_moment_definition='integral(sign(centered positive global tangent)*inward_current_density*dA)',
         integrated_balance_residual=_readonly(balance), minimum_cell_flux=float(phi.min()),
         minimum_boundary_trace=min(float(t.min()) for t in traces),
         full_field_positive=positive, physical_admission=False, diagnostic_only=True,
-        continuous_positivity_certified=False, boundary_current_profile_model='uniform_face_density',
+        continuous_positivity_certified=False,
+        boundary_current_profile_model='affine_sign_moments' if active_moments else 'uniform_face_density',
         auxiliary_source='fixed native-mean algebraic balance', transform_workers=1,
         linear_solver='orthonormal_DCT_II_group_blocks', rtol=rtol, condition_limit=condition_limit))
     result = ReflectorCuboidReferenceResult(_readonly(phi), _readonly(face_means), tuple(traces),

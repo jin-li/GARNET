@@ -29,9 +29,12 @@ _ADF_SURFACE_FIELDS = {
     "DF_HET_SURF_FLUX", "DF_HOM_SURF_FLUX", "DF_SURF_DF",
     "DF_SURF_NET_CURR", "DF_SURF_IN_CURR", "DF_SURF_OUT_CURR",
 }
+_ADF_SIGN_CURRENT_FIELDS = {
+    "DF_SGN_SURF_IN_CURR", "DF_SGN_SURF_OUT_CURR", "DF_SGN_SURF_NET_CURR",
+}
 _STATISTICAL_FIELDS = (_VECTOR_FIELDS | _MATRIX_FIELDS | _REFERENCE_FIELDS
-                       | _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS)
-_ADF_GEOMETRY_FIELDS = {"DF_N_SURF", "DF_VOLUME", "DF_SURF_AREA"}
+                       | _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS | _ADF_SIGN_CURRENT_FIELDS)
+_ADF_GEOMETRY_FIELDS = {"DF_N_SURF", "DF_VOLUME", "DF_SURF_AREA", "DF_N_SGN"}
 _REQUIRED = {
     "VERSION", "GC_UNIVERSE_NAME", "MACRO_NG", "MACRO_E", "INF_TOT",
     "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_FLX",
@@ -141,6 +144,13 @@ class SerpentXSRecord:
             raise self._error("DF_N_SURF", "missing field for ADF surface data")
         return int(self.fields["DF_N_SURF"][0])
 
+    @property
+    def n_sign_moments(self):
+        """Native sign-current moment count, with no face/tangent inference."""
+        if "DF_N_SGN" not in self.fields:
+            raise self._error("DF_N_SGN", "missing field for ADF sign-current data")
+        return int(self.fields["DF_N_SGN"][0])
+
     def estimate(self, field):
         """Decode a recognized paired statistical field, preserving raw values."""
         if field not in _STATISTICAL_FIELDS:
@@ -161,6 +171,12 @@ class SerpentXSRecord:
         densities; partial and net currents are surface-integrated. Serpent
         2.2.2 net current is inward minus outward, so negative values are valid.
         DF_SURF_DF is the heterogeneous/homogeneous surface-flux ratio.
+        This decoder returns raw scores, not receiver-method compatibility.
+        At nonzero current, a usable ratio requires a homogeneous denominator
+        consistent with the receiving method's auxiliary boundary-value solve.
+        In Serpent 2.2.2, disabled reconstruction (DFS=1) may leave the printed
+        homogeneous surface score as a volume-flux proxy; decoding neither
+        replaces that denominator nor qualifies the printed factor for use.
         Printed zero relative errors do not imply exact values.
         """
         if field not in _ADF_VOLUME_FIELDS | _ADF_SURFACE_FIELDS:
@@ -171,6 +187,24 @@ class SerpentXSRecord:
         if est.mean.size != int(np.prod(shape)):
             raise self._error(field, f"expected {int(np.prod(shape))} mean/error pairs")
         return SerpentEstimate(est.mean.reshape(shape), est.relative_error.reshape(shape))
+
+    def adf_sign_current_estimate(self, field):
+        """Decode raw signed current moments as (n_sign_moments,G), group fastest.
+
+        All three sign-weighted IN/OUT/NET current means may be negative.
+        Serpent 2.2.2 scores are returned without area scaling or physical
+        qualification. The caller must establish tangent ordering and current
+        normalization from its exact scorer/version/input. This generic reader
+        assumes neither a cuboid nor two moments per face. Sign-weighted flux
+        scores are deliberately not decoded or qualified by this method.
+        """
+        if field not in _ADF_SIGN_CURRENT_FIELDS:
+            raise self._error(field, "not a recognized sign-current mean/error field")
+        estimate = self.estimate(field)
+        shape = (self.n_sign_moments, self.n_groups)
+        if estimate.mean.size != int(np.prod(shape)):
+            raise self._error(field, f"expected {int(np.prod(shape))} mean/error pairs")
+        return SerpentEstimate(estimate.mean.reshape(shape), estimate.relative_error.reshape(shape))
 
     def _validate(self):
         for key in sorted(_REQUIRED):
@@ -193,6 +227,11 @@ class SerpentXSRecord:
             if (not isinstance(ns, np.ndarray) or ns.size != 1
                     or not np.isfinite(ns[0]) or ns[0] < 1 or ns[0] != int(ns[0])):
                 raise self._error("DF_N_SURF", "expected a positive integer")
+        if "DF_N_SGN" in self.fields:
+            ns = self.fields["DF_N_SGN"]
+            if (not isinstance(ns, np.ndarray) or ns.size != 1
+                    or not np.isfinite(ns[0]) or ns[0] < 0 or ns[0] != int(ns[0])):
+                raise self._error("DF_N_SGN", "expected a nonnegative integer")
         for key in {"DF_VOLUME", "DF_SURF_AREA"} & self.fields.keys():
             values = self.fields[key]
             expected = 1 if key == "DF_VOLUME" else self.n_surfaces
@@ -203,15 +242,16 @@ class SerpentXSRecord:
             est = self.estimate(key)
             expected = (self.n_groups ** 2 if key in _MATRIX_FIELDS else
                         self.n_surfaces * self.n_groups if key in _ADF_SURFACE_FIELDS else
+                        self.n_sign_moments * self.n_groups if key in _ADF_SIGN_CURRENT_FIELDS else
                         self.n_groups if key in _VECTOR_FIELDS | _ADF_VOLUME_FIELDS else
                         3 if key == "ANA_KEFF" else 1)
             if est.mean.size != expected:
                 raise self._error(key, f"expected {expected} mean/error pairs")
             if (not np.all(np.isfinite(est.mean))
-                    or (key != "DF_SURF_NET_CURR" and np.any(est.mean < 0))
+                    or (key != "DF_SURF_NET_CURR" and key not in _ADF_SIGN_CURRENT_FIELDS and np.any(est.mean < 0))
                     or not np.all(np.isfinite(est.relative_error))
                     or np.any(est.relative_error < 0)):
-                raise self._error(key, "means must be finite (nonnegative except net current); "
+                raise self._error(key, "means must be finite (nonnegative except net/sign currents); "
                                   "relative errors must be finite and nonnegative")
             if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "TRC_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
                 raise self._error(key, "values must be strictly positive")
@@ -316,7 +356,10 @@ def read_serpent_results(path):
                 continue
             key, spec, count, rhs = match.groups()
             try:
-                value = _literal(rhs)
+                # Empty optional sign-current arrays are meaningful at DF_N_SGN=0.
+                # Ordinary-field literal parsing and validation remain unchanged.
+                value = (np.array([], dtype=float) if key in _ADF_SIGN_CURRENT_FIELDS and re.fullmatch(r"\[\s*\]", rhs)
+                         else _literal(rhs))
             except ValueError as exc:
                 if key in _KNOWN:
                     raise ValueError(f"record {len(records)}, {key}: {exc}") from exc

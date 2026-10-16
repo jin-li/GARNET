@@ -17,9 +17,12 @@ I = np.array([[.03, -.01], [.02, .04], [-.02, .01],
               [.01, -.03], [.04, .02], [-.01, .05]])
 
 
-def test_independent_uncondensed_fv_operator():
-    counts = (2, 3, 4)
-    result = solve(D, R, L, M, I, subdivisions=counts)
+@pytest.mark.parametrize('affine', [False, True])
+def test_independent_uncondensed_fv_operator(affine):
+    counts = (2, 4, 6) if affine else (2, 3, 4)
+    moments = (np.arange(24).reshape(6, 2, 2)-11)*.001 if affine else np.zeros((6, 2, 2))
+    result = solve(D, R, L, M, I, subdivisions=counts,
+                   net_inward_sign_moments=moments)
     nx, ny, nz = counts
     n = nx*ny*nz
     h, volume = L/counts, np.prod(L)
@@ -46,7 +49,12 @@ def test_independent_uncondensed_fv_operator():
                                 matrix[row, row+direction*stride] -= conductance
                     for side, (axis, coordinate) in enumerate(face_spec):
                         if pos[axis] == coordinate:
-                            rhs[g, cell] += I[side, g]/areas[side]/h[axis]
+                            prescribed = I[side, g]/areas[side]
+                            tangents = [a for a in range(3) if a != axis]
+                            for tangent, a in enumerate(tangents):
+                                coordinate = (pos[a]+.5)*h[a]-L[a]/2
+                                prescribed += 4*moments[side, tangent, g]*coordinate/(areas[side]*L[a])
+                            rhs[g, cell] += prescribed/h[axis]
     expected = np.linalg.solve(matrix, rhs.ravel()*cv).reshape(2, nz, ny, nx)
     assert_allclose(result.cell_flux, expected, rtol=3e-14, atol=3e-14)
     assert_allclose(result.mean, M, rtol=1e-14)
@@ -165,3 +173,116 @@ def test_zero_and_tiny_currents_do_not_fail_trace_cancellation_guard():
     assert result.diagnostics['trace_current_relative'] < 1e-14
     assert np.all(np.isfinite(result.face_means))
     assert_allclose(result.face_patch_currents[0].sum(axis=(1, 2)), currents[0], rtol=1e-14, atol=0)
+
+
+AFFINE_MOMENTS = (np.arange(24).reshape(6, 2, 2)-11)*.002
+
+
+def test_affine_exact_patch_half_and_quadrant_integrals():
+    result = solve(D, R, L, M, I, subdivisions=(2, 4, 6),
+                   net_inward_sign_moments=AFFINE_MOMENTS)
+    tangents = ((1, 2), (0, 2), (1, 2), (0, 2), (0, 1), (0, 1))
+    counts = (2, 4, 6)
+    recovered_moments = []
+    for side, tangent_axes in enumerate(tangents):
+        current = result.face_patch_currents[side]
+        signs = result.diagnostics['face_patch_signs'][side]
+        u, v = tangent_axes
+        # Independent integral of the affine polynomial over each rectangle.
+        ub = np.linspace(-L[u]/2, L[u]/2, counts[u]+1)
+        vb = np.linspace(-L[v]/2, L[v]/2, counts[v]+1)
+        area = L[u]*L[v]
+        for j in range(counts[v]):
+            for i in range(counts[u]):
+                du, dv = ub[i+1]-ub[i], vb[j+1]-vb[j]
+                expected = (I[side]*du*dv/area
+                    +2*AFFINE_MOMENTS[side, 0]*(ub[i+1]**2-ub[i]**2)*dv/(area*L[u])
+                    +2*AFFINE_MOMENTS[side, 1]*(vb[j+1]**2-vb[j]**2)*du/(area*L[v]))
+                assert_allclose(current[:, j, i], expected, rtol=1e-13, atol=1e-17)
+                assert signs[0, j, i] == (-1 if i < counts[u]//2 else 1)
+                assert signs[1, j, i] == (-1 if j < counts[v]//2 else 1)
+        for tangent in range(2):
+            plus_half = current[:, signs[tangent] > 0].sum(axis=1)
+            assert_allclose(plus_half, (I[side]+AFFINE_MOMENTS[side, tangent])/2, atol=2e-17)
+        for su in (-1, 1):
+            for sv in (-1, 1):
+                quadrant = current[:, (signs[0] == su) & (signs[1] == sv)].sum(axis=1)
+                expected = (I[side]+su*AFFINE_MOMENTS[side, 0]+sv*AFFINE_MOMENTS[side, 1])/4
+                assert_allclose(quadrant, expected, atol=2e-17)
+        recovered_moments.append([(current*sign).sum(axis=(1, 2)) for sign in signs])
+        with pytest.raises(ValueError):
+            signs.setflags(write=True)
+    assert_allclose(recovered_moments, AFFINE_MOMENTS, atol=3e-17)
+    assert_allclose(result.diagnostics['recovered_net_inward_sign_moments'], AFFINE_MOMENTS, atol=3e-17)
+    assert_allclose(result.delta, R@M-I.sum(axis=0)/np.prod(L))
+    assert_allclose(result.mean, M, atol=2e-15)
+    assert result.diagnostics['boundary_current_profile_model'] == 'affine_sign_moments'
+
+
+@pytest.mark.parametrize('axis', range(3))
+def test_affine_global_axis_reflection(axis):
+    counts = (2, 4, 6)
+    base = solve(D, R, L, M, I, subdivisions=counts, net_inward_sign_moments=AFFINE_MOMENTS)
+    permutation = np.arange(6)
+    minus, plus = ((0, 2), (1, 3), (4, 5))[axis]
+    permutation[minus], permutation[plus] = plus, minus
+    reflected = AFFINE_MOMENTS[permutation].copy()
+    for side, tangent_axes in enumerate(((1, 2), (0, 2), (1, 2), (0, 2), (0, 1), (0, 1))):
+        for tangent, a in enumerate(tangent_axes):
+            if a == axis:
+                reflected[side, tangent] *= -1
+    result = solve(D, R, L, M, I[permutation], subdivisions=counts,
+                   net_inward_sign_moments=reflected)
+    assert_allclose(result.cell_flux, np.flip(base.cell_flux, axis=3-axis), atol=3e-14)
+    assert_allclose(result.face_means, base.face_means[permutation], atol=3e-14)
+
+
+def test_zero_moments_preserve_uniform_arrays_bitwise():
+    uniform = solve(D, R, L, M, I, subdivisions=(2, 3, 4))
+    zero = solve(D, R, L, M, I, subdivisions=(2, 3, 4), net_inward_sign_moments=np.zeros((6, 2, 2)))
+    for name in ('cell_flux', 'face_means', 'delta', 'mean'):
+        np.testing.assert_array_equal(getattr(uniform, name), getattr(zero, name))
+    for name in ('face_traces', 'face_patch_areas', 'face_patch_currents'):
+        for a, b in zip(getattr(uniform, name), getattr(zero, name)):
+            np.testing.assert_array_equal(a, b)
+
+
+@pytest.mark.parametrize('side,tangent', [(s, t) for s in range(6) for t in range(2)])
+def test_reject_unresolved_nonzero_moment(side, tangent):
+    moments = np.zeros((6, 2, 2))
+    moments[side, tangent, 0] = .01
+    axis = ((1, 2), (0, 2), (1, 2), (0, 2), (0, 1), (0, 1))[side][tangent]
+    for unresolved in (1, 3):
+        counts = [2, 4, 6]
+        counts[axis] = unresolved
+        with pytest.raises(ReflectorCuboidReferenceError, match='even tangential'):
+            solve(D, R, L, M, I, subdivisions=counts, net_inward_sign_moments=moments)
+
+
+def test_only_active_tangent_requires_even_count():
+    moments = np.zeros((6, 2, 2))
+    moments[0, 0] = [.01, -.02]  # W y tangent; x/z may stay odd.
+    result = solve(D, R, L, M, I, subdivisions=(3, 2, 3), net_inward_sign_moments=moments)
+    assert_allclose(result.diagnostics['recovered_net_inward_sign_moments'], moments, atol=2e-17)
+
+
+@pytest.mark.parametrize('moments', [np.zeros((6, 2)), np.full((6, 2, 2), np.nan),
+                                     np.full((6, 2, 2), 1j)])
+def test_invalid_moments(moments):
+    with pytest.raises(ReflectorCuboidReferenceError):
+        solve(D, R, L, M, I, net_inward_sign_moments=moments)
+
+
+def test_affine_negative_exception_retains_full_patch_profiles():
+    moments = np.zeros((6, 2, 1))
+    moments[0, 0, 0] = 30.
+    args = ([1.], [[.4]], [1., 1., 1.], [1.], np.zeros((6, 1)))
+    with pytest.raises(NonpositiveReflectorCuboidError) as caught:
+        solve(*args, subdivisions=(2, 4, 6), net_inward_sign_moments=moments)
+    diagnostic = solve(*args, subdivisions=(2, 4, 6), net_inward_sign_moments=moments, require_positive=False)
+    assert diagnostic.cell_flux.min() < 0
+    np.testing.assert_array_equal(caught.value.result.cell_flux, diagnostic.cell_flux)
+    for name in ('face_traces', 'face_patch_currents'):
+        for actual, expected in zip(getattr(caught.value.result, name), getattr(diagnostic, name)):
+            np.testing.assert_array_equal(actual, expected)
+    assert not diagnostic.diagnostics['physical_admission']
