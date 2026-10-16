@@ -66,6 +66,11 @@ def solve_reflector_axis_reference(
     R acts on group columns and must be a nonsingular, column-diagonally
     dominant nonfission M-matrix. The dimensionless mean-scaled loss operator
     must have singular values between 1e-12 and 1e12 and condition <=1e12.
+    Flux states are scaled by native means; derivative states additionally use
+    the group diffusion rate L*sqrt(R_gg/D_g). This balances the first-order
+    equations for stiff groups. Solver RMS residuals use these balanced states;
+    first_order_residual is independently checked in the original native-mean
+    coordinates, with the same acceptance threshold as the balance checks.
     No clipping, field renormalization, or adjustment of currents is applied.
     With require_positive=False, a nonpositive result is diagnostic only.
     """
@@ -116,23 +121,31 @@ def solve_reflector_axis_reference(
     if not np.isfinite(condition) or condition > 1e12:
         raise ReflectorAxisReferenceError('singular or ill-conditioned dimensionless loss operator')
 
+    # Balancing u_t=v as u_t=rate*w, w_t=(A*u+forcing)/rate avoids
+    # excessive refinement around zeros of large derivative states. In those
+    # regions, cubic-spline differentiation can otherwise reach roundoff before
+    # satisfying a tight collocation tolerance. This is a variable transform;
+    # currents, source, field scaling, and physical residual gates are fixed.
+    rate = np.sqrt(np.diag(A))
+    scaled_boundary = boundary/rate
+
     def leakage(t):
         return ell0[:, None] + 12*ellmom[0, :, None]*t + 20*ellmom[1, :, None]*(3*t*t-.25)
 
     def fun(t, y):
-        return np.vstack((y[G:], A @ y[:G] + (L**2/(D*m))[:, None]*(leakage(t)-delta[:, None])))
+        return np.vstack((rate[:, None]*y[G:], (A @ y[:G] + (L**2/(D*m))[:, None]*(leakage(t)-delta[:, None]))/rate[:, None]))
 
     def jac(t, y):
         result = np.zeros((2*G, 2*G, t.size))
-        result[:G, G:] = np.eye(G)[:, :, None]
-        result[G:, :G] = A[:, :, None]
+        result[:G, G:] = np.diag(rate)[:, :, None]
+        result[G:, :G] = (A/rate[:, None])[:, :, None]
         return result
 
     def bc(left, right):
-        return np.r_[left[G:]-boundary[0], right[G:]-boundary[1]]
+        return np.r_[left[G:]-scaled_boundary[0], right[G:]-scaled_boundary[1]]
 
     nodes = np.linspace(-.5, .5, 5)
-    guess = np.vstack((np.ones((G, 5)), np.linspace(boundary[0], boundary[1], 5).T))
+    guess = np.vstack((np.ones((G, 5)), np.linspace(scaled_boundary[0], scaled_boundary[1], 5).T))
     solution = solve_bvp(fun, bc, nodes, guess, fun_jac=jac, tol=tol, max_nodes=max_nodes)
     if not solution.success or not np.all(np.isfinite(solution.y)):
         raise ReflectorAxisReferenceError(f'BVP did not converge: {solution.message}')
@@ -156,6 +169,9 @@ def solve_reflector_axis_reference(
     y, dy = solution.sol(probes), solution.sol(probes, 1)
     rhs = fun(probes, y)
     relative = lambda a, scale: float(np.max(abs(a)/np.maximum(scale, np.finfo(float).tiny)))
+    # Undo derivative-state balancing before checking the original first-order ODE.
+    dy[G:] *= rate[:, None]
+    rhs[G:] *= rate[:, None]
     first_order_error = relative(dy-rhs, 1+abs(rhs))
     current_error = relative(measured_J-J, abs(J)+D*m/L)
     mean_error = relative(mean-m, m)

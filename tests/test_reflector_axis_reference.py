@@ -133,3 +133,32 @@ def test_invalid_coupled_loss(R):
 def test_nonconvergence_is_rejected():
     with pytest.raises(ReflectorAxisReferenceError, match='did not converge'):
         solve([1.], [[1.]], 20., [5.], [[.1], [-.1]], [0.], [[0.], [0.]], max_nodes=5)
+
+
+def test_stiff_coupled_derivative_zero_resolution_without_mesh_runaway():
+    # Synthetic multiscale reflector: high derivative states cross zero inside
+    # the interval. Unbalanced first-order states exhaust 10000 nodes at 1e-10.
+    kwargs = dict(
+        diffusion=[3., .45, .44, .29],
+        loss=[[.01, 0, 0, 0], [-.0095, .0134, -.0053, 0],
+              [0, -.0048, .122, -.175], [0, -.00008, -.046, .34]],
+        width=21.5, native_mean=[400., 300., 20., 1.],
+        currents=[[80., 16., 2.2, .45], [40., 12., .45, 0]],
+        transverse_leakage_mean=[-2., .3, -.25, 0],
+        transverse_leakage_moments=[[-2.5, .03, .5, .4], [-.7, -.04, .06, .06]],
+        require_positive=False, max_nodes=10000)
+    coarse = solve(**kwargs, tol=1e-8)
+    fine = solve(**kwargs, tol=1e-10)
+    points = np.linspace(-.5, .5, 1001)
+    scale = np.array(kwargs['native_mean'])
+    assert np.max(abs(fine.evaluate(points)-coarse.evaluate(points))/scale) < 1e-6
+    assert fine.diagnostics['nodes'] < 10000
+    assert fine.diagnostics['solver_rms_residual'] <= 1e-10
+    assert fine.diagnostics['first_order_residual'] < 1e-8
+    assert fine.diagnostics['mean_balance_error'] < 1e-10
+    assert fine.diagnostics['current_balance_error'] < 1e-10
+    assert fine.diagnostics['zeroth_balance_error'] < 1e-10
+    assert fine.diagnostics['negative_profile_count'] == 2
+    assert fine.minima[-1] < -13
+    with pytest.raises(NonpositiveReflectorAxisError):
+        solve(**{**kwargs, 'require_positive': True}, tol=1e-10)
