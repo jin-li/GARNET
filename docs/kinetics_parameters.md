@@ -313,6 +313,16 @@ solver with the returned factors and identical production matrix, then solve
 and validate its forward/adjoint states. Passing local reconstruction does not
 qualify the receiving core, transport data or independent prediction.
 
+`kinetics_yield_transfer.transfer_delayed_yields` is an explicit modeling step
+for homologous regions scored by different estimators, such as a physical D4
+orbit and its representative virtual GCU. It preserves source raw delayed
+fractions/spectra while multiplying by receiver incident-group total yields.
+Supply both domain identities and a qualification statement; independently
+verify region/energy compatibility before using it. Source/receiver total-yield
+differences are descriptive metadata, not uncertainties or an acceptance gate.
+This does not extract exact receiver-domain yields or infer global beta.
+Zero source production cannot supply a positive receiver-production channel.
+
 For an executable synthetic analytical example, run
 `python examples/kinetics/static_nem.py` from the repository root. It needs no
 Monte Carlo data and prints both physical Lambda and the discrete k*Lambda
