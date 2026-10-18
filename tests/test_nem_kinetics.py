@@ -47,7 +47,8 @@ def test_response_rejects_replaced_cached_material():
 
 @pytest.mark.parametrize('degree', [4, 8, 16])
 @pytest.mark.parametrize('policy', ['one_sided', 'primary_rule'])
-def test_physical_projection_against_independent_augmented_pencil(degree, policy, monkeypatch):
+@pytest.mark.parametrize('general_production', [False, True])
+def test_physical_projection_against_independent_augmented_pencil(degree, policy, monkeypatch, general_production):
     from ndgpu.nem_geometry import CuboidNodalGrid
     from test_nem_higher_order import independent_pencil, recovered_vector
     if policy == 'primary_rule':
@@ -61,7 +62,13 @@ def test_physical_projection_against_independent_augmented_pencil(degree, policy
     factors = np.ones((2, 6, 2))
     factors[0, 2] = [.91, 1.07]
     factors[1, 0] = [1.05, .94]
-    solver = NEMHigherOrderDiffusionSolver(grid, *mat, factors, degree=degree)
+    kernel = None
+    if general_production:
+        # Incident-dependent spectra cannot be represented as chi outer nuF.
+        kernel = np.array([[[.83,.51],[.17,.49]],
+                           [[.62,.37],[.38,.63]]])*mat[3][:,None,:]
+    solver = NEMHigherOrderDiffusionSolver(grid, *mat, factors, degree=degree,
+                                          fission_matrix=kernel)
     fwd = solver.solve_eigenvalue(rtol=2e-12, max_iterations=2000)
     adj = solve_nem_adjoint(solver, fwd, rtol=1e-9)
     inv = np.array([[1e-7, 2e-5], [1.3e-7, 2.6e-5]])
@@ -73,7 +80,7 @@ def test_physical_projection_against_independent_augmented_pencil(degree, policy
     decay = np.array([.08, .3])
     got = project_nem_kinetics(solver, fwd, adj, inverse_velocities=inv,
                               delayed_production=delayed, decay=decay)
-    A, Q = independent_pencil(grid, *mat, degree, factors)
+    A, Q = independent_pencil(grid, *mat, degree, factors, fission_matrix=kernel)
     x = recovered_vector(fwd, degree)
     # Build the physical mass/delayed operators independently by Gauss
     # integration of the retained Legendre weak test functions.

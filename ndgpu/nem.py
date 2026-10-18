@@ -70,6 +70,8 @@ class NEMDiffusionSolver:
     D, sigma_a, nu_sigma_f and chi have shape (N,G), or (G,) to broadcast;
     source-row sigma_s has shape (N,G,G) or (G,G). Its diagonal is ignored:
     removal includes absorption plus OFF-diagonal outgoing scatter only.
+    Optional fission_matrix (N,G,G), emitted/source order, replaces chi*nu_sigma_f.
+    It must be nonnegative with column sums nu_sigma_f; chi remains metadata.
     Positive node_face_factors use (N,6,G), sides x-,y-,x+,y+,z-,z+;
     factors on external faces must equal one. Interior continuity is
     f_low*b_low_plus=f_high*b_high_minus. Currents are positive in global axes.
@@ -81,7 +83,8 @@ class NEMDiffusionSolver:
     """
 
     def __init__(self, grid, D, sigma_a, sigma_s, nu_sigma_f, chi,
-                 node_face_factors=None, *, rtol=1e-10, condition_limit=1e12):
+                 node_face_factors=None, *, rtol=1e-10, condition_limit=1e12,
+                 fission_matrix=None):
         if not isinstance(grid, CuboidNodalGrid):
             raise TypeError('grid must be a CuboidNodalGrid')
         self.grid = grid
@@ -118,7 +121,12 @@ class NEMDiffusionSolver:
         scatter[:,np.arange(G),np.arange(G)] = 0
         self.R = -scatter.transpose(0,2,1)
         self.R[:,np.arange(G),np.arange(G)] += self.sigma_a+scatter.sum(axis=2)
-        self.fission = self.chi[:,:,None]*self.nu_sigma_f[:,None,:]
+        self.fission = (self.chi[:,:,None]*self.nu_sigma_f[:,None,:]
+                        if fission_matrix is None else
+                        _field(fission_matrix, 'fission_matrix', (N,G,G)))
+        if np.any(self.fission < 0) or not np.allclose(
+                self.fission.sum(axis=1), self.nu_sigma_f, rtol=1e-12, atol=0):
+            raise ValueError('fission_matrix must be nonnegative with column sums nu_sigma_f')
         self._local_inverse = np.empty((N,3,2,G,G))
         local_condition = 0.
         for node in range(N):

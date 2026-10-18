@@ -98,6 +98,37 @@ data remain unavailable rather than being fabricated. Regional or isotope
 dependent decay families need a separately qualified precursor model; this
 interface requires a compatible common family system.
 
+### Distinct isotope decay channels
+
+A common channel system need not mean six shared decay constants. Retain each
+nuclide/native-family pair as a distinct input channel, with its own positive
+decay constant and regional production matrix. A channel absent from a region
+has zero production there. The existing projection accepts any such channel
+count; it does not require collapsing nuclides to one six-family decay vector.
+Use unique IDs such as `U235/1` and `U238/1` in the supplemental input's
+`family_ids`, retaining the nuclear-table identity in provenance.
+
+For reporting under the library's native family labels, use an explicit map:
+
+```python
+from ndgpu.kinetics_families import summarize_delayed_channels
+summary = summarize_delayed_channels(
+    parameters.beta, parameters.decay,
+    channel_ids=data.family_ids,
+    reported_families=native_family_labels)
+```
+
+For a reported family i, `family_beta[i]` sums its channel beta values and
+`family_decay[i]` is their beta-weighted arithmetic decay mean. No family
+mapping is inferred by sorting lambda. A family with no delayed production
+has decay `None`. The result retains every channel and marks whether each
+reported family has exactly one physical decay pole. Disparate isotope
+decays cannot be replaced by their arithmetic mean in a transient model
+without an approximation. `lambda_low_frequency` consequently uses the
+original channel values, preserving their sum(beta/lambda), rather than
+first collapsing the channels. These are static reporting reductions;
+they do not replace a missing raw production score.
+
 ## Matching NEM adjoint and physical projection
 
 ```python
@@ -220,6 +251,47 @@ Small-problem verification is not PRATIC validation. State tables require
 qualified regional data, compatible family definitions, convergence evidence
 and exact input/software provenance. A missing-data inventory remains useful
 but cannot be presented as an NDgpu calculation of beta.
+
+## Isotope production and an explicit total kernel
+
+`serpent_mdep.read_serpent_mdep` imports literal native micro-depletion tables
+without executing MATLAB. Supply exact selectors, group boundaries and energy
+order. `production_xs` requires explicit isotope coverage and paired MT452/455
+rows; smeared density times microscopic production gives central macroscopic
+production. Native density/XS errors remain separate: their covariance is not
+available. `build_delayed_channels` expands qualified constant isotope branches
+into independent isotope/family matrices. It does not use global effective beta.
+
+`ace_precursors` and `ace_delayed_spectra` read explicitly selected legacy ASCII
+ACE tables, retaining source hashes, native family decay rates and probability
+metadata. Qualify incident-energy independence before using constant branches.
+Only supported LAW4 histogram/linear PDFs are integrated; out-of-domain spectra
+are rejected. Explicit probability normalization is recorded by the caller;
+PDF integration need not reproduce the native stored-CDF sampler bit for bit.
+These readers alone cannot supply heterogeneous-core isotope production weights.
+
+`kinetics_production.assemble_kinetics_production` constructs a new positive
+prompt-plus-delayed total production kernel from explicit inputs:
+
+```
+Cp[target,source] = chip[target] * (nuSigmaF[source] - sum_i,target Cd_i)
+C = Cp + sum_i Cd_i
+```
+
+It rejects negative remainders and unnormalized prompt spectra. Pass `C` as
+`fission_matrix=` to either NEM solver; emitted/source column sums must match
+the supplied nuSigmaF. Fission acts on all retained spatial moments, and the
+matching adjoint/projection uses this same matrix. The default remains the
+original `chi_total outer nuSigmaF` kernel.
+
+This is a distinct production model, not a repair of a frozen sampled total
+spectrum. Sampled total chi may print zero where library delayed spectra have
+small nonzero tails, so subtracting these channels from that frozen kernel can
+fail positivity correctly. Do not clip those tails, weaken the positivity gate,
+or claim identical keff/ADF qualification. A full-core calculation with the new
+kernel still needs a matching homogeneous reference and explicitly qualified
+factor reconstruction. Prior study results and their source hashes are historical
+results under their original kernel/software version.
 
 For an executable synthetic analytical example, run
 `python examples/kinetics/static_nem.py` from the repository root. It needs no
