@@ -46,3 +46,23 @@ def test_incompatible_or_missing_input_rejected(tmp_path,key,value):
 def test_duplicate_json_field_rejected(tmp_path):
     p=tmp_path/'bad.json';p.write_text('{"schema_version":1,"schema_version":1}')
     with pytest.raises(ValueError, match='duplicate'):read_regional_kinetics(p)
+
+
+def test_general_prompt_delayed_kernel_is_bound_to_imported_node_data(tmp_path):
+    from ndgpu.kinetics_production import assemble_kinetics_production
+    native=fixture()
+    delayed=np.asarray(native['delayed_production'])
+    # Nonzero delayed tail conflicts with the old zero-emission bin.
+    delayed[0,:,1,:]=delayed[0,:,0,:]*1e-8
+    nuf=np.asarray(native['total_production']).sum(axis=1)
+    production=assemble_kinetics_production(nuf,[[1.,0.],[0.,0.]],delayed)
+    native['total_production']=production.total.tolist()
+    native['delayed_production']=delayed.tolist()
+    native['approximations']=['Explicit prompt-spectrum factorization; sampled total kernel replaced.']
+    p=tmp_path/'general.json';p.write_text(json.dumps(native))
+    data=read_regional_kinetics(p)
+    got=data.for_nodes(native['region_ids'],native['energy_bounds'],production.total)
+    np.testing.assert_array_equal(got['delayed_production'],production.delayed)
+    old=np.zeros_like(production.total);old[:,0,:]=nuf
+    with pytest.raises(ValueError,match='frozen XS'):
+        data.for_nodes(native['region_ids'],native['energy_bounds'],old)

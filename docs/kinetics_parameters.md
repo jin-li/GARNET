@@ -293,6 +293,26 @@ kernel still needs a matching homogeneous reference and explicitly qualified
 factor reconstruction. Prior study results and their source hashes are historical
 results under their original kernel/software version.
 
+`nem_reference.reconstruct_nem_reference` supplies the matching local reference
+using the receiver's exact `R-C/k`, grid, degree and transverse-leakage policy.
+Supply positive native means and either shared-face global-axis current density
+or native region-side integrated net-inward currents. The latter preserves all
+side tallies and reports shared-face disagreements without averaging. Exterior
+reference currents remain prescribed; vacuum Robin conditions belong to the
+receiving core. Negative reference profiles remain visible in the returned
+diagnostics. The reported auxiliary mean source closes prescribed reference
+balance only and must never enter core production or kinetics projection.
+
+`qualify_nem_reference_factors` applies the existing reflector-inclusive local
+prescription with three increasing reference orders (default12/14/16) ending
+at the receiver's order. Both successive face changes must pass the default
+0.005 native-mean-normalized limit. Final fuel profiles must be positive;
+reflector internal traces require conservative earlier-order positivity and
+factor-change bounds. Exterior factors stay unity. Rebuild a new receiving
+solver with the returned factors and identical production matrix, then solve
+and validate its forward/adjoint states. Passing local reconstruction does not
+qualify the receiving core, transport data or independent prediction.
+
 For an executable synthetic analytical example, run
 `python examples/kinetics/static_nem.py` from the repository root. It needs no
 Monte Carlo data and prints both physical Lambda and the discrete k*Lambda
