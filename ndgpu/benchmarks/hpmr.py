@@ -344,6 +344,9 @@ def hpmr_locally_refined_mesh(refine: int = 3, drum_angle_deg=0.0,
     Returns ``(mesh, cell_material, materials, alpha_boundary)`` for
     :class:`ndgpu.mesh.UnstructuredDiffusionSolver`. With ``refine_drums=False``
     the mesh is uniform (the coarse-baseline / global-fine reference).
+    Both meshes retain this benchmark's historical centroid-distance TPFA
+    geometry. This preserves its established refinement comparison, without
+    claiming a nonorthogonal flux correction on skew hanging interfaces.
     """
     from ..mesh import assemble_mesh
 
@@ -403,7 +406,7 @@ def hpmr_locally_refined_mesh(refine: int = 3, drum_angle_deg=0.0,
                     cells.append(tuple(node(p) for p in V))
                     cmat.append(mat_of(cc))
 
-    mesh = assemble_mesh(np.array(coords), cells, cmat)
+    mesh = assemble_mesh(np.array(coords), cells, cmat, normal_distances=False)
     return mesh, np.array(cmat), mats, 0.5
 
 

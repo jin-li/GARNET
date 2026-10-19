@@ -203,6 +203,28 @@ def test_face_distances_project_on_rotated_normal():
     np.testing.assert_allclose(rotated.face_distances, mesh.face_distances)
 
 
+def test_legacy_2d_geometry_preserves_interior_and_skew_boundary_distances():
+    coords = np.array([(0., 0.), (2., 0.), (3., 2.), (1., 2.), (4., 0.), (5., 2.)])
+    cells = [(0, 1, 2, 3), (1, 4, 5, 2)]
+    normal = assemble_mesh(coords, cells, [0, 0])
+    legacy = assemble_mesh(coords, cells, [0, 0], normal_distances=False)
+    assert normal.face_distances.shape == (1, 2)
+    assert legacy.face_distances is None
+    assert legacy.faces == normal.faces
+    assert legacy.faces[0][3] == pytest.approx(2.)
+    # Bottom edges have a tangential centroid offset of one half-unit.
+    for mesh, expected in [(normal, 1.), (legacy, np.sqrt(1.25))]:
+        bottom = [distance for cell, length, distance in mesh.bfaces
+                  if length == pytest.approx(2.)]
+        assert bottom
+        np.testing.assert_allclose(bottom, expected)
+    # Legacy mode preserves conservation while retaining different weights.
+    mat = replace(ONE_GROUP_DEMO, sigma_a=[0.])
+    op = UnstructuredDiffusionSolver(legacy, [mat], [0, 0],
+                                     alpha_boundary=0., device='cpu').ops[0]
+    np.testing.assert_allclose(op.apply(np.ones(2)), 0., atol=1e-14)
+
+
 def _assert_apply_matches_dense(mesh, cm, mats, alpha):
     solver = UnstructuredDiffusionSolver(mesh, mats, cm, alpha, device="cpu")
     A = _dense_operator(mesh, cm, mats, alpha)

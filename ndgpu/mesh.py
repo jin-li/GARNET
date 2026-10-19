@@ -264,12 +264,18 @@ def read_gmsh(path: str) -> Mesh:
     return assemble_mesh(coords[:, :2], cells, tags)
 
 
-def assemble_mesh(coords, cells, tags) -> Mesh:
+def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
     """Build a Mesh (centroids, areas, interior/boundary faces) from polygons.
 
     coords : (n_nodes, 2) node coordinates. cells : list of node-index tuples.
     tags   : one integer per cell (material/assembly id). A face is a boundary
     face when only one cell borders it.
+
+    ``normal_distances=True`` supplies face-normal interior resistances and
+    boundary distances. False retains the historical centroid-separation
+    interior coupling and Euclidean centroid-to-boundary-midpoint distances.
+    Both are conservative TPFA approximations on skewed interfaces; neither
+    includes a nonorthogonal flux correction.
 
     Nonconforming (locally-refined) interfaces are supported: a one-cell edge
     (i, j) whose midpoint is itself a mesh node m, with the half-edges (i, m)
@@ -343,11 +349,14 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
             i = lst[0]
             tangent = p1 - p0
             normal = np.array([-tangent[1], tangent[0]]) / L
-            db = abs(float(np.dot(centroid[i] - 0.5 * (p0 + p1), normal)))
+            midpoint = 0.5 * (p0 + p1)
+            db = (abs(float(np.dot(centroid[i] - midpoint, normal)))
+                  if normal_distances else float(np.linalg.norm(centroid[i] - midpoint)))
             bfaces.append((i, L, db))
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
                area=area, faces=faces, bfaces=bfaces,
-               face_distances=np.asarray(face_distances).reshape(-1, 2))
+               face_distances=(np.asarray(face_distances).reshape(-1, 2)
+                               if normal_distances else None))
 
 
 # Local face node-orderings per 3D element type, keyed by node count. Orientation

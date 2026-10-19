@@ -40,7 +40,8 @@ def test_local_refinement_adds_fine_cells_in_the_band():
 
 
 def test_hanging_node_refinement_is_consistent():
-    # Consistency of the 2:1 coupling: in a homogeneous medium with vacuum
+    # Regression for the benchmark's historical centroid-distance TPFA
+    # geometry, without a nonorthogonal flux correction. In a medium with vacuum
     # boundaries (so the flux has real curvature and leakage), the locally
     # refined k must converge toward an independent globally fine reference as
     # the base resolution rises. A broken hanging-node coefficient would either
