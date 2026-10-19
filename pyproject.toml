@@ -20,6 +20,7 @@ cuda12-ctk = ["cupy-cuda12x[ctk]>=14"]
 cuda11 = ["cupy-cuda11x"]
 rocm = ["cupy-rocm-7-0==14.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'"]
 test = ["pytest"]
+docs = ["sphinx>=8.1,<9", "myst-parser>=4,<5"]
 # External multiphysics coupling (examples/precice). Optional: the internal
 # CoupledSolver never touches preCICE. NOTE pyprecice is source-only on PyPI
 # and links against the system libprecice; install both from conda-forge if

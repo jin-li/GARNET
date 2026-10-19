@@ -46,3 +46,6 @@ precice-*-convergence.log
 /examples/serpent-xs/**/*.log
 /examples/serpent-xs/**/*.out
 /examples/serpent-xs/**/*.err
+
+# Generated manuals
+/docs/_build/

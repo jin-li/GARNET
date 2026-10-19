@@ -1,0 +1,72 @@
+{
+  "source_commit": "c080c7272cb2244057396e01d74b38f48c4da32b",
+  "source_archive_sha256": "0fe82604a0ac14272953572b29ce82cc71968f3c1b7fe580d63b39b0f7672c60",
+  "probe_sha256": "198401bcf618815b1cfa798e1939cb935ca1a006f6fcbf2ccba6582cff46afc1",
+  "cpu_threads": {
+    "OMP_NUM_THREADS": 1,
+    "OPENBLAS_NUM_THREADS": 1
+  },
+  "scope": "Synthetic backend equivalence and numerical guard checks; no reactor accuracy or performance claim.",
+  "hosts": {
+    "halo": {
+      "device": "AMD Radeon 8060S Graphics",
+      "cupy": "14.2.0",
+      "runtime": 70253211,
+      "device_count": 1,
+      "native_tests": {
+        "passed": 2,
+        "deselected": 20
+      },
+      "comparisons": 10,
+      "max_delta_k": 4.440892098500626e-16,
+      "max_flux_relative_l2": 2.0573004825604863e-14,
+      "max_repaired_actual_balance_gpu": 2.9097013267542185e-10,
+      "event_profile_passed": true,
+      "budget_probe_passed": true,
+      "roundoff_cases_passed": 2,
+      "fp32_transient_gpu_paths": 2,
+      "max_fp32_gpu_owned_eigenbalance": 4.12247963339395e-06,
+      "max_fp32_gpu_step_true_residual": 8.775372345268694e-06,
+      "fp32_gpu_fallbacks": 0,
+      "source_hashes": {
+        "ndgpu/solver.py": "5d8fcfd14e1d99c617fb26004337f8be076bd51069936cf777218396ae5acd8b",
+        "ndgpu/linalg.py": "d0dda4683f7e440406cdbd13875c12deaf1b3cbeebe300c196caa3774fbc7c1e",
+        "ndgpu/coupled_moment_gpu.py": "38e6ffde78cc32112105be43fa888c2f0ad06427124a82f41a59b42691a3bfd2",
+        "ndgpu/mesh.py": "629192ebd6050cf8c31a02d23a28e7794fe6bb105613da2682d681d6521ef35d",
+        "ndgpu/transient.py": "6ca9e093dfb57f28b2be06a8b3be5b32f0b78ab911cc62ec193768ccd20d2294",
+        "examples/validate_rocm.py": "8091415eca48b29afeecb6c38932b2e940da7539a405bf3e52a2a5daaf5cdd7a"
+      }
+    },
+    "550w": {
+      "device": "NVIDIA GeForce RTX 5070 Ti",
+      "cupy": "14.2.0",
+      "runtime": 12090,
+      "device_count": 1,
+      "native_tests": {
+        "passed": 2,
+        "deselected": 20
+      },
+      "comparisons": 10,
+      "max_delta_k": 6.661338147750939e-16,
+      "max_flux_relative_l2": 2.1109461020610512e-14,
+      "max_repaired_actual_balance_gpu": 2.90965736731231e-10,
+      "event_profile_passed": true,
+      "budget_probe_passed": true,
+      "roundoff_cases_passed": 2,
+      "fp32_transient_gpu_paths": 2,
+      "max_fp32_gpu_owned_eigenbalance": 4.051062770214814e-06,
+      "max_fp32_gpu_step_true_residual": 9.867151778335733e-06,
+      "fp32_gpu_fallbacks": 0,
+      "source_hashes": {
+        "ndgpu/solver.py": "5d8fcfd14e1d99c617fb26004337f8be076bd51069936cf777218396ae5acd8b",
+        "ndgpu/linalg.py": "d0dda4683f7e440406cdbd13875c12deaf1b3cbeebe300c196caa3774fbc7c1e",
+        "ndgpu/coupled_moment_gpu.py": "38e6ffde78cc32112105be43fa888c2f0ad06427124a82f41a59b42691a3bfd2",
+        "ndgpu/mesh.py": "629192ebd6050cf8c31a02d23a28e7794fe6bb105613da2682d681d6521ef35d",
+        "ndgpu/transient.py": "6ca9e093dfb57f28b2be06a8b3be5b32f0b78ab911cc62ec193768ccd20d2294",
+        "examples/validate_rocm.py": "8091415eca48b29afeecb6c38932b2e940da7539a405bf3e52a2a5daaf5cdd7a"
+      }
+    }
+  },
+  "source_hashes_match": true,
+  "published_source_equivalence": "The validation source tree c080c727 equals integrate/isonees-manuals at deb0494 before documentation/archive-only updates. Final per-file hashes are rechecked at release."
+}

@@ -32,6 +32,17 @@
             export CUPY_CACHE_DIR="$PWD/.cache/cupy"
           '';
         };
+        docs = pkgs.mkShell {
+          inputsFrom = [ self.devShells.${system}.default ];
+          packages = [ pkgs.gnumake (pkgs.texliveSmall.withPackages (ps: with ps; [
+            latexmk lm capt-of ellipse framed needspace pict2e tabulary titlesec
+            varwidth wrapfig
+          ])) ];
+          shellHook = ''
+            export TEXMFVAR="$PWD/.cache/texmf-var"
+            export TEXMFCONFIG="$PWD/.cache/texmf-config"
+          '';
+        };
         rocm = pkgs.mkShell {
           inputsFrom = [ self.devShells.${system}.default ];
           packages = [ rocmHome rocm.rocminfo rocm.hipcc ];

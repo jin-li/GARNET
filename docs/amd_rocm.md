@@ -122,7 +122,7 @@ validation.
 
 ## Measured on halo, 2026-10-05
 
-The [reviewed report](../benchmark-results/amd-rocm-halo/README.md) records
+The [reviewed report](https://github.com/jin-li/NDgpu/blob/main/benchmark-results/amd-rocm-halo/README.md) records
 actual HIP execution on `gfx1151` with CuPy 14.2.0, ROCm 7.2.3, Python
 3.13.15, NumPy 2.5.3, SciPy 1.18.1 and Linux 7.2.8. All nine required cases
 passed with fusion off and on: the two square resolutions for diffusion,

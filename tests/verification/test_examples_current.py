@@ -68,3 +68,19 @@ def test_hpmr_example_metadata_is_public_and_immutable():
     assert isinstance(HPMR_BE_SITES, tuple) and len(HPMR_BE_SITES) == 12
     assert isinstance(HPMR_DRUM_SITES, tuple) and len(HPMR_DRUM_SITES) == 12
     assert len(hpmr_placeholder_materials()) == 6
+
+
+def test_colab_source_archive_matches_the_checkout():
+    """Notebook uploads must carry the same implementation as the checkout."""
+    from zipfile import ZipFile
+    package = ROOT / "ndgpu"
+    with ZipFile(ROOT / "dist" / "ndgpu-src.zip") as archive:
+        paths = [ROOT / "README.md", ROOT / "pyproject.toml"]
+        paths.extend(sorted(package.rglob("*.py")))
+        paths.extend(sorted(package.rglob("*.npz")))
+        for path in paths:
+            member = path.relative_to(ROOT).as_posix()
+            assert member in archive.namelist(), (
+                member, "missing from Colab archive; run python tools/build_src_zip.py")
+            assert archive.read(member) == path.read_bytes(), (
+                member, "stale Colab archive; run python tools/build_src_zip.py")
