@@ -446,7 +446,7 @@ out the adjoint amplitude mode and forces an early correction.
 full spatial diffusion equations and its precursor history replaces the IQS
 state. Results record residual/fallback times, reasons, predictor disagreement,
 iterations, and phase timings. See
-[the quasi-static acceleration plan](quasistatic_acceleration_plan.md).
+[the quasi-static acceleration plan](https://github.com/jin-li/NDgpu/blob/main/docs/quasistatic_acceleration_plan.md).
 
 Adjoint eigen solves can dominate guarded IQS even when shape correctors are
 inexpensive. `adjoint_every` is a hard maximum number of shape corrections for

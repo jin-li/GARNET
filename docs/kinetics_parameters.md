@@ -129,6 +129,16 @@ original channel values, preserving their sum(beta/lambda), rather than
 first collapsing the channels. These are static reporting reductions;
 they do not replace a missing raw production score.
 
+## Conventional notation
+
+The forward and adjoint fluxes are conventionally denoted $\phi$ and
+$\phi^*$. The implementation computes the matching **discrete NEM diffusion
+adjoint**, including fixed-factor interfaces and complete source recovery.
+The intermediate left eigenvector and recovered dual source weights are not
+point samples of the adjoint flux. See the
+[methodology manual](methodology/nem-adjoint.md) for the conventional equations
+and their relation to the exact discrete contractions below.
+
 ## Matching NEM adjoint and physical projection
 
 ```python

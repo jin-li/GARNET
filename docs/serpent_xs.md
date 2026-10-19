@@ -5,7 +5,7 @@ executing MATLAB or requiring an additional parser package. The initial
 interface supports a fixed-state, homogenized infinite-spectrum diffusion
 eigenvalue problem. It has been validated with the supplied Serpent 2.2.0
 assembly datasets containing 2, 4, 7, 14 and 23 groups.
-The [2-D assembly example](../examples/serpent-xs/fa-2d/README.md) also
+The [2-D assembly example](https://github.com/jin-li/NDgpu/blob/main/examples/serpent-xs/fa-2d/README.md) also
 reconstructs 289 regional four-group materials with exact nonuniform cell
 dimensions and compares CPU/AMD diffusion results against Serpent.
 
@@ -90,7 +90,7 @@ for definitions and generation options.
 
 ## Point-reactor validation
 
-The [example runner](../examples/serpent-xs/point-reactor/README.md) compares
+The [example runner](https://github.com/jin-li/NDgpu/blob/main/examples/serpent-xs/point-reactor/README.md) compares
 each reflective NDgpu solve with an independent dense balance:
 
 ```text
@@ -123,11 +123,21 @@ not warmed performance benchmarks.
 
 ## Scope limits
 
-This release does not interpolate temperature/density branches, process
-depletion history, apply B1 leakage corrections, import discontinuity factors,
-or provide kinetics parameters. It does not validate these constants for
-SPN/SN, transient or thermal-feedback calculations. Higher scattering moments
-may be retained as raw data, but have no transport adapter. Nonzero-leakage
-Serpent references are rejected by the point-reactor runner. Extending the
-interface to those cases requires independent reference calculations and
-explicit conventions for each additional quantity.
+The fixed-state diffusion adapter does not interpolate temperature/density
+branches, process depletion history or apply B1 leakage corrections. Its
+material conversion does not by itself qualify constants for SPN/SN,
+transient or thermal-feedback calculations. The point-reactor runner rejects
+nonzero-leakage references.
+
+Separate explicit interfaces now retain native ADF surface estimates and signed
+higher scattering moments. The experimental native-moment CPU/GPU adapters
+require their own orientation, boundary and residual checks; they are not
+selected automatically by `to_diffusion_material`. See the
+[Serpent and mesh workflow](user/serpent-mesh.md) and
+[methodology](methodology/data-verification.md).
+
+Static kinetics import, raw regional inputs and matching adjoint projections
+are described in [Static kinetics parameters](kinetics_parameters.md).
+Importing global effective quantities is distinct from supplying the regional
+production needed for a deterministic projection. ADF reconstruction and
+reflector treatment are described in the [NEM workflow](user/nem-kinetics.md).

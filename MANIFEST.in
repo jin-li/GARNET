@@ -1,0 +1,6 @@
+include CHANGELOG.md CONTRIBUTING.md
+recursive-include docs *.md *.rst *.py *.txt *.png *.json
+prune docs/_build
+recursive-include examples/isonees_features *.py *.md
+include examples/kinetics/static_nem.py
+recursive-include tests *.py *.md

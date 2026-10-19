@@ -1,5 +1,15 @@
 # NDgpu — GPU-native diffusion, SPN & SDPN neutronics
 
+**Manuals:** [User Manual](docs/user/index.md) ·
+[Software Methodology Manual](docs/methodology/index.md) ·
+[HTML/PDF build instructions](docs/index.md) ·
+[Feature integration inventory](docs/development/integration_inventory.md).
+
+The manuals distinguish supported interfaces from experimental NEM/ADF,
+static NEM kinetics and native-moment/condensation paths. The latter have
+specific CPU/GPU and physics restrictions; consult the capability tables.
+
+
 GPU-native finite-volume reactor physics for structured Cartesian,
 triangular, and triangular-prism grids, with a NumPy CPU fallback that shares
 the same code path. NDgpu is aimed particularly at SPH-corrected full-core
