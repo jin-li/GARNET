@@ -8,11 +8,13 @@ escape hatch: where the structured Cartesian/hex operators need a lattice, this
 one needs only cells, their vertices, and per-cell materials.
 
 The scheme is a cell-centred two-point-flux finite volume: for a face shared by
-cells i and j, the coupling is D_face * A_face / d(centroid_i, centroid_j) with
-A_face the shared face measure (edge length in 2D, polygon area in 3D) and
-D_face the harmonic mean of the cell diffusion coefficients; boundary faces get
-the Robin/albedo term (vacuum alpha = 1/2). The 2D and 3D assemblers produce the
-same face quantities, so the operator and solver below are dimension-agnostic.
+cells i and j, the 2D coupling is A_face / (d_i / D_i + d_j / D_j), where
+d_i and d_j are centroid-to-face distances projected on the face normal.
+This is consistent on orthogonal meshes; skewed interfaces (including hanging
+nodes) retain a conservative TPFA approximation without a nonorthogonal flux
+correction. Legacy/manual and 3D meshes without these distances use the harmonic
+mean coefficient times face measure over centroid separation. Boundary faces
+get the Robin/albedo term (vacuum alpha = 1/2).
 The connectivity is irregular, but
 the within-group operator is still applied matrix-free as a pure *gather*: the
 faces are stored as a row-wise ELLPACK adjacency (each cell's neighbours padded
@@ -34,7 +36,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from .backend import asnumpy, device_name, get_backend, synchronize
-from .linalg import get_linear_solver, neumann_preconditioner
+from .linalg import get_linear_solver, neumann_preconditioner, pcg
+from .stencil import _face_valid, face_alpha
 
 
 _VACUUM_ALPHA = 0.5
@@ -47,6 +50,11 @@ class Mesh:
     ``area`` holds the cell measure (area in 2D, volume in 3D) and each face its
     measure (edge length in 2D, face area in 3D); the two-point-flux operator
     consumes these identically in either dimension.
+
+    ``face_distances``, when provided, stores the normal distance from each
+    face's two cell centroids to its plane, in the same i/j order as ``faces``.
+    Omitting it preserves the harmonic-mean centroid-separation formula used
+    by manual and 3D meshes.
     """
 
     coords: np.ndarray              # (n_nodes, 2) or (n_nodes, 3)
@@ -56,10 +64,168 @@ class Mesh:
     area: np.ndarray                # (n_cells,) cell measure (2D area / 3D volume)
     faces: list                     # (i, j, face_measure, centroid_distance) interior
     bfaces: list                    # (i, face_measure, centroid_to_face_distance) boundary
+    face_distances: np.ndarray | None = None  # (n_faces, 2) normal distances for i, j
 
     @property
     def n_cells(self) -> int:
         return len(self.cells)
+
+
+class MeshGrid:
+    """Shape-preserving finite-volume grid with authoritative boundary classes.
+
+    Fields have shape ``(n_cells, 1, 1)``; these axes are storage only. Boundary
+    conditions are a scalar or a sequence in ``mesh.bfaces`` order. Vacuum
+    faces may represent outer or explicitly exposed void surfaces. No active
+    mask or discontinuity-factor interface is inferred from this facade.
+    """
+
+    geometry = "mesh"
+
+    def __init__(self, mesh: Mesh, boundary_conditions="vacuum"):
+        self.mesh = mesh
+        self.shape = (mesh.n_cells, 1, 1)
+        self.n_cells = mesh.n_cells
+        self.integration_weights = np.asarray(mesh.area, dtype=float).reshape(self.shape)
+        if self.n_cells < 1 or not np.all(np.isfinite(self.integration_weights)) or np.any(self.integration_weights <= 0):
+            raise ValueError("mesh cell volumes must be finite and positive")
+        for faces, interior in ((mesh.faces, True), (mesh.bfaces, False)):
+            for face in faces:
+                owners = face[:2] if interior else face[:1]
+                if any(int(c) != c or c < 0 or c >= self.n_cells for c in owners):
+                    raise ValueError("mesh face has an invalid cell owner")
+                if interior and owners[0] == owners[1]:
+                    raise ValueError("interior face must join different cells")
+                if any(not np.isfinite(x) or x <= 0 for x in face[2 if interior else 1:]):
+                    raise ValueError("mesh face measures and distances must be finite and positive")
+        if mesh.face_distances is not None:
+            distances = np.asarray(mesh.face_distances)
+            if distances.shape != (len(mesh.faces), 2) or not np.all(np.isfinite(distances)) or np.any(distances <= 0):
+                raise ValueError("face_distances must be positive with shape (n_faces, 2)")
+        self.boundary_conditions = self.classify_boundary(boundary_conditions)
+
+    def classify_boundary(self, bc=None):
+        """Resolve exactly one boundary class for each physical boundary face."""
+        if bc is None:
+            return self.boundary_conditions
+        if isinstance(bc, (str, int, float, np.number)):
+            specs = [bc] * len(self.mesh.bfaces)
+        else:
+            specs = list(bc)
+            if len(specs) != len(self.mesh.bfaces):
+                raise ValueError("mesh boundary_conditions must have one entry per boundary face")
+        result = tuple(_face_valid(s) for s in specs)
+        if any(np.isnan(face_alpha(s)) for s in result):
+            raise ValueError("mesh boundary coefficients must not be NaN")
+        return result
+
+    def moment_boundary_conditions(self, bc=None, strip_vacuum=False):
+        specs = self.classify_boundary(bc)
+        return tuple("reflective" if strip_vacuum and s == "vacuum" else s for s in specs)
+
+    def boundary_blocks(self, xp, bc, D_list, g, boundary_df=None):
+        """Integrated Marshak loss, summed on host by unique cell owner.
+
+        Trace elimination uses the same geometric normal distance for every
+        moment: ``K = S f G solve(diag(D/d) + f G, diag(D/d))``.
+        The optional positive scalar factor corrects every moment trace alike.
+        Aggregating before
+        device indexing avoids repeated-index scatter loss on GPU backends.
+        """
+        specs = self.classify_boundary(bc)
+        M = len(D_list)
+        D = [asnumpy(d).reshape(-1) for d in D_list]
+        gm = np.asarray(g, dtype=D[0].dtype)
+        factors = _mesh_df(boundary_df, (len(self.mesh.bfaces),), "moment_boundary_df")
+        blocks = {}
+        for (owner, measure, distance), spec, factor in zip(self.mesh.bfaces, specs, factors):
+            owner = int(owner)  # validated integer-like mesh identifiers
+            if spec != "vacuum":
+                continue
+            A = np.diag([d[owner] / distance for d in D])
+            fg = factor * gm
+            K = measure * fg @ np.linalg.solve(A + fg, A)
+            blocks[owner] = blocks.get(owner, np.zeros((M, M), dtype=gm.dtype)) + K
+        if not blocks:
+            return []
+        owners = np.asarray(sorted(blocks), dtype=np.int32)
+        sl = (xp.asarray(owners), 0, 0)
+        return [(sl, xp.asarray(np.stack([blocks[c] for c in owners]))) ]
+
+
+def _mesh_df(value, shape, name):
+    """Validate scalar diffusion factors on host, including empty face lists."""
+    factors = np.ones(shape) if value is None else np.asarray(asnumpy(value), dtype=float)
+    if factors.shape != shape or not np.all(np.isfinite(factors)) or np.any(factors <= 0):
+        raise ValueError(f"{name} must be finite positive factors with shape {shape}")
+    return factors
+
+
+class MeshGroupOperator:
+    """Integrated conservative TPFA loss with density-valued coefficients.
+
+    Reactions and the RHS carry the cell volume exactly once. On orthogonal
+    faces the resistance is ``d_i/D_i + d_j/D_j``; legacy geometry without
+    normal distances splits the centroid separation equally (d/2 per side),
+    retaining harmonic-centroid TPFA for unit factors. Scalar face factors
+    enforce continuity of the corrected trace f*phi; the same face current
+    enters the two rows with opposite signs. At a boundary the corrected trace
+    is f_B*phi_surface; eliminating it gives S*alpha*f_B*D/(D+alpha*f_B*d).
+    Reflective leakage is zero and the zero-flux limit is S*D/d.
+    ``apply`` and ``diag``
+    preserve the facade shape used by the shared moment and eigen drivers.
+    """
+
+    def __init__(self, xp, grid, D, removal, bc=None, active=None,
+                 mask_bc="vacuum", symmetric=True, face_df=None, boundary_df=None):
+        if active is not None:
+            raise ValueError("mesh active masks are unsupported; expose boundary faces explicitly")
+        if not symmetric:
+            raise ValueError("mesh operators use the integrated symmetric form")
+        self.xp = xp
+        self.grid = grid
+        mesh = grid.mesh
+        n = grid.n_cells
+        Dh = asnumpy(D).reshape(-1)
+        rh = asnumpy(removal).reshape(-1)
+        if Dh.size != n or rh.size != n or not np.all(np.isfinite(Dh)) or np.any(Dh <= 0):
+            raise ValueError("mesh diffusion must have one finite positive value per cell")
+        fi = np.asarray([f[0] for f in mesh.faces], dtype=np.int64)
+        fj = np.asarray([f[1] for f in mesh.faces], dtype=np.int64)
+        measure = np.asarray([f[2] for f in mesh.faces])
+        factors = _mesh_df(face_df, (len(mesh.faces), 2), "face_df")
+        bfactors = _mesh_df(boundary_df, (len(mesh.bfaces),), "boundary_df")
+        if mesh.face_distances is None:
+            distance = np.asarray([f[3] for f in mesh.faces])
+            distances = np.column_stack((distance / 2, distance / 2))
+        else:
+            distances = np.asarray(mesh.face_distances)
+        weights = measure / (factors[:, 0] * distances[:, 0] / Dh[fi]
+                             + factors[:, 1] * distances[:, 1] / Dh[fj])
+        if mesh.face_distances is None and np.all(factors == 1):
+            # Preserve the historical harmonic expression and roundoff.
+            weights = measure * 2 * Dh[fi] * Dh[fj] / ((Dh[fi] + Dh[fj]) * distance)
+        left, right = weights * factors[:, 0], weights * factors[:, 1]
+        self.symmetric = bool(np.array_equal(left, right))
+        nbr, fmap = _build_ell(fi, fj, n)
+        # A sentinel handles one-cell and other meshes with no interior faces.
+        safe = np.where(fmap >= 0, fmap, len(weights))
+        owner_left = np.arange(n)[None, :] == np.append(fi, -1)[safe]
+        well = np.where(owner_left, np.append(right, 0)[safe], np.append(left, 0)[safe])
+        diag = rh * mesh.area + np.bincount(fi, weights=left, minlength=n) + np.bincount(fj, weights=right, minlength=n)
+        for (owner, area, distance), spec, factor in zip(mesh.bfaces, grid.classify_boundary(bc), bfactors):
+            owner = int(owner)  # validated integer-like mesh identifiers
+            alpha = face_alpha(spec)
+            diag[owner] += (area * Dh[owner] / distance if np.isinf(alpha)
+                            else area * alpha * factor * Dh[owner] / (distance * alpha * factor + Dh[owner]))
+        self._flat = _MeshGroupOperator(xp, xp.asarray(nbr, dtype=np.int32),
+                                        xp.asarray(well, dtype=D.dtype), xp.asarray(diag, dtype=D.dtype))
+        self.diag = self._flat.diag.reshape(grid.shape)
+        self.inv_diag = 1 / self.diag
+        self.rhs_weight = xp.asarray(grid.integration_weights, dtype=D.dtype)
+
+    def apply(self, phi):
+        return self._flat.apply(phi.reshape(-1)).reshape(self.grid.shape)
 
 
 # Gmsh element type -> node count, split by dimension.
@@ -140,7 +306,17 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
     def dist(a, b):
         return float(np.hypot(*(centroid[a] - centroid[b])))
 
-    faces, bfaces, consumed = [], [], set()
+    faces, face_distances, bfaces, consumed = [], [], [], set()
+
+    def add_face(i, j, edge):
+        p0, p1 = coords[list(edge)]
+        tangent = p1 - p0
+        L = float(np.hypot(*tangent))
+        normal = np.array([-tangent[1], tangent[0]]) / L
+        midpoint = 0.5 * (p0 + p1)
+        faces.append((i, j, L, dist(i, j)))
+        face_distances.append((abs(float(np.dot(centroid[i] - midpoint, normal))),
+                               abs(float(np.dot(centroid[j] - midpoint, normal)))))
     for e, ci in one_cell.items():
         if e in consumed:
             continue
@@ -152,8 +328,7 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
         if e1 in one_cell and e2 in one_cell:      # coarse edge over two fine cells
             for half in (e1, e2):
                 cj = one_cell[half]
-                L = float(np.hypot(*(coords[half[0]] - coords[half[1]])))
-                faces.append((ci, cj, L, dist(ci, cj)))
+                add_face(ci, cj, half)
             consumed.update((e, e1, e2))
 
     for e, lst in edge_cells.items():
@@ -163,13 +338,16 @@ def assemble_mesh(coords, cells, tags) -> Mesh:
         L = float(np.hypot(*(p1 - p0)))
         if len(lst) == 2:
             i, j = lst
-            faces.append((i, j, L, dist(i, j)))
+            add_face(i, j, e)
         else:
             i = lst[0]
-            db = float(np.hypot(*(centroid[i] - 0.5 * (p0 + p1))))
+            tangent = p1 - p0
+            normal = np.array([-tangent[1], tangent[0]]) / L
+            db = abs(float(np.dot(centroid[i] - 0.5 * (p0 + p1), normal)))
             bfaces.append((i, L, db))
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
-               area=area, faces=faces, bfaces=bfaces)
+               area=area, faces=faces, bfaces=bfaces,
+               face_distances=np.asarray(face_distances).reshape(-1, 2))
 
 
 # Local face node-orderings per 3D element type, keyed by node count. Orientation
@@ -215,7 +393,7 @@ def _cell_volume_centroid_3d(cell_pts, faces_local):
     return vtot, (csum / vtot if vtot > 0 else g)
 
 
-def assemble_mesh_3d(coords, cells, tags) -> Mesh:
+def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
     """Build a 3D Mesh (volumes, centroids, interior/boundary faces) from cells.
 
     coords : (n_nodes, 3) node coordinates. cells : list of node-index tuples,
@@ -228,6 +406,9 @@ def assemble_mesh_3d(coords, cells, tags) -> Mesh:
     does -- so `Mesh.area` holds the cell *volume* and each face its *area* and
     centroid-to-centroid (or centroid-to-face) distance -- and drives the exact
     same operator and solver.
+
+    ``normal_distances=True`` supplies face-normal interior resistances and
+    normal boundary distances. The default retains legacy centroid distances.
     """
     coords = np.asarray(coords, dtype=float)
     cells = [tuple(c) for c in cells]
@@ -249,22 +430,30 @@ def assemble_mesh_3d(coords, cells, tags) -> Mesh:
     def dist(a, b):
         return float(np.linalg.norm(centroid[a] - centroid[b]))
 
-    faces, bfaces = [], []
+    faces, face_distances, bfaces = [], [], []
     for lst in face_cells.values():
         gface = lst[0][1]
         A, fcent = _poly_area_centroid_3d(coords[list(gface)])
+        fp = coords[list(gface)]
+        normal = np.cross(fp[1] - fp[0], fp[2] - fp[0])
+        normal /= np.linalg.norm(normal)
         if len(lst) == 2:
             i, j = lst[0][0], lst[1][0]
             faces.append((i, j, A, dist(i, j)))
+            face_distances.append((abs(float(np.dot(centroid[i] - fcent, normal))),
+                                   abs(float(np.dot(centroid[j] - fcent, normal)))))
         elif len(lst) == 1:
             i = lst[0][0]
-            db = float(np.linalg.norm(centroid[i] - fcent))
+            db = (abs(float(np.dot(centroid[i] - fcent, normal))) if normal_distances
+                  else float(np.linalg.norm(centroid[i] - fcent)))
             bfaces.append((i, A, db))
         else:
             raise ValueError(f"face {lst[0][1]} is shared by {len(lst)} cells "
                              "(non-manifold or non-conforming mesh)")
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags),
-                centroid=centroid, area=volume, faces=faces, bfaces=bfaces)
+                centroid=centroid, area=volume, faces=faces, bfaces=bfaces,
+                face_distances=(np.asarray(face_distances).reshape(-1, 2)
+                                if normal_distances else None))
 
 
 @dataclass
@@ -322,9 +511,9 @@ class _MeshGroupOperator:
     pure *gather*: for every cell read its neighbours' flux and combine with the
     per-slot weights, ``A phi = diag*phi - sum_s w[s]*phi[nbr[s]]``. No scatter,
     so no GPU atomics and the write is coalesced. The assembled operator --
-    volume-integrated harmonic-mean two-point-flux leakage, plus removal and the
-    Robin boundary term on the diagonal -- is symmetric and diagonally dominant,
-    hence SPD, so CG converges.
+    volume-integrated resistance-weighted two-point-flux leakage, plus removal and the
+    Robin boundary term on the diagonal -- is symmetric for equal face-side
+    factors. Unequal scalar factors produce a conservative nonsymmetric matrix.
     """
 
     def __init__(self, xp, nbr, w_ell, diag):
@@ -350,23 +539,33 @@ class UnstructuredDiffusionSolver:
     precond_degree : Neumann-polynomial preconditioner degree for the inner CG
                      (0 = plain Jacobi, the default), as on the structured
                      solvers.
-    linear_solver  : "cg" (default), "gmres", or "bicgstab", as on the
-                     structured solvers.
+    face_df        : optional (G,n_interior_faces,2) corrected trace factors.
+    boundary_df    : optional (G,n_boundary_faces) corrected trace factors.
+    linear_solver  : None (CG for equal factors, BiCGSTAB for unequal factors),
+                     "cg", "gmres", or "bicgstab".
     """
 
     def __init__(self, mesh: Mesh, materials, cell_material,
                  alpha_boundary=_VACUUM_ALPHA, device="auto",
-                 precond_degree=0, dtype=np.float64, linear_solver="cg"):
+                 precond_degree=0, dtype=np.float64, linear_solver=None,
+                 face_df=None, boundary_df=None):
         self.xp = xp = get_backend(device)
         self.device = device_name(xp)
         self.dtype = dtype
-        self._linsolve = get_linear_solver(linear_solver)
         self.mesh = mesh
         self.mats = list(materials)
         self.cm = cm = np.asarray(cell_material)
         self.alpha = float(alpha_boundary)
         self.G = G = self.mats[0].n_groups
         n = mesh.n_cells
+        use_df = face_df is not None or boundary_df is not None
+        self.face_df = _mesh_df(face_df, (G, len(mesh.faces), 2), "face_df")
+        self.boundary_df = _mesh_df(boundary_df, (G, len(mesh.bfaces)), "boundary_df")
+        nonsymmetric = np.any(self.face_df[..., 0] != self.face_df[..., 1])
+        self._linsolve = get_linear_solver(linear_solver or ("bicgstab" if nonsymmetric else "cg"))
+        if nonsymmetric and self._linsolve is pcg:
+            raise ValueError("CG cannot solve a nonsymmetric mesh diffusion DF operator; use bicgstab or gmres")
+        df_grid = MeshGrid(mesh, self.alpha) if use_df else None
 
         area = np.asarray(mesh.area, dtype=dtype)
         D = [np.array([self.mats[m].diffusion[g] for m in cm], dtype=dtype) for g in range(G)]
@@ -377,6 +576,11 @@ class UnstructuredDiffusionSolver:
         fj = np.array([f[1] for f in mesh.faces], dtype=np.int64)
         fL = np.array([f[2] for f in mesh.faces], dtype=dtype)
         fd = np.array([f[3] for f in mesh.faces], dtype=dtype)
+        face_distances = None
+        if mesh.face_distances is not None:
+            face_distances = np.asarray(mesh.face_distances, dtype=dtype)
+            if face_distances.shape != (len(mesh.faces), 2):
+                raise ValueError("face_distances must have shape (n_faces, 2)")
         bi = np.array([b[0] for b in mesh.bfaces], dtype=np.int64)
         bL = np.array([b[1] for b in mesh.bfaces], dtype=dtype)
         bd = np.array([b[2] for b in mesh.bfaces], dtype=dtype)
@@ -388,11 +592,20 @@ class UnstructuredDiffusionSolver:
 
         self.ops = []
         for g in range(G):
+            if use_df:
+                op = MeshGroupOperator(xp, df_grid, xp.asarray(D[g]), xp.asarray(removal[g]),
+                                       face_df=self.face_df[g], boundary_df=self.boundary_df[g])
+                op._flat.symmetric = op.symmetric
+                self.ops.append(op._flat)
+                continue
             Dg = D[g]
             Di, Dj = Dg[fi], Dg[fj]
-            face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd       # harmonic-mean coupling
+            if face_distances is None:
+                face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd
+            else:
+                face_w = fL / (face_distances[:, 0] / Di + face_distances[:, 1] / Dj)
             # per-slot weights (0 where padded); diag from the same face weights.
-            w_ell = np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
+            w_ell = np.append(face_w, 0.0)[np.where(fmap >= 0, fpad, len(face_w))].astype(dtype)
             diag = removal[g] * area
             diag = diag + np.bincount(fi, weights=face_w, minlength=n)
             diag = diag + np.bincount(fj, weights=face_w, minlength=n)

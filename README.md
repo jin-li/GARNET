@@ -179,6 +179,9 @@ unsuccessfully unless actual AMD arrays and the required numerical checks pass.
 
 ## Documentation
 
+- **[Serpent fixed-state XS interface](docs/serpent_xs.md)** — safe results-file
+  import, CPU/AMD point-reactor checks for 2–23 energy groups, and reflective
+  2-D assembly validation with regional cross sections.
 - **[Development findings and priorities](docs/development_assessments.md)** —
   NixOS and GPU validation, branch libraries and Serpent/CASMO5 interfaces,
   thermal-hydraulics coupling, discontinuity factors and performance limits.
@@ -280,6 +283,76 @@ core = (ndgpu.HexLattice(pitch=20, refine=4)
 core.steady(method="sp3", device="gpu")
 core.transient(t_end=1.0, dt=0.02, device="gpu")
 ```
+
+For steady calculations on the same exact-interface finite-volume mesh,
+`MeshDiffusionEigenSolver`, `MeshSP3EigenSolver`, and `MeshSDP1EigenSolver`
+share conservative face currents and volume-integrated reactions. For example,
+with an assembled `mesh`, a material list, and one material index per cell:
+
+```python
+solver = ndgpu.MeshSP3EigenSolver(
+    mesh, materials, cell_material,
+    boundary_conditions="vacuum", marshak_vacuum=True, device="gpu")
+result = solver.solve(tol_k=1e-10, tol_source=1e-9)
+# Storage axes after the cell index are singleton axes.
+cell_flux = ndgpu.asnumpy(result.flux).reshape(len(materials[0].diffusion), mesh.n_cells)
+```
+
+Pass a boundary-class sequence in `mesh.bfaces` order for mixed boundaries.
+Use `marshak_vacuum=True` for the coupled SPN/SDPN vacuum law; the moment
+solvers otherwise use scalar Robin conditions. For orthogonal 3D meshes,
+`assemble_mesh_3d(..., normal_distances=True)` records the face-normal
+resistances explicitly. General skew meshes retain the two-point-flux
+approximation. Source normalization uses the volume-mean fission density.
+The mesh moment API supports steady calculations; masks, adjoints and
+symmetrizing SDP3 congruence are rejected. Moment factors require the explicit
+order-1 interface convention described below.
+`MeshSPNEigenSolver(order=...)` and `MeshSDPNEigenSolver(order=...)` expose
+higher orders with the same stated restrictions.
+
+Scalar diffusion also accepts `face_df` with shape `(G, n_faces, 2)` and
+`boundary_df` with shape `(G, n_boundary_faces)`. Factors enforce continuity of
+the corrected face trace while preserving opposite integrated currents.
+Unequal factors automatically select BiCGSTAB; explicit CG is rejected.
+Boundary factors correct the trace in the Robin law. Apply factors at original
+XS node interfaces and use unity on artificial interfaces within one node;
+the solver does not infer this mapping. Both arrays default to unity.
+
+`SerpentXSRecord.adf_estimate(...)` preserves native four-/six-face estimates,
+including signed inward-positive integrated net currents. The auxiliary
+`ndgpu.serpent_adf.cuboid_flat_source_factors(...)` reconstructs homogeneous
+face means from node-average flux and six currents, using uniform within-group
+source and uniform current density on each face. It checks continuous-field
+positivity and accepts an uncertainty margin. These are explicit reconstruction
+closures: nominal factors are not automatically qualified for production or
+transfer to another state. No XS or eigenvalues are fitted.
+
+Mesh SP3 and SDP1 additionally offer an explicit experimental corrected-trace
+interface:
+
+```python
+solver = ndgpu.MeshSP3EigenSolver(
+    mesh, materials, cell_material, device="gpu",
+    boundary_conditions="vacuum", marshak_vacuum=True,
+    moment_df_model="common_trace",
+    moment_face_df=face_factors,       # (G, n_faces, 2)
+    moment_boundary_df=boundary_factors)  # (G, n_boundary_faces)
+```
+
+A common positive scalar factor corrects all stored moment traces. Both arrays
+default to unity. Unequal interface factors select BiCGSTAB automatically;
+explicit CG is rejected. The coupled Marshak trace is eliminated with the
+factor inside the boundary equations. Reflective and zero-flux boundaries are
+supported; vacuum requires `marshak_vacuum=True`, and numeric Robin boundaries
+are excluded. Higher orders retain the moment-factor gate.
+
+This API verifies an operator convention. It does not convert Serpent scalar
+DFs into physically qualified SP3 EPDFs or SDP1 factors. That requires a
+separate justified factor-generation method and uncertainty qualification.
+The mesh canonical order-1 state has scalar flux `U[0] - (2/3)*U[1]`; optional
+SDP similarity uses the operator's transformed flux weights. A common factor
+commutes with this basis change. Keep factors at original XS interfaces and
+use unity on artificial subcell interfaces.
 
 A `Model` also runs **transients**. It solves the steady state first (its
 eigenvalue `k0` normalises the fission source, so an unperturbed run stays at

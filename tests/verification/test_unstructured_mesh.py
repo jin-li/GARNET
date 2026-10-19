@@ -7,6 +7,8 @@ boundaries must give k = k_inf regardless of geometry. The VVER-440 Gmsh-mesh
 validation lives in tests/validation/test_vver440.py.
 """
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -119,14 +121,86 @@ def _dense_operator(mesh, cm, mats, alpha):
     n = mesh.n_cells
     D = np.array([mats[m].diffusion[0] for m in cm])
     A = np.zeros((n, n))
-    for i, j, L, d in mesh.faces:
-        w = 2.0 * D[i] * D[j] / (D[i] + D[j]) * L / d
+    for face_index, (i, j, L, d) in enumerate(mesh.faces):
+        if mesh.face_distances is None:
+            w = 2.0 * D[i] * D[j] / (D[i] + D[j]) * L / d
+        else:
+            di, dj = mesh.face_distances[face_index]
+            w = L / (di / D[i] + dj / D[j])
         A[i, i] += w; A[j, j] += w
         A[i, j] -= w; A[j, i] -= w
     for i, L, db in mesh.bfaces:
         A[i, i] += alpha * D[i] * L / (db * alpha + D[i])
     A[np.diag_indices(n)] += np.array([mats[m].removal[0] for m in cm]) * mesh.area
     return A
+
+
+def _two_rectangles(widths, height=3.0):
+    left, right = widths
+    coords = [(0, 0), (left, 0), (left + right, 0),
+              (0, height), (left, height), (left + right, height)]
+    return assemble_mesh(coords, [(0, 1, 4, 3), (1, 2, 5, 4)], [0, 1])
+
+
+@pytest.mark.parametrize("widths,diffusion", [
+    ((1.2618, 1.30215), (0.1, 10.0)),
+    ((1.0, 4.0), (0.1, 10.0)),
+    ((1.0, 4.0), (2.0, 2.0)),
+    ((2.0, 2.0), (0.1, 10.0)),
+])
+def test_rectangular_interface_exact_resistance(widths, diffusion):
+    mesh = _two_rectangles(widths)
+    mats = [replace(ONE_GROUP_DEMO, diffusion=[D], sigma_a=[0.0]) for D in diffusion]
+    op = UnstructuredDiffusionSolver(mesh, mats, [0, 1],
+                                     alpha_boundary=0, device="cpu").ops[0]
+    expected = 3.0 / (widths[0] / (2 * diffusion[0]) + widths[1] / (2 * diffusion[1]))
+    if widths[0] == widths[1] or diffusion[0] == diffusion[1]:
+        harmonic = 2 * diffusion[0] * diffusion[1] / sum(diffusion)
+        assert expected == pytest.approx(harmonic * 3.0 / (sum(widths) / 2))
+    np.testing.assert_allclose(mesh.face_distances, [np.array(widths) / 2])
+    # Independent series-resistance solution; the same face current leaves one
+    # cell and enters the other, and a constant flux produces zero leakage.
+    matrix = np.column_stack([op.apply(e) for e in np.eye(2)])
+    np.testing.assert_allclose(matrix, expected * np.array([[1, -1], [-1, 1]]))
+    np.testing.assert_allclose(op.apply(np.ones(2)), 0, atol=1e-14)
+    np.testing.assert_allclose(op.apply(np.array([0.7, 2.3])).sum(), 0, atol=1e-14)
+
+
+def test_manual_mesh_without_face_distances_preserves_legacy_coupling():
+    mesh = replace(_two_rectangles((1.0, 4.0)), face_distances=None)
+    mats = [replace(ONE_GROUP_DEMO, diffusion=[D]) for D in (0.1, 10.0)]
+    _assert_apply_matches_dense(mesh, [0, 1], mats, 0.5)
+    op = UnstructuredDiffusionSolver(mesh, mats, [0, 1], device="cpu").ops[0]
+    expected = (2 * 0.1 * 10 / (0.1 + 10)) * 3 / 2.5
+    assert op.apply(np.array([0.0, 1.0]))[0] == pytest.approx(-expected)
+
+
+def test_hanging_faces_use_normal_projected_distances():
+    # A width-2 coarse cell meets two width-1 fine cells: their tangential
+    # centroid offsets must not enter the normal material resistance.
+    mesh = assemble_mesh(
+        [(0, 0), (2, 0), (2, 2), (0, 2), (2, 1), (3, 0), (3, 1), (3, 2)],
+        [(0, 1, 2, 3), (1, 5, 6, 4), (4, 6, 7, 2)], [0, 1, 1])
+    assert len(mesh.faces) == 3
+    mats = [replace(ONE_GROUP_DEMO, diffusion=[D], sigma_a=[0]) for D in (0.1, 10)]
+    op = UnstructuredDiffusionSolver(mesh, mats, [0, 1, 1],
+                                     alpha_boundary=0, device="cpu").ops[0]
+    for k, (i, j, L, d) in enumerate(mesh.faces):
+        if i == 0:
+            np.testing.assert_allclose(mesh.face_distances[k], [1.0, 0.5])
+            assert d > 1.5  # tangential offset increases Euclidean separation
+            unit = np.eye(3)[j]
+            assert op.apply(unit)[i] == pytest.approx(-L / (1.0 / 0.1 + 0.5 / 10))
+    np.testing.assert_allclose(op.apply(np.ones(3)), 0, atol=1e-14)
+
+
+def test_face_distances_project_on_rotated_normal():
+    mesh = _two_rectangles((1.0, 4.0))
+    angle = 0.37
+    rotation = np.array([[np.cos(angle), -np.sin(angle)],
+                         [np.sin(angle), np.cos(angle)]])
+    rotated = assemble_mesh(mesh.coords @ rotation.T, mesh.cells, mesh.cell_tag)
+    np.testing.assert_allclose(rotated.face_distances, mesh.face_distances)
 
 
 def _assert_apply_matches_dense(mesh, cm, mats, alpha):
@@ -173,6 +247,7 @@ def test_3d_cell_volumes_and_faces():
     # A 2x2x2 grid of unit hexes: each volume 1, total 8, and the six outer
     # sides carry 4 boundary faces each (24), the rest interior.
     mesh = _hex_grid(2, 2, 2, 2.0, 2.0, 2.0)
+    assert mesh.face_distances is None
     assert mesh.n_cells == 8
     assert np.allclose(mesh.area, 1.0)
     assert mesh.area.sum() == pytest.approx(8.0)
