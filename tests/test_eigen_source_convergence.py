@@ -1,8 +1,9 @@
 """Current-state balance and independent dense eigenvalue references."""
 import numpy as np
 import pytest
+from types import SimpleNamespace
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver,
+from ndgpu import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver, SP5EigenSolver,
                    SDP1EigenSolver, MeshDiffusionEigenSolver)
 from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
 from ndgpu import solver as solver_module
@@ -268,3 +269,137 @@ def test_scalar_trace_roundoff_guard_preserves_values(monkeypatch, negative, acc
     else:
         assert result.scalar_flux_min < -result.scalar_flux_negative_tolerance
         assert result.failure_reason == 'nonphysical fixed-source iterate'
+
+
+@pytest.mark.parametrize('adjoint', [False, True])
+def test_masked_source_inherits_scalar_roundoff_without_clipping(monkeypatch, adjoint):
+    active = np.ones((3, 1, 1), dtype=bool)
+    active[-1] = False
+    mat = Material(diffusion=[1.], sigma_a=[.2], nu_sigma_f=[.2])
+    solver = DiffusionEigenSolver(Grid(active.shape, (3., 1., 1.)), mat,
+                                 active=active, device='cpu')
+    original_phi = solver._phi
+
+    def rounded_trace(state):
+        phi = original_phi(state).copy()
+        phi[-1] = -1e-16
+        return phi
+
+    monkeypatch.setattr(solver, '_phi', rounded_trace)
+    state0 = None
+    for _ in range(2):
+        result = solver.solve(adjoint=adjoint, state0=state0,
+                              tol_k=1e-10, tol_source=1e-9)
+        assert result.converged and result.balance_error < 1e-9
+        assert result.scalar_flux_min >= -result.scalar_flux_negative_tolerance
+        assert np.all(result.flux[:, -1] == -1e-16)
+        assert actual_balance(solver, result, adjoint=adjoint) < 1e-9
+        state0 = solver.state
+
+    # The propagated source bound must never admit a nonphysical trace.
+    def invalid_trace(state):
+        phi = original_phi(state).copy()
+        phi[-1] = -1e-4
+        return phi
+    monkeypatch.setattr(solver, '_phi', invalid_trace)
+    with pytest.raises(RuntimeError, match='initial fission source'):
+        solver.solve(adjoint=adjoint)
+
+
+def slow_scattering_material():
+    return Material(diffusion=[1., .5, .3], sigma_a=[.003, .004, .002],
+                    nu_sigma_f=[.004, .002, .001], chi=[.6, .3, .1],
+                    sigma_s=[[0., .3, .1], [.2, 0., .4], [.3, .2, 0.]],
+                    total=[1., 1., 1.])
+
+
+@pytest.mark.parametrize('budget', [2, 100])
+def test_many_group_fixed_source_matches_independent_dense_solve(budget):
+    mesh, mat = small_masked_mesh(), slow_scattering_material()
+    loss, fission = dense_pencil(mesh, mat)
+    direct = np.linalg.solve(loss, fission @ np.ones(3 * mesh.n_cells))
+    production = mat.nu_sigma_f @ direct.reshape(3, mesh.n_cells)
+    total = np.dot(mesh.area, production)
+    expected = direct * (mesh.area.sum() / total)
+    solver = MeshDiffusionEigenSolver(mesh, mat, bc='vacuum', device='cpu')
+    result = solver.solve(max_outer=1, max_group_sweeps=budget, k_guess=1.234)
+    assert not result.converged
+    if budget == 2:
+        assert result.fixed_source_error > result.fixed_source_tolerance
+        assert result.k_eff == 1.234 and result.k_history == []
+        assert result.failure_reason == 'fixed-source group budget exhausted before requested balance'
+    else:
+        assert result.fixed_source_error <= result.fixed_source_tolerance
+        assert len(result.k_history) == 1
+        assert result.k_eff == pytest.approx(
+            total / (mesh.area.sum() * mat.nu_sigma_f.sum()), rel=2e-10)
+        np.testing.assert_allclose(result.flux_numpy.ravel(), expected,
+                                   rtol=2e-10, atol=2e-10)
+
+
+@pytest.mark.parametrize('cls', [DiffusionEigenSolver, SP3EigenSolver, SDP1EigenSolver])
+@pytest.mark.parametrize('adjoint', [False, True])
+def test_many_group_krylov_preserves_moment_and_adjoint_equations(cls, adjoint):
+    mat = slow_scattering_material()
+    loss = np.diag(mat.removal) - mat.sigma_s.T
+    fission = np.outer(mat.chi, mat.nu_sigma_f)
+    truth = np.linalg.eigvals(np.linalg.solve(loss, fission)).real.max()
+    solver = cls(Grid((3, 2, 1), (9., 7., 3.)), mat,
+                 bc='reflective', device='cpu')
+    result = solver.solve(adjoint=adjoint, tol_k=1e-10, tol_source=1e-9)
+    assert result.converged and observed_positive(result)
+    assert result.k_eff == pytest.approx(truth, abs=1e-9)
+    assert actual_balance(solver, result, adjoint=adjoint) < 1e-9
+    warm = solver.solve(adjoint=adjoint, state0=solver.state,
+                        tol_k=1e-10, tol_source=1e-9)
+    assert warm.converged and warm.k_eff == pytest.approx(truth, abs=1e-9)
+
+
+def test_many_group_krylov_nonconstant_sp5_forward_and_adjoint():
+    solver = SP5EigenSolver(Grid((3, 2, 1), (9., 7., 3.)),
+                           slow_scattering_material(), bc='vacuum', device='cpu')
+    forward = solver.solve(tol_k=1e-10, tol_source=1e-9)
+    assert forward.converged and actual_balance(solver, forward) < 1e-9
+    assert any(np.max(np.abs(state[1:])) > 1e-8 for state in solver.state)
+    assert np.ptp(forward.flux_numpy) > 1e-6
+    adjoint = solver.solve(adjoint=True, tol_k=1e-10, tol_source=1e-9)
+    assert adjoint.converged and actual_balance(solver, adjoint, adjoint=True) < 1e-9
+    assert adjoint.k_eff == pytest.approx(forward.k_eff, abs=1e-9)
+
+
+@pytest.mark.parametrize('block_mib,expected', [(1, 30), (8, 6), (16, 0)])
+def test_fixed_source_krylov_restart_bounds_full_moment_storage(block_mib, expected):
+    state = [SimpleNamespace(nbytes=block_mib * 1024**2 // 3)] * 3
+    restart = solver_module._fixed_source_krylov_restart(np, state, 99)
+    assert restart == expected
+    if restart:
+        assert (2 * restart + 20) * sum(v.nbytes for v in state) <= 256 * 1024**2
+    assert solver_module._fixed_source_krylov_restart(np, state, 1) == 0
+
+
+def test_fixed_source_krylov_device_budget_and_unavailable_query():
+    state = [SimpleNamespace(nbytes=1024**2)]
+    device = SimpleNamespace(mem_info=(256 * 1024**2, 1024**3))
+    backend = SimpleNamespace(cuda=SimpleNamespace(Device=lambda: device))
+    assert solver_module._fixed_source_krylov_restart(backend, state, 99) == 6
+    device.mem_info = (8 * 1024**2, 1024**3)
+    assert solver_module._fixed_source_krylov_restart(backend, state, 99) == 0
+    assert solver_module._fixed_source_krylov_restart(object(), state, 99) == 0
+
+
+def test_many_group_low_memory_uses_bounded_group_sweeps(monkeypatch):
+    attempts = []
+    def memory_later_available(*args):
+        attempts.append(args)
+        return 0 if len(attempts) == 1 else 30
+    monkeypatch.setattr(solver_module, '_fixed_source_krylov_restart', memory_later_available)
+    monkeypatch.setattr(solver_module, 'fgmres',
+                        lambda *args, **kwargs: pytest.fail('low-memory Krylov allocation'))
+    solver = MeshDiffusionEigenSolver(small_masked_mesh(), slow_scattering_material(),
+                                     bc='vacuum', device='cpu')
+    result = solver.solve(max_group_sweeps=2, k_guess=1.234)
+    assert len(attempts) == 1
+    assert not result.converged and result.outer_iterations == 1
+    assert result.k_eff == 1.234 and result.k_history == []
+    assert result.fixed_source_error > result.fixed_source_tolerance
+    assert result.failure_reason == 'fixed-source group budget exhausted before requested balance'

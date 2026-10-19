@@ -40,13 +40,29 @@ from .backend import asnumpy, device_name, get_backend, synchronize
 from .blend import MaterialBlend
 from .grid import Grid
 from . import kernels
-from .linalg import get_linear_solver, neumann_preconditioner, pcg
+from .linalg import fgmres, get_linear_solver, neumann_preconditioner, pcg
 from .materials import Material
 from .mesh import Mesh, MeshGrid, MeshGroupOperator
 from .sp3 import SP3GroupOperator
 from .spn import (CongruentSDPNOperator, SDPNGroupOperator, _SDPN_C, _SDPN_G,
                   _SPN_C, _SPN_G, _congruence_available, _diag_similarity)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
+
+
+def _fixed_source_krylov_restart(xp, state, remaining_sweeps):
+    """Bound full-group Krylov storage; zero selects ordinary group sweeps."""
+    block_bytes = sum(value.nbytes for value in state)
+    budget = 256 * 1024**2
+    if xp is not np:
+        try:
+            budget = min(budget, int(xp.cuda.Device().mem_info[0]) // 8)
+        except Exception:
+            return 0
+    # FGMRES retains V and Z; reserve another twenty full blocks for its
+    # stacked arguments, residual/operator/preconditioner temporaries, and
+    # within-group moment/Krylov work. Include every moment, not just phi0.
+    restart = min(30, remaining_sweeps, (budget // block_bytes - 20) // 2)
+    return restart if restart >= 2 else 0
 
 
 def _anderson_source(hist, raw, xp, integration_weights=None):
@@ -422,7 +438,13 @@ class _PowerIterationSolver:
 
         Each outer first solves the complete fixed-fission-source intergroup
         problem to ``tol_fixed_source`` using at most ``max_group_sweeps``
-        Gauss-Seidel sweeps. None selects max(1e-11, 100*eps(dtype)); an explicit
+        Gauss-Seidel sweeps. For three or more groups, remaining sweeps after
+        the first are used as flexible-GMRES preconditioner applications to
+        accelerate coupled scattering. Its restart uses a storage estimate
+        bounded by 256 MiB and one eighth of free GPU memory, including full
+        moment states and temporary headroom. This is not a peak-allocation
+        guarantee; insufficient or unknown device memory selects
+        ordinary group sweeps. None selects max(1e-11, 100*eps(dtype)); an explicit
         fixed-source threshold is never relaxed. The fixed within-group rtol
         is max(8*eps(dtype), min(inner_rtol_floor, 0.1*tol_fixed_source)). These
         internal precision defaults do not relax the caller's source, k or
@@ -513,6 +535,36 @@ class _PowerIterationSolver:
                 q0 = q0 * self._src_weight
             return self._rhs(g, q0)
 
+        def scattering_rhs(g, values, origins):
+            source = xp.zeros_like(self._phi(values[g]))
+            for origin in origins:
+                scatter = (self.sigma_s[g][origin] if adjoint
+                           else self.sigma_s[origin][g])
+                if origin != g and scatter is not None:
+                    source += scatter * self._phi(values[origin])
+            if self._src_weight is not None:
+                source *= self._src_weight
+            return self._rhs(g, source)
+
+        def coupled_loss(values):
+            return xp.stack([
+                self.ops[g].apply(values[g])
+                - scattering_rhs(g, values, range(G)) for g in range(G)])
+
+        def scattering_preconditioner(residual):
+            nonlocal inner_total
+            values = xp.zeros_like(residual)
+            for g in range(G):
+                rhs = residual[g] + scattering_rhs(g, values, range(g))
+                if not bool(xp.any(rhs)):
+                    continue
+                values[g], iterations = self._linsolve(
+                    self.ops[g].apply, rhs, values[g],
+                    self.ops[g].inv_diag, xp, rtol=rtol,
+                    precond=self.preconds[g])
+                inner_total += iterations
+            return values
+
         def current_balance(fixed_source=None):
             actual_source = fission_source() if fixed_source is None else fixed_source
             residual2 = loss2 = 0.
@@ -526,8 +578,9 @@ class _PowerIterationSolver:
                 return float('inf')
             return float(np.sqrt(residual2/loss2))
 
-        def admissible_source(source):
-            return (bool(xp.all(xp.isfinite(source))) and bool(xp.all(source >= 0))
+        def admissible_source(source, negative_tolerance=0.):
+            return (bool(xp.all(xp.isfinite(source)))
+                    and bool(xp.all(source >= -negative_tolerance))
                     and np.isfinite(float(integral(source))) and float(integral(source)) > 0)
 
         def physical_scalar_flux():
@@ -542,10 +595,21 @@ class _PowerIterationSolver:
             return (all(bool(xp.all(xp.isfinite(p))) for p in phi)
                     and scalar_min >= -scalar_negative_tolerance)
 
+        def physical_source(source):
+            if not physical_scalar_flux():
+                return False
+            # A source assembled from accepted scalar traces can inherit their
+            # negative roundoff (notably chi-weighted adjoint sources outside
+            # the core). Propagate the existing scalar bound through the
+            # nonnegative production weights, without clipping either field.
+            # Extrapolated Anderson sources still require exact nonnegativity.
+            source_roundoff = scalar_negative_tolerance * sum(prod)
+            return admissible_source(source, source_roundoff)
+
         fsrc = fission_source()
         total = integral(fsrc)
-        if not admissible_source(fsrc):
-            raise RuntimeError("initial fission source must be finite nonnegative with positive integral")
+        if not physical_source(fsrc):
+            raise RuntimeError("initial fission source must be physical with positive integral")
         k = float(k_guess)
 
         k_hist, err_hist = [], []
@@ -586,13 +650,41 @@ class _PowerIterationSolver:
                 if fixed_source_error <= tol_fixed_source:
                     scattering_settled = True
                     break
+                krylov_restart = (_fixed_source_krylov_restart(
+                    xp, state, max_group_sweeps - 1)
+                    if G >= 3 and group_sweep == 0 else 0)
+                if krylov_restart:
+                    # Many-group upscatter can have a dominance ratio near
+                    # one. Krylov acceleration solves the same fixed-source
+                    # equations; each preconditioner application is one group
+                    # sweep and consumes the remaining declared sweep budget.
+                    rows = []
+                    for g in range(G):
+                        source = xp.asarray(emit[g] * fsrc, dtype=self.dtype)
+                        if self._src_weight is not None:
+                            source = source * self._src_weight
+                        rows.append(self._rhs(g, source))
+                    values, _ = fgmres(
+                        coupled_loss, xp.stack(rows), xp.stack(state), None,
+                        xp, rtol=.1 * tol_fixed_source,
+                        maxiter=max_group_sweeps - 1,
+                        restart=krylov_restart,
+                        precond=scattering_preconditioner,
+                        raise_on_fail=False)
+                    state = [values[g] for g in range(G)]
+                    if batch is not None:
+                        for g in range(G):
+                            batch["phi"][g] = self._phi(state[g])
+                    fixed_source_error = current_balance(fsrc)
+                    scattering_settled = fixed_source_error <= tol_fixed_source
+                    break
             if not scattering_settled:
                 hist = []
                 failure_reason = 'fixed-source group budget exhausted before requested balance'
                 break
 
             fsrc_new = fission_source()
-            if not admissible_source(fsrc_new) or not physical_scalar_flux():
+            if not physical_source(fsrc_new):
                 hist = []
                 failure_reason = 'nonphysical fixed-source iterate'
                 break
@@ -621,7 +713,7 @@ class _PowerIterationSolver:
                 fsrc = g_fsrc
                 balance_error = current_balance()
                 if (np.isfinite(k) and k > 0 and balance_error < tol_balance
-                        and physical_scalar_flux() and admissible_source(fission_source())):
+                        and physical_source(fission_source())):
                     converged = True
                     failure_reason = None
                     break
