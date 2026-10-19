@@ -75,3 +75,21 @@ wheel. The source distribution includes the manual sources and excludes local
 scratch directories and generated manuals.
 
 Detailed source hashes and local gate results: {download}`integration validation <integration_validation.json>`.
+
+## Static branch-library development
+
+The subsequent experimental branch-library implementation has **1582 distinct
+passing software tests**, with 16 optional skips and 10 slow tests deselected,
+combining the regression run and final focused checks. The first regression
+run found a source archive that became stale during final API hardening; the
+archive was rebuilt and its byte-level check passed in the final 56-test run.
+The new branch-specific public checks comprise 51 tests.
+
+The wheel and source distribution build successfully. Four examples ran from
+an isolated wheel installation outside the checkout, and the final wheel's
+module bytes match the source. Strict HTML/PDF builds and visual review of the
+new manual chapters passed. Numerical fixtures do not establish reactor
+interpolation accuracy: that qualification awaits independent transport states.
+
+Source hashes and the exact verification scope:
+{download}`branch-library validation <branch_xs_validation.json>`.

@@ -1,5 +1,15 @@
 # Changes
 
+## Unreleased: static branch cross sections
+
+- Add immutable Serpent branch records, explicit bounded absolute interpolation,
+  full fission-matrix and whole-face ADF transfer, and a fresh CPU NEM factory.
+- Add reactivity/temperature-coefficient/rod-worth validation helpers that
+  distinguish interpolation error from model bias and unresolved precision.
+- Add a data-free example and manual chapters. These experimental interfaces
+  require withheld transport states for reactor interpolation qualification;
+  existing feedback and transient APIs retain their behavior.
+
 ## Unreleased — ISONEES feature consolidation
 
 - Preserve CPU/CUDA support and add the verified optional AMD/ROCm environment.

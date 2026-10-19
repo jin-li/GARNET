@@ -7,6 +7,7 @@ python -m pip install -e '.[test]'
 python examples/isonees_features/common_mesh_fv.py
 python examples/isonees_features/nem_local_reference.py
 python examples/isonees_features/static_kinetics.py
+python examples/isonees_features/branch_xs.py
 python -m pytest -q tests/test_isonees_examples.py
 ```
 
@@ -20,6 +21,7 @@ beyond installing Python dependencies. They write no persistent output.
 | `common_mesh_fv.py` | Common-mesh diffusion on two unequal reflected cuboids | Constant flux and k = 0.035/0.03 |
 | `nem_local_reference.py` | Matching local NEM reference at degrees 4/6/8, internal ADF construction, rebuilt receiver | Mean ratio 1.1, equal corrected traces, zero current, same k |
 | `static_kinetics.py` | Version-1 raw regional JSON contract, repeated region mapping, matching NEM forward/adjoint projection | beta = (0.002, 0.004), physical Lambda = 1/(220000 × 0.035) s |
+| `branch_xs.py` | Explicit temperature triangles, dependent moderator density, absolute XS evaluation and fresh NEM | Homogeneous reflected k = nuSigma_f/Sigma_a; outside-diamond requests rejected |
 
 The NEM/reference/ADF and matching kinetics paths are experimental CPU paths.
 The interface traces in the ADF example are manufactured to illustrate the
