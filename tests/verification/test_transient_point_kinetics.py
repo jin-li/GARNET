@@ -83,7 +83,11 @@ def test_bdf3_monolithic_and_groupwise_diffusion_solve_same_equations():
 def test_monolithic_feedback_repeats_without_advancing_bdf_history():
     """A rejected constituent iterate re-solves, but accepts the step once."""
     steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve(
-        tol_k=1e-9, tol_source=1e-8)
+        tol_k=1e-11, tol_source=1e-10)
+
+    # This is a stationary reference: suppress the physical relaxation of
+    # the initial eigenvector below the power assertion's accuracy.
+    assert steady.converged and steady.balance_error < 1e-10
 
     def xs_update_at(_t):
         # New identity on every request forces the intended operator rebuild;
@@ -298,6 +302,41 @@ def test_monolithic_adjoint_coarse_correction_is_opt_in_and_counted():
     assert np.all(np.isfinite(result.power))
 
 
+@pytest.mark.parametrize("reuse_initial_steady", [False, True])
+def test_fp32_monolithic_coarse_adjoint_uses_initialization_precision(
+        reuse_initial_steady):
+    solved = []
+
+    class RecordingEigenSolver(DiffusionEigenSolver):
+        def solve(self, **kwargs):
+            result = super().solve(**kwargs)
+            solved.append((kwargs.get("adjoint", False), result))
+            return result
+
+    eps = np.finfo(np.float32).eps
+    initial = None
+    if reuse_initial_steady:
+        initial = DiffusionEigenSolver(
+            GRID, [BASE], device="cpu", dtype=np.float32).solve(
+                tol_k=8 * eps, tol_source=64 * eps)
+    result = TransientSolver(
+        GRID, absorption_step_problem(0.001), KIN,
+        eig_solver=RecordingEigenSolver, device="cpu", dtype=np.float32).solve(
+            t_end=0.004, dt=0.002, initial_steady=initial,
+            step_solver="monolithic",
+            multigroup_kwargs={"coarse_correction": True, "rtol": 1e-5})
+    assert [adjoint for adjoint, _ in solved] == (
+        [True] if reuse_initial_steady else [False, True])
+    for _, eigenpair in solved:
+        assert eigenpair.converged
+        assert eigenpair.balance_error < 64 * eps
+    assert result.step_method == "monolithic"
+    assert result.adjoint_coarse_setups == 2
+    assert result.flux.dtype == np.float32
+    assert result.precursors.dtype == np.float32
+    assert np.all(np.isfinite(result.power))
+
+
 def test_monolithic_energy_anderson_is_opt_in_and_preserves_solution():
     prob = absorption_step_problem(0.001)
     common = dict(t_end=0.004, dt=0.002, step_solver="monolithic",
@@ -386,6 +425,18 @@ def test_full_fp32_transient_stays_in_fp32():
     assert result.flux.dtype == np.float32
     assert result.precursors.dtype == np.float32
     assert np.all(np.isfinite(result.power))
+    assert result.steady.converged
+    assert result.steady.balance_error < 64 * np.finfo(np.float32).eps
+
+
+def test_full_fp32_transient_preserves_explicit_steady_accuracy():
+    with pytest.raises(RuntimeError, match="initial steady state did not converge"):
+        TransientSolver(
+            GRID, absorption_step_problem(0.001), KIN,
+            device="cpu", dtype=np.float32).solve(
+                t_end=0.004, dt=0.002,
+                steady_kwargs=dict(tol_k=1e-10, tol_source=1e-10,
+                                   max_outer=30))
 
 
 def test_compatible_initial_steady_skips_eigen_solve_without_moving_history():

@@ -614,7 +614,7 @@ class _PowerIterationSolver:
 
         k_hist, err_hist = [], []
         inner_total = 0
-        src_err = prev_src_err = 1.0
+        src_err = 1.0
         converged = False
         balance_error = float('inf')
         fixed_source_error = float('inf')
@@ -722,14 +722,17 @@ class _PowerIterationSolver:
                 # restore the source consistent with this state, and sweep
                 # again instead of accepting the apparent fixed point.
                 hist = []
-                prev_src_err = src_err
                 total = integral(fsrc)
                 continue
 
             # Anderson update of the fission source (state stays the plain iterate).
             fsrc = g_fsrc
             if anderson_depth > 1:
-                if src_err > 1.1 * prev_src_err:          # last mix overshot -> restart
+                # Anderson can take nonmonotone steps while resolving clustered
+                # eigenmodes. Bound growth against the residuals represented
+                # by its retained history, rather than restarting whenever a
+                # successful extrapolation beats its immediate successor.
+                if hist and src_err > 1.1 * max(err_hist[-len(hist)-1:-1]):
                     hist = []
                 hist.append((fsrc_in, g_fsrc))
                 if len(hist) > anderson_depth:
@@ -741,7 +744,6 @@ class _PowerIterationSolver:
                     # Restore the admissible raw power iterate as a whole;
                     # higher-moment state is untouched and never positivity-clipped.
                     hist = []
-            prev_src_err = src_err
             total = integral(fsrc)
 
         synchronize(xp)

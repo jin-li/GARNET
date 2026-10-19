@@ -10,8 +10,8 @@ spectrum differs from the material (cumulative) spectrum, and the mix-array
 import numpy as np
 import pytest
 
-from ndgpu import (Grid, Kinetics, Material, TransientSDP1Solver,
-                   TransientSolver)
+from ndgpu import (DiffusionEigenSolver, Grid, Kinetics, Material,
+                   TransientSDP1Solver, TransientSolver)
 
 # Two-region, two-group toy core (TWIGL-flavoured numbers).
 _SEED = dict(diffusion=[1.4, 0.4], sigma_a=[0.010, 0.150],
@@ -137,3 +137,28 @@ def test_sdpn_solvers_reject_per_material_kinetics():
                    decay=LAM)
     with pytest.raises(NotImplementedError):
         TransientSDP1Solver(GRID, problem_at, kin, device="cpu")
+
+
+def test_nearly_degenerate_initial_steady_resolves_fundamental_mode():
+    """Large transverse leakage clusters the longitudinal eigenmodes.
+
+    Anderson needs its retained history through nonmonotone residual steps;
+    pairwise growth restarts leave this case near plain power iteration.
+    Compare with the independent dense spectrum of the eight-cell operator.
+    """
+    grid = Grid(shape=(8, 1, 1), size=(80.0, 1.0, 1.0))
+    material = Material(diffusion=[1.3], sigma_a=[0.03], nu_sigma_f=[0.04])
+    solver = DiffusionEigenSolver(grid, [material], device="cpu")
+    basis = np.eye(grid.n_cells)
+    matrix = np.column_stack([
+        solver.ops[0].apply(column.reshape(grid.shape)).ravel()
+        for column in basis])
+    losses, vectors = np.linalg.eigh(matrix)
+    expected = np.abs(vectors[:, 0])
+    result = solver.solve(tol_k=1e-12, tol_source=1e-10, max_outer=100)
+    assert result.converged, result
+    assert result.balance_error < 1e-10
+    assert result.k_eff == pytest.approx(0.04 / losses[0], rel=1e-10)
+    actual = result.flux[0].ravel()
+    np.testing.assert_allclose(actual / np.linalg.norm(actual), expected,
+                               rtol=0, atol=2e-7)
