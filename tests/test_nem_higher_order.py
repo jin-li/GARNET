@@ -8,7 +8,7 @@ from ndgpu.nem_geometry import CuboidNodalGrid
 from test_nem import tensor_grid,materials,independent_weights,PAIRS
 
 
-def independent_pencil(grid,D,sa,ss,nuf,chi,P,factors):
+def independent_pencil(grid,D,sa,ss,nuf,chi,P,factors,fission_matrix=None):
     N,G=D.shape;K=P-2;F=len(grid.face_nodes);ng=N*G
     coff=ng;joff=ng+N*3*P*G;size=joff+F*G
     A=np.zeros((size,size));Q=np.zeros_like(A)
@@ -29,7 +29,7 @@ def independent_pencil(grid,D,sa,ss,nuf,chi,P,factors):
             R[g,g]=sa[i,g]+sum(ss[i,g,h] for h in range(G) if h!=g)
             for h in range(G):
                 if h!=g:R[g,h]=-ss[i,h,g]
-        Fmat=np.outer(chi[i],nuf[i])
+        Fmat=np.outer(chi[i],nuf[i]) if fission_matrix is None else fission_matrix[i]
         A[i*G:(i+1)*G,i*G:(i+1)*G]=R
         Q[i*G:(i+1)*G,i*G:(i+1)*G]=Fmat
         for axis,(sm,sp) in enumerate(PAIRS):
