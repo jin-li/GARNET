@@ -267,17 +267,24 @@ def trisn_probe(xp):
 
 
 def event_profile_probe(xp):
-    """Exercise the same HIP event/NVTX wrapper used by coupled transients."""
-    from ndgpu.coupling import _CoupledPhaseProfiler
-    profiler = _CoupledPhaseProfiler(xp, enabled=True)
-    value = xp.ones(1024, dtype=xp.float64)
-    with profiler.region("operator_rebuild"):
-        xp.multiply(value, 2., out=value)
-    seconds = profiler.seconds()
-    elapsed = seconds["operator_rebuild"]
+    """Exercise event profiling through the public coupled-transient API."""
+    from ndgpu import HexLattice, ThermalMaterial
+    fuel = Material([1.2], [.025], [.030], [[0.]], name="profile fuel")
+    core = (HexLattice(pitch=10., refine=1).set_disk(0, fuel)
+            .set_boundary("reflective")
+            .set_kinetics(Kinetics([220000.], [.0065], [.08])).build())
+    core.configure_thermal({"profile fuel": ThermalMaterial(
+        conductivity=.25, sink_coeff=.02, sink_temperature=650.,
+        heat_capacity=2.5)}, total_power=1., ambient_temperature=650.)
+    result = core.coupled_transient(
+        t_end=.01, dt=.01, dt_thermal=.01,
+        device="cpu" if xp is np else "gpu", profile=True)
+    seconds = result.phase_seconds
     return dict(status="supported", seconds=seconds,
-                passed=bool(np.isfinite(elapsed) and elapsed >= 0
-                            and float(value.sum()) == 2048.))
+                passed=bool(seconds and all(np.isfinite(v) and v >= 0
+                                          for v in seconds.values())
+                            and np.allclose(result.power, 1., atol=1e-6)
+                            and isinstance(result.flux, xp.ndarray)))
 
 
 def optional(fn):

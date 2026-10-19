@@ -14,7 +14,7 @@ from .griffin_xs import (read_library as read_griffin_library,
 from .grid import Grid
 from .hex import HexDiffusionEigenSolver, HexGrid, offset_to_axial
 from .materials import Kinetics, Material, ONE_GROUP_DEMO, PWR_TWO_GROUP
-from .mesh import (Mesh, MeshResult, UnstructuredDiffusionSolver, assemble_mesh,
+from .mesh import (Mesh, MeshGrid, MeshGroupOperator, MeshResult, UnstructuredDiffusionSolver, assemble_mesh,
                   assemble_mesh_3d, read_gmsh)
 from .model import (FeedbackSpec, HexLattice, MeshModel, Model, ModelResult,
                    ReactorResult, TransientModelResult, TriReactor, hex_disk,
@@ -39,6 +39,9 @@ from .timescheme import BDF, BDF2, BDFStepController
 from .solver import (DiffusionEigenSolver, Result, SDP1EigenSolver,
                      SDP2EigenSolver, SDP3EigenSolver, SP1EigenSolver,
                      SP3EigenSolver, SP5EigenSolver, SP7EigenSolver)
+from .solver import (MeshDiffusionEigenSolver, MeshSPNEigenSolver,
+                     MeshSDPNEigenSolver, MeshSP1EigenSolver,
+                     MeshSP3EigenSolver, MeshSDP1EigenSolver)
 from .hybrid_sn import HybridSNDiffusionSolver, HybridSNResult
 from .hybrid_tri_sn import HybridTriSNDiffusionSolver
 from .ldfe import ldfe_quadrature_2d, ldfe_sphere, mirror_maps
@@ -66,6 +69,9 @@ except ModuleNotFoundError as exc:
 __version__ = "0.1.0"
 
 __all__ = [
+    "MeshGrid", "MeshGroupOperator", "MeshDiffusionEigenSolver",
+    "MeshSPNEigenSolver", "MeshSDPNEigenSolver", "MeshSP1EigenSolver",
+    "MeshSP3EigenSolver", "MeshSDP1EigenSolver",
     "Model",
     "MeshModel",
     "HexLattice",

@@ -13,9 +13,10 @@ Two angular approximations share this machinery:
 - SP3EigenSolver: simplified P3; group state = (Phi1, phi2) moment pair,
   solved as one SPD block system per group (see SP3GroupOperator).
 
-The inner CG tolerance is adapted to the outer residual, so early outers are
-cheap and the final ones are tight; combined with warm starts, late outer
-iterations cost only a handful of stencil applications.
+Each outer settles all intergroup scattering equations for its fixed fission
+source before updating k or Anderson history. Within-group solves use a fixed
+tight tolerance and warm starts. Convergence additionally requires the complete
+current-state eigen-equations to balance.
 
 The same outer loop solves the adjoint (importance) problem via
 ``solve(adjoint=True)``: the leakage+removal operator is self-adjoint, so only
@@ -39,15 +40,32 @@ from .backend import asnumpy, device_name, get_backend, synchronize
 from .blend import MaterialBlend
 from .grid import Grid
 from . import kernels
-from .linalg import get_linear_solver, neumann_preconditioner, pcg
+from .linalg import fgmres, get_linear_solver, neumann_preconditioner, pcg
 from .materials import Material
+from .mesh import Mesh, MeshGrid, MeshGroupOperator
 from .sp3 import SP3GroupOperator
 from .spn import (CongruentSDPNOperator, SDPNGroupOperator, _SDPN_C, _SDPN_G,
                   _SPN_C, _SPN_G, _congruence_available, _diag_similarity)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
 
 
-def _anderson_source(hist, raw, xp):
+def _fixed_source_krylov_restart(xp, state, remaining_sweeps):
+    """Bound full-group Krylov storage; zero selects ordinary group sweeps."""
+    block_bytes = sum(value.nbytes for value in state)
+    budget = 256 * 1024**2
+    if xp is not np:
+        try:
+            budget = min(budget, int(xp.cuda.Device().mem_info[0]) // 8)
+        except Exception:
+            return 0
+    # FGMRES retains V and Z; reserve another twenty full blocks for its
+    # stacked arguments, residual/operator/preconditioner temporaries, and
+    # within-group moment/Krylov work. Include every moment, not just phi0.
+    restart = min(30, remaining_sweeps, (budget // block_bytes - 20) // 2)
+    return restart if restart >= 2 else 0
+
+
+def _anderson_source(hist, raw, xp, integration_weights=None):
     """Anderson-accelerated next iterate from a history of (input, raw_output).
 
     Given the recent (S_j, G(S_j)) pairs (latest last) and the latest raw iterate
@@ -61,8 +79,11 @@ def _anderson_source(hist, raw, xp):
     res = [Gj - Sj for Sj, Gj in hist]                    # residuals f_j = G_j - S_j
     dres = [res[i] - res[-1] for i in range(len(res) - 1)]
     m = len(dres)
-    A = np.array([[float(xp.sum(dres[i] * dres[j])) for j in range(m)] for i in range(m)])
-    b = np.array([-float(xp.sum(dres[i] * res[-1])) for i in range(m)])
+    def inner(a, b):
+        product = a * b
+        return float(xp.sum(product if integration_weights is None else product * integration_weights))
+    A = np.array([[inner(dres[i], dres[j]) for j in range(m)] for i in range(m)])
+    b = np.array([-inner(dres[i], res[-1]) for i in range(m)])
     A[np.diag_indices(m)] += 1e-12 * (np.trace(A) + 1e-300)
     try:
         gamma = np.linalg.solve(A, b)
@@ -87,6 +108,14 @@ class Result:
     device: str
     k_history: list = field(default_factory=list)
     source_error_history: list = field(default_factory=list)
+    balance_error: float = float('inf')
+    failure_reason: str | None = None
+    fixed_source_error: float = float('inf')
+    fixed_source_tolerance: float = float('nan')
+    group_rtol: float = float('nan')
+    scalar_flux_min: float = float('nan')
+    scalar_flux_scale: float = float('nan')
+    scalar_flux_negative_tolerance: float = float('nan')
 
     @property
     def flux_numpy(self) -> np.ndarray:
@@ -323,6 +352,8 @@ class _PowerIterationSolver:
         # isotropic source must carry the same per-cell metric factor
         # (None on Cartesian grids -- the source is used as-is).
         self._src_weight = getattr(self.ops[0], "rhs_weight", None)
+        weights = getattr(grid, "integration_weights", None)
+        self.integration_weights = None if weights is None else xp.asarray(weights, dtype=self.dtype)
         self.preconds = [neumann_preconditioner(op.apply, op.inv_diag,
                                                 int(precond_degree))
                          for op in self.ops]
@@ -394,9 +425,34 @@ class _PowerIterationSolver:
               max_outer: int = 2000, inner_rtol_floor: float = 1e-10,
               k_guess: float = 1.0, verbose: bool = False,
               adjoint: bool = False, anderson_depth: int = 8,
-              state0=None) -> Result:
+              state0=None, tol_balance: float | None = None,
+              tol_fixed_source: float | None = None, max_group_sweeps: int = 100) -> Result:
         """Run power iteration until |dk| < tol_k and the relative L2 change of
-        the normalized fission source < tol_source.
+        the normalized fission source < tol_source, with the full current-state
+        group equation residual < tol_balance (default: tol_source).
+
+        The balance norm is ||loss-RHS||_2/||loss||_2 across all group-state
+        components, including moment RHS transforms and source metric weights.
+        It uses the actual current flux's fission and scattering sources, not
+        the extrapolated fission source supplied to a previous group sweep.
+
+        Each outer first solves the complete fixed-fission-source intergroup
+        problem to ``tol_fixed_source`` using at most ``max_group_sweeps``
+        Gauss-Seidel sweeps. For three or more groups, remaining sweeps after
+        the first are used as flexible-GMRES preconditioner applications to
+        accelerate coupled scattering. Its restart uses a storage estimate
+        bounded by 256 MiB and one eighth of free GPU memory, including full
+        moment states and temporary headroom. This is not a peak-allocation
+        guarantee; insufficient or unknown device memory selects
+        ordinary group sweeps. None selects max(1e-11, 100*eps(dtype)); an explicit
+        fixed-source threshold is never relaxed. The fixed within-group rtol
+        is max(8*eps(dtype), min(inner_rtol_floor, 0.1*tol_fixed_source)). These
+        internal precision defaults do not relax the caller's source, k or
+        final balance thresholds. Result records both resolved tolerances.
+        Scalar flux permits only 64*eps(dtype)*max(abs(phi0)) negative roundoff,
+        without clipping; zero source groups may be empty. An exhausted group
+        budget returns an unconverged result without advancing k or Anderson
+        history. Invalid extrapolated sources are rejected whole, not clipped.
 
         The fission-source fixed point is Anderson-accelerated (a short history of
         source residuals, the same scheme used in the transient step and SPH
@@ -415,6 +471,25 @@ class _PowerIterationSolver:
         for adjoint-weighted kinetics and first-order perturbation theory.
         """
         xp, G = self.xp, self.n_groups
+        dtype_eps = np.finfo(self.dtype).eps
+        tol_balance = tol_source if tol_balance is None else tol_balance
+        tol_fixed_source = max(1e-11, 100*dtype_eps) if tol_fixed_source is None else tol_fixed_source
+        if not np.isfinite(tol_balance) or tol_balance <= 0:
+            raise ValueError('tol_balance must be finite and positive')
+        if not np.isfinite(tol_fixed_source) or tol_fixed_source <= 0:
+            raise ValueError('tol_fixed_source must be finite and positive')
+        if not np.isfinite(inner_rtol_floor) or inner_rtol_floor <= 0:
+            raise ValueError('inner_rtol_floor must be finite and positive')
+        if isinstance(max_group_sweeps, (bool, np.bool_)) or not isinstance(max_group_sweeps, (int, np.integer)) or max_group_sweeps < 1:
+            raise ValueError('max_group_sweeps must be a positive integer')
+        if not np.isfinite(k_guess) or k_guess <= 0:
+            raise ValueError('k_guess must be finite and positive')
+        if adjoint and getattr(self.grid, "geometry", None) == "mesh":
+            raise ValueError("mesh adjoints require a separately verified volume inner product")
+        weights = self.integration_weights
+        def integral(field):
+            return xp.sum(field if weights is None else weights * field)
+        norm_measure = self.grid.n_cells if weights is None else xp.sum(weights)
         synchronize(xp)
         t0 = time.perf_counter()
 
@@ -447,63 +522,181 @@ class _PowerIterationSolver:
             out = xp.zeros_like(batch["phi"][0])
             return kernels.group_accumulate(xp, out, batch["W"], batch["phi"])
 
+        def group_rhs(g, current_source, current_k):
+            q0 = xp.asarray((emit[g] / current_k) * current_source, dtype=self.dtype)
+            if batch is not None:
+                kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
+            else:
+                for gf in range(G):
+                    s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
+                    if gf != g and s is not None:
+                        q0 += s * self._phi(state[gf])
+            if self._src_weight is not None:
+                q0 = q0 * self._src_weight
+            return self._rhs(g, q0)
+
+        def scattering_rhs(g, values, origins):
+            source = xp.zeros_like(self._phi(values[g]))
+            for origin in origins:
+                scatter = (self.sigma_s[g][origin] if adjoint
+                           else self.sigma_s[origin][g])
+                if origin != g and scatter is not None:
+                    source += scatter * self._phi(values[origin])
+            if self._src_weight is not None:
+                source *= self._src_weight
+            return self._rhs(g, source)
+
+        def coupled_loss(values):
+            return xp.stack([
+                self.ops[g].apply(values[g])
+                - scattering_rhs(g, values, range(G)) for g in range(G)])
+
+        def scattering_preconditioner(residual):
+            nonlocal inner_total
+            values = xp.zeros_like(residual)
+            for g in range(G):
+                rhs = residual[g] + scattering_rhs(g, values, range(g))
+                if not bool(xp.any(rhs)):
+                    continue
+                values[g], iterations = self._linsolve(
+                    self.ops[g].apply, rhs, values[g],
+                    self.ops[g].inv_diag, xp, rtol=rtol,
+                    precond=self.preconds[g])
+                inner_total += iterations
+            return values
+
+        def current_balance(fixed_source=None):
+            actual_source = fission_source() if fixed_source is None else fixed_source
+            residual2 = loss2 = 0.
+            for g in range(G):
+                loss = self.ops[g].apply(state[g])
+                rhs = group_rhs(g, actual_source, k if fixed_source is None else 1.)
+                residual2 += xp.sum((loss-rhs)**2)
+                loss2 += xp.sum(loss**2)
+            residual2, loss2 = float(residual2), float(loss2)
+            if not np.isfinite(residual2) or not np.isfinite(loss2) or loss2 <= 0:
+                return float('inf')
+            return float(np.sqrt(residual2/loss2))
+
+        def admissible_source(source, negative_tolerance=0.):
+            return (bool(xp.all(xp.isfinite(source)))
+                    and bool(xp.all(source >= -negative_tolerance))
+                    and np.isfinite(float(integral(source))) and float(integral(source)) > 0)
+
+        def physical_scalar_flux():
+            # Check the physical scalar trace, never the signed moments. Zero
+            # source groups may be empty; permit only rounding-scale negatives
+            # relative to the largest physical scalar flux, without clipping.
+            nonlocal scalar_min, scalar_scale, scalar_negative_tolerance
+            phi = [self._phi(s) for s in state]
+            scalar_min = min(float(xp.min(p)) for p in phi)
+            scalar_scale = max(float(xp.max(xp.abs(p))) for p in phi)
+            scalar_negative_tolerance = 64 * dtype_eps * scalar_scale
+            return (all(bool(xp.all(xp.isfinite(p))) for p in phi)
+                    and scalar_min >= -scalar_negative_tolerance)
+
+        def physical_source(source):
+            if not physical_scalar_flux():
+                return False
+            # A source assembled from accepted scalar traces can inherit their
+            # negative roundoff (notably chi-weighted adjoint sources outside
+            # the core). Propagate the existing scalar bound through the
+            # nonnegative production weights, without clipping either field.
+            # Extrapolated Anderson sources still require exact nonnegativity.
+            source_roundoff = scalar_negative_tolerance * sum(prod)
+            return admissible_source(source, source_roundoff)
+
         fsrc = fission_source()
-        total = xp.sum(fsrc)
-        if float(total) <= 0:
-            raise RuntimeError("initial fission source is zero")
+        total = integral(fsrc)
+        if not physical_source(fsrc):
+            raise RuntimeError("initial fission source must be physical with positive integral")
         k = float(k_guess)
 
         k_hist, err_hist = [], []
         inner_total = 0
-        src_err = prev_src_err = 1.0
+        src_err = 1.0
         converged = False
+        balance_error = float('inf')
+        fixed_source_error = float('inf')
+        failure_reason = 'maximum outer iterations exhausted'
+        scalar_min = scalar_scale = scalar_negative_tolerance = float('nan')
+        rtol = max(8*dtype_eps, min(inner_rtol_floor, .1*tol_fixed_source))
         hist = []                                # (fsrc_in, raw_iterate) for Anderson
 
         for outer in range(1, max_outer + 1):
-            # Inner tolerance tracks the *outer residual* (src_err): cheap early,
-            # tight late. Not tied to tol_source (that pinned the inner solve loose
-            # when converging on k alone, stalling k and letting Anderson drift).
-            rtol = min(1e-3, max(0.1 * src_err, inner_rtol_floor))
             fsrc_in = fsrc                       # this iteration's input (for Anderson)
-
-            for g in range(G):
-                # Keep an FP32 solve genuinely FP32. Host kinetics/eigenvalue
-                # scalars may otherwise promote the seeded source before the
-                # fused group contraction sees it.
-                q0 = xp.asarray((emit[g] / k) * fsrc, dtype=self.dtype)
-                if batch is not None:
-                    # One kernel for the whole in-scatter row. batch["phi"] is
-                    # kept current group by group below, so this reads the
-                    # updated flux for g' < g and the previous one for g' > g --
-                    # the same Gauss-Seidel sweep the Python loop performed.
-                    kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
-                else:
-                    for gf in range(G):
-                        # forward: in-scatter g'->g uses sigma_s[g'][g];
-                        # adjoint transposes to sigma_s[g][g'].
-                        s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
-                        if gf != g and s is not None:
-                            q0 += s * self._phi(state[gf])
-                if self._src_weight is not None:
-                    q0 = q0 * self._src_weight
-                state[g], n_it = self._linsolve(
-                    self.ops[g].apply, self._rhs(g, q0), state[g],
-                    self.ops[g].inv_diag, xp, rtol=rtol,
-                    precond=self.preconds[g])
-                if batch is not None:
-                    batch["phi"][g] = self._phi(state[g])
-                inner_total += n_it
+            # Anderson's map is P L^-1 E S, not one group sweep with hidden
+            # intergroup state. Settle scattering from the FIRST outer and do
+            # not use k to scale this fixed-source solve: its production ratio
+            # determines the next k after all group equations have balanced.
+            scattering_settled = False
+            for group_sweep in range(max_group_sweeps):
+                for g in range(G):
+                    # Keep the FP32 RHS and the batched scalar flux current.
+                    rhs = group_rhs(g, fsrc, 1.)
+                    if not bool(xp.any(rhs)):
+                        # The exact homogeneous solution avoids a Krylov
+                        # relative-to-zero stopping target in empty groups.
+                        state[g], n_it = xp.zeros_like(state[g]), 0
+                    else:
+                        state[g], n_it = self._linsolve(
+                            self.ops[g].apply, rhs, state[g],
+                            self.ops[g].inv_diag, xp, rtol=rtol,
+                            precond=self.preconds[g])
+                    if batch is not None:
+                        batch["phi"][g] = self._phi(state[g])
+                    inner_total += n_it
+                fixed_source_error = current_balance(fsrc)
+                if fixed_source_error <= tol_fixed_source:
+                    scattering_settled = True
+                    break
+                krylov_restart = (_fixed_source_krylov_restart(
+                    xp, state, max_group_sweeps - 1)
+                    if G >= 3 and group_sweep == 0 else 0)
+                if krylov_restart:
+                    # Many-group upscatter can have a dominance ratio near
+                    # one. Krylov acceleration solves the same fixed-source
+                    # equations; each preconditioner application is one group
+                    # sweep and consumes the remaining declared sweep budget.
+                    rows = []
+                    for g in range(G):
+                        source = xp.asarray(emit[g] * fsrc, dtype=self.dtype)
+                        if self._src_weight is not None:
+                            source = source * self._src_weight
+                        rows.append(self._rhs(g, source))
+                    values, _ = fgmres(
+                        coupled_loss, xp.stack(rows), xp.stack(state), None,
+                        xp, rtol=.1 * tol_fixed_source,
+                        maxiter=max_group_sweeps - 1,
+                        restart=krylov_restart,
+                        precond=scattering_preconditioner,
+                        raise_on_fail=False)
+                    state = [values[g] for g in range(G)]
+                    if batch is not None:
+                        for g in range(G):
+                            batch["phi"][g] = self._phi(state[g])
+                    fixed_source_error = current_balance(fsrc)
+                    scattering_settled = fixed_source_error <= tol_fixed_source
+                    break
+            if not scattering_settled:
+                hist = []
+                failure_reason = 'fixed-source group budget exhausted before requested balance'
+                break
 
             fsrc_new = fission_source()
-            total_new = xp.sum(fsrc_new)
-            k_new = k * float(total_new / total)
+            if not physical_source(fsrc_new):
+                hist = []
+                failure_reason = 'nonphysical fixed-source iterate'
+                break
+            total_new = integral(fsrc_new)
+            k_new = float(total_new / total)
 
             diff = fsrc_new / total_new - fsrc / total
-            src_err = float(xp.sqrt(xp.sum(diff * diff) / xp.sum((fsrc_new / total_new) ** 2)))
+            src_err = float(xp.sqrt(integral(diff * diff) / integral((fsrc_new / total_new) ** 2)))
             dk = abs(k_new - k)
 
             # Normalize so the mean fission source stays at 1 (avoids drift).
-            scale = self.grid.n_cells / total_new
+            scale = norm_measure / total_new
             for g in range(G):
                 state[g] *= scale
             if batch is not None:
@@ -518,23 +711,45 @@ class _PowerIterationSolver:
 
             if dk < tol_k and src_err < tol_source:
                 fsrc = g_fsrc
-                converged = True
-                break
+                balance_error = current_balance()
+                if (np.isfinite(k) and k > 0 and balance_error < tol_balance
+                        and physical_source(fission_source())):
+                    converged = True
+                    failure_reason = None
+                    break
+                # A fission-only extrapolation can stagnate while another
+                # group's flux is still changing. Discard its stale history,
+                # restore the source consistent with this state, and sweep
+                # again instead of accepting the apparent fixed point.
+                hist = []
+                total = integral(fsrc)
+                continue
 
             # Anderson update of the fission source (state stays the plain iterate).
             fsrc = g_fsrc
             if anderson_depth > 1:
-                if src_err > 1.1 * prev_src_err:          # last mix overshot -> restart
+                # Anderson can take nonmonotone steps while resolving clustered
+                # eigenmodes. Bound growth against the residuals represented
+                # by its retained history, rather than restarting whenever a
+                # successful extrapolation beats its immediate successor.
+                if hist and src_err > 1.1 * max(err_hist[-len(hist)-1:-1]):
                     hist = []
                 hist.append((fsrc_in, g_fsrc))
                 if len(hist) > anderson_depth:
                     hist.pop(0)
-                fsrc = _anderson_source(hist, g_fsrc, xp)
-                fsrc = fsrc * (self.grid.n_cells / float(xp.sum(fsrc)))
-            prev_src_err = src_err
-            total = xp.sum(fsrc)
+                proposed = _anderson_source(hist, g_fsrc, xp, weights)
+                if admissible_source(proposed):
+                    fsrc = proposed * (norm_measure / float(integral(proposed)))
+                else:
+                    # Restore the admissible raw power iterate as a whole;
+                    # higher-moment state is untouched and never positivity-clipped.
+                    hist = []
+            total = integral(fsrc)
 
         synchronize(xp)
+        if not converged:
+            balance_error = current_balance()
+        physical_scalar_flux()
         # Retain the converged per-group state (moment vectors for the block
         # solvers) so a transient can start from the exact steady moments.
         self.state = state
@@ -548,6 +763,14 @@ class _PowerIterationSolver:
             device=self.device,
             k_history=k_hist,
             source_error_history=err_hist,
+            balance_error=balance_error,
+            failure_reason=failure_reason,
+            fixed_source_error=fixed_source_error,
+            fixed_source_tolerance=float(tol_fixed_source),
+            group_rtol=float(rtol),
+            scalar_flux_min=scalar_min,
+            scalar_flux_scale=scalar_scale,
+            scalar_flux_negative_tolerance=scalar_negative_tolerance,
         )
 
 
@@ -871,3 +1094,168 @@ class SP7EigenSolver(SPNEigenSolver):
     """Standard SP7 k-eigenvalue solver (4-moment block)."""
 
     _order = 3
+
+
+class _MeshSolverMixin:
+    """Mesh setup and explicit capability gates for the shared drivers."""
+
+    def __init__(self, mesh, materials, cell_material=None, *,
+                 boundary_conditions=None, bc=None, material_map=None, **kwargs):
+        face_df = kwargs.pop("face_df", None)
+        boundary_df = kwargs.pop("boundary_df", None)
+        if (face_df is not None or boundary_df is not None) and not isinstance(self, DiffusionEigenSolver):
+            raise ValueError("ambiguous scalar face_df/boundary_df on a mesh moment solver (scalar DF is diffusion-only); use moment_df_model='common_trace' and moment factors")
+        model = kwargs.pop("moment_df_model", None)
+        moment_face_df = kwargs.pop("moment_face_df", None)
+        moment_boundary_df = kwargs.pop("moment_boundary_df", None)
+        if model is None and (moment_face_df is not None or moment_boundary_df is not None):
+            raise ValueError("moment factors require moment_df_model='common_trace'")
+        if model is not None and (model != "common_trace" or
+                                  not isinstance(self, SDPNEigenSolver) or self._order != 1):
+            raise ValueError("moment_df_model supports only 'common_trace' on order-1 mesh SP3/SDP1")
+        self.moment_df_model = model
+        if kwargs.get("active") is not None or kwargs.get("hybrid_mask") is not None or kwargs.get("hybrid_confine", False):
+            raise ValueError("mesh active/hybrid masks are unsupported; classify exposed faces explicitly")
+        if kwargs.pop("df", None) is not None or kwargs.pop("bcf", None) is not None:
+            raise ValueError("mesh moment discontinuity factors are unsupported (DF-off only)")
+        if kwargs.get("spn_precondition", 0):
+            raise ValueError("mesh SPN companion preconditioning is not yet verified")
+        if boundary_conditions is not None and bc is not None:
+            raise ValueError("pass boundary_conditions or bc, not both")
+        specs = boundary_conditions if boundary_conditions is not None else bc
+        if isinstance(mesh, MeshGrid):
+            grid = mesh if specs is None else MeshGrid(mesh.mesh, specs)
+        elif isinstance(mesh, Mesh):
+            grid = MeshGrid(mesh, "vacuum" if specs is None else specs)
+        else:
+            raise TypeError("mesh solver expects a Mesh or MeshGrid")
+        if model is not None:
+            from .mesh import _mesh_df
+            if any(spec not in ("reflective", "zero-flux", "vacuum")
+                   for spec in grid.boundary_conditions):
+                raise ValueError("common_trace supports only reflective, zero-flux, or coupled Marshak vacuum boundaries")
+            if "vacuum" in grid.boundary_conditions and not kwargs.get("marshak_vacuum", False):
+                raise ValueError("common_trace vacuum requires marshak_vacuum=True")
+            G = materials.n_groups if isinstance(materials, Material) else materials[0].n_groups
+            self.moment_face_df = _mesh_df(moment_face_df, (G, len(grid.mesh.faces), 2), "moment_face_df")
+            self.moment_boundary_df = _mesh_df(moment_boundary_df, (G, len(grid.mesh.bfaces)), "moment_boundary_df")
+            unequal = np.any(self.moment_face_df[..., 0] != self.moment_face_df[..., 1])
+            if unequal and kwargs.get("linear_solver") is None:
+                kwargs["linear_solver"] = "bicgstab"
+        if cell_material is not None and material_map is not None:
+            raise ValueError("pass cell_material or material_map, not both")
+        mapping = cell_material if cell_material is not None else material_map
+        if mapping is not None:
+            mapping = np.asarray(mapping)
+            if mapping.size != grid.n_cells:
+                raise ValueError("cell_material must have one entry per mesh cell")
+            mapping = mapping.reshape(grid.shape)
+        if isinstance(self, SDPNEigenSolver):
+            coeffs = self._coeffs if self._coeffs is not None else _SDPN_C
+            if self._order not in coeffs:
+                raise ValueError(f"order must be one of {sorted(coeffs)}")
+            if kwargs.get("symmetrize") and _diag_similarity(coeffs[self._order]) is None:
+                raise ValueError("mesh symmetrizing congruence lacks integrated reaction/source weighting")
+        super().__init__(grid, materials, material_map=mapping,
+                         bc=grid.boundary_conditions, **kwargs)
+        if self._linsolve is pcg and any(not op.symmetric for op in self.ops):
+            raise ValueError("CG cannot solve a nonsymmetric mesh moment operator; use bicgstab or gmres")
+
+    def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
+        if self.moment_df_model is None:
+            return super()._build_operators(grid, diffusion, sigma_t, removal, bc)
+        if not self.symmetric_operator:
+            raise ValueError("symmetric_operator=False is diffusion-only")
+        bg = self._g_coeffs[self._order] if self.marshak_vacuum else None
+        self.ops = [SDPNGroupOperator(
+            self.xp, grid, diffusion[g], sigma_t[g], removal[g],
+            order=self._order, bc=bc, op_cls=self._moment_op_cls,
+            coeffs=self._coeffs, boundary_g=bg, symmetrize=self._symmetrize,
+            moment_df_model=self.moment_df_model,
+            moment_face_df=self.moment_face_df[g],
+            moment_boundary_df=self.moment_boundary_df[g])
+            for g in range(self.n_groups)]
+
+
+class MeshDiffusionEigenSolver(_MeshSolverMixin, DiffusionEigenSolver):
+    """Integrated mesh diffusion; flux shape is ``(G,n_cells,1,1)``.
+
+    ``face_df`` has shape ``(G,n_interior_faces,2)`` in face i/j order;
+    ``boundary_df`` has shape ``(G,n_boundary_faces)``. Both default to ones.
+    Factors are finite and positive. Unequal face factors require a
+    nonsymmetric solver; the default chooses BiCGSTAB, otherwise CG.
+    """
+
+    def __init__(self, mesh, materials, cell_material=None, *, face_df=None,
+                 boundary_df=None, linear_solver=None, **kwargs):
+        from .mesh import _mesh_df
+        raw_mesh = mesh.mesh if isinstance(mesh, MeshGrid) else mesh
+        if not isinstance(raw_mesh, Mesh):
+            raise TypeError("mesh solver expects a Mesh or MeshGrid")
+        G = materials.n_groups if isinstance(materials, Material) else materials[0].n_groups
+        self.face_df = _mesh_df(face_df, (G, len(raw_mesh.faces), 2), "face_df")
+        self.boundary_df = _mesh_df(boundary_df, (G, len(raw_mesh.bfaces)), "boundary_df")
+        nonsymmetric = np.any(self.face_df[..., 0] != self.face_df[..., 1])
+        if linear_solver is None:
+            linear_solver = "bicgstab" if nonsymmetric else "cg"
+        if nonsymmetric and get_linear_solver(linear_solver) is pcg:
+            raise ValueError("CG cannot solve a nonsymmetric mesh diffusion DF operator; use bicgstab or gmres")
+        super().__init__(mesh, materials, cell_material, linear_solver=linear_solver, **kwargs)
+
+    def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
+        self.ops = [MeshGroupOperator(self.xp, grid, diffusion[g], removal[g], bc=bc,
+                                      symmetric=self.symmetric_operator,
+                                      face_df=self.face_df[g], boundary_df=self.boundary_df[g])
+                    for g in range(self.n_groups)]
+
+
+class MeshSDPNEigenSolver(_MeshSolverMixin, SDPNEigenSolver):
+    """General integrated mesh SDPN using the existing coefficient tables.
+
+    ``order=1`` is SDP1, ``order=2`` SDP2 and ``order=3`` SDP3. The last
+    supports only the plain nonsymmetric path. Coupled Marshak vacuum is
+    selected by ``marshak_vacuum=True``; default scalar Robin is also available.
+
+    Order 1 accepts opt-in ``moment_df_model='common_trace'`` with finite
+    positive ``moment_face_df`` of shape ``(G,n_interior_faces,2)`` and
+    ``moment_boundary_df`` of shape ``(G,n_boundary_faces)`` (default ones).
+    One scalar factor corrects every stored moment trace. Unequal face sides
+    select BiCGSTAB by default and reject CG. This generic algebraic
+    closure does not qualify Serpent scalar DFs as SP3 EPDFs or SDP1 factors.
+    Vacuum requires coupled Marshak; reflective and zero-flux are supported.
+    Numeric Robin boundaries are excluded from this opt-in closure.
+    """
+
+    _moment_op_cls = MeshGroupOperator
+
+    def __init__(self, *args, order=1, **kwargs):
+        self._order = order
+        super().__init__(*args, **kwargs)
+
+
+class MeshSPNEigenSolver(MeshSDPNEigenSolver):
+    """General integrated mesh SPN: order 0/1/2/3 gives SP1/SP3/SP5/SP7."""
+
+    _coeffs = _SPN_C
+    _g_coeffs = _SPN_G
+
+
+class MeshSP1EigenSolver(MeshSPNEigenSolver):
+    """One-moment mesh SP1, equivalent to integrated mesh diffusion."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=0, **kwargs)
+
+
+class MeshSP3EigenSolver(MeshSPNEigenSolver):
+    """Mesh SP3 through the general order-1 SPN block (coupled Marshak ready)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=1, **kwargs)
+
+
+class MeshSDP1EigenSolver(MeshSDPNEigenSolver):
+    """Mesh SDP1 through the general order-1 SDPN block."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, order=1, **kwargs)
