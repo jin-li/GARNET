@@ -1,0 +1,67 @@
+[
+  {
+    "command": "python examples/bare_reactor.py 16 cpu",
+    "status": 0,
+    "seconds": 0.565,
+    "log": "results/nixos-validation/01-bare_reactor.log"
+  },
+  {
+    "command": "python examples/bare_reactor.py 32 cpu",
+    "status": 0,
+    "seconds": 0.365,
+    "log": "results/nixos-validation/02-bare_reactor.log"
+  },
+  {
+    "command": "python examples/reflected_slab.py 90 cpu",
+    "status": 0,
+    "seconds": 0.315,
+    "log": "results/nixos-validation/03-reflected_slab.log"
+  },
+  {
+    "command": "python examples/hex_lattice.py 2 cpu",
+    "status": 0,
+    "seconds": 0.266,
+    "log": "results/nixos-validation/04-hex_lattice.log"
+  },
+  {
+    "command": "python examples/unstructured_mesh.py 8 35 cpu",
+    "status": 0,
+    "seconds": 0.318,
+    "log": "results/nixos-validation/05-unstructured_mesh.log"
+  },
+  {
+    "command": "python examples/transient_rod_drop.py cpu",
+    "status": 0,
+    "seconds": 0.965,
+    "log": "results/nixos-validation/06-transient_rod_drop.log"
+  },
+  {
+    "command": "python examples/hpmr_2d.py 2 polar cpu",
+    "status": 0,
+    "seconds": 0.516,
+    "log": "results/nixos-validation/07-hpmr_2d.log"
+  },
+  {
+    "command": "python examples/hpmr_3d.py 1 10 polar cpu",
+    "status": 0,
+    "seconds": 0.367,
+    "log": "results/nixos-validation/08-hpmr_3d.log"
+  },
+  {
+    "command": "python examples/sdpn_brantley_larsen_2d.py 20",
+    "status": 0,
+    "seconds": 0.364,
+    "log": "results/nixos-validation/09-sdpn_brantley_larsen_2d.log"
+  },
+  {
+    "command": "python examples/hpmr_coupled.py 1 180 11 cpu",
+    "status": 0,
+    "seconds": 1.82,
+    "log": "results/nixos-validation/10-hpmr_coupled.log"
+  },
+  {
+    "command": "python examples/sdpn_brantley_larsen_2d.py 80 160 --marshak",
+    "status": 0,
+    "log": "results/nixos-validation/11-sdpn-marshak.log"
+  }
+]

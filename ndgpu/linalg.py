@@ -453,8 +453,9 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
                 workspace.graph.launch()
                 workspace.graph_replays += 1
             elif workspace.graph_error is None:
-                stream = xp.cuda.Stream(non_blocking=True)
+                stream = None
                 try:
+                    stream = xp.cuda.Stream(non_blocking=True)
                     with stream:
                         stream.begin_capture()
                         direct_block(graph_block)

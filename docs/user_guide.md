@@ -71,11 +71,11 @@ print(solution.device)
 ```
 
 For a hosted GPU check, run
-[`colab_coupled_transient_gpu_latest.ipynb`](../notebooks/colab_coupled_transient_gpu_latest.ipynb).
+[`colab_coupled_transient_gpu_latest.ipynb`](https://github.com/jin-li/NDgpu/blob/main/notebooks/colab_coupled_transient_gpu_latest.ipynb).
 It exercises the current tri-grid API, steady solve, transient, coupled
 transient, thermal subcycling, profiler counters, and an optional one-minute
 3-D HP-MR workload. The proposed acceleration path for that long calculation
-is documented in [quasistatic_acceleration_plan.md](quasistatic_acceleration_plan.md).
+is documented in [quasistatic_acceleration_plan.md](https://github.com/jin-li/NDgpu/blob/main/docs/quasistatic_acceleration_plan.md).
 
 ## 1. Define homogenized materials
 
@@ -414,7 +414,7 @@ power error against the available full-diffusion reference from 5.708% to
 0.173% at a 25.5% transient-time cost. The HPMR example applies this guard
 profile automatically when IQS is selected; pass `--unguarded-iqs` only for
 fixed-cadence benchmark comparisons. See
-[`benchmark-results/hpmr-iqs-gh200`](../benchmark-results/hpmr-iqs-gh200/README.md).
+[`benchmark-results/hpmr-iqs-gh200`](https://github.com/jin-li/NDgpu/blob/main/benchmark-results/hpmr-iqs-gh200/README.md).
 For expensive adjoint solves, combine a larger `adjoint_every` with
 `adjoint_residual_tol`: the former limits maximum adjoint age and the latter
 refreshes early when the amplitude-free transposed-eigenproblem residual is too
@@ -549,7 +549,7 @@ steps reuse bounded FGMRES basis/work storage and, when the free-VRAM guard
 allows it, batched energy-group contractions. Coupled profiles expose
 `group_batch_active` and `fgmres_workspace_bytes`; check both before comparing
 timings. The executable 3-D, 11-group accuracy and performance gate is
-[`notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb`](../notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb).
+[`notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb`](https://github.com/jin-li/NDgpu/blob/main/notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb).
 
 For a long run, `multigroup_kwargs={"coarse_correction": True}` adds an
 adjoint-weighted rank-one amplitude correction. It reduces group work but first

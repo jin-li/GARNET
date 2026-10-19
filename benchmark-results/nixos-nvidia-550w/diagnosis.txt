@@ -1,0 +1,23 @@
+GPU validation on 550w, 2026-10-05.
+
+Cause of initial nvidia-smi failure: the execution sandbox hides /dev/nvidia0,
+/dev/nvidiactl and /dev/nvidia-uvm. These nodes exist and are accessible outside
+the sandbox. Host nvidia-smi succeeds. NVIDIA kernel modules and userspace
+libraries both report driver 595.71.05. No host driver changes were needed.
+
+Hardware: NVIDIA GeForce RTX 5070 Ti, 16 GB, compute capability 12.0.
+Environment: Nix Python 3.13.15, CuPy 14.2.0, CUDA toolkit component wheels 12.9.
+Driver advertises CUDA API 13.2; CuPy uses CUDA runtime 12.9.
+
+Installation: nix develop path:. --command uv sync --extra test --extra cuda12-ctk
+Run: nix develop path:. --command uv run --locked --extra test --extra cuda12-ctk python /tmp/ndgpu-run-gpu.py
+GPU tool commands were run with host device access outside the sandbox.
+
+The direct comparison passed k_eff absolute tolerance 1e-8 and full flux-field
+relative tolerance 1e-5 / absolute tolerance 1e-9, with tight solver tolerances
+and convergence asserted on both CPU and GPU. The comparison script is saved
+as compare_cpu_gpu.py in this directory. All seven example/benchmark commands
+also exited 0; summary.json lists commands, wall times and logs.
+
+Warmed-up bare-box benchmark speedups (shared GPU, single timing sample):
+32^3: 1.9x; 64^3: 22.6x; 96^3: 55.2x. Detailed output is in 07-speed_benchmark.log.

@@ -1,0 +1,30 @@
+OS                        : Linux-7.2.8-x86_64-with-glibc2.44
+Python Version            : 3.13.15
+CuPy Version              : 14.2.0
+CuPy Platform             : AMD ROCm
+NumPy Version             : 2.5.3
+SciPy Version             : 1.18.1
+Cython Build Version      : 3.2.4
+Cython Runtime Version    : None
+CUDA Root                 : /nix/store/y6yi3rf1ciklqgj9qm7zdw4zjcssg2ac-ndgpu-rocm-7.2.3
+HIPCC PATH                : /nix/store/y6yi3rf1ciklqgj9qm7zdw4zjcssg2ac-ndgpu-rocm-7.2.3/bin/hipcc
+CUDA Build Version        : 70051831
+CUDA Driver Version       : 70253211
+CUDA Runtime Version      : 70253211 (linked to CuPy) / 70253211 (locally installed)
+CUDA Extra Include Dirs   : None
+cuBLAS Version            : (available)
+cuFFT Version             : 10036
+cuRAND Version            : 400200
+cuSOLVER Version          : (3, 30, 0)
+cuSPARSE Version          : (available)
+NVRTC Version             : (9, 0)
+Thrust Version            : 0
+CUB Build Version         : 400000
+Jitify Build Version      : None
+NCCL Build Version        : 22606
+NCCL Runtime Version      : 22707
+cuTENSOR Version          : None
+cuSPARSELt Build Version  : None
+Device 0 Name             : AMD Radeon 8060S Graphics
+Device 0 Arch             : gfx1151
+Device 0 PCI Bus ID       : 0000:c5:00.0

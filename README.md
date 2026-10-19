@@ -1,5 +1,15 @@
 # NDgpu — GPU-native diffusion, SPN & SDPN neutronics
 
+**Manuals:** [User Manual](docs/user/index.md) ·
+[Software Methodology Manual](docs/methodology/index.md) ·
+[HTML/PDF build instructions](docs/index.md) ·
+[Feature integration inventory](docs/development/integration_inventory.md).
+
+The manuals distinguish supported interfaces from experimental NEM/ADF,
+static NEM kinetics and native-moment/condensation paths. The latter have
+specific CPU/GPU and physics restrictions; consult the capability tables.
+
+
 GPU-native finite-volume reactor physics for structured Cartesian,
 triangular, and triangular-prism grids, with a NumPy CPU fallback that shares
 the same code path. NDgpu is aimed particularly at SPH-corrected full-core
@@ -102,8 +112,91 @@ pip install -e .                 # CPU (NumPy)
 pip install -e .[cuda12]        # + CuPy for CUDA 12.x GPUs
 ```
 
+On NixOS (x86_64 Linux), use the pinned development shell and a project-local
+`uv` environment. Nix supplies Python and the native runtime libraries needed
+by NumPy/SciPy wheels; `uv` installs the editable project and locks its Python
+dependencies. Python downloads are disabled in the shell.
+
+```bash
+nix develop path:.
+uv sync --locked --extra test
+uv run --locked --extra test python examples/bare_reactor.py 16 cpu
+uv run --locked --extra test python examples/reflected_slab.py 90 cpu
+uv run --locked --extra test python examples/hex_lattice.py 2 cpu
+uv run --locked --extra test python examples/transient_rod_drop.py cpu
+uv run --locked --extra test pytest -q tests/verification/test_diffusion_analytic.py
+```
+
+For GPU execution, the `cuda12-ctk` extra installs CuPy and NVIDIA's CUDA
+component wheels, including runtime libraries and compilation headers, without
+a system-wide CUDA toolkit:
+
+```bash
+nix develop path:.
+uv sync --locked --extra test --extra cuda12-ctk
+uv run --locked --extra test --extra cuda12-ctk python examples/bare_reactor.py 32 gpu
+uv run --locked --extra test --extra cuda12-ctk python examples/hpmr_3d.py 1 10 polar gpu
+uv run --locked --extra test --extra cuda12-ctk python examples/speed_benchmark.py 32 64 96
+```
+
+Keep the GPU extra in subsequent `uv run` commands so environment syncing
+retains it. The shell exposes the host driver through `/run/opengl-driver/lib`
+and keeps CuPy's compiled kernel cache under `.cache/cupy/`. GPU processes
+need access to `/dev/nvidia*`; a sandbox that hides those devices can make
+`nvidia-smi` report a driver communication failure even with a healthy host
+driver. Check `nvidia-smi` outside that sandbox before diagnosing the driver.
+
+Keep `flake.lock` and `uv.lock` with the project. `.venv/` and `.cache/` are
+local, ignored artifacts.
+
+### AMD GPUs on NixOS (experimental ROCm)
+
+Use the separate ROCm shell and AMD extra on x86_64 Linux:
+
+```bash
+nix develop path:.#rocm
+uv sync --locked --extra test --extra rocm
+uv run --locked --extra test --extra rocm python -c \
+  'import cupy; cupy.show_config(); assert cupy.cuda.runtime.is_hip'
+NDGPU_FUSED=0 uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
+uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
+uv run --locked --extra test --extra rocm python examples/validate_rocm.py --sizes 8 12
+```
+
+`device="gpu"` requires a GPU and never accepts a CPU fallback. `device="rocm"`
+(or `"hip"`) additionally requires an AMD build of CuPy; `"cuda"` requires a
+CUDA build. CuPy's ROCm build intentionally uses the `cupy.cuda` namespace.
+Device labels identify `rocm (cupy)` or `cuda (cupy)`.
+
+The shell supplies ROCm 7.2.3 from the existing pinned Nixpkgs revision and a
+merged `ROCM_HOME` for CuPy header discovery. The `rocm` extra pins the Python
+3.13-compatible `cupy-rocm-7-0` wheel. ROCm and CUDA extras conflict because
+they install the same `cupy` module; keep your selected extra in every `uv run`
+command. The default CPU/NVIDIA shell remains available. ROCm provisioning can
+download a large toolkit closure on first use.
+
+The host must expose `/dev/kfd` and `/dev/dri/renderD*` with read/write access.
+Check `rocminfo` in the same execution environment as Python. A sandbox hiding
+these devices can report missing devices even when host ROCm works. No system
+configuration changes are required by the project shell. Do not set
+`HSA_OVERRIDE_GFX_VERSION` to impersonate a different GPU.
+
+See [AMD validation and limitations](docs/amd_rocm.md) for halo's measured
+results, explicit tolerances, graph fallback, sparse limitations and benchmark
+methodology. Raw local reports default to ignored `results/`; selected reports
+for review belong under `benchmark-results/`. The validation command exits
+unsuccessfully unless actual AMD arrays and the required numerical checks pass.
+
 ## Documentation
 
+- **[Static kinetics parameters](docs/kinetics_parameters.md)** — global Serpent
+  output import, raw regional data contract and matching NEM adjoint/projection.
+- **[Serpent fixed-state XS interface](docs/serpent_xs.md)** — safe results-file
+  import, CPU/AMD point-reactor checks for 2–23 energy groups, and reflective
+  2-D assembly validation with regional cross sections.
+- **[Development findings and priorities](docs/development_assessments.md)** —
+  NixOS and GPU validation, branch libraries and Serpent/CASMO5 interfaces,
+  thermal-hydraulics coupling, discontinuity factors and performance limits.
 - **[User guide](docs/user_guide.md)** — choose an API, build a new reactor,
   apply SPH constants, and run steady, transient, and coupled GPU calculations.
 - **[Model API reference](docs/model_api.md)** — builder details, result fields,
@@ -202,6 +295,76 @@ core = (ndgpu.HexLattice(pitch=20, refine=4)
 core.steady(method="sp3", device="gpu")
 core.transient(t_end=1.0, dt=0.02, device="gpu")
 ```
+
+For steady calculations on the same exact-interface finite-volume mesh,
+`MeshDiffusionEigenSolver`, `MeshSP3EigenSolver`, and `MeshSDP1EigenSolver`
+share conservative face currents and volume-integrated reactions. For example,
+with an assembled `mesh`, a material list, and one material index per cell:
+
+```python
+solver = ndgpu.MeshSP3EigenSolver(
+    mesh, materials, cell_material,
+    boundary_conditions="vacuum", marshak_vacuum=True, device="gpu")
+result = solver.solve(tol_k=1e-10, tol_source=1e-9)
+# Storage axes after the cell index are singleton axes.
+cell_flux = ndgpu.asnumpy(result.flux).reshape(len(materials[0].diffusion), mesh.n_cells)
+```
+
+Pass a boundary-class sequence in `mesh.bfaces` order for mixed boundaries.
+Use `marshak_vacuum=True` for the coupled SPN/SDPN vacuum law; the moment
+solvers otherwise use scalar Robin conditions. For orthogonal 3D meshes,
+`assemble_mesh_3d(..., normal_distances=True)` records the face-normal
+resistances explicitly. General skew meshes retain the two-point-flux
+approximation. Source normalization uses the volume-mean fission density.
+The mesh moment API supports steady calculations; masks, adjoints and
+symmetrizing SDP3 congruence are rejected. Moment factors require the explicit
+order-1 interface convention described below.
+`MeshSPNEigenSolver(order=...)` and `MeshSDPNEigenSolver(order=...)` expose
+higher orders with the same stated restrictions.
+
+Scalar diffusion also accepts `face_df` with shape `(G, n_faces, 2)` and
+`boundary_df` with shape `(G, n_boundary_faces)`. Factors enforce continuity of
+the corrected face trace while preserving opposite integrated currents.
+Unequal factors automatically select BiCGSTAB; explicit CG is rejected.
+Boundary factors correct the trace in the Robin law. Apply factors at original
+XS node interfaces and use unity on artificial interfaces within one node;
+the solver does not infer this mapping. Both arrays default to unity.
+
+`SerpentXSRecord.adf_estimate(...)` preserves native four-/six-face estimates,
+including signed inward-positive integrated net currents. The auxiliary
+`ndgpu.serpent_adf.cuboid_flat_source_factors(...)` reconstructs homogeneous
+face means from node-average flux and six currents, using uniform within-group
+source and uniform current density on each face. It checks continuous-field
+positivity and accepts an uncertainty margin. These are explicit reconstruction
+closures: nominal factors are not automatically qualified for production or
+transfer to another state. No XS or eigenvalues are fitted.
+
+Mesh SP3 and SDP1 additionally offer an explicit experimental corrected-trace
+interface:
+
+```python
+solver = ndgpu.MeshSP3EigenSolver(
+    mesh, materials, cell_material, device="gpu",
+    boundary_conditions="vacuum", marshak_vacuum=True,
+    moment_df_model="common_trace",
+    moment_face_df=face_factors,       # (G, n_faces, 2)
+    moment_boundary_df=boundary_factors)  # (G, n_boundary_faces)
+```
+
+A common positive scalar factor corrects all stored moment traces. Both arrays
+default to unity. Unequal interface factors select BiCGSTAB automatically;
+explicit CG is rejected. The coupled Marshak trace is eliminated with the
+factor inside the boundary equations. Reflective and zero-flux boundaries are
+supported; vacuum requires `marshak_vacuum=True`, and numeric Robin boundaries
+are excluded. Higher orders retain the moment-factor gate.
+
+This API verifies an operator convention. It does not convert Serpent scalar
+DFs into physically qualified SP3 EPDFs or SDP1 factors. That requires a
+separate justified factor-generation method and uncertainty qualification.
+The mesh canonical order-1 state has scalar flux `U[0] - (2/3)*U[1]`; optional
+SDP similarity uses the operator's transformed flux weights. A common factor
+commutes with this basis change. Keep factors at original XS interfaces and
+use unity on artificial subcell interfaces.
 
 A `Model` also runs **transients**. It solves the steady state first (its
 eigenvalue `k0` normalises the fission source, so an unperturbed run stays at

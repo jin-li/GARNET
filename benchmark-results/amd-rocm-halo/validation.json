@@ -1,0 +1,3075 @@
+{
+  "schema_version": 1,
+  "timestamp_utc": "2026-10-05T13:16:58.993390+00:00",
+  "status": "passed",
+  "parameters": {
+    "sizes": [
+      8,
+      12
+    ],
+    "repeats": 3,
+    "cube_sizes": [
+      32,
+      64
+    ],
+    "hpmr_refine": 1,
+    "dtype": "float64",
+    "eigen_kwargs": {
+      "tol_k": 1e-09,
+      "tol_source": 1e-08,
+      "max_outer": 500
+    },
+    "transient_steps": 3,
+    "dt_seconds": 0.001
+  },
+  "tolerances": {
+    "k_abs": 2e-07,
+    "normalized_flux_rel_l2": 2e-05,
+    "power_abs": 2e-05,
+    "temperature_abs_K": 0.002
+  },
+  "timing_policy": "construction + solve; synchronized; fresh identical starts; initial run separate; warmed process/kernel caches; no speedup assertion",
+  "scope_limitations": [
+    "Synthetic small grids test backend equivalence, not reactor accuracy.",
+    "HP-MR uses built-in two-group placeholder materials and a coarse polar mesh; thermal coupling is an internal smoke test, not a mesh-converged benchmark.",
+    "DSA factories, CSR and TriSN levels are optional separately reported probes; their failures do not certify those paths or invalidate the four core workload gates."
+  ],
+  "software": {
+    "python": "3.13.15 (main, Aug  5 2026, 12:25:43) [GCC 16.2.0]",
+    "platform": "Linux-7.2.8-x86_64-with-glibc2.44",
+    "numpy": "2.5.3",
+    "cupy": "14.2.0",
+    "is_hip": true,
+    "runtime_version": 70253211,
+    "driver_version": 70253211,
+    "ndgpu": "0.1.0",
+    "scipy": "1.18.1"
+  },
+  "environment": {
+    "ROCM_HOME": "/nix/store/y6yi3rf1ciklqgj9qm7zdw4zjcssg2ac-ndgpu-rocm-7.2.3",
+    "HIP_PATH": "/nix/store/4nw4gkrjr3v6f5mh2bwrll6b0vy4fsxz-clr-7.2.3",
+    "CUPY_CACHE_DIR": "/home/lijin/Documents/GitHub/NDgpu/.cache/cupy-rocm-halo-cold-20261005",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "HSA_OVERRIDE_GFX_VERSION": null
+  },
+  "cases": [
+    {
+      "kind": "diffusion",
+      "size": 8,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600154,
+          "converged": true,
+          "outer_iterations": 12,
+          "inner_iterations": 77,
+          "final_source_error": 2.9697693960826397e-10,
+          "wall_seconds": 0.003335993009386584
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693960826397e-10,
+            "wall_seconds": 0.002793911990011111
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693960826397e-10,
+            "wall_seconds": 0.002743863995419815
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693960826397e-10,
+            "wall_seconds": 0.002725665020989254
+          }
+        ],
+        "warm_median_seconds": 0.002743863995419815
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600153,
+          "converged": true,
+          "outer_iterations": 12,
+          "inner_iterations": 77,
+          "final_source_error": 2.9697678268166073e-10,
+          "wall_seconds": 3.559390143986093,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 2.274817387183353e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697678268166073e-10,
+            "wall_seconds": 0.029443764011375606,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.274817387183353e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697678268166073e-10,
+            "wall_seconds": 0.029023219016380608,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.274817387183353e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697678268166073e-10,
+            "wall_seconds": 0.0288376449898351,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.274817387183353e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.029023219016380608
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600152,
+          "converged": true,
+          "outer_iterations": 12,
+          "inner_iterations": 77,
+          "final_source_error": 2.9697693210565537e-10,
+          "wall_seconds": 0.555728678999003,
+          "comparison": {
+            "differences": {
+              "k_abs": 2.220446049250313e-16,
+              "normalized_flux_rel_l2": 1.7797818504160646e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693210565537e-10,
+            "wall_seconds": 0.021414593007648364,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 1.7797818504160646e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693210565537e-10,
+            "wall_seconds": 0.021247078984742984,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 1.7797818504160646e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "outer_iterations": 12,
+            "inner_iterations": 77,
+            "final_source_error": 2.9697693210565537e-10,
+            "wall_seconds": 0.0209165709966328,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 1.7797818504160646e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.021247078984742984
+      },
+      "passed": true
+    },
+    {
+      "kind": "sp3",
+      "size": 8,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8515779567617043,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 83,
+          "final_source_error": 1.5279768351269158e-10,
+          "wall_seconds": 0.004362948006018996
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617043,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279768351269158e-10,
+            "wall_seconds": 0.004182943986961618
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617043,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279768351269158e-10,
+            "wall_seconds": 0.004182593984296545
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617043,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279768351269158e-10,
+            "wall_seconds": 0.004160663986112922
+          }
+        ],
+        "warm_median_seconds": 0.004182593984296545
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8515779567617041,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 83,
+          "final_source_error": 1.5279765590795496e-10,
+          "wall_seconds": 0.041428305994486436,
+          "comparison": {
+            "differences": {
+              "k_abs": 2.220446049250313e-16,
+              "normalized_flux_rel_l2": 2.772030816851403e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617041,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279765590795496e-10,
+            "wall_seconds": 0.04095474199857563,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.772030816851403e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617041,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279765590795496e-10,
+            "wall_seconds": 0.04116673499811441,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.772030816851403e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617041,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279765590795496e-10,
+            "wall_seconds": 0.041127107018837705,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.772030816851403e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.041127107018837705
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8515779567617042,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 83,
+          "final_source_error": 1.5279787618964542e-10,
+          "wall_seconds": 0.15555424799094908,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 2.216375501223854e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617042,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279787618964542e-10,
+            "wall_seconds": 0.023844498995458707,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.216375501223854e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617042,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279787618964542e-10,
+            "wall_seconds": 0.02406823099590838,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.216375501223854e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8515779567617042,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 83,
+            "final_source_error": 1.5279787618964542e-10,
+            "wall_seconds": 0.023636745987460017,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.216375501223854e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.023844498995458707
+      },
+      "passed": true
+    },
+    {
+      "kind": "transient",
+      "size": 8,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600154,
+          "converged": true,
+          "power": [
+            1.0,
+            1.018070967444907,
+            1.0332457237287813,
+            1.047002659505753
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            7,
+            7
+          ],
+          "inner_iterations": 225,
+          "wall_seconds": 0.009121541981585324
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "power": [
+              1.0,
+              1.018070967444907,
+              1.0332457237287813,
+              1.047002659505753
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.008808852988295257
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "power": [
+              1.0,
+              1.018070967444907,
+              1.0332457237287813,
+              1.047002659505753
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.00871175600332208
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600154,
+            "converged": true,
+            "power": [
+              1.0,
+              1.018070967444907,
+              1.0332457237287813,
+              1.047002659505753
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.008714666997548193
+          }
+        ],
+        "warm_median_seconds": 0.008714666997548193
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600153,
+          "converged": true,
+          "power": [
+            1.0,
+            1.0180709674449089,
+            1.033245723728375,
+            1.0470026595056865
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            7,
+            7
+          ],
+          "inner_iterations": 225,
+          "wall_seconds": 0.21410782702150755,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 1.0255572030792069e-14,
+              "power_abs": 4.063416270128073e-13
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449089,
+              1.033245723728375,
+              1.0470026595056865
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.08425540299504064,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.0255572030792069e-14,
+                "power_abs": 4.063416270128073e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449089,
+              1.033245723728375,
+              1.0470026595056865
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.083766130002914,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.0255572030792069e-14,
+                "power_abs": 4.063416270128073e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600153,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449089,
+              1.033245723728375,
+              1.0470026595056865
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.08389965601963922,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.0255572030792069e-14,
+                "power_abs": 4.063416270128073e-13
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.08389965601963922
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            8,
+            8,
+            1
+          ],
+          "k_eff": 0.8394373178600152,
+          "converged": true,
+          "power": [
+            1.0,
+            1.0180709674449102,
+            1.033245723728737,
+            1.0470026595057016
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            7,
+            7
+          ],
+          "inner_iterations": 225,
+          "wall_seconds": 0.05281784900580533,
+          "comparison": {
+            "differences": {
+              "k_abs": 2.220446049250313e-16,
+              "normalized_flux_rel_l2": 5.475351932520264e-16,
+              "power_abs": 5.1514348342607263e-14
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449102,
+              1.033245723728737,
+              1.0470026595057016
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.05287991702789441,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 5.475351932520264e-16,
+                "power_abs": 5.1514348342607263e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449102,
+              1.033245723728737,
+              1.0470026595057016
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.05284120800206438,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 5.475351932520264e-16,
+                "power_abs": 5.1514348342607263e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              8,
+              8,
+              1
+            ],
+            "k_eff": 0.8394373178600152,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0180709674449102,
+              1.033245723728737,
+              1.0470026595057016
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              7,
+              7
+            ],
+            "inner_iterations": 225,
+            "wall_seconds": 0.05275425102445297,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 5.475351932520264e-16,
+                "power_abs": 5.1514348342607263e-14
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.05284120800206438
+      },
+      "passed": true
+    },
+    {
+      "kind": "hpmr_thermal",
+      "size": null,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            21,
+            21,
+            2
+          ],
+          "k_eff": 1.01580336523178,
+          "converged": true,
+          "coupling_iterations": 4,
+          "coupling_residuals": [
+            422.90653512462677,
+            0.1965238736952415,
+            0.0016401172786117968,
+            2.7869836003446835e-06
+          ],
+          "temperature_min_K": 400.0,
+          "temperature_max_K": 822.7116541816608,
+          "neutronics_converged": true,
+          "wall_seconds": 0.04546114499680698
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462677,
+              0.1965238736952415,
+              0.0016401172786117968,
+              2.7869836003446835e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.03660804399987683
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462677,
+              0.1965238736952415,
+              0.0016401172786117968,
+              2.7869836003446835e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.03657091499189846
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462677,
+              0.1965238736952415,
+              0.0016401172786117968,
+              2.7869836003446835e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.0366437729971949
+          }
+        ],
+        "warm_median_seconds": 0.03660804399987683
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            21,
+            21,
+            2
+          ],
+          "k_eff": 1.01580336523178,
+          "converged": true,
+          "coupling_iterations": 4,
+          "coupling_residuals": [
+            422.90653512462666,
+            0.19652387369501412,
+            0.0016401172786117968,
+            2.786983372971008e-06
+          ],
+          "temperature_min_K": 400.0,
+          "temperature_max_K": 822.711654181661,
+          "neutronics_converged": true,
+          "wall_seconds": 3.2945944629900623,
+          "comparison": {
+            "differences": {
+              "k_abs": 0.0,
+              "normalized_flux_rel_l2": 6.683853330448178e-16,
+              "temperature_abs_K": 4.547473508864641e-13
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462666,
+              0.19652387369501412,
+              0.0016401172786117968,
+              2.786983372971008e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.711654181661,
+            "neutronics_converged": true,
+            "wall_seconds": 0.25092516298172995,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 6.683853330448178e-16,
+                "temperature_abs_K": 4.547473508864641e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462666,
+              0.19652387369501412,
+              0.0016401172786117968,
+              2.786983372971008e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.711654181661,
+            "neutronics_converged": true,
+            "wall_seconds": 0.2509278339857701,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 6.683853330448178e-16,
+                "temperature_abs_K": 4.547473508864641e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462666,
+              0.19652387369501412,
+              0.0016401172786117968,
+              2.786983372971008e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.711654181661,
+            "neutronics_converged": true,
+            "wall_seconds": 0.2527917090046685,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 6.683853330448178e-16,
+                "temperature_abs_K": 4.547473508864641e-13
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.2509278339857701
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            21,
+            21,
+            2
+          ],
+          "k_eff": 1.01580336523178,
+          "converged": true,
+          "coupling_iterations": 4,
+          "coupling_residuals": [
+            422.90653512462654,
+            0.19652387369535518,
+            0.0016401172786117968,
+            2.7869832592841703e-06
+          ],
+          "temperature_min_K": 400.0,
+          "temperature_max_K": 822.7116541816608,
+          "neutronics_converged": true,
+          "wall_seconds": 0.3308211690164171,
+          "comparison": {
+            "differences": {
+              "k_abs": 0.0,
+              "normalized_flux_rel_l2": 1.6291993781632918e-15,
+              "temperature_abs_K": 1.1368683772161603e-12
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462654,
+              0.19652387369535518,
+              0.0016401172786117968,
+              2.7869832592841703e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.18422707900754176,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 1.6291993781632918e-15,
+                "temperature_abs_K": 1.1368683772161603e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462654,
+              0.19652387369535518,
+              0.0016401172786117968,
+              2.7869832592841703e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.18459703601547517,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 1.6291993781632918e-15,
+                "temperature_abs_K": 1.1368683772161603e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              21,
+              21,
+              2
+            ],
+            "k_eff": 1.01580336523178,
+            "converged": true,
+            "coupling_iterations": 4,
+            "coupling_residuals": [
+              422.90653512462654,
+              0.19652387369535518,
+              0.0016401172786117968,
+              2.7869832592841703e-06
+            ],
+            "temperature_min_K": 400.0,
+            "temperature_max_K": 822.7116541816608,
+            "neutronics_converged": true,
+            "wall_seconds": 0.18512456701137125,
+            "comparison": {
+              "differences": {
+                "k_abs": 0.0,
+                "normalized_flux_rel_l2": 1.6291993781632918e-15,
+                "temperature_abs_K": 1.1368683772161603e-12
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.18459703601547517
+      },
+      "passed": true
+    },
+    {
+      "kind": "diffusion",
+      "size": 12,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692406,
+          "converged": true,
+          "outer_iterations": 15,
+          "inner_iterations": 130,
+          "final_source_error": 3.503669086615163e-10,
+          "wall_seconds": 0.004190223990008235
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503669086615163e-10,
+            "wall_seconds": 0.0041021169745363295
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503669086615163e-10,
+            "wall_seconds": 0.004108855995582417
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503669086615163e-10,
+            "wall_seconds": 0.00410524700419046
+          }
+        ],
+        "warm_median_seconds": 0.00410524700419046
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692409,
+          "converged": true,
+          "outer_iterations": 15,
+          "inner_iterations": 130,
+          "final_source_error": 3.5036686461472284e-10,
+          "wall_seconds": 0.04039565200218931,
+          "comparison": {
+            "differences": {
+              "k_abs": 2.220446049250313e-16,
+              "normalized_flux_rel_l2": 2.660997704085278e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.5036686461472284e-10,
+            "wall_seconds": 0.040474068984622136,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.660997704085278e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.5036686461472284e-10,
+            "wall_seconds": 0.04054452700074762,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.660997704085278e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.5036686461472284e-10,
+            "wall_seconds": 0.04033997398801148,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.660997704085278e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.040474068984622136
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692407,
+          "converged": true,
+          "outer_iterations": 15,
+          "inner_iterations": 130,
+          "final_source_error": 3.503668892689026e-10,
+          "wall_seconds": 0.026814645010745153,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 2.3179545160364203e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503668892689026e-10,
+            "wall_seconds": 0.02686004398856312,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.3179545160364203e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503668892689026e-10,
+            "wall_seconds": 0.026705889002187178,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.3179545160364203e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "outer_iterations": 15,
+            "inner_iterations": 130,
+            "final_source_error": 3.503668892689026e-10,
+            "wall_seconds": 0.026443328009918332,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.3179545160364203e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.026705889002187178
+      },
+      "passed": true
+    },
+    {
+      "kind": "sp3",
+      "size": 12,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8429020792867004,
+          "converged": true,
+          "outer_iterations": 14,
+          "inner_iterations": 128,
+          "final_source_error": 8.286035318683692e-11,
+          "wall_seconds": 0.006495843990705907
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867004,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286035318683692e-11,
+            "wall_seconds": 0.006207553000422195
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867004,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286035318683692e-11,
+            "wall_seconds": 0.0061967140063643456
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867004,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286035318683692e-11,
+            "wall_seconds": 0.006237383000552654
+          }
+        ],
+        "warm_median_seconds": 0.006207553000422195
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8429020792867005,
+          "converged": true,
+          "outer_iterations": 14,
+          "inner_iterations": 128,
+          "final_source_error": 8.286028438719028e-11,
+          "wall_seconds": 0.05777378598577343,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 2.7284270258150907e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867005,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286028438719028e-11,
+            "wall_seconds": 0.057696699019288644,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.7284270258150907e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867005,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286028438719028e-11,
+            "wall_seconds": 0.057648760004667565,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.7284270258150907e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867005,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286028438719028e-11,
+            "wall_seconds": 0.057898322003893554,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.7284270258150907e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.057696699019288644
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8429020792867002,
+          "converged": true,
+          "outer_iterations": 14,
+          "inner_iterations": 128,
+          "final_source_error": 8.286031040542427e-11,
+          "wall_seconds": 0.03031176299555227,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 2.348999259073933e-16
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867002,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286031040542427e-11,
+            "wall_seconds": 0.030240735999541357,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.348999259073933e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867002,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286031040542427e-11,
+            "wall_seconds": 0.030167077988153324,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.348999259073933e-16
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8429020792867002,
+            "converged": true,
+            "outer_iterations": 14,
+            "inner_iterations": 128,
+            "final_source_error": 8.286031040542427e-11,
+            "wall_seconds": 0.030131770006846637,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 2.348999259073933e-16
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.030167077988153324
+      },
+      "passed": true
+    },
+    {
+      "kind": "transient",
+      "size": 12,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692406,
+          "converged": true,
+          "power": [
+            1.0,
+            1.0176885771571553,
+            1.0325602833290688,
+            1.0460739633761413
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            8,
+            8
+          ],
+          "inner_iterations": 370,
+          "wall_seconds": 0.013453130988636985
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571553,
+              1.0325602833290688,
+              1.0460739633761413
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.01356801699148491
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571553,
+              1.0325602833290688,
+              1.0460739633761413
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.013486990006640553
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692406,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571553,
+              1.0325602833290688,
+              1.0460739633761413
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.013508229021681473
+          }
+        ],
+        "warm_median_seconds": 0.013508229021681473
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692409,
+          "converged": true,
+          "power": [
+            1.0,
+            1.0176885771571504,
+            1.032560283329064,
+            1.0460739633758822
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            8,
+            8
+          ],
+          "inner_iterations": 370,
+          "wall_seconds": 0.12641314399661496,
+          "comparison": {
+            "differences": {
+              "k_abs": 2.220446049250313e-16,
+              "normalized_flux_rel_l2": 2.0516757182845542e-13,
+              "power_abs": 2.5912605394751154e-13
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571504,
+              1.032560283329064,
+              1.0460739633758822
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.1246384650003165,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.0516757182845542e-13,
+                "power_abs": 2.5912605394751154e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571504,
+              1.032560283329064,
+              1.0460739633758822
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.12482880899915472,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.0516757182845542e-13,
+                "power_abs": 2.5912605394751154e-13
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692409,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571504,
+              1.032560283329064,
+              1.0460739633758822
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.12508994998643175,
+            "comparison": {
+              "differences": {
+                "k_abs": 2.220446049250313e-16,
+                "normalized_flux_rel_l2": 2.0516757182845542e-13,
+                "power_abs": 2.5912605394751154e-13
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.12482880899915472
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            12,
+            12,
+            1
+          ],
+          "k_eff": 0.8308731965692407,
+          "converged": true,
+          "power": [
+            1.0,
+            1.0176885771571529,
+            1.0325602833290608,
+            1.0460739633777898
+          ],
+          "times": [
+            0.0,
+            0.001,
+            0.002,
+            0.003
+          ],
+          "step_iterations": [
+            7,
+            8,
+            8
+          ],
+          "inner_iterations": 370,
+          "wall_seconds": 0.07343519001733512,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.1102230246251565e-16,
+              "normalized_flux_rel_l2": 1.9331381559837393e-13,
+              "power_abs": 1.6484591469634324e-12
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571529,
+              1.0325602833290608,
+              1.0460739633777898
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.07313778100069612,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.9331381559837393e-13,
+                "power_abs": 1.6484591469634324e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571529,
+              1.0325602833290608,
+              1.0460739633777898
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.0730579340015538,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.9331381559837393e-13,
+                "power_abs": 1.6484591469634324e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              12,
+              12,
+              1
+            ],
+            "k_eff": 0.8308731965692407,
+            "converged": true,
+            "power": [
+              1.0,
+              1.0176885771571529,
+              1.0325602833290608,
+              1.0460739633777898
+            ],
+            "times": [
+              0.0,
+              0.001,
+              0.002,
+              0.003
+            ],
+            "step_iterations": [
+              7,
+              8,
+              8
+            ],
+            "inner_iterations": 370,
+            "wall_seconds": 0.07317853000131436,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.1102230246251565e-16,
+                "normalized_flux_rel_l2": 1.9331381559837393e-13,
+                "power_abs": 1.6484591469634324e-12
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.07313778100069612
+      },
+      "passed": true
+    },
+    {
+      "kind": "diffusion3d",
+      "size": 32,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            32,
+            32,
+            32
+          ],
+          "k_eff": 0.6855737727533592,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 353,
+          "final_source_error": 3.3410908559935327e-09,
+          "wall_seconds": 0.08857428201008588
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533592,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410908559935327e-09,
+            "wall_seconds": 0.08216201601317152
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533592,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410908559935327e-09,
+            "wall_seconds": 0.08395570400170982
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533592,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410908559935327e-09,
+            "wall_seconds": 0.08127821699599735
+          }
+        ],
+        "warm_median_seconds": 0.08216201601317152
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            32,
+            32,
+            32
+          ],
+          "k_eff": 0.6855737727533674,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 353,
+          "final_source_error": 3.34109256215792e-09,
+          "wall_seconds": 0.09583655997994356,
+          "comparison": {
+            "differences": {
+              "k_abs": 8.215650382226158e-15,
+              "normalized_flux_rel_l2": 8.112103556456519e-14
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533674,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.34109256215792e-09,
+            "wall_seconds": 0.09119818100589328,
+            "comparison": {
+              "differences": {
+                "k_abs": 8.215650382226158e-15,
+                "normalized_flux_rel_l2": 8.112103556456519e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533674,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.34109256215792e-09,
+            "wall_seconds": 0.09110373500152491,
+            "comparison": {
+              "differences": {
+                "k_abs": 8.215650382226158e-15,
+                "normalized_flux_rel_l2": 8.112103556456519e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533674,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.34109256215792e-09,
+            "wall_seconds": 0.09125414898153394,
+            "comparison": {
+              "differences": {
+                "k_abs": 8.215650382226158e-15,
+                "normalized_flux_rel_l2": 8.112103556456519e-14
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.09119818100589328
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            32,
+            32,
+            32
+          ],
+          "k_eff": 0.6855737727533557,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 353,
+          "final_source_error": 3.3410905231458302e-09,
+          "wall_seconds": 0.20646629398106597,
+          "comparison": {
+            "differences": {
+              "k_abs": 3.4416913763379853e-15,
+              "normalized_flux_rel_l2": 6.220347896244734e-12
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533557,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410905231458302e-09,
+            "wall_seconds": 0.05838536497321911,
+            "comparison": {
+              "differences": {
+                "k_abs": 3.4416913763379853e-15,
+                "normalized_flux_rel_l2": 6.220347896244734e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533557,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410905231458302e-09,
+            "wall_seconds": 0.05779548498685472,
+            "comparison": {
+              "differences": {
+                "k_abs": 3.4416913763379853e-15,
+                "normalized_flux_rel_l2": 6.220347896244734e-12
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              32,
+              32,
+              32
+            ],
+            "k_eff": 0.6855737727533557,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 353,
+            "final_source_error": 3.3410905231458302e-09,
+            "wall_seconds": 0.05790470098145306,
+            "comparison": {
+              "differences": {
+                "k_abs": 3.4416913763379853e-15,
+                "normalized_flux_rel_l2": 6.220347896244734e-12
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.05790470098145306
+      },
+      "passed": true
+    },
+    {
+      "kind": "diffusion3d",
+      "size": 64,
+      "cpu": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "numpy.ndarray",
+          "flux_shape": [
+            2,
+            64,
+            64,
+            64
+          ],
+          "k_eff": 0.6856454079071385,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 765,
+          "final_source_error": 1.5348098935802448e-09,
+          "wall_seconds": 1.412783395004226
+        },
+        "warm_runs": [
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071385,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5348098935802448e-09,
+            "wall_seconds": 1.40846265599248
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071385,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5348098935802448e-09,
+            "wall_seconds": 1.3974965380039066
+          },
+          {
+            "array_type": "numpy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071385,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5348098935802448e-09,
+            "wall_seconds": 1.174680055002682
+          }
+        ],
+        "warm_median_seconds": 1.3974965380039066
+      },
+      "gpu_unfused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            64,
+            64,
+            64
+          ],
+          "k_eff": 0.6856454079071257,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 765,
+          "final_source_error": 1.5347817127678693e-09,
+          "wall_seconds": 0.7439712579944171,
+          "comparison": {
+            "differences": {
+              "k_abs": 1.27675647831893e-14,
+              "normalized_flux_rel_l2": 8.360433237080781e-14
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071257,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347817127678693e-09,
+            "wall_seconds": 0.7371212670113891,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.27675647831893e-14,
+                "normalized_flux_rel_l2": 8.360433237080781e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071257,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347817127678693e-09,
+            "wall_seconds": 0.7372788809880149,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.27675647831893e-14,
+                "normalized_flux_rel_l2": 8.360433237080781e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071257,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347817127678693e-09,
+            "wall_seconds": 0.7366477230098099,
+            "comparison": {
+              "differences": {
+                "k_abs": 1.27675647831893e-14,
+                "normalized_flux_rel_l2": 8.360433237080781e-14
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.7371212670113891
+      },
+      "gpu_fused": {
+        "passed": true,
+        "initial_run": {
+          "array_type": "cupy.ndarray",
+          "flux_shape": [
+            2,
+            64,
+            64,
+            64
+          ],
+          "k_eff": 0.6856454079071433,
+          "converged": true,
+          "outer_iterations": 11,
+          "inner_iterations": 765,
+          "final_source_error": 1.5347587188196574e-09,
+          "wall_seconds": 0.6331898790085688,
+          "comparison": {
+            "differences": {
+              "k_abs": 4.884981308350689e-15,
+              "normalized_flux_rel_l2": 5.094727544055043e-14
+            },
+            "passed": true
+          }
+        },
+        "warm_runs": [
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071433,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347587188196574e-09,
+            "wall_seconds": 0.6333627729909495,
+            "comparison": {
+              "differences": {
+                "k_abs": 4.884981308350689e-15,
+                "normalized_flux_rel_l2": 5.094727544055043e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071433,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347587188196574e-09,
+            "wall_seconds": 0.633946003013989,
+            "comparison": {
+              "differences": {
+                "k_abs": 4.884981308350689e-15,
+                "normalized_flux_rel_l2": 5.094727544055043e-14
+              },
+              "passed": true
+            }
+          },
+          {
+            "array_type": "cupy.ndarray",
+            "flux_shape": [
+              2,
+              64,
+              64,
+              64
+            ],
+            "k_eff": 0.6856454079071433,
+            "converged": true,
+            "outer_iterations": 11,
+            "inner_iterations": 765,
+            "final_source_error": 1.5347587188196574e-09,
+            "wall_seconds": 0.6333096159796696,
+            "comparison": {
+              "differences": {
+                "k_abs": 4.884981308350689e-15,
+                "normalized_flux_rel_l2": 5.094727544055043e-14
+              },
+              "passed": true
+            }
+          }
+        ],
+        "warm_median_seconds": 0.6333627729909495
+      },
+      "passed": true
+    }
+  ],
+  "hardware": {
+    "name": "AMD Radeon 8060S Graphics",
+    "totalGlobalMem": 66814468096,
+    "sharedMemPerBlock": 65536,
+    "regsPerBlock": 196608,
+    "warpSize": 32,
+    "maxThreadsPerBlock": 1024,
+    "maxThreadsDim": [
+      1024,
+      1024,
+      1024
+    ],
+    "maxGridSize": [
+      2147483647,
+      65536,
+      65536
+    ],
+    "clockRate": 2900000,
+    "totalConstMem": 2147483647,
+    "major": 11,
+    "minor": 5,
+    "textureAlignment": 256,
+    "texturePitchAlignment": 256,
+    "multiProcessorCount": 20,
+    "kernelExecTimeoutEnabled": 0,
+    "integrated": 1,
+    "canMapHostMemory": 1,
+    "computeMode": 0,
+    "maxTexture1D": 16384,
+    "maxTexture2D": [
+      16384,
+      16384
+    ],
+    "maxTexture3D": [
+      16384,
+      16384,
+      8192
+    ],
+    "concurrentKernels": 1,
+    "ECCEnabled": 0,
+    "pciBusID": 197,
+    "pciDeviceID": 0,
+    "pciDomainID": 0,
+    "tccDriver": 0,
+    "memoryClockRate": 1000000,
+    "memoryBusWidth": 256,
+    "l2CacheSize": 2097152,
+    "maxThreadsPerMultiProcessor": 2048,
+    "isMultiGpuBoard": 0,
+    "cooperativeLaunch": 1,
+    "cooperativeMultiDeviceLaunch": 1,
+    "clockInstructionRate": 1000000,
+    "maxSharedMemoryPerMultiProcessor": 65536,
+    "hdpMemFlushCntl": 140737340436480,
+    "hdpRegFlushCntl": 140737340436484,
+    "memPitch": 2147483647,
+    "cooperativeMultiDeviceUnmatchedFunc": 1,
+    "cooperativeMultiDeviceUnmatchedGridDim": 1,
+    "cooperativeMultiDeviceUnmatchedBlockDim": 1,
+    "cooperativeMultiDeviceUnmatchedSharedMem": 1,
+    "isLargeBar": 1,
+    "arch": {
+      "hasGlobalInt32Atomics": 1,
+      "hasGlobalFloatAtomicExch": 1,
+      "hasSharedInt32Atomics": 1,
+      "hasSharedFloatAtomicExch": 1,
+      "hasFloatAtomicAdd": 1,
+      "hasGlobalInt64Atomics": 1,
+      "hasSharedInt64Atomics": 1,
+      "hasDoubles": 1,
+      "hasWarpVote": 1,
+      "hasWarpBallot": 1,
+      "hasWarpShuffle": 1,
+      "hasFunnelShift": 0,
+      "hasThreadFenceSystem": 1,
+      "hasSyncThreadsExt": 0,
+      "hasSurfaceFuncs": 0,
+      "has3dGrid": 1,
+      "hasDynamicParallelism": 0
+    },
+    "gcnArchName": "gfx1151",
+    "asicRevision": 0,
+    "managedMemory": 1,
+    "directManagedMemAccessFromHost": 0,
+    "concurrentManagedAccess": 1,
+    "pageableMemoryAccess": 0,
+    "pageableMemoryAccessUsesHostPageTables": 0
+  },
+  "pcg_graph": {
+    "unfused": {
+      "requested": true,
+      "forced_stream_error": false,
+      "capture_or_fallback_exercised": true,
+      "captures": 0,
+      "replays": 0,
+      "fallback_reason": "capture needs CuPy fused reductions, an out= operator and an allocation-free preconditioner; vector size must be <= 65536",
+      "iterations": 20,
+      "relative_residual": 3.0561255179439406e-12,
+      "passed": true
+    },
+    "fused": {
+      "requested": true,
+      "forced_stream_error": false,
+      "capture_or_fallback_exercised": true,
+      "captures": 1,
+      "replays": 4,
+      "fallback_reason": null,
+      "iterations": 20,
+      "relative_residual": 3.05618706105915e-12,
+      "passed": true
+    },
+    "injected_stream_failure": {
+      "requested": true,
+      "forced_stream_error": true,
+      "capture_or_fallback_exercised": true,
+      "captures": 0,
+      "replays": 0,
+      "fallback_reason": "NotImplementedError: validation-injected unsupported stream capture",
+      "iterations": 20,
+      "relative_residual": 3.05618706105915e-12,
+      "passed": true
+    }
+  },
+  "sparse_csr": {
+    "status": "supported",
+    "max_abs_error": 0.0,
+    "passed": true
+  },
+  "dsa": {
+    "sn": {
+      "status": "supported",
+      "runs": {
+        "host": {
+          "array_type": "numpy.ndarray",
+          "max_abs_error": 0.0,
+          "residual_l2": 0.0,
+          "passed": true
+        },
+        "device": {
+          "array_type": "cupy.ndarray",
+          "max_abs_error": 0.0,
+          "residual_l2": 0.0,
+          "passed": true
+        }
+      },
+      "passed": true
+    },
+    "trisn": {
+      "status": "supported",
+      "runs": {
+        "host": {
+          "array_type": "numpy.ndarray",
+          "max_abs_error": 0.0,
+          "residual_l2": 0.0,
+          "passed": true
+        },
+        "device": {
+          "array_type": "cupy.ndarray",
+          "max_abs_error": 0.0,
+          "residual_l2": 0.0,
+          "passed": true
+        }
+      },
+      "passed": true
+    }
+  },
+  "trisn_levels": {
+    "status": "supported",
+    "runs": {
+      "graphs_off": {
+        "converged": true,
+        "k_eff": 1.039416610929296,
+        "graphs_requested": false,
+        "graphs_active": null,
+        "graph_fallback_reason": null,
+        "sweep_array_type": "cupy.ndarray",
+        "comparison": {
+          "differences": {
+            "k_abs": 0.0,
+            "normalized_flux_rel_l2": 0.0
+          },
+          "passed": true
+        },
+        "passed": true
+      },
+      "graphs_on": {
+        "converged": true,
+        "k_eff": 1.039416610929296,
+        "graphs_requested": true,
+        "graphs_active": true,
+        "graph_fallback_reason": null,
+        "sweep_array_type": "cupy.ndarray",
+        "comparison": {
+          "differences": {
+            "k_abs": 0.0,
+            "normalized_flux_rel_l2": 0.0
+          },
+          "passed": true
+        },
+        "passed": true
+      }
+    },
+    "passed": true,
+    "limitation": "Small vacuum levels smoke case with source iteration; public eigen flux is host-resident by API. DSA factories tested separately."
+  },
+  "coupled_event_profile": {
+    "status": "supported",
+    "seconds": {
+      "operator_rebuild": 0.0003905470073223114,
+      "neutronics_solve": 0.0
+    },
+    "passed": true
+  },
+  "operator_profile": {
+    "cells": 64,
+    "seconds": 9.926650091074406e-06,
+    "gcells_per_s": 0.0064472908194422906
+  }
+}

@@ -44,6 +44,8 @@ class CongruentSDPNOperator:
     def __init__(self, xp, grid, D1, sigma_t, removal, order, bc=BC_ZERO_FLUX,
                  active=None, mask_bc=BC_VACUUM, op_cls=None, coeffs=None,
                  theta=None):
+        if getattr(grid, "geometry", None) == "mesh":
+            raise ValueError("mesh symmetrizing congruence lacks integrated reaction/source weighting")
         tr = _congruence_transform(order, coeffs)
         if tr is None:
             raise ValueError(f"order-{order} tables admit no symmetrizing "
@@ -393,7 +395,7 @@ def _congruence_available(order, grid, bc, active, mask_bc, coeffs=None):
     The solvers use this to auto-select the CG path per problem."""
     if _congruence_transform(order, coeffs) is None:
         return False
-    if grid is None or getattr(grid, "cylindrical_metrics", lambda: None)() is not None:
+    if grid is None or getattr(grid, "geometry", None) == "mesh" or getattr(grid, "cylindrical_metrics", lambda: None)() is not None:
         return False
     try:
         faces = [f for axis in normalize_bc(bc) for f in axis]
@@ -474,7 +476,22 @@ class SDPNGroupOperator:
                  active=None, mask_bc=BC_VACUUM, op_cls=None, coeffs=None,
                  boundary_g=None, theta=None, symmetrize=False,
                  hybrid_mask=None, hybrid_mask_bc=BC_REFLECTIVE,
-                 hybrid_confine=False):
+                 hybrid_confine=False, moment_df_model=None, moment_face_df=None,
+                 moment_boundary_df=None):
+        use_moment_df = moment_face_df is not None or moment_boundary_df is not None
+        if use_moment_df and moment_df_model != "common_trace":
+            raise ValueError("moment factors require moment_df_model='common_trace'")
+        if moment_df_model is not None and (moment_df_model != "common_trace" or
+                                             getattr(grid, "geometry", None) != "mesh" or order != 1):
+            raise ValueError("common-trace moment factors require an order-1 mesh operator")
+        if moment_df_model is not None:
+            specs = grid.classify_boundary(bc)
+            if any(spec not in ("reflective", "zero-flux", "vacuum") for spec in specs):
+                raise ValueError("common_trace supports only reflective, zero-flux, or coupled Marshak vacuum boundaries")
+            if "vacuum" in specs and boundary_g is None:
+                raise ValueError("common_trace vacuum requires a coupled Marshak boundary")
+        if getattr(grid, "geometry", None) == "mesh" and (active is not None or hybrid_mask is not None or hybrid_confine):
+            raise ValueError("mesh active/hybrid masks are unsupported; classify exposed faces explicitly")
         coeffs = coeffs if coeffs is not None else _SDPN_C
         if order not in coeffs:
             raise ValueError(f"order must be one of {sorted(coeffs)}, got {order!r}")
@@ -544,9 +561,11 @@ class SDPNGroupOperator:
         # vacuum faces made reflective.
         D_list = [D1 if i == 0 else 1.0 / ((4 * (i + 1) - 1) * sigma_t)
                   for i in range(M)]
-        bc_mom = normalize_bc(bc)
+        mesh_boundary = getattr(grid, "moment_boundary_conditions", None)
+        bc_mom = (normalize_bc(bc) if mesh_boundary is None else
+                  mesh_boundary(bc, strip_vacuum=boundary_g is not None))
         self.marshak = None
-        if boundary_g is not None:
+        if boundary_g is not None and mesh_boundary is None:
             bc_mom = _strip_vacuum(bc_mom)
         # Hybrid transport/diffusion: generate the higher moments (i >= 1) only
         # in a masked subdomain -- the mask zeroes their source rows (driver
@@ -579,8 +598,12 @@ class SDPNGroupOperator:
         self.moments = [
             op_cls(xp, grid, D_list[i], A(i, i), bc=bc_mom,
                    active=(active if i == 0 or not confined else hi_active),
-                   mask_bc=(mask_bc if i == 0 or not confined else hybrid_mask_bc))
+                   mask_bc=(mask_bc if i == 0 or not confined else hybrid_mask_bc),
+                   **({"face_df": moment_face_df, "boundary_df": moment_boundary_df}
+                      if use_moment_df else {}))
             for i in range(M)]
+        self.symmetric = self.symmetric and all(getattr(m, "symmetric", True)
+                                                for m in self.moments)
         # Off-diagonal reaction coupling A_ij (i != j) is a cell term, so it
         # carries the same metric weight as the moment operators' removal.
         w = getattr(self.moments[0], "rhs_weight", None)
@@ -598,8 +621,12 @@ class SDPNGroupOperator:
         self.rhs_weight = w
         diag = xp.stack([m.diag for m in self.moments])   # (M, *grid)
         if boundary_g is not None:
-            self.marshak = _marshak_faces(xp, grid, normalize_bc(bc), D_list,
-                                          boundary_g)
+            boundary_blocks = getattr(grid, "boundary_blocks", None)
+            self.marshak = (_marshak_faces(xp, grid, normalize_bc(bc), D_list, boundary_g)
+                            if boundary_blocks is None else
+                            boundary_blocks(xp, bc, D_list, boundary_g,
+                                            **({"boundary_df": moment_boundary_df}
+                                               if use_moment_df else {})))
             # Fold the coupled boundary's diagonal (i,i) into the Jacobi diagonal.
             for sl, K in self.marshak:
                 for i in range(M):

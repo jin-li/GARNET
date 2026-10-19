@@ -1,0 +1,10 @@
+   n^3        cells  device  outers  inners  time [s]  Mcells*iters/s  dk [pcm]
+    32       32,768     cpu      21     206      0.11            60.4       4.4
+    32       32,768     gpu      21     206      0.06           114.1       4.4
+                            speedup: 1.9x
+    64      262,144     cpu      19     378      1.71            58.0       1.1
+    64      262,144     gpu      19     378      0.08          1309.9       1.1
+                            speedup: 22.6x
+    96      884,736     cpu      20     623      9.69            56.9       0.5
+    96      884,736     gpu      20     623      0.18          3139.5       0.5
+                            speedup: 55.2x

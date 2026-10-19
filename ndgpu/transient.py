@@ -580,6 +580,12 @@ class TransientSolver:
             the C5G7-TD and TWIGL validations, which have not been re-measured;
             the HP-MR benchmark harness passes 6 explicitly. Raising the default
             is the right change once those are checked.
+        steady_kwargs : optional forward/coarse-adjoint eigenvalue solver
+            keyword arguments. When omitted or empty, initialization uses
+            ``tol_k=max(1e-8, 8*eps(dtype))`` and
+            ``tol_source=max(1e-7, 64*eps(dtype))`` (also the balance tolerance).
+            Explicit nonempty arguments are passed unchanged; their requested
+            accuracy is never relaxed to the arithmetic precision.
         initial_steady : optional compatible time-zero diffusion eigenpair.
             Supplying it skips the repeated eigenvalue solve and starts from
             its flux and k_eff. The caller owns physical compatibility: it must
@@ -785,9 +791,15 @@ class TransientSolver:
                 if table.ndim == 2 and len(table) != n_mats:
                     raise ValueError(f"per-material kinetics.{name} must have one "
                                      f"row per entry of the materials list")
+            # Forward and coarse-adjoint initialization share precision-aware
+            # defaults. Explicit solver tolerances retain their strict meaning,
+            # including failure below the arithmetic accuracy floor.
+            eps = np.finfo(self.dtype).eps
+            steady_defaults = dict(tol_k=max(1e-8, 8 * eps),
+                                   tol_source=max(1e-7, 64 * eps))
+            eigen_kwargs = steady_kwargs or steady_defaults
             if initial_steady is None:
-                steady = eig.solve(
-                    **(steady_kwargs or dict(tol_k=1e-8, tol_source=1e-7)))
+                steady = eig.solve(**eigen_kwargs)
             else:
                 if not isinstance(initial_steady, Result):
                     raise TypeError("initial_steady must be a solver Result")
@@ -824,8 +836,7 @@ class TransientSolver:
             adjoint_phase = (nullcontext() if self.phase_context is None else
                              self.phase_context("initial_adjoint_solve"))
             with adjoint_phase:
-                adjoint_kw = dict(steady_kwargs or
-                                  {"tol_k": 1e-8, "tol_source": 1e-7})
+                adjoint_kw = dict(eigen_kwargs)
                 adjoint_kw.pop("adjoint", None)
                 adjoint = eig.solve(adjoint=True, **adjoint_kw)
             if not adjoint.converged:

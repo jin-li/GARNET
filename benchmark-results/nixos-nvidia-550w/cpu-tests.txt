@@ -1,0 +1,14 @@
+Selected verification run, 2026-10-05, NixOS x86_64 Linux.
+Python 3.13.15, NumPy 2.5.3, SciPy 1.18.1, pytest 9.1.1.
+
+Command:
+nix develop path:. --command .venv/bin/python -m pytest -q tests/verification/test_examples_current.py tests/verification/test_diffusion_analytic.py tests/validation/test_reflected_slab.py tests/verification/test_tri_reactor_api.py tests/verification/test_unstructured_mesh.py tests/verification/test_transient_point_kinetics.py tests/verification/test_conduction.py tests/verification/test_coupling.py --durations=10
+
+Result: 103 passed in 39.75s.
+This is a selected CPU test run, not the entire test suite.
+
+Initial GPU probe inside the sandbox: nvidia-smi exited 9 and reported that
+it could not communicate with the NVIDIA driver. Follow-up host-level checks
+confirmed the driver is healthy; the sandbox hides the NVIDIA device nodes.
+CuPy was subsequently installed and GPU examples passed; see
+results/nixos-gpu-validation/. preCICE was not installed or tested.

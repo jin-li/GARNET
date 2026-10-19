@@ -1,0 +1,50 @@
+[
+  {
+    "command": "python /tmp/ndgpu-gpu-probe.py",
+    "status": 0,
+    "seconds": 2.168,
+    "log": "results/nixos-gpu-validation/00-ndgpu-gpu-probe.log"
+  },
+  {
+    "command": "python examples/bare_reactor.py 32 gpu",
+    "status": 0,
+    "seconds": 0.616,
+    "log": "results/nixos-gpu-validation/01-bare_reactor.log"
+  },
+  {
+    "command": "python examples/reflected_slab.py 90 gpu",
+    "status": 0,
+    "seconds": 0.865,
+    "log": "results/nixos-gpu-validation/02-reflected_slab.log"
+  },
+  {
+    "command": "python examples/hex_lattice.py 2 gpu",
+    "status": 0,
+    "seconds": 1.116,
+    "log": "results/nixos-gpu-validation/03-hex_lattice.log"
+  },
+  {
+    "command": "python examples/hpmr_3d.py 1 10 polar gpu",
+    "status": 0,
+    "seconds": 3.02,
+    "log": "results/nixos-gpu-validation/04-hpmr_3d.log"
+  },
+  {
+    "command": "python examples/transient_rod_drop.py gpu",
+    "status": 0,
+    "seconds": 2.518,
+    "log": "results/nixos-gpu-validation/05-transient_rod_drop.log"
+  },
+  {
+    "command": "python examples/hpmr_coupled.py 1 180 11 gpu",
+    "status": 0,
+    "seconds": 10.984,
+    "log": "results/nixos-gpu-validation/06-hpmr_coupled.log"
+  },
+  {
+    "command": "python examples/speed_benchmark.py 32 64 96",
+    "status": 0,
+    "seconds": 15.043,
+    "log": "results/nixos-gpu-validation/07-speed_benchmark.log"
+  }
+]

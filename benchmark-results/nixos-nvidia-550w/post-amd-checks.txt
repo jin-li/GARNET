@@ -1,0 +1,26 @@
+Post-integration checks on 550w, 2026-10-05.
+AMD feature integrated into dev at b48f672; documentation branch based on it.
+This record preserves the commands and selected output observed in this session.
+
+Command:
+nix develop path:. --command uv run --locked --extra test --extra cuda12-ctk pytest -q tests/verification/test_backend.py tests/verification/test_fused_kernels.py
+
+Observed result (exit code 0):
+52 passed in 8.38s
+
+This selection includes test_tri_index_arithmetic_with_discontinuity_factors.
+It is a backend/fused-kernel regression selection, not the complete suite.
+
+Command (with host GPU device access):
+nix develop path:. --command uv run --locked --extra test --extra cuda12-ctk python examples/bare_reactor.py 32 gpu
+
+Selected observed output (exit code 0):
+  geometry    : 150 x 150 x 150 cm,  32 x 32 x 32 cells (32,768)  [3D]
+  groups      : 2     method: diffusion     device: cuda (cupy): NVIDIA GeForce RTX 5070 Ti
+  k_eff       : 1.212294
+  status      : converged in 17 outer / 173 inner iterations, 0.08 s
+  analytic k_eff : 1.212251
+  difference     : +4.3 pcm (2nd-order discretization error at 32^3)
+
+Additional checks: local Markdown link targets exist; copied historical JSON
+example summaries have zero exit codes; git diff --check passed.

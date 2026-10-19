@@ -9,6 +9,7 @@ build/
 *.egg
 .venv/
 venv/
+.cache/
 
 # Note: dist/ndgpu-src.zip is a tracked deliverable (uploaded to Colab), so
 # dist/ is intentionally NOT ignored.
@@ -28,3 +29,23 @@ precice-profiling/
 precice-*-iterations.log
 precice-*-convergence.log
 
+# Local research repositories, worktrees, and simulation campaigns
+/.scratch/
+
+# Generated Serpent files (keep authored input decks and includes trackable)
+*_res.m
+*_det*.m
+*_his*.m
+*_dep.m
+*_mdx*.m
+*_bumat*
+*.seed
+*.wrn
+
+# Transient Serpent logs and run metadata beside example inputs
+/examples/serpent-xs/**/*.log
+/examples/serpent-xs/**/*.out
+/examples/serpent-xs/**/*.err
+
+# Generated manuals
+/docs/_build/
