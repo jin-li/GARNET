@@ -14,6 +14,14 @@ from .griffin_xs import (read_library as read_griffin_library,
 from .grid import Grid
 from .hex import HexDiffusionEigenSolver, HexGrid, offset_to_axial
 from .materials import Kinetics, Material, ONE_GROUP_DEMO, PWR_TWO_GROUP
+from .diffusion_kinetics import DiffusionKinetics, project_diffusion_kinetics
+from .kinetics_data import RegionalKineticsData, read_regional_kinetics
+from .nem_kinetics import (NEMAdjointResult, NEMEffectiveKinetics,
+                            NEMSourceResponse, NEMTimeParameters,
+                            project_nem_kinetics, project_nem_time,
+                            solve_nem_adjoint)
+from .serpent_kinetics import (SerpentKineticsEstimate, SerpentKineticsResult,
+                                read_serpent_kinetics)
 from .mesh import (Mesh, MeshGrid, MeshGroupOperator, MeshResult, UnstructuredDiffusionSolver, assemble_mesh,
                   assemble_mesh_3d, read_gmsh)
 from .model import (FeedbackSpec, HexLattice, MeshModel, Model, ModelResult,
@@ -135,6 +143,20 @@ __all__ = [
     "power_density",
     "fission_energy_xs",
     "EffectiveKinetics",
+    "DiffusionKinetics",
+    "project_diffusion_kinetics",
+    "RegionalKineticsData",
+    "read_regional_kinetics",
+    "NEMSourceResponse",
+    "NEMAdjointResult",
+    "NEMEffectiveKinetics",
+    "NEMTimeParameters",
+    "solve_nem_adjoint",
+    "project_nem_kinetics",
+    "project_nem_time",
+    "SerpentKineticsEstimate",
+    "SerpentKineticsResult",
+    "read_serpent_kinetics",
     "FixedShapeQuasiStaticResult",
     "QuasiStaticResult",
     "PointKineticsResult",

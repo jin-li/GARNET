@@ -179,6 +179,8 @@ unsuccessfully unless actual AMD arrays and the required numerical checks pass.
 
 ## Documentation
 
+- **[Static kinetics parameters](docs/kinetics_parameters.md)** — global Serpent
+  output import, raw regional data contract and matching NEM adjoint/projection.
 - **[Serpent fixed-state XS interface](docs/serpent_xs.md)** — safe results-file
   import, CPU/AMD point-reactor checks for 2–23 energy groups, and reflective
   2-D assembly validation with regional cross sections.
