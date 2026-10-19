@@ -267,9 +267,11 @@ def project_nem_kinetics(solver, forward, adjoint, *, inverse_velocities,
     ``decay`` is a common family vector in s^-1; incompatible regional family
     systems require a separate precursor model.
 
-    Total production is the solver's frozen chi*nu_sigma_f. Its remainder
-    after all delayed families must be nonnegative. No spectrum is substituted
-    or renormalized. Static interfaces/ADF are held fixed in this projection.
+    Total production is the solver's frozen target/source matrix, supplied
+    through fission_matrix or constructed from chi*nu_sigma_f by default.
+    Its remainder after all delayed families must be nonnegative. No spectrum
+    is substituted or renormalized. Static interfaces/ADF are held fixed in
+    this projection.
     """
     H, y, z, k = _matched_state(solver, forward, adjoint, rtol)
     time = _time_projection(H, y, z, k, inverse_velocities)
