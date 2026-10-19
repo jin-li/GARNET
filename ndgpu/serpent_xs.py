@@ -283,13 +283,18 @@ class SerpentXSRecord:
         }
 
 
-def read_serpent_results(path):
+def read_serpent_results(path, *, moment_orders=None):
     """Read generated result blocks as literals; never execute their control code.
 
     Record indices are zero-based file order, independent of MATLAB's ``idx``.
     Unsupported expressions in relevant fields and duplicate assignments fail.
     Unrelated output fields are retained when literal and otherwise ignored.
+    ``moment_orders`` explicitly enables higher signed moment validation; use
+    ``read_serpent_moment_results`` for the documented opt-in API.
     """
+    orders = _moment_orders(moment_orders) if moment_orders is not None else None
+    moment_fields = {f"INF_{kind}{order}" for order in range(1, 8) for kind in ("S", "SP")} if orders is not None else set()
+    known = _KNOWN | moment_fields
     path = Path(path)
     raw = path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
@@ -297,7 +302,8 @@ def read_serpent_results(path):
 
     def finish():
         if fields:
-            record = SerpentXSRecord(path, digest, len(records), fields.copy())
+            record = (SerpentXSRecord(path, digest, len(records), fields.copy()) if orders is None
+                      else SerpentMomentRecord(path, digest, len(records), fields.copy(), orders))
             record._validate()
             records.append(record)
             fields.clear()
@@ -311,14 +317,16 @@ def read_serpent_results(path):
             if not match:
                 # Unsupported indexing/assignment syntax must not hide a
                 # relevant field (including after a malicious prefix).
-                if re.match(r"^(?:" + "|".join(sorted(_KNOWN)) + r")\b", statement):
+                if re.match(r"^(?:" + "|".join(sorted(known)) + r")\b", statement):
                     raise ValueError(f"record {len(records)}: unsupported field assignment: {statement.split('=')[0].strip()}")
                 continue
             key, spec, count, rhs = match.groups()
+            if orders is not None and re.fullmatch(r"INF_SP?\d+", key) and key not in _MATRIX_FIELDS | moment_fields:
+                raise ValueError(f"record {len(records)}, {key}: unsupported moment order")
             try:
                 value = _literal(rhs)
             except ValueError as exc:
-                if key in _KNOWN:
+                if key in known:
                     raise ValueError(f"record {len(records)}, {key}: {exc}") from exc
                 continue
             if key in fields:
@@ -344,4 +352,67 @@ def read_serpent_xs(path, *, universe=None, record_index=None):
         available = [(r.record_index, r.universe) for r in records]
         raise ValueError(f"{Path(path).name}: selection matched {len(selected)} records; "
                          f"choose universe/record_index; available {available}")
+    return selected[0]
+
+
+def _moment_orders(orders):
+    orders = tuple(orders)
+    if not orders or any(type(x) is not int for x in orders) or orders != tuple(range(max(orders)+1)) or max(orders) > 7:
+        raise ValueError("moment orders must be consecutive integers 0..L, L <= 7")
+    return orders
+
+
+@dataclass(frozen=True)
+class NativeMomentEstimate:
+    """Finite signed native means/reported pairs; error sign meaning unresolved.
+
+    No absolute error, valid SE or covariance interpretation is supplied.
+    """
+    mean: np.ndarray
+    reported_error: np.ndarray
+
+
+@dataclass
+class SerpentMomentRecord(SerpentXSRecord):
+    required_orders: tuple = (0, 1, 2, 3)
+
+    def moment_estimate(self, kind, order):
+        if kind not in ("S", "SP") or type(order) is not int or not 0 <= order <= 7:
+            raise self._error("moment", "use S/SP and integer order 0..7")
+        key = f"INF_{kind}{order}"
+        if key not in self.fields:
+            raise self._error(key, "missing required moment")
+        raw = self.fields[key]
+        if not isinstance(raw, np.ndarray) or raw.size != 2*self.n_groups**2 or not np.all(np.isfinite(raw)):
+            raise self._error(key, "expected G² finite signed mean/reported-error pairs")
+        return NativeMomentEstimate(raw[::2].reshape(self.n_groups,self.n_groups).copy(),
+                                    raw[1::2].reshape(self.n_groups,self.n_groups).copy())
+
+    def _validate(self):
+        super()._validate()
+        for order in range(1,8):
+            for kind in ("S", "SP"):
+                if order in self.required_orders or f"INF_{kind}{order}" in self.fields:
+                    self.moment_estimate(kind,order)
+
+    def to_moment_material(self, *, orientation, orders=None):
+        from .moment_materials import moment_material_from_record
+        return moment_material_from_record(self, orientation=orientation, orders=orders)
+
+
+def read_serpent_moment_results(path, *, required_orders=(0,1,2,3)):
+    """Explicit opt-in signed S1..7/SP1..7 literal validation.
+
+    Legacy readers remain unchanged. Field availability is not physical admission;
+    native orientation must be supplied explicitly to the material adapter.
+    """
+    return read_serpent_results(path, moment_orders=required_orders)
+
+
+def read_serpent_moment_xs(path, *, universe=None, record_index=None, required_orders=(0,1,2,3)):
+    records = read_serpent_moment_results(path, required_orders=required_orders)
+    selected = [r for r in records if (universe is None or r.universe == str(universe))
+                and (record_index is None or r.record_index == record_index)]
+    if len(selected) != 1:
+        raise ValueError(f"{Path(path).name}: selection matched {len(selected)} records")
     return selected[0]
