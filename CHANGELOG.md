@@ -2,6 +2,13 @@
 
 ## Unreleased: static branch cross sections
 
+- Import returned Serpent data with explicit universe mapping and honest
+  retrospective provenance; preserve unknown executable and ACE identities.
+- Build five-point thermal stars with training-role, density-path and
+  evidence-policy checks, plus explicit diagnostic-only construction.
+- Check receiving NEM solutions with the full production matrix and independent
+  volume/interface/boundary balances; expose separate eigenvalue, source and
+  balance convergence controls without changing legacy stopping behavior.
 - Add immutable Serpent branch records, explicit bounded absolute interpolation,
   full fission-matrix and whole-face ADF transfer, and a fresh CPU NEM factory.
 - Add reactivity/temperature-coefficient/rod-worth validation helpers that
@@ -34,6 +41,7 @@
 Existing APIs and defaults are retained. CPU-only NEM is separate from the
 existing GPU solvers. Whole-face factors and subface extensions have different
 assumptions. Static adjoint projections are not a transient NEM implementation;
-branch XS and temperature/rod-motion studies remain future work. See the
+branch XS is experimental and transient temperature/rod-motion coupling remains
+future work. See the
 [feature inventory](docs/development/integration_inventory.md) and
 [manuals](docs/index.md) for support and qualification limits.

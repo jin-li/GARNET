@@ -115,3 +115,43 @@ Withheld-state XS and factors are used only after prediction to construct the
 exact-state comparison. A prediction that consumed those tallies is not
 independent. Passing numerical fixture tests does not qualify a reactor
 interpolation domain or replace the required external transport calculations.
+
+## Thermal-star assembly and returned-data provenance
+
+The high-level thermal builder creates four explicit triangles between the
+nominal point and adjacent axis endpoints. The endpoints must bracket the
+nominal actual temperatures and preserve the other thermal coordinate.
+Each moderator density must reproduce the declared bounded benchmark path.
+This guards against treating a temperature/density pair as independent axes
+or admitting the uncomputed corners of a rectangular domain.
+
+Training-role and evidence-policy checks precede construction. The evidence
+policy belongs to the application: it must establish the sufficiency of local
+ADF reconstruction, receiving-solver checks and compatible nuclear data.
+The library stores policy references, while every interpolated state remains
+unvalidated. Explicit diagnostic construction changes qualification labels,
+not compatibility rules or XS values. Withheld data cannot enter the training
+star through that mode.
+
+Returned-data import records an ordered bijection of physical region IDs to
+native universes, native completion/version/energy information, and hashes of
+all caller-declared files before and after conversion. This detects ordinary
+source changes during processing but provides neither a filesystem lock nor
+an original-execution attestation. Unknown executable and ACE-content identities
+remain explicit. Native printed errors and immutable arrays are retained;
+input filenames and library labels do not prove nuclear-data equivalence.
+
+The explicit NEM convergence controls distinguish absolute eigenvalue change,
+normalized full spatial-source change and the physical residual. Linear and
+auxiliary reconstruction tolerances are separate. A small change in eigenvalue
+alone is insufficient to accept a branch prediction.
+
+The receiving-solution assessor reconstructs the groupwise mean equation
+$R\bar\phi+\nabla\cdot J-F\bar\phi/k=0$ using the full emitted/source
+production matrix, including non-rank-one interpolated matrices. Interface
+checks compare both corrected traces $f\phi_s$ and the stored shared trace;
+exposed faces satisfy the declared zero-drive Robin condition. Independent
+mean/interface/boundary calculations accompany fresh degree-specific solver
+diagnostics. Nonnegative numerical profiles and positive integrated fission
+production are necessary acceptance checks. This does not provide rigorous
+interval bounds or establish Monte Carlo source convergence.

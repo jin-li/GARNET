@@ -93,3 +93,21 @@ interpolation accuracy: that qualification awaits independent transport states.
 
 Source hashes and the exact verification scope:
 {download}`branch-library validation <branch_xs_validation.json>`.
+
+## Returned branch data and thermal-star integration
+
+The returned-data importer and high-level thermal-star workflow add source
+snapshot, native inventory/completion, explicit training-role, bounded-path and
+qualification-policy checks. The receiving NEM assessor checks full production
+matrices, mean/interface/boundary conservation and fresh profile diagnostics.
+Legacy convergence and ADF prescriptions remain available unchanged.
+
+Verification comprises a 1,681-pass regression run and a final 204-pass focused
+run covering subsequent identity hardening and the new analytical workflow.
+The source archive, isolated wheel example, source-distribution contents and
+strict HTML/two-PDF builds passed. These are software checks; application
+nuclear-data equivalence, ADF qualification and withheld transport accuracy
+remain explicit requirements. No reactor branch library is distributed.
+
+Source hashes and verification scope:
+{download}`branch integration validation <branch_xs_integration_validation.json>`.

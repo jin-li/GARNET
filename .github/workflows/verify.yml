@@ -32,12 +32,14 @@ jobs:
           /tmp/ndgpu-wheel/bin/python -m pip install build/dist/*.whl
           mkdir -p /tmp/ndgpu-wheel-run/examples
           cp -R examples/isonees_features /tmp/ndgpu-wheel-run/examples/
+          cp -R examples/branch_xs /tmp/ndgpu-wheel-run/examples/
           cd /tmp/ndgpu-wheel-run
           /tmp/ndgpu-wheel/bin/python -I -c "import ndgpu; assert '/tmp/ndgpu-wheel/' in ndgpu.__file__"
           /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/common_mesh_fv.py
           /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/nem_local_reference.py
           /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/static_kinetics.py
           /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/branch_xs.py
+          /tmp/ndgpu-wheel/bin/python -I examples/branch_xs/thermal_star.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

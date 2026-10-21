@@ -21,3 +21,16 @@ def test_triangle_evaluation_through_fresh_nem_has_analytic_eigenpair():
     with pytest.raises(ValueError,match='outside'):
         library.evaluate(dict(configuration='synthetic',family='thermal',
                          fuel_temperature=700.,moderator_density=.69325))
+
+
+def test_thermal_star_example_recovers_independent_homogeneous_limit():
+    example = Path(__file__).resolve().parents[1] / 'examples/branch_xs/thermal_star.py'
+    library, state, solver, result, exact, report = runpy.run_path(str(example))['solve']()
+    assert len(library.simplices) == 4
+    assert len(library.states) == 5
+    assert state.qualification == 'interpolated-unvalidated'
+    assert all(s.qualification == 'diagnostic-unvalidated' for s in library.states.values())
+    assert result.k_eff == pytest.approx(exact, rel=1e-10)
+    np.testing.assert_allclose(result.means/result.means[0], 1., rtol=1e-10)
+    np.testing.assert_allclose(result.currents, 0., atol=1e-12)
+    assert report['status'] == 'pass'

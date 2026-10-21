@@ -63,3 +63,91 @@ A branch library generated with uniform full-core temperature changes is not
 qualified for arbitrary cellwise temperatures. This release does not add a
 transient feedback hook, rod-motion dynamics, temperature/rod combinations or
 depletion interpolation.
+
+## Import returned Serpent files
+
+`ndgpu.branch_io.import_returned_serpent_state` accepts a returned result file
+(or several files), explicit conditions and an ordered mapping from your region
+IDs to native universe names:
+
+```python
+from ndgpu.branch_io import import_returned_serpent_state
+
+state, evidence = import_returned_serpent_state(
+    "cold_res.m", state_id="fuel-cold",
+    conditions={"configuration": "aro", "family": "thermal",
+                "fuel_temperature": 500., "moderator_density": .72683},
+    region_universes=[("fuel", "fuel_universe"),
+                      ("reflector", "reflector_universe")],
+    source_files=["input", "materials.inc"],
+)
+```
+
+The mapping must cover every returned universe exactly once. Completion and
+zero lost particles are required. Declared sources are hashed before and after
+import; include every input, material and geometry file you want recorded.
+The importer does not discover includes. Its evidence is a retrospective
+snapshot: it does not attest which files the original execution consumed.
+Executable and ACE content identities remain unknown. Missing collection
+receipts do not require inventing replacements. Raw errors remain attached to
+the native records. Importing without separately qualified factors gives unity
+factors; it does not reconstruct or qualify ADFs.
+
+## Construct a thermal star
+
+`ndgpu.branch_thermal.build_thermal_star` takes five original native-backed
+states in order: nominal, fuel-low, fuel-high, moderator-low, moderator-high.
+Low/high mean actual temperature, so the moderator-low point has higher density.
+Supply the actual `moderator_temperature` in each state's conditions or metadata,
+its `moderator_path_id`, and metadata `role="nominal"` or `role="training"`.
+Every source must explicitly name `geometry_family`, `nuclear_data_family`,
+`scoring_identity`, `adf_prescription` and `solver_family`; matching omissions
+do not establish compatibility.
+Withheld roles are rejected. The builder creates four triangles in
+`(sqrt(fuel_temperature), moderator_density)`; it preserves the dependent
+moderator temperature as provenance rather than a third axis.
+
+A `qualification_policy` callback must return `ThermalStarEvidence` with a
+policy ID and evidence references for every state. The application must inspect
+reconstruction, ADF, source and nuclear-data evidence; a qualification string
+alone does not establish acceptance. For numerical diagnostics,
+`diagnostic=True` permits explicitly unvalidated construction. It still rejects
+incompatible geometry, nuclear-data identities, conventions or paths.
+
+Run the self-contained manufactured example:
+
+```sh
+python examples/branch_xs/thermal_star.py
+```
+
+Keep half-step and combined transport checks outside the five training states.
+A successful import or exact-state reconstruction does not establish prediction
+accuracy. Different Serpent versions or ACE routes need a controlled equivalence
+assessment before they can share a qualified library.
+
+## Convergence and physical checks
+
+Static CPU NEM supports explicit `tol_k`, `tol_source` and `tol_balance` controls:
+
+```python
+result = solver.solve_eigenvalue(
+    tol_k=1e-6, tol_source=1e-5, tol_balance=1e-5,
+)
+```
+
+`tol_k` controls absolute eigenvalue change; `tol_source` controls successive
+normalized fission-source change across all spatial moments; `tol_balance`
+controls the full residual. Constructor `rtol` controls each linear solve and
+auxiliary reference recovery separately. Existing calls using only `rtol`
+retain their previous stopping behavior. Numerical convergence does not replace
+positive-profile, interface and physical conservation checks.
+
+Use `ndgpu.branch_nem_validation.assess_nem_solution(solver, result,
+balance_tolerance=1e-5)` to check a receiving solution before interpreting its
+accuracy. It checks the unchanged solver configuration, finite fields,
+nonnegative physical fluxes, positive total fission production, full-matrix
+mean balance, corrected-face continuity and exposed Robin boundaries. It also
+recomputes the degree-specific weak/moment/profile diagnostics instead of
+trusting stored result diagnostics. Reconstructed profile extrema are numerical;
+they are not interval-certified bounds. These checks establish numerical
+acceptability, not transport accuracy or nuclear-data equivalence.
