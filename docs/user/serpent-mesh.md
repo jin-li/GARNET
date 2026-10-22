@@ -68,3 +68,51 @@ print(topology["grid_indices"])
 The topology records exposed masked faces separately from outer-box faces; this builder example deliberately makes both reflective. If your model requires different exposure conditions, assign them through the appropriate low-level mesh boundary interface. IDs follow active `(z,y,x)` C order, while centroid and width components are `(x,y,z)`. Tags are labels, not automatically material indices.
 
 The vertex-free result supports finite-volume connectivity, not vertex export. `MeshModel` is a diffusion builder; low-level `MeshGrid` moment solvers have their own data and factor contracts. For general Gmsh input see [unstructured mesh](https://github.com/jin-li/NDgpu/blob/main/examples/unstructured_mesh.py). The synthetic [common mesh example](https://github.com/jin-li/NDgpu/blob/main/examples/isonees_features/common_mesh_fv.py) compares the integrated common-mesh pathway.
+
+
+## Experimental material-resolved regions
+
+The opt-in [regional XS interface](../regional_xs.md) retains each pin/ring/material
+identity and the native Serpent estimates. It provides an explicit effective
+isotropic transport-corrected model; it does not qualify a correction curve or
+establish sub-pin reactor accuracy. Keep the XS regions fixed while refining
+the numerical mesh. Whole-assembly CMM coefficients must not be assigned to
+individual rings, cladding, or coolant regions.
+
+Gmsh 2.2 ASCII imports can retain physical material and boundary tags. See the
+[fitted mesh geometry contract](../development/subpin-mesh-geometry.md). Map each
+boundary tag explicitly to a supported boundary condition; a physical label
+alone does not impose a reflective or vacuum boundary. Face geometry metadata
+does not add nonorthogonal correction to the existing two-point operator.
+
+
+## Corrected fitted-mesh solves (experimental)
+
+Pass `mesh_discretization="corrected"` to `MeshDiffusionEigenSolver`,
+`MeshSP3EigenSolver`, or `MeshSDP1EigenSolver` to use the fixed linear
+nonorthogonal reconstruction. The solver selects GMRES and a fixed TPFA incomplete-LU
+preconditioner, with CPU factorization and backend-resident application. CG and moment symmetrization are unsupported.
+For moment solvers use `marshak_vacuum=True` to select coupled vacuum traces.
+Existing default solves retain the two-point operator. The corrected path
+requires oriented face geometry, a full-rank reconstruction patch, and unity
+discontinuity factors; higher-order mesh moment models are not supported.
+
+The synthetic example needs no Serpent files:
+
+```sh
+python examples/isonees_features/corrected_mesh_fv.py --device cpu
+# Requires a working AMD CuPy/ROCm environment; refuses CPU fallback.
+python examples/isonees_features/corrected_mesh_fv.py --device rocm
+```
+
+Use `tol_k=1e-6`, `tol_source=1e-5`, `tol_balance=1e-5`,
+`tol_fixed_source=1e-6`, and `inner_rtol_floor=1e-7` for the example's
+production-like iteration criteria. The separate fixed-source tolerance
+otherwise retains its stricter default. Independent equation/current balance and spatial
+convergence remain necessary before interpreting a reactor comparison.
+
+The corrected path accepts `mesh_preconditioner="tpfa_ilu"` (default) or
+`"tpfa_neumann"` (two fixed Jacobi sweeps). ILU uses SciPy setup; on CuPy its
+triangular factors and permutations stay on the GPU. Factorization/backend
+failures propagate. The weaker polynomial option may fail on thin high-contrast
+material layers. Measure construction/factor memory before a large model.

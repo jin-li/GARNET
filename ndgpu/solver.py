@@ -1101,6 +1101,25 @@ class _MeshSolverMixin:
 
     def __init__(self, mesh, materials, cell_material=None, *,
                  boundary_conditions=None, bc=None, material_map=None, **kwargs):
+        self.mesh_discretization = kwargs.pop("mesh_discretization", "tpfa")
+        self.mesh_preconditioner_model = kwargs.pop("mesh_preconditioner", None)
+        if self.mesh_discretization == "tpfa" and self.mesh_preconditioner_model is not None:
+            raise ValueError("mesh_preconditioner is only available for corrected meshes")
+        if self.mesh_discretization == "corrected":
+            self.mesh_preconditioner_model = self.mesh_preconditioner_model or "tpfa_ilu"
+            if self.mesh_preconditioner_model not in ("tpfa_ilu", "tpfa_neumann"):
+                raise ValueError("mesh_preconditioner must be 'tpfa_ilu' or 'tpfa_neumann'")
+        if self.mesh_discretization not in ("tpfa", "corrected"):
+            raise ValueError("mesh_discretization must be 'tpfa' or 'corrected'")
+        if self.mesh_discretization == "corrected":
+            if kwargs.get("linear_solver") is None:
+                kwargs["linear_solver"] = "gmres"
+            if kwargs.get("symmetrize"):
+                raise ValueError("corrected mesh operators cannot be symmetrized")
+            if isinstance(self, SDPNEigenSolver):
+                kwargs["symmetrize"] = False
+            if kwargs.get("moment_df_model") is not None:
+                raise ValueError("corrected mesh discontinuity factors are unsupported")
         face_df = kwargs.pop("face_df", None)
         boundary_df = kwargs.pop("boundary_df", None)
         if (face_df is not None or boundary_df is not None) and not isinstance(self, DiffusionEigenSolver):
@@ -1160,8 +1179,23 @@ class _MeshSolverMixin:
                          bc=grid.boundary_conditions, **kwargs)
         if self._linsolve is pcg and any(not op.symmetric for op in self.ops):
             raise ValueError("CG cannot solve a nonsymmetric mesh moment operator; use bicgstab or gmres")
+        if self.mesh_discretization == "corrected":
+            if self.mesh_preconditioner_model == "tpfa_ilu":
+                from .mesh_preconditioner import build_tpfa_ilu
+                self.preconds = [build_tpfa_ilu(op._tpfa, self.xp) for op in self.ops]
+            else:
+                self.preconds = [neumann_preconditioner(op.tpfa_apply, op.tpfa_inv_diag,
+                                                        2) for op in self.ops]
 
     def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
+        if self.mesh_discretization == "corrected":
+            from .corrected_mesh_moments import CorrectedMeshMomentOperator
+            self.ops = [CorrectedMeshMomentOperator(
+                self.xp, grid, diffusion[g], sigma_t[g], removal[g],
+                order=self._order, bc=bc, coeffs=self._coeffs,
+                boundary_g=(self._g_coeffs[self._order] if self.marshak_vacuum else None))
+                for g in range(self.n_groups)]
+            return
         if self.moment_df_model is None:
             return super()._build_operators(grid, diffusion, sigma_t, removal, bc)
         if not self.symmetric_operator:
@@ -1197,13 +1231,18 @@ class MeshDiffusionEigenSolver(_MeshSolverMixin, DiffusionEigenSolver):
         self.boundary_df = _mesh_df(boundary_df, (G, len(raw_mesh.bfaces)), "boundary_df")
         nonsymmetric = np.any(self.face_df[..., 0] != self.face_df[..., 1])
         if linear_solver is None:
-            linear_solver = "bicgstab" if nonsymmetric else "cg"
+            linear_solver = ("gmres" if kwargs.get("mesh_discretization") == "corrected"
+                             else "bicgstab" if nonsymmetric else "cg")
         if nonsymmetric and get_linear_solver(linear_solver) is pcg:
             raise ValueError("CG cannot solve a nonsymmetric mesh diffusion DF operator; use bicgstab or gmres")
         super().__init__(mesh, materials, cell_material, linear_solver=linear_solver, **kwargs)
 
     def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
-        self.ops = [MeshGroupOperator(self.xp, grid, diffusion[g], removal[g], bc=bc,
+        operator_cls = MeshGroupOperator
+        if self.mesh_discretization == "corrected":
+            from .corrected_mesh import CorrectedMeshGroupOperator
+            operator_cls = CorrectedMeshGroupOperator
+        self.ops = [operator_cls(self.xp, grid, diffusion[g], removal[g], bc=bc,
                                       symmetric=self.symmetric_operator,
                                       face_df=self.face_df[g], boundary_df=self.boundary_df[g])
                     for g in range(self.n_groups)]

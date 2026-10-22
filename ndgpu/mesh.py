@@ -54,7 +54,11 @@ class Mesh:
     ``face_distances``, when provided, stores the normal distance from each
     face's two cell centroids to its plane, in the same i/j order as ``faces``.
     Omitting it preserves the harmonic-mean centroid-separation formula used
-    by manual and 3D meshes.
+    by manual and 3D meshes. Optional ``face_centers``/``face_normals`` follow
+    ``faces`` order, with unit normals directed from i to j. Their ``bface_*``
+    counterparts follow ``bfaces`` order with outward owner normals. Boundary
+    physical tags are integers in ``bface_tags`` (zero means untagged). Centers
+    use the same length units as ``coords``; normals are dimensionless.
     """
 
     coords: np.ndarray              # (n_nodes, 2) or (n_nodes, 3)
@@ -65,6 +69,12 @@ class Mesh:
     faces: list                     # (i, j, face_measure, centroid_distance) interior
     bfaces: list                    # (i, face_measure, centroid_to_face_distance) boundary
     face_distances: np.ndarray | None = None  # (n_faces, 2) normal distances for i, j
+
+    face_centers: np.ndarray | None = None   # (n_faces, dim)
+    face_normals: np.ndarray | None = None   # unit normals from i toward j
+    bface_centers: np.ndarray | None = None  # (n_bfaces, dim)
+    bface_normals: np.ndarray | None = None  # unit outward owner normals
+    bface_tags: np.ndarray | None = None     # physical tags; zero means untagged
 
     @property
     def n_cells(self) -> int:
@@ -233,43 +243,103 @@ _GMSH_2D = {2: 3, 3: 4}                          # triangle, quad
 _GMSH_3D = {4: 4, 5: 8, 6: 6}                     # tetrahedron, hexahedron, prism
 
 
-def read_gmsh(path: str) -> Mesh:
-    """Parse a Gmsh 2.2 ASCII mesh and assemble a Mesh.
+def read_gmsh(path: str, *, normal_distances=None) -> Mesh:
+    """Read Gmsh 2.2 ASCII cells and physical boundary tags.
 
-    Handles 2D meshes of triangles (type 2) / quads (type 3) and 3D meshes of
-    tetrahedra (4) / hexahedra (5) / prisms (6). If any 3D volume element is
-    present the mesh is built in 3D (surface elements are ignored); otherwise the
-    2D path is used.
+    Node IDs may be sparse or unordered. The first element tag is the physical
+    tag (zero for an element without tags); remaining tags are skipped according
+    to the declared count. Lower-dimensional elements label matching boundary
+    node sets. ``normal_distances=None`` keeps the 2D/3D assembly defaults.
     """
-    lines = open(path).read().splitlines()
+    with open(path) as stream:
+        lines = stream.read().splitlines()
+    mi = lines.index("$MeshFormat")
+    fmt = lines[mi + 1].split()
+    if fmt[:2] != ["2.2", "0"]:
+        raise ValueError("read_gmsh requires Gmsh 2.2 ASCII format")
     ni = lines.index("$Nodes")
     nn = int(lines[ni + 1])
-    coords = np.zeros((nn + 1, 3))
+    coords = np.zeros((nn, 3))
+    node_index = {}
     for k in range(nn):
         t = lines[ni + 2 + k].split()
-        coords[int(t[0])] = (float(t[1]), float(t[2]), float(t[3]))
+        node_id = int(t[0])
+        if node_id in node_index:
+            raise ValueError(f"duplicate Gmsh node ID {node_id}")
+        node_index[node_id] = k
+        coords[k] = [float(x) for x in t[1:4]]
     ei = lines.index("$Elements")
     ne = int(lines[ei + 1])
-    elems = [[int(x) for x in lines[ei + 2 + k].split()] for k in range(ne)]
-    is_3d = any(t[1] in _GMSH_3D for t in elems)
+    elems = []
+    for k in range(ne):
+        t = [int(x) for x in lines[ei + 2 + k].split()]
+        ntags = t[2]
+        if ntags < 0 or len(t) < 3 + ntags:
+            raise ValueError("invalid Gmsh element tag count")
+        elems.append((t[1], t[3] if ntags else 0, t[3 + ntags:]))
+    is_3d = any(kind in _GMSH_3D for kind, _, _ in elems)
     table = _GMSH_3D if is_3d else _GMSH_2D
-    cells, tags = [], []
-    for t in elems:
-        nnode = table.get(t[1])
-        if nnode is not None:
-            tags.append(t[3])                    # first tag (physical / assembly id)
-            cells.append(tuple(t[5:5 + nnode]))
+    boundary_table = _GMSH_2D if is_3d else {1: 2}
+    cells, tags, boundary_tags = [], [], {}
+    for kind, physical, nodes in elems:
+        nnode = table.get(kind, boundary_table.get(kind))
+        if nnode is None:
+            continue
+        if len(nodes) != nnode:
+            raise ValueError(f"Gmsh element type {kind} requires {nnode} nodes")
+        try:
+            nodes = tuple(node_index[n] for n in nodes)
+        except KeyError as exc:
+            raise ValueError(f"unknown Gmsh node ID {exc.args[0]}") from exc
+        if kind in table:
+            cells.append(nodes)
+            tags.append(physical)
+        else:
+            key = tuple(sorted(nodes))
+            if key in boundary_tags and boundary_tags[key] != physical:
+                raise ValueError("conflicting physical tags on a boundary face")
+            boundary_tags[key] = physical
+    kwargs = {"boundary_tags": boundary_tags}
+    if normal_distances is not None:
+        kwargs["normal_distances"] = normal_distances
     if is_3d:
-        return assemble_mesh_3d(coords, cells, tags)
-    return assemble_mesh(coords[:, :2], cells, tags)
+        return assemble_mesh_3d(coords, cells, tags, **kwargs)
+    return assemble_mesh(coords[:, :2], cells, tags, **kwargs)
 
 
-def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
+def _validate_mesh_geometry(mesh):
+    """Reject degenerate or incorrectly oriented assembled geometry."""
+    if (len(mesh.cell_tag) != mesh.n_cells or not np.all(np.isfinite(mesh.coords))
+            or not np.all(np.isfinite(mesh.area)) or np.any(mesh.area <= 0)):
+        raise ValueError("mesh requires one tag per cell and finite positive cell measures")
+    for entries, centers, normals, interior in (
+            (mesh.faces, mesh.face_centers, mesh.face_normals, True),
+            (mesh.bfaces, mesh.bface_centers, mesh.bface_normals, False)):
+        for face, center, normal in zip(entries, centers, normals):
+            quantities = face[2:] if interior else face[1:]
+            if not np.all(np.isfinite(quantities)) or np.any(np.asarray(quantities) <= 0):
+                raise ValueError("mesh face measures and distances must be finite and positive")
+            if not np.all(np.isfinite(normal)) or not np.isclose(np.linalg.norm(normal), 1):
+                raise ValueError("mesh face normal must be a finite unit vector")
+            if np.dot(center - mesh.centroid[face[0]], normal) <= 0:
+                raise ValueError("mesh face normal must point outward from its owner")
+            if interior and np.dot(mesh.centroid[face[1]] - center, normal) <= 0:
+                raise ValueError("interior face must separate its cell centroids")
+    return mesh
+
+
+def _boundary_tag_map(boundary_tags):
+    return {} if boundary_tags is None else {
+        tuple(sorted(nodes)): int(tag) for nodes, tag in boundary_tags.items()}
+
+
+def assemble_mesh(coords, cells, tags, *, normal_distances=True, boundary_tags=None) -> Mesh:
     """Build a Mesh (centroids, areas, interior/boundary faces) from polygons.
 
     coords : (n_nodes, 2) node coordinates. cells : list of node-index tuples.
     tags   : one integer per cell (material/assembly id). A face is a boundary
-    face when only one cell borders it.
+    face when only one cell borders it. ``boundary_tags`` optionally maps
+    boundary node tuples (in either order) to integer physical labels.
 
     ``normal_distances=True`` supplies face-normal interior resistances and
     boundary distances. False retains the historical centroid-separation
@@ -313,14 +383,22 @@ def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
         return float(np.hypot(*(centroid[a] - centroid[b])))
 
     faces, face_distances, bfaces, consumed = [], [], [], set()
+    face_centers, face_normals, bface_centers, bface_normals, bface_tags = [], [], [], [], []
+    boundary_tags = _boundary_tag_map(boundary_tags)
 
     def add_face(i, j, edge):
         p0, p1 = coords[list(edge)]
         tangent = p1 - p0
         L = float(np.hypot(*tangent))
+        if not np.isfinite(L) or L <= 0:
+            raise ValueError("mesh edge length must be finite and positive")
         normal = np.array([-tangent[1], tangent[0]]) / L
+        if np.dot(normal, centroid[j] - centroid[i]) < 0:
+            normal = -normal
         midpoint = 0.5 * (p0 + p1)
         faces.append((i, j, L, dist(i, j)))
+        face_centers.append(midpoint)
+        face_normals.append(normal)
         face_distances.append((abs(float(np.dot(centroid[i] - midpoint, normal))),
                                abs(float(np.dot(centroid[j] - midpoint, normal)))))
     for e, ci in one_cell.items():
@@ -345,18 +423,32 @@ def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
         if len(lst) == 2:
             i, j = lst
             add_face(i, j, e)
-        else:
+        elif len(lst) == 1:
             i = lst[0]
+            if not np.isfinite(L) or L <= 0:
+                raise ValueError("mesh edge length must be finite and positive")
             tangent = p1 - p0
             normal = np.array([-tangent[1], tangent[0]]) / L
             midpoint = 0.5 * (p0 + p1)
+            if np.dot(normal, midpoint - centroid[i]) < 0:
+                normal = -normal
+            bface_centers.append(midpoint)
+            bface_normals.append(normal)
+            bface_tags.append(boundary_tags.get(e, 0))
             db = (abs(float(np.dot(centroid[i] - midpoint, normal)))
                   if normal_distances else float(np.linalg.norm(centroid[i] - midpoint)))
             bfaces.append((i, L, db))
-    return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
+        else:
+            raise ValueError(f"edge {e} is shared by {len(lst)} cells (non-manifold mesh)")
+    return _validate_mesh_geometry(Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags), centroid=centroid,
                area=area, faces=faces, bfaces=bfaces,
                face_distances=(np.asarray(face_distances).reshape(-1, 2)
-                               if normal_distances else None))
+                               if normal_distances else None),
+               face_centers=np.asarray(face_centers).reshape(-1, 2),
+               face_normals=np.asarray(face_normals).reshape(-1, 2),
+               bface_centers=np.asarray(bface_centers).reshape(-1, 2),
+               bface_normals=np.asarray(bface_normals).reshape(-1, 2),
+               bface_tags=np.asarray(bface_tags, dtype=int)))
 
 
 # Local face node-orderings per 3D element type, keyed by node count. Orientation
@@ -402,7 +494,7 @@ def _cell_volume_centroid_3d(cell_pts, faces_local):
     return vtot, (csum / vtot if vtot > 0 else g)
 
 
-def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
+def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False, boundary_tags=None) -> Mesh:
     """Build a 3D Mesh (volumes, centroids, interior/boundary faces) from cells.
 
     coords : (n_nodes, 3) node coordinates. cells : list of node-index tuples,
@@ -418,6 +510,9 @@ def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
 
     ``normal_distances=True`` supplies face-normal interior resistances and
     normal boundary distances. The default retains legacy centroid distances.
+    ``boundary_tags`` optionally maps boundary face node tuples (any order) to
+    integer physical labels. Faces must be planar; cells must be star-convex
+    about their computed centroid.
     """
     coords = np.asarray(coords, dtype=float)
     cells = [tuple(c) for c in cells]
@@ -440,15 +535,25 @@ def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
         return float(np.linalg.norm(centroid[a] - centroid[b]))
 
     faces, face_distances, bfaces = [], [], []
-    for lst in face_cells.values():
+    face_centers, face_normals, bface_centers, bface_normals, bface_tags = [], [], [], [], []
+    boundary_tags = _boundary_tag_map(boundary_tags)
+    for face_nodes, lst in face_cells.items():
         gface = lst[0][1]
         A, fcent = _poly_area_centroid_3d(coords[list(gface)])
         fp = coords[list(gface)]
         normal = np.cross(fp[1] - fp[0], fp[2] - fp[0])
-        normal /= np.linalg.norm(normal)
+        norm = np.linalg.norm(normal)
+        if not np.isfinite(norm) or norm <= 0:
+            raise ValueError("mesh face area must be finite and positive")
+        normal /= norm
+        owner = lst[0][0]
+        if np.dot(normal, fcent - centroid[owner]) < 0:
+            normal = -normal
         if len(lst) == 2:
             i, j = lst[0][0], lst[1][0]
             faces.append((i, j, A, dist(i, j)))
+            face_centers.append(fcent)
+            face_normals.append(normal)
             face_distances.append((abs(float(np.dot(centroid[i] - fcent, normal))),
                                    abs(float(np.dot(centroid[j] - fcent, normal)))))
         elif len(lst) == 1:
@@ -456,13 +561,21 @@ def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
             db = (abs(float(np.dot(centroid[i] - fcent, normal))) if normal_distances
                   else float(np.linalg.norm(centroid[i] - fcent)))
             bfaces.append((i, A, db))
+            bface_centers.append(fcent)
+            bface_normals.append(normal)
+            bface_tags.append(boundary_tags.get(face_nodes, 0))
         else:
             raise ValueError(f"face {lst[0][1]} is shared by {len(lst)} cells "
                              "(non-manifold or non-conforming mesh)")
-    return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags),
+    return _validate_mesh_geometry(Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags),
                 centroid=centroid, area=volume, faces=faces, bfaces=bfaces,
                 face_distances=(np.asarray(face_distances).reshape(-1, 2)
-                                if normal_distances else None))
+                                if normal_distances else None),
+                face_centers=np.asarray(face_centers).reshape(-1, 3),
+                face_normals=np.asarray(face_normals).reshape(-1, 3),
+                bface_centers=np.asarray(bface_centers).reshape(-1, 3),
+                bface_normals=np.asarray(bface_normals).reshape(-1, 3),
+                bface_tags=np.asarray(bface_tags, dtype=int)))
 
 
 @dataclass

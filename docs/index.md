@@ -20,6 +20,10 @@ user_guide
 model_api
 coupling
 serpent_xs
+regional_xs
+development/subpin-mesh-geometry
+development/corrected-fv
+development/corrected-mesh-moments
 amd_rocm
 kinetics_parameters
 development/integration_inventory

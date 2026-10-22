@@ -55,3 +55,32 @@ Local coefficient elimination leaves node means and shared face currents in a sp
 Condition estimates and scaled solves gate local and global responses. Negative means, traces and profile minima remain visible diagnostics rather than being clipped. Higher order can expose oscillation or ill-conditioning. Accepting a case requires residual, positivity and order-convergence evidence, not simply the largest available degree.
 
 The NEM reference reconstruction uses the receiver's exact $R-C/k$, polynomial degree, geometry and leakage policy. Prescribed reference currents need not obey the receiving core's exterior Robin condition. An auxiliary mean source can close local reference balance; it is excluded from the core production and physical population. The reflector-inclusive factor qualification compares three increasing orders and their face changes, with additional profile/factor checks. Passing this local gate does not validate the receiving core.
+
+
+## Fitted material interfaces and regional data
+
+The mesh assemblers retain oriented face centres/normals and physical boundary
+labels for experimental heterogeneous finite-volume development. A normal
+distance improves the geometric resistance definition but does not remove the
+two-point approximation on a skewed mesh. Verification of nonorthogonal flux
+reconstruction is a separate numerical requirement.
+
+The [regional XS adapter](../regional_xs.md) can construct an explicitly
+transport-corrected isotropic model. Its change to total and diagonal production
+scattering preserves scalar removal/production balance. The effective total
+also enters the existing higher-moment closures; these transformed constants
+are not native anisotropic moment cross sections. Source curve compatibility,
+regional admissibility, spatial convergence and comparison with transport
+remain independent requirements.
+
+
+The opt-in [corrected scalar operator](../development/corrected-fv.md) uses a
+material-aware linear least-squares gradient and one conservative current per
+face. The [corrected order-1 moment operator](../development/corrected-mesh-moments.md)
+reconstructs both gradients together at Marshak boundaries. It does not replace
+these coupled conditions with reflective scalar gradient constraints. Runtime
+operators use fixed sparse gathers on NumPy/CuPy; GMRES uses a fixed TPFA
+incomplete-LU preconditioning basis (or an explicitly selected fixed
+Neumann polynomial). Rank-deficient patches fail explicitly. These operators
+are generally nonsymmetric and have no guaranteed discrete maximum principle
+on arbitrary distorted meshes.
