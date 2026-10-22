@@ -117,3 +117,41 @@ Marshak reconstruction; the scalar supplied-gradient hook is not that coupling.
 Actual AMD checks of the synthetic two-group sheared problem agree with CPU
 in both fused settings. These checks establish numerical backend consistency,
 not reactor accuracy or performance.
+
+## Nonconstant circular-interface manufactured solution
+
+`tests/test_corrected_mesh_radial_mms.py` independently constructs conforming
+polar triangle meshes with NumPy, without Gmsh. It solves
+`-div(D grad u) = 1` with homogeneous outer Dirichlet data, using SciPy's sparse
+direct solver on the corrected operator. The circular reference is
+`u(r) = integral_r^R s/(2 D(s)) ds`, so `D grad u = -x/2`. Material interfaces
+are at radii 0.4107 and 0.4186; the outer radius is 0.6309. Each material's
+quadratic reference is averaged analytically over each triangle using its exact
+second coordinate moment, rather than sampled at the centroid.
+
+Both angular counts (48, 96, 192) and radial subdivisions in every material
+double, giving 720, 2,976 and 12,096 cells. Area-weighted L2 errors and observed
+orders from a single-thread NumPy/SciPy run are:
+
+| Diffusion coefficients (inner/layer/outer) | L2, 720 cells | L2, 2,976 cells | L2, 12,096 cells | Orders |
+| --- | --- | --- | --- | --- |
+| 0.7 / 3 / 0.3 | 7.215923377e-4 | 1.770795268e-4 | 4.390385342e-5 | 2.0268, 2.0120 |
+| 0.7 / 1800 / 0.3 | 7.185744807e-4 | 1.766877454e-4 | 4.384534355e-5 | 2.0239, 2.0107 |
+
+The tests require error ratios above 3 on both refinements, check the direct
+solution residual and face-by-face cell balance, and compare total conservative
+outflow with the polygon area. The analytic current `x/2` has exactly the same
+integrated polygon outflow. Numerical outflows at these levels are approximately
+1.2468952349, 1.2495706616 and 1.2502400558.
+
+This is a joint geometry/discretization refinement: circles are approximated
+by inscribed polygons. The material-wise quadratic extensions have small trace
+jumps on interface chords, and the circular reference has nonzero trace along
+outer boundary chords. Both defects are O(angular spacing squared), as is the
+geometric sagitta. At the outer boundary the maximum trace defects are
+1.418851241e-3, 3.550929508e-4 and 8.879700922e-5; the test reports interface
+trace defects and sagittas too. Thus the measured error includes geometry error
+and does not isolate the stencil's error on an exact circular domain. This
+nonconstant, high-contrast scalar MMS provides curved-interface convergence
+evidence; it does not qualify reactor eigenvalues, transport agreement,
+Serpent Gd/TRC cases, or coupled moments.
