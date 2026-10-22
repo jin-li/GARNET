@@ -84,3 +84,68 @@ preconditioning. Actual AMD validation covers the synthetic two-group sheared
 mesh with coupled vacuum boundaries, with fusion enabled and disabled; CPU
 and GPU eigenvalues and scalar fluxes agree to double-precision roundoff.
 That evidence does not qualify a large fitted reactor mesh or its XS.
+
+## Nonconstant radial coupled-boundary manufactured solutions
+
+`tests/test_corrected_mesh_radial_moment_mms.py` extends the scalar polar
+manufactured problem to both SP3 and SDP1, using NumPy-generated triangles and
+an independent SciPy sparse direct solve. Radii are 0.4107, 0.4186 and 0.6309;
+the material diffusion coefficients for moment zero are 0.7, 1800 and 0.3.
+The second moment has `D_2 = 1/(7 sigma_t) = 3 D_0/7`, with
+`sigma_t = 1/(3 D_0)` and removal 0.13.
+
+The independently stated mathematical PDE is
+`-div(D_m grad U_m) + sum_k (0.13 C0_mk + sigma_t Ct_mk) U_k = q_m`.
+The oracle uses literal rational matrices:
+
+| Family | C0 | Ct | G |
+| --- | --- | --- | --- |
+| SP3 | `[[1,-2/3],[-2/3,4/9]]` | `[[0,0],[0,5/9]]` | `[[1/2,-1/8],[-1/8,7/24]]` |
+| SDP1 | `[[1,-2/3],[-6/7,4/7]]` | `[[0,0],[0,5/7]]` | `[[1/2,-1/8],[-2/7,23/42]]` |
+
+With `f = [1,-0.35]`, the circular exact solution is
+`U_m(r) = b_m + f_m integral_r^R s/(2 D_m(s)) ds`, where
+`b = solve(G, R f/2)`. Thus both boundary traces are nonzero and the coupled
+homogeneous law is `-D_m normal.grad(U_m) = sum_k G_mk U_k`.
+Both off-diagonal entries contribute; neither boundary is replaced by a scalar
+Robin approximation. The operator receives the native family coefficient and
+boundary tables, while the exact field and source use the literal matrices
+above. This tests the numerical implementation of those specified mathematical
+matrices, without independently establishing their angular transport derivation.
+
+Each moment's quadratic field is averaged analytically over each triangle.
+The integrated source is exactly `f_m area + sum_k R_mk mean(U_k) area` within
+each material extension, where `R = 0.13 C0 + sigma_t Ct`. Source construction
+does not call `op.apply`, read an operator reaction matrix, or use the discrete
+solution. Refining both angles and all radial subdivisions gives 1,440, 5,952
+and 24,192 unknowns. Single-thread CPU results for the combined area-weighted
+L2 norm across both moments are:
+
+| Family | L2, 1,440 unknowns | L2, 5,952 unknowns | L2, 24,192 unknowns | Orders |
+| --- | --- | --- | --- | --- |
+| SP3 | 2.211181499e-3 | 5.534289871e-4 | 1.384177784e-4 | 1.99835, 1.99937 |
+| SDP1 | 2.259099966e-3 | 5.659952681e-4 | 1.416545891e-4 | 1.99689, 1.99841 |
+
+The individual moment L2 errors are respectively
+`[2.163360967e-3,4.573761561e-4]`,
+`[5.415391426e-4,1.141008359e-4]`,
+`[1.354448663e-4,2.853365670e-5]` for SP3, and
+`[2.253309444e-3,1.616453018e-4]`,
+`[5.645640581e-4,4.022521359e-5]`,
+`[1.412890374e-4,1.017007988e-5]` for SDP1.
+The tests require refinement error ratios above 3 for each moment and the
+combined norm. They check direct-solve residuals, conservative per-cell balances
+with the independently specified reaction, and each moment's global outward
+current against integrated source minus reaction.
+
+As in the scalar radial test, this is joint polygon geometry and discretization
+convergence. Piecewise quadratic extensions have O(angular spacing squared)
+trace jumps on interface chords. The circular boundary field also has a
+nonzero Robin defect on outer chords; at chord midpoints this is
+`G (b + f R^2 sin(a)^2/(4 D_outer)) - f R cos(a)/2`, with `a = pi/n_angles`.
+The test prints that defect, which decreases by approximately four per level.
+The radial current is analytically continuous, but the circular reference is
+not an exact solution of the finite polygon problem. These results provide
+nonconstant curved-interface evidence for the coupled numerical closure;
+reactor eigenvalues, SerpentGd/TRC transport agreement, and physical Marshak
+matrix derivation remain separate qualification questions.
