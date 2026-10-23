@@ -39,6 +39,20 @@ def test_legacy_positional_mesh_metadata_is_optional():
     assert mesh.bface_tags is None
 
 
+@pytest.mark.parametrize('cell,expected', [
+    ((0, 1, 2), 1.e-10),
+    ((2, 1, 0), 1.e-10),
+    ((0, 1, 3, 2), 2.e-10),
+])
+def test_thin_cell_area_is_preserved_away_from_origin(cell, expected):
+    # The global shoelace formula subtracts O(100) products to obtain O(1e-10).
+    # Analytic triangle/rectangle areas provide an independent small-cell check.
+    coords = np.array([(0., 0.), (1.e-5, 0.), (0., 2.e-5), (1.e-5, 2.e-5)])
+    for offset in ((0., 0.), (10., -10.), (-10., 10.)):
+        mesh = assemble_mesh(coords + offset, [cell], [7])
+        assert mesh.area[0] == pytest.approx(expected, rel=1.e-9, abs=0.)
+
+
 def test_hanging_node_faces_use_half_edge_geometry():
     coords = [(0, 0), (1, 0), (1, 1), (0, 1), (1, .5),
               (2, 0), (2, .5), (2, 1)]

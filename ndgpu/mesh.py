@@ -364,7 +364,11 @@ def assemble_mesh(coords, cells, tags, *, normal_distances=True, boundary_tags=N
     edge_cells = defaultdict(list)
     for c, ns in enumerate(cells):
         P = coords[list(ns)]
-        x, y = P[:, 0], P[:, 1]
+        # Subtract a local origin before shoelace products. Thin fitted cells
+        # can have tiny areas compared with their global coordinate products.
+        # The translation preserves area and avoids their cancellation.
+        local = P - P[0]
+        x, y = local[:, 0], local[:, 1]
         area[c] = 0.5 * abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
         centroid[c] = P.mean(0)
         m = len(ns)

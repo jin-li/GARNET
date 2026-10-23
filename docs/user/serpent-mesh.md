@@ -94,6 +94,11 @@ boundary tag explicitly to a supported boundary condition; a physical label
 alone does not impose a reflective or vacuum boundary. Face geometry metadata
 does not add nonorthogonal correction to the existing two-point operator.
 
+Two-dimensional cell areas are evaluated in local coordinates to avoid
+subtracting large global-coordinate products for thin fitted cells. Check
+material-region areas against the intended geometry separately; this numerical
+stabilization does not remove polygonal approximation of curved interfaces.
+
 
 ## Corrected fitted-mesh solves (experimental)
 
