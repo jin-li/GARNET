@@ -29,8 +29,7 @@ The core solvers support:
   Early iterations use looser accuracy targets, which tighten as the calculation
   converges. Working memory is reused too.
 
-See the [GPU profiling and measurements](docs/gpu_kernel_optimization_plan.md)
-for timings and hardware-dependent trade-offs.
+See the [GPU profiling and measurements](docs/gpu_kernel_optimization_plan.md) for timings and hardware-dependent trade-offs. Users without access to GPU hardware can test drive the [Google Colab notebooks](https://github.com/poncetma/GARNET/tree/main/notebooks). 
 
 ## Install
 
