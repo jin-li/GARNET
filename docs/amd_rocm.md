@@ -1,6 +1,6 @@
 # AMD ROCm on NixOS
 
-NDgpu uses CuPy for both NVIDIA CUDA and AMD HIP. AMD support is experimental:
+GARNET uses CuPy for both NVIDIA CUDA and AMD HIP. AMD support is experimental:
 the matrix-free physics code is shared, but library and runtime capabilities
 must be checked on the actual GPU. `device="gpu"` raises if CuPy cannot access
 a GPU. `device="auto"` may fall back to NumPy and is unsuitable for validation.
@@ -15,8 +15,8 @@ uv sync --locked --extra test --extra rocm
 rocminfo
 uv run --locked --extra test --extra rocm python -c \
   'import cupy; cupy.show_config(); assert cupy.cuda.runtime.is_hip; print(cupy.cuda.runtime.getDeviceProperties(0))'
-NDGPU_FUSED=0 uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
-NDGPU_FUSED=1 uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
+GARNET_FUSED=0 uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
+GARNET_FUSED=1 uv run --locked --extra test --extra rocm python examples/bare_reactor.py 16 gpu
 uv run --locked --extra test --extra rocm python examples/validate_rocm.py \
   --sizes 8 12 --cube-sizes 32 64 --repeats 3 --output results/rocm-validation.json
 ```
@@ -70,7 +70,7 @@ with the pinned 7.2.3 libraries.
 `examples/validate_rocm.py` requires `get_backend("gpu")`, HIP runtime identity,
 and actual CuPy output arrays. It checks float64 CPU and AMD diffusion, SP3,
 a three-step delayed-neutron transient with a fission perturbation, and internal
-HP-MR thermal coupling. Each AMD case runs first with NDgpu fusion disabled,
+HP-MR thermal coupling. Each AMD case runs first with GARNET fusion disabled,
 then enabled. CPU and AMD must converge and satisfy these tolerances:
 
 | Quantity | Maximum difference |
@@ -122,7 +122,7 @@ validation.
 
 ## Measured on halo, 2026-10-05
 
-The [reviewed report](https://github.com/jin-li/NDgpu/blob/main/benchmark-results/amd-rocm-halo/README.md) records
+The [reviewed report](https://github.com/jin-li/GARNET/blob/main/benchmark-results/amd-rocm-halo/README.md) records
 actual HIP execution on `gfx1151` with CuPy 14.2.0, ROCm 7.2.3, Python
 3.13.15, NumPy 2.5.3, SciPy 1.18.1 and Linux 7.2.8. All nine required cases
 passed with fusion off and on: the two square resolutions for diffusion,

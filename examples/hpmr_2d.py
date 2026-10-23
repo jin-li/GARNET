@@ -17,8 +17,8 @@ are placeholders; swap in SPH-corrected sets via build_hpmr2d(materials=).
 
 import sys
 
-from ndgpu.benchmarks import build_hpmr2d
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.benchmarks import build_hpmr2d
+from garnet.tri import TriDiffusionEigenSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 6
 absorber = sys.argv[2] if len(sys.argv) > 2 else "polar"
@@ -42,4 +42,4 @@ for angle in (0, 30, 60, 90, 120, 150, 180):
     print(f"{angle:>9}° {res.k_eff:>10.5f} {rho:>22.0f}")
 
 print("\n(placeholder cross sections: shapes and worths are illustrative,"
-      "\n not predictive; see ndgpu/benchmarks/hpmr.py)")
+      "\n not predictive; see garnet/benchmarks/hpmr.py)")

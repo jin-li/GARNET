@@ -12,9 +12,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, ONE_GROUP_DEMO, PWR_TWO_GROUP,
+from garnet import (DiffusionEigenSolver, Grid, ONE_GROUP_DEMO, PWR_TWO_GROUP,
                    k_bare_box, k_infinite)
-from ndgpu.mesh import (UnstructuredDiffusionSolver, assemble_mesh,
+from garnet.mesh import (UnstructuredDiffusionSolver, assemble_mesh,
                         assemble_mesh_3d, read_gmsh)
 
 # A large Robin coefficient makes the boundary flux vanish (Dirichlet limit),
@@ -98,8 +98,8 @@ def test_unstructured_matches_tri_on_hpmr_staircase():
     # the SAME triangles with the same centroid-painted absorber, so they must
     # produce the same k. This ties the general-geometry solver to the fast
     # structured one on the geometry that actually matters, drums in and out.
-    from ndgpu.benchmarks.hpmr import build_hpmr2d, hpmr_locally_refined_mesh
-    from ndgpu.tri import TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr import build_hpmr2d, hpmr_locally_refined_mesh
+    from garnet.tri import TriDiffusionEigenSolver
 
     for angle in (0.0, 120.0):
         p = build_hpmr2d(refine=4, drum_angle_deg=angle, absorber="raster")
@@ -239,7 +239,7 @@ def test_matrix_free_apply_equals_assembled_operator():
     # must equal an explicitly assembled dense operator built from the same
     # face/boundary weights -- this pins the gather independent of the eigensolve.
     # A locally-refined mesh exercises the 2:1 hanging-node faces too.
-    from ndgpu.benchmarks.hpmr import hpmr_locally_refined_mesh
+    from garnet.benchmarks.hpmr import hpmr_locally_refined_mesh
     mesh, cm, mats, alpha = hpmr_locally_refined_mesh(
         refine=3, drum_angle_deg=90.0, refine_drums=True)
     _assert_apply_matches_dense(mesh, cm, mats, alpha)

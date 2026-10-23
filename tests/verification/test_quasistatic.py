@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, EffectiveKinetics, Grid, Kinetics,
+from garnet import (DiffusionEigenSolver, EffectiveKinetics, Grid, Kinetics,
                    Material, ThermalFeedback, ThermalMaterial, TransientSolver,
                    equilibrium_precursors, fixed_shape_coupled_transient,
                    integrate_point_kinetics, project_effective_kinetics,
                    projected_adjoint_residual, projected_shape_residual,
                    quasistatic_coupled_transient)
-from ndgpu.coupling import CoupledSolver, CouplingContext, coupled_transient
-from ndgpu.quasistatic import (_match_spatial_precursor_importance,
+from garnet.coupling import CoupledSolver, CouplingContext, coupled_transient
+from garnet.quasistatic import (_match_spatial_precursor_importance,
                                _project_spatial_precursors,
                                _shape_time_importance)
 
@@ -260,8 +260,8 @@ def test_quasistatic_verbose_reports_periodic_progress(capsys):
 
 def test_adiabatic_quasistatic_tracks_reduced_hpmr_drum_ramp():
     """The intended use case: cached drum frames plus coupled feedback."""
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu.benchmarks.hpmr_thermal import (build_hpmr_coupling,
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr_thermal import (build_hpmr_coupling,
                                                hpmr_drum_ramp)
 
     problem = build_hpmr2d(
@@ -295,8 +295,8 @@ def test_adiabatic_quasistatic_tracks_reduced_hpmr_drum_ramp():
 
 def test_iqs_keeps_accepted_precursor_history_across_shape_corrections():
     """A coarse shape predictor must not replace the fine amplitude history."""
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu.benchmarks.hpmr_thermal import (build_hpmr_coupling,
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr_thermal import (build_hpmr_coupling,
                                                hpmr_drum_ramp)
 
     problem = build_hpmr2d(

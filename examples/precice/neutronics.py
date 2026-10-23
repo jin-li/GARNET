@@ -20,7 +20,7 @@ import precice
 from common import (Trace, build_context, check_version, gather, parse_args,
                     scatter)
 
-from ndgpu.coupling import neutronics_step
+from garnet.coupling import neutronics_step
 
 MESH = "Neutronics-Mesh"
 

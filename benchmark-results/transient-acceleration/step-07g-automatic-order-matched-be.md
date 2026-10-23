@@ -30,7 +30,7 @@ The automatic result is `1.469974 s / 5599.09 W cm-3` at the first peak,
 numerically indistinguishable at reporting precision from the fixed-maximum
 result. Automatic selection reduces accepted steps 10.2%, FGMRES work 3.4%,
 inner work 3.2%, and measured transient time 4.7%. The accepted count is 3.8%
-above Cherezov's 399-step fourth-order FEM result, though ndgpu still has more
+above Cherezov's 399-step fourth-order FEM result, though garnet still has more
 rejections (29 versus 7).
 
 ## Tolerance convergence

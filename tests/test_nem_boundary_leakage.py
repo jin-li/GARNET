@@ -4,8 +4,8 @@ import itertools
 import numpy as np
 import pytest
 
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_geometry import CuboidNodalGrid
 import test_nem as augmented
 
 PAIRS = ((0, 2), (1, 3), (4, 5))

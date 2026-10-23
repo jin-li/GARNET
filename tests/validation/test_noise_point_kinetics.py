@@ -13,9 +13,9 @@ folded into chi_eff(w), and the noise-source construction.
 import numpy as np
 import pytest
 
-from ndgpu import (Grid, Kinetics, Material, NoiseSolver, NoiseSource,
+from garnet import (Grid, Kinetics, Material, NoiseSolver, NoiseSource,
                    zero_power_transfer_function)
-from ndgpu.backend import asnumpy
+from garnet.backend import asnumpy
 
 
 def _critical_one_group():
@@ -77,7 +77,7 @@ def test_zero_power_transfer_function_tri(angular):
     delta-rho to solver precision, pinning that the i w/v shift, chi_eff(w) and
     the source assembly flow through TriGroupOperator exactly as on the
     Cartesian grid."""
-    from ndgpu.tri import TriGrid
+    from garnet.tri import TriGrid
     mat = Material(name="crit", diffusion=[1.2], sigma_a=[0.020], nu_sigma_f=[0.020])
     grid = TriGrid(shape=(4, 4, 2), side=10.0)
     kin = Kinetics(velocities=[2.2e5], beta=[0.0065], decay=[0.0784])
@@ -109,7 +109,7 @@ def test_noise_tri_matches_cartesian_slab():
     Cartesian grid or the triangular mesh (both leakage-free and flat here), so
     the tri path reproduces the Cartesian one to discretization-independent
     agreement on this exact solution."""
-    from ndgpu.tri import TriGrid
+    from garnet.tri import TriGrid
     mat = Material(name="crit", diffusion=[1.2], sigma_a=[0.020], nu_sigma_f=[0.020])
     kin = Kinetics(velocities=[2.2e5], beta=[0.0065], decay=[0.0784])
     src = NoiseSource(d_sigma_a=[1e-4])
@@ -152,7 +152,7 @@ def test_localized_source_global_to_local_transition():
     point-kinetics response) but progressively localizes around the
     perturbation as the frequency rises -- the hallmark global-to-local
     transition of neutron noise."""
-    from ndgpu.benchmarks import build_twigl
+    from garnet.benchmarks import build_twigl
     p = build_twigl("none", cells_per_8cm=2)
     mats, mmap = p.problem_at(0.0)
     ns = NoiseSolver(p.grid, mats, mmap, kinetics=p.kinetics, bc=p.bc)

@@ -11,7 +11,7 @@ build/
 venv/
 .cache/
 
-# Note: dist/ndgpu-src.zip is a tracked deliverable (uploaded to Colab), so
+# Note: dist/garnet-src.zip is a tracked deliverable (uploaded to Colab), so
 # dist/ is intentionally NOT ignored.
 
 # Local reference copies of papers (not redistributable) + Windows ADS junk
@@ -31,6 +31,9 @@ precice-*-convergence.log
 
 # Local research repositories, worktrees, and simulation campaigns
 /.scratch/
+
+# Independent study repositories may remain private.
+/studies/
 
 # Generated Serpent files (keep authored input decks and includes trackable)
 *_res.m

@@ -15,9 +15,9 @@ fold into diffusion constants).
 import numpy as np
 import pytest
 
-from ndgpu import (TriDiffusionEigenSolver, TriGrid, TriSP3EigenSolver,
+from garnet import (TriDiffusionEigenSolver, TriGrid, TriSP3EigenSolver,
                    k_infinite)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, _placeholder_materials
+from garnet.benchmarks.hpmr import build_hpmr2d, _placeholder_materials
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 

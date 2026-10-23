@@ -5,8 +5,8 @@
 This template requires your own existing Serpent result file. It does not start Serpent:
 
 ```python
-from ndgpu import DiffusionEigenSolver, Grid
-from ndgpu.serpent_xs import read_serpent_xs
+from garnet import DiffusionEigenSolver, Grid
+from garnet.serpent_xs import read_serpent_xs
 record = read_serpent_xs("assembly_res.m", universe="0")
 material = record.to_diffusion_material(diffusion="cmm")
 solver = DiffusionEigenSolver(Grid((1, 1, 1), (1.0, 1.0, 1.0)),
@@ -36,7 +36,7 @@ This block continues the data-dependent scalar-record template. Surface flux is 
 The separate reader requires orders and orientation explicitly:
 
 ```python
-from ndgpu.serpent_xs import read_serpent_moment_xs
+from garnet.serpent_xs import read_serpent_moment_xs
 native = read_serpent_moment_xs("assembly_res.m", universe="0",
                                 required_orders=(0, 1, 2, 3))
 moments = native.to_moment_material(orientation="from-major")
@@ -51,8 +51,8 @@ The following example needs no external data:
 
 ```python
 import numpy as np
-from ndgpu import Material, MeshModel
-from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
+from garnet import Material, MeshModel
+from garnet.nodal_mesh import build_rectilinear_mesh_3d
 active = np.ones((1, 2, 2), dtype=bool)  # nz, ny, nx
 active[0, 1, 1] = False
 mesh, topology = build_rectilinear_mesh_3d(
@@ -67,4 +67,4 @@ print(topology["grid_indices"])
 
 The topology records exposed masked faces separately from outer-box faces; this builder example deliberately makes both reflective. If your model requires different exposure conditions, assign them through the appropriate low-level mesh boundary interface. IDs follow active `(z,y,x)` C order, while centroid and width components are `(x,y,z)`. Tags are labels, not automatically material indices.
 
-The vertex-free result supports finite-volume connectivity, not vertex export. `MeshModel` is a diffusion builder; low-level `MeshGrid` moment solvers have their own data and factor contracts. For general Gmsh input see [unstructured mesh](https://github.com/jin-li/NDgpu/blob/main/examples/unstructured_mesh.py). The synthetic [common mesh example](https://github.com/jin-li/NDgpu/blob/main/examples/isonees_features/common_mesh_fv.py) compares the integrated common-mesh pathway.
+The vertex-free result supports finite-volume connectivity, not vertex export. `MeshModel` is a diffusion builder; low-level `MeshGrid` moment solvers have their own data and factor contracts. For general Gmsh input see [unstructured mesh](https://github.com/jin-li/GARNET/blob/main/examples/unstructured_mesh.py). The synthetic [common mesh example](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/common_mesh_fv.py) compares the integrated common-mesh pathway.

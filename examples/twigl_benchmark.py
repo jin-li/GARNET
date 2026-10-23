@@ -16,8 +16,8 @@ import sys
 
 import numpy as np
 
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 r = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 kind = sys.argv[2] if len(sys.argv) > 2 else "ramp"
@@ -37,7 +37,7 @@ seed_c = Material(name="seed (perturbable)", **seed_xs)   # distinct object -> i
 
 # --- geometry: three rectangular regions in an 80 cm quarter core ------------
 model = (
-    ndgpu.Model(size=(80, 80), cells=(10 * r, 10 * r))
+    garnet.Model(size=(80, 80), cells=(10 * r, 10 * r))
     .fill(blanket)
     .add_box(seed, x=(0, 24), y=(24, 56)).add_box(seed, x=(24, 56), y=(0, 24))   # L-shaped seed
     .add_box(seed_c, x=(24, 56), y=(24, 56))                                     # central seed

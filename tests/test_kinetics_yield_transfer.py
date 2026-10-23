@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from ndgpu.kinetics_yield_transfer import transfer_delayed_yields
+from garnet.kinetics_yield_transfer import transfer_delayed_yields
 
 
 KW = dict(source_domain='physical D4 orbit',receiver_domain='representative virtual GCU',

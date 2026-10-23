@@ -6,7 +6,7 @@ PYTHONPATH := ../..
 all: adaptive-bdf-lra-benchmark.pdf
 
 figures:
-	MPLCONFIGDIR=/tmp/ndgpu-matplotlib PYTHONPATH=$(PYTHONPATH) $(PYTHON) make_figures.py
+	MPLCONFIGDIR=/tmp/garnet-matplotlib PYTHONPATH=$(PYTHONPATH) $(PYTHON) make_figures.py
 
 build/report.pdf: report.tex figures
 	mkdir -p build

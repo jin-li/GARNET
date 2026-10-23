@@ -1,7 +1,7 @@
 """Synthetic signed native moment data only; no external XS or solver runs."""
 import numpy as np
 import pytest
-from ndgpu.serpent_xs import read_serpent_moment_xs, read_serpent_xs
+from garnet.serpent_xs import read_serpent_moment_xs, read_serpent_xs
 
 
 def write(tmp_path, overrides=None, extra=''):

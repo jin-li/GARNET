@@ -12,7 +12,7 @@ import argparse
 
 import numpy as np
 
-import ndgpu
+import garnet
 
 
 ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -20,15 +20,15 @@ ap.add_argument("--device", default="auto")
 args = ap.parse_args()
 
 # Homogenized assembly constants: fast -> thermal group order, cm / 1/cm.
-fuel = ndgpu.Material(
+fuel = garnet.Material(
     name="fuel", diffusion=[1.25, 0.35], sigma_a=[0.012, 0.120],
     nu_sigma_f=[0.0085, 0.185],
     sigma_s=[[0.0, 0.026], [0.0, 0.0]], chi=[1.0, 0.0])
-radial_reflector = ndgpu.Material(
+radial_reflector = garnet.Material(
     name="radial reflector", diffusion=[1.15, 0.25],
     sigma_a=[0.001, 0.020], nu_sigma_f=[0.0, 0.0],
     sigma_s=[[0.0, 0.035], [0.0, 0.0]])
-axial_reflector = ndgpu.Material(
+axial_reflector = garnet.Material(
     name="axial reflector", diffusion=[1.10, 0.23],
     sigma_a=[0.0015, 0.023], nu_sigma_f=[0.0, 0.0],
     sigma_s=[[0.0, 0.033], [0.0, 0.0]])
@@ -36,7 +36,7 @@ axial_reflector = ndgpu.Material(
 # Later paint calls overwrite earlier ones: disk 2 is the reflector background,
 # disk 1 is seven fuel assemblies. Each hex gets 6*refine^2 triangles.
 model = (
-    ndgpu.HexLattice(pitch=18.0, refine=2)
+    garnet.HexLattice(pitch=18.0, refine=2)
     .set_disk(2, radial_reflector)
     .set_disk(1, fuel)
     .set_boundary("vacuum")
@@ -53,17 +53,17 @@ print(model.steady(device=args.device, tol_k=1e-8, tol_source=1e-7))
 # indices. Inactive triangular padding is filled automatically.
 model.configure_thermal(
     {
-        "fuel": ndgpu.ThermalMaterial(
+        "fuel": garnet.ThermalMaterial(
             conductivity=0.25, sink_coeff=0.015,
             sink_temperature=650.0, heat_capacity=2.5),
-        "radial reflector": ndgpu.ThermalMaterial(
+        "radial reflector": garnet.ThermalMaterial(
             conductivity=0.35, heat_capacity=2.0),
-        "axial reflector": ndgpu.ThermalMaterial(
+        "axial reflector": garnet.ThermalMaterial(
             conductivity=0.32, heat_capacity=2.1),
     },
     total_power=50_000.0,                         # W in this full 3-D model
     feedback={
-        "fuel": ndgpu.FeedbackSpec(
+        "fuel": garnet.FeedbackSpec(
             reference_temperature=700.0,
             doppler=[2.0e-4, 0.0]),
     },
@@ -72,7 +72,7 @@ model.configure_thermal(
 
 # A state callback may return another TriReactor with the same mesh. Here it is
 # a simple absorption step; cached control-drum frames use the same interface.
-hot_fuel = ndgpu.Material(
+hot_fuel = garnet.Material(
     name="fuel", diffusion=fuel.diffusion,
     sigma_a=fuel.sigma_a * np.array([1.0, 1.002]),
     nu_sigma_f=fuel.nu_sigma_f, sigma_s=fuel.sigma_s, chi=fuel.chi)

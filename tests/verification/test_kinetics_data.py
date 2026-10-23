@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import pytest
-from ndgpu.kinetics_data import read_regional_kinetics
+from garnet.kinetics_data import read_regional_kinetics
 
 
 def fixture():
@@ -49,7 +49,7 @@ def test_duplicate_json_field_rejected(tmp_path):
 
 
 def test_general_prompt_delayed_kernel_is_bound_to_imported_node_data(tmp_path):
-    from ndgpu.kinetics_production import assemble_kinetics_production
+    from garnet.kinetics_production import assemble_kinetics_production
     native=fixture()
     delayed=np.asarray(native['delayed_production'])
     # Nonzero delayed tail conflicts with the old zero-emission bin.

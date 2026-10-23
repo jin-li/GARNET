@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build and validate NDgpu's native aarch64 Python environment on GH200 from
+# Build and validate GARNET's native aarch64 Python environment on GH200 from
 # wheels prefetched into shared scratch. This job performs no network access.
 
-#SBATCH --job-name=ndgpu-gh-env
+#SBATCH --job-name=garnet-gh-env
 #SBATCH --cluster=gmerlin7
 #SBATCH --partition=gh-interactive
 #SBATCH --nodes=1
@@ -11,14 +11,14 @@
 #SBATCH --hint=nomultithread
 #SBATCH --time=00:20:00
 #SBATCH --mem=16G
-#SBATCH --chdir=/data/scratch/shared/poncet_m/ndgpu-slurm-debug
-#SBATCH --output=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/ndgpu-gh-env-%j.log
-#SBATCH --error=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/ndgpu-gh-env-%j.log
+#SBATCH --chdir=/data/scratch/shared/poncet_m/garnet-slurm-debug
+#SBATCH --output=/data/scratch/shared/poncet_m/garnet-slurm-debug/garnet-gh-env-%j.log
+#SBATCH --error=/data/scratch/shared/poncet_m/garnet-slurm-debug/garnet-gh-env-%j.log
 
 set -euo pipefail
 
-wheelhouse="/data/scratch/shared/poncet_m/ndgpu-gh-wheelhouse"
-env_root="/data/scratch/shared/poncet_m/ndgpu-gh-py313-v1"
+wheelhouse="/data/scratch/shared/poncet_m/garnet-gh-wheelhouse"
+env_root="/data/scratch/shared/poncet_m/garnet-gh-py313-v1"
 pip_wheel="$wheelhouse/pip-25.3-py3-none-any.whl"
 
 printf '=== GH200 environment setup started: %s ===\n' "$(date -Is)"

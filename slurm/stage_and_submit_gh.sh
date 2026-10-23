@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 #
-# Stage the NDgpu checkout into shared scratch and submit the GH benchmark
+# Stage the GARNET checkout into shared scratch and submit the GH benchmark
 # from there. This avoids running batch jobs directly from AFS.
 
 set -euo pipefail
 
-src_root="/afs/psi.ch/project/stars/workspace/RND/SB-RND-ACT-011-24/WP2/PM41/NDgpu"
-stage_root="/data/scratch/shared/poncet_m/ndgpu-stage"
+src_root="/afs/psi.ch/project/stars/workspace/RND/SB-RND-ACT-011-24/WP2/PM41/GARNET"
+stage_root="/data/scratch/shared/poncet_m/garnet-stage"
 
 mkdir -p "$stage_root"
 rsync -a --delete \
     --exclude '.git' \
     --exclude '.agents' \
     --exclude '.codex' \
-    --exclude 'slurm/ndgpu-*' \
+    --exclude 'slurm/garnet-*' \
     "$src_root/" "$stage_root/repo/"
 
-export NDGPU_REPO="$stage_root/repo"
-export NDGPU_PYTHON_BIN="${NDGPU_PYTHON_BIN:-/data/scratch/shared/poncet_m/ndgpu-gh-py313-v1/bin/python}"
+export GARNET_REPO="$stage_root/repo"
+export GARNET_PYTHON_BIN="${GARNET_PYTHON_BIN:-/data/scratch/shared/poncet_m/garnet-gh-py313-v1/bin/python}"
 sbatch_args=()
-if [[ -n "${NDGPU_SLURM_DEPENDENCY:-}" ]]; then
-    sbatch_args+=("--dependency=$NDGPU_SLURM_DEPENDENCY")
+if [[ -n "${GARNET_SLURM_DEPENDENCY:-}" ]]; then
+    sbatch_args+=("--dependency=$GARNET_SLURM_DEPENDENCY")
 fi
-sbatch "${sbatch_args[@]}" "$stage_root/repo/slurm/run_ndgpu_gh.sh"
+sbatch "${sbatch_args[@]}" "$stage_root/repo/slurm/run_garnet_gh.sh"

@@ -4,10 +4,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu import (MeshGrid, MeshGroupOperator, MeshDiffusionEigenSolver,
+from garnet import (MeshGrid, MeshGroupOperator, MeshDiffusionEigenSolver,
                    MeshSP1EigenSolver, UnstructuredDiffusionSolver,
                    Material, assemble_mesh)
-from ndgpu.linalg import pcg
+from garnet.linalg import pcg
 
 
 def mesh_two():

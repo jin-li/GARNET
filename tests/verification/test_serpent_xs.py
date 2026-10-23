@@ -10,8 +10,8 @@ import re
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid
-from ndgpu.serpent_xs import read_serpent_results, read_serpent_xs
+from garnet import DiffusionEigenSolver, Grid
+from garnet.serpent_xs import read_serpent_results, read_serpent_xs
 
 
 _COUNTER = """if (exist('idx', 'var'));

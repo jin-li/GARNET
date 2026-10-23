@@ -1,9 +1,9 @@
-"""Rebuild dist/ndgpu-src.zip, the archive the Colab notebooks pip-install.
+"""Rebuild dist/garnet-src.zip, the archive the Colab notebooks pip-install.
 
 The notebooks upload this zip rather than cloning, so it is the *only* thing
 that carries source changes to the GPU. It is easy to forget, and a stale zip
 does not fail -- it silently runs old code, which is worse. Run this after any
-change under ndgpu/ and before opening a notebook on Colab:
+change under garnet/ and before opening a notebook on Colab:
 
     python tools/build_src_zip.py
 
@@ -18,8 +18,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "dist" / "ndgpu-src.zip"
-TOP_FILES = ["pyproject.toml", "README.md"]
+OUT = ROOT / "dist" / "garnet-src.zip"
+TOP_FILES = ["pyproject.toml", "README.md", "LICENSE"]
 KEEP_SUFFIXES = {".py", ".npz", ".csv", ".xml", ".txt", ".json", ".dat"}
 
 
@@ -28,7 +28,7 @@ def build(out: Path = OUT) -> Path:
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for name in TOP_FILES:
             z.write(ROOT / name, name)
-        for root, dirs, files in os.walk(ROOT / "ndgpu"):
+        for root, dirs, files in os.walk(ROOT / "garnet"):
             dirs[:] = sorted(d for d in dirs if d != "__pycache__")
             rel = Path(root).relative_to(ROOT)
             z.write(root, f"{rel}/")

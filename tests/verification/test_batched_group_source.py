@@ -18,10 +18,10 @@ NumPy.
 import numpy as np
 import pytest
 
-from ndgpu import kernels
-from ndgpu.benchmarks.hpmr import build_hpmr2d
-from ndgpu.benchmarks.hpmr_thermal import hpmr_endfb8_builtin
-from ndgpu.solver import Fields, scatter_stack
+from garnet import kernels
+from garnet.benchmarks.hpmr import build_hpmr2d
+from garnet.benchmarks.hpmr_thermal import hpmr_endfb8_builtin
+from garnet.solver import Fields, scatter_stack
 
 
 @pytest.fixture(scope="module")
@@ -107,9 +107,9 @@ def test_batched_transient_reproduces_the_sparse_one():
     ``_group_batch`` gates on ``use_fused``, which is False on NumPy, so this
     configuration is unreachable outside the test.
     """
-    from ndgpu import TransientSolver, TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr_transient_bench import build_case, scale_absorption
-    from ndgpu.tri import TriGroupOperator
+    from garnet import TransientSolver, TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr_transient_bench import build_case, scale_absorption
+    from garnet.tri import TriGroupOperator
 
     # 11 groups (G >= 3, as production requires for the batch to engage) on the
     # smallest mesh, and a NEGATIVE insertion: extra absorption makes the

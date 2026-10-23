@@ -1,9 +1,9 @@
 """Complete source response/transpose checks on unequal nodes and ADFs."""
 import numpy as np
 import pytest
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_kinetics import (NEMSourceResponse, solve_nem_adjoint,
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_kinetics import (NEMSourceResponse, solve_nem_adjoint,
                                 project_nem_kinetics, project_nem_time)
 from test_nem import tensor_grid, materials
 
@@ -49,7 +49,7 @@ def test_response_rejects_replaced_cached_material():
 @pytest.mark.parametrize('policy', ['one_sided', 'primary_rule'])
 @pytest.mark.parametrize('general_production', [False, True])
 def test_physical_projection_against_independent_augmented_pencil(degree, policy, monkeypatch, general_production):
-    from ndgpu.nem_geometry import CuboidNodalGrid
+    from garnet.nem_geometry import CuboidNodalGrid
     from test_nem_higher_order import independent_pencil, recovered_vector
     if policy == 'primary_rule':
         import test_nem_higher_order

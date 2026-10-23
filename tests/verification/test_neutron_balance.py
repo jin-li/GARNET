@@ -15,8 +15,8 @@ break this even though the power iteration still "converged".
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP
-from ndgpu.mesh import assemble_mesh_3d, UnstructuredDiffusionSolver
+from garnet import DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP
+from garnet.mesh import assemble_mesh_3d, UnstructuredDiffusionSolver
 
 
 def _balance(solver, res):

@@ -8,8 +8,8 @@ against FEMFFUSION's own diffusion result.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver
-from ndgpu.benchmarks import build_biblis, build_iaea
+from garnet import DiffusionEigenSolver
+from garnet.benchmarks import build_biblis, build_iaea
 
 TOL = dict(tol_k=1e-8, tol_source=1e-7)
 

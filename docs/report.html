@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<title>NDgpu — Theory &amp; Benchmarks</title>
+<title>GARNET — Theory &amp; Benchmarks</title>
 <style>
 :root {
   --bg: #f7f8f7; --bg-2: #eef0ee; --bg-3: #e4e8e5;
@@ -158,13 +158,19 @@ footer { margin-top: 4.5rem; padding-top: 1.2rem; border-top: 1px solid var(--ru
 
 <main>
 <header>
-  <p class="eyebrow">NDgpu · technical report</p>
+  <p class="eyebrow">GARNET · technical report</p>
   <h1>Theory &amp; Benchmarks</h1>
   <p class="subtitle">How a matrix-free finite-volume neutron diffusion solver works,
   why it is fast on GPUs, the evidence that it is correct — and the HP-MR
   microreactor model built on top of it.</p>
-  <p class="meta">July 2026 · NDgpu 0.1 · CPU results in this report; the GPU path
+  <p class="meta">July 2026 · GARNET 0.1 · CPU results in this report; the GPU path
   runs the identical code via CuPy</p>
+
+  <p class="note">This report preserves the July 2026 benchmark snapshot.
+  Some feature-status and roadmap notes below have since been superseded.
+  See the <a href="user_guide.md">user guide</a> for current workflows and the
+  <a href="verification_validation.md">verification and validation report</a>
+  for current test coverage and later CPU/GPU studies.</p>
 
   <nav class="toc" aria-label="Contents">
     <b>Contents</b>
@@ -186,7 +192,7 @@ footer { margin-top: 4.5rem; padding-top: 1.2rem; border-top: 1px solid var(--ru
   <p class="eyebrow">§ 1</p>
   <h2>The physics problem</h2>
   <p>A reactor is critical when neutron production by fission exactly balances
-  losses to absorption and leakage. NDgpu solves the standard <em>multigroup
+  losses to absorption and leakage. GARNET solves the standard <em>multigroup
   neutron diffusion</em> model of that balance: neutron energies are collapsed
   into <var>G</var> groups, and within each group <var>g</var> the scalar flux
   φ<sub>g</sub>(<b>r</b>) obeys</p>
@@ -239,7 +245,7 @@ footer { margin-top: 4.5rem; padding-top: 1.2rem; border-top: 1px solid var(--ru
   interface, exact for piecewise-constant <var>D</var>. It also does the
   physically right thing at a strong absorber (<var>D</var> → 0 chokes the
   face; an arithmetic mean would leak through). It is implemented once, as
-  <code>harmonic_mean()</code> in <code>ndgpu/operator.py</code>, and used by
+  <code>harmonic_mean()</code> in <code>garnet/operator.py</code>, and used by
   every lattice.</p>
 
   <p>Dividing by the cell volume gives one <em>coupling coefficient</em>
@@ -279,7 +285,7 @@ footer { margin-top: 4.5rem; padding-top: 1.2rem; border-top: 1px solid var(--ru
 
   <h3><span class="no">2.2</span>"Shifted multiply-adds": the stencil as array algebra</h3>
   <p>The stencil defines a huge sparse matrix — one row per cell, seven
-  entries per row. NDgpu never builds it. The observation is that on a
+  entries per row. GARNET never builds it. The observation is that on a
   structured lattice, <em>the west neighbour of every cell is the same array
   shifted by one index</em>. So applying the whole operator to a flux array
   <code>phi</code> is a handful of elementwise operations on shifted array
@@ -314,7 +320,7 @@ out[:, :, :-1] -= wz * phi[:, :, 1:]    # above</code></pre>
 <section id="s3">
   <p class="eyebrow">§ 3</p>
   <h2>Boundary conditions: one Robin law</h2>
-  <p>Every boundary in NDgpu is the single Robin law
+  <p>Every boundary in GARNET is the single Robin law
   <var>J</var><sub>net</sub> = α·φ<sub>s</sub> — the net outward current
   proportional to the surface flux — with the physics selected by α:</p>
 
@@ -476,10 +482,10 @@ out[:, :, :-1] -= wz * phi[:, :, 1:]    # above</code></pre>
   <p>Validation asks: <em>does it reproduce known reactor problems?</em> These
   are community benchmark cores solved end-to-end
   (<code>tests/validation/</code>); each problem definition and its published
-  reference value live together in <code>ndgpu/benchmarks/</code>.</p>
+  reference value live together in <code>garnet/benchmarks/</code>.</p>
 
   <div class="tablewrap"><table>
-    <thead><tr><th>Benchmark</th><th>Type</th><th>Reference</th><th>NDgpu</th></tr></thead>
+    <thead><tr><th>Benchmark</th><th>Type</th><th>Reference</th><th>GARNET</th></tr></thead>
     <tbody>
       <tr><td>OECD/NEA C5G7 (2D quarter core, 7 groups)</td><td>steady, Cartesian</td>
         <td>transport k = 1.18655</td><td>diffusion +40 pcm; SP3 +175 pcm¹</td></tr>
@@ -615,7 +621,7 @@ out[:, :, :-1] -= wz * phi[:, :, 1:]    # above</code></pre>
     <li><b>Cross sections are placeholders.</b> The HP-MR numbers exercise
     geometry and solver; predictive worths need the SPH-corrected two-group
     constants being prepared in FEMFFUSION — they drop in through
-    <code>ndgpu.read_xsec</code> / <code>read_material_xml</code> and the
+    <code>garnet.read_xsec</code> / <code>read_material_xml</code> and the
     <code>materials=</code> hook, with conventions verified against
     FEMFFUSION's own parsers.</li>
     <li><b>Diffusion near strong absorbers.</b> A 1 cm B4C arc is exactly
@@ -655,7 +661,7 @@ out[:, :, :-1] -= wz * phi[:, :, 1:]    # above</code></pre>
 </section>
 
 <footer>
-  NDgpu · matrix-free multigroup neutron diffusion &amp; SP3 on CPU/GPU ·
+  GARNET · matrix-free multigroup neutron diffusion &amp; SP3 on CPU/GPU ·
   report generated from the repository's own solvers and test data, July 2026.
 </footer>
 </main>

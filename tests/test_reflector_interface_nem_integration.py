@@ -9,9 +9,9 @@ import pytest
 from numpy.polynomial import legendre as leg
 from numpy.testing import assert_allclose, assert_array_equal
 
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.reflector_interface_factors import extend_reflector_interface_factors
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.reflector_interface_factors import extend_reflector_interface_factors
 from test_nem_higher_order import independent_pencil, recovered_vector
 
 PAIRS = ((0, 2), (1, 3), (4, 5))

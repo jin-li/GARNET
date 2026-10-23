@@ -9,21 +9,21 @@
 # build on a 22.04 box and cannot load (it wants GLIBC_2.38); use the
 # conda-forge environment instead:
 #
-#   conda create -n ndgpu-precice --override-channels -c conda-forge \
+#   conda create -n garnet-precice --override-channels -c conda-forge \
 #       python=3.13 pyprecice numpy scipy pytest
-#   conda run -n ndgpu-precice python -m pip install -e . --no-deps
-#   conda run -n ndgpu-precice bash examples/precice/run.sh
+#   conda run -n garnet-precice python -m pip install -e . --no-deps
+#   conda run -n garnet-precice bash examples/precice/run.sh
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
-workdir="${NDGPU_PRECICE_WORKDIR:-$here/run}"
+workdir="${GARNET_PRECICE_WORKDIR:-$here/run}"
 
 mkdir -p "$workdir"
 cd "$workdir"
 rm -rf precice-run precice-profiling
 
-# Both participants import common.py from the examples dir, and ndgpu from the
+# Both participants import common.py from the examples dir, and garnet from the
 # repo; run from a scratch dir so preCICE's own files land there.
 export PYTHONPATH="$here:$repo${PYTHONPATH:+:$PYTHONPATH}"
 

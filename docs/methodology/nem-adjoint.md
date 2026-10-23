@@ -20,7 +20,7 @@ The familiar physical definitions are
 {\langle\phi^*,\mathcal F\phi\rangle},\qquad \ell=k\Lambda.
 ```
 
-The inner product is the spatial integral and energy-group sum. NDgpu evaluates
+The inner product is the spatial integral and energy-group sum. GARNET evaluates
 matching discrete NEM bilinear forms, including all retained moments and the
 adjoint interface treatment for fixed ADFs. It computes the diffusion-model
 importance, not an angle-dependent transport adjoint. The implementation

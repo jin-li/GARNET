@@ -10,11 +10,11 @@ human-readable summary.
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, HexLattice, Material, MeshModel,
+from garnet import (DiffusionEigenSolver, Grid, HexLattice, Material, MeshModel,
                    Model, ONE_GROUP_DEMO, PWR_TWO_GROUP, k_bare_box)
-from ndgpu.mesh import UnstructuredDiffusionSolver, assemble_mesh_3d
-from ndgpu.hexraster import rasterize_hex_sites
-from ndgpu.tri import TriDiffusionEigenSolver, TriGrid
+from garnet.mesh import UnstructuredDiffusionSolver, assemble_mesh_3d
+from garnet.hexraster import rasterize_hex_sites
+from garnet.tri import TriDiffusionEigenSolver, TriGrid
 
 _REFLECTOR = Material(name="reflector", diffusion=[1.13, 0.16], sigma_a=[0.0004, 0.0197],
                       nu_sigma_f=[0.0, 0.0], sigma_s=[[0.0, 0.0494], [0.0, 0.0]])
@@ -212,8 +212,8 @@ def test_hexlattice_sp3_differs_from_diffusion():
 
 
 # --- transients ----------------------------------------------------------
-from ndgpu import Kinetics                                  # noqa: E402
-from ndgpu.transient import TransientSolver                 # noqa: E402
+from garnet import Kinetics                                  # noqa: E402
+from garnet.transient import TransientSolver                 # noqa: E402
 
 _KIN = dict(velocities=[1.0e7, 3.0e5], beta=[0.0065], decay=[0.08])
 
@@ -271,10 +271,10 @@ def test_hexlattice_builds_the_hpmr_core():
     # The HP-MR assembly lattice maps onto HexLattice.set_site; building it there
     # must reproduce the benchmark raster geometry exactly (drums as Be bodies,
     # i.e. the arc-free core -- the sub-hex B4C arc is build_hpmr2d's job).
-    from ndgpu.benchmarks.hpmr import (_placeholder_materials, _FUEL_SITES,
+    from garnet.benchmarks.hpmr import (_placeholder_materials, _FUEL_SITES,
                                        _BE_SITES, _DRUM_SITES, PITCH, CENTRAL,
                                        FUEL, BE_REFLECTOR, DRUM_BE, hpmr_raster)
-    from ndgpu.tri import TriGrid, TriDiffusionEigenSolver
+    from garnet.tri import TriGrid, TriDiffusionEigenSolver
     mats = _placeholder_materials()
     lat = HexLattice(pitch=PITCH, refine=3).set_boundary("vacuum")
     lat.set_site((0, 0), mats[CENTRAL])
@@ -297,13 +297,13 @@ def test_hexlattice_builds_the_hpmr_core():
 def test_hexlattice_drum_arc_matches_polar_benchmark():
     # set_drum's rotatable, volume-mixed B4C arc must reproduce build_hpmr2d's
     # polar absorber exactly, and give a monotone drum-worth curve.
-    from ndgpu.benchmarks.hpmr import (_placeholder_materials, _FUEL_SITES,
+    from garnet.benchmarks.hpmr import (_placeholder_materials, _FUEL_SITES,
                                        _BE_SITES, _DRUM_SITES, PITCH,
                                        DRUM_ABSORBER_INNER, DRUM_RADIUS,
                                        DRUM_ARC_HALF_DEG, CENTRAL, FUEL,
                                        BE_REFLECTOR, DRUM_BE, DRUM_ABSORBER,
                                        build_hpmr2d)
-    from ndgpu.tri import TriDiffusionEigenSolver
+    from garnet.tri import TriDiffusionEigenSolver
     m = _placeholder_materials()
 
     def api_k(angle):

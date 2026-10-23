@@ -1,8 +1,8 @@
 """Independent Neumann and limiting-problem checks of frozen reconstruction."""
 import numpy as np
 import pytest
-from ndgpu.serpent_adf import cuboid_flat_source_reconstruction as reconstruct
-from ndgpu.serpent_adf import cuboid_flat_source_factors
+from garnet.serpent_adf import cuboid_flat_source_reconstruction as reconstruct
+from garnet.serpent_adf import cuboid_flat_source_factors
 
 
 def currents(widths, face_densities):

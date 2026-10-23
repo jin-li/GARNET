@@ -26,9 +26,9 @@ Run:  python examples/sn_dsa_benchmark.py
 
 import numpy as np
 
-from ndgpu import Grid, Material, SNTransportSolver
-from ndgpu.tri import TriGrid
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet import Grid, Material, SNTransportSolver
+from garnet.tri import TriGrid
+from garnet.tri_sn import TriSNTransportSolver
 
 TOLS = dict(tol_k=1e-7, tol_source=1e-6)
 CASES = [

@@ -1,4 +1,4 @@
-"""First-order perturbation theory: ndgpu.first_order_reactivity.
+"""First-order perturbation theory: garnet.first_order_reactivity.
 
 Two regimes, both physically important:
 
@@ -15,10 +15,10 @@ Two regimes, both physically important:
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP,
+from garnet import (DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP,
                    first_order_reactivity)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, _placeholder_materials
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.benchmarks.hpmr import build_hpmr2d, _placeholder_materials
+from garnet.tri import TriDiffusionEigenSolver
 
 TIGHT = dict(tol_k=1e-10, tol_source=1e-9)
 GRID = Grid(shape=(20, 20, 20), size=(80.0, 80.0, 80.0))

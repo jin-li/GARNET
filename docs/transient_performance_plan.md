@@ -357,7 +357,7 @@ complete.** Adaptive acceptance now evaluates the concatenated flux,
 precursor, and coupled-temperature state rather than flux alone. The LRA CLI
 has a reproducible `--cherezov-controls` preset (`h0=1e-6`, `RTOL=1e-5`,
 implicit feedback, BDF5 cap), publishes relative differences against both the
-ANL reference and Cherezov's FEM-order ladder, and labels the ndgpu space as
+ANL reference and Cherezov's FEM-order ladder, and labels the garnet space as
 cell-centred FV. On the 15 cm mesh it takes 521 accepted/24 rejected steps;
 the paper reports 403/5 for first-order FEM and 399/7 for fourth-order FEM.
 Its comparison contract remains current, but its numerical LRA rows also
@@ -369,7 +369,7 @@ Status (2026-08-18): **07f rods/control discrepancy resolved.** Cherezov Table
 ANL/DIF3D input. The earlier model corrected only the fast value and omitted
 axial buckling, creating a cancellation in rods-in and a false 377 pcm
 rods-out deficit. With both original reflector values and `Bz^2=1e-4 cm-2`,
-the 1 cm ndgpu rods-in result is `0.99632537` versus archived DIF3D
+the 1 cm garnet rods-in result is `0.99632537` versus archived DIF3D
 `0.996325`. At 3.75 cm, raw endpoint errors are -10/-64 pcm and the corrected
 transient's power/temperature metrics are within 3.5% of the original
 reference. See
@@ -487,7 +487,7 @@ longer pay an avoidable steady-state solve.
   Comput. 39 (2009),
   [doi:10.1007/s10915-009-9272-6](https://doi.org/10.1007/s10915-009-9272-6).
   Its adapted-deflation/two-level framework motivates the rank-one coarse-mode
-  correction; ndgpu uses the reactor adjoint as an oblique physical weighting.
+  correction; garnet uses the reactor adjoint as an oblique physical weighting.
 - Austin, Chalmers, and Warburton, *Initial Guesses for Sequences of Linear
   Systems in a GPU-Accelerated Incompressible Flow Solver*, SIAM J. Sci.
   Comput. 43 (2021), [doi:10.1137/20M1368677](https://doi.org/10.1137/20M1368677),

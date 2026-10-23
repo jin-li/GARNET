@@ -15,7 +15,7 @@ first, then y, starting at the lower left. Bounds are read directly from the
 input and checked against that ordering rather than inferred from the pitch.
 There are 264 fissile and 25 non-fissile regions.
 
-NDgpu's unstructured finite-volume solver uses axis-aligned rectangular cells,
+GARNET's unstructured finite-volume solver uses axis-aligned rectangular cells,
 the actual areas and centroid-to-face distances, and reflective boundaries
 (`alpha_boundary=0`). Interface conductance is
 `face_length / (distance_left/D_left + distance_right/D_right)`, including
@@ -45,7 +45,7 @@ is not a reference eigenvalue for the coupled assembly.
 Serpent `INF_FLX` represents spatial/group integrals with a common source
 normalization. Sum the regional integrals first, then normalize the assembly
 spectrum. Do not multiply those reference integrals by area again or normalize
-each region separately. NDgpu flux is a cell-average field and does require
+each region separately. GARNET flux is a cell-average field and does require
 area integration. The [Serpent output documentation](https://serpent.vtt.fi/docs/user_guide/standard_output.html)
 defines the flux and fission fields.
 

@@ -9,7 +9,7 @@ SPN struggle.
 
 Cross sections are from Table 1 of that paper (Rahnema & Nichita, 1997). The
 reference is a fine-mesh S16 (Gauss-Legendre) discrete-ordinates k-eigenvalue
-solve implemented below, so every ndgpu approximation is scored against a true
+solve implemented below, so every garnet approximation is scored against a true
 transport solution: k error (pcm), thermal-flux shape error (RMSE %), and wall
 time.
 """
@@ -20,7 +20,7 @@ import numpy as np
 from scipy.linalg import solve_banded
 from scipy.sparse.linalg import LinearOperator, gmres
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SDP1EigenSolver,
+from garnet import (Grid, Material, DiffusionEigenSolver, SDP1EigenSolver,
                    SDP2EigenSolver, SDP3EigenSolver)
 
 # --- materials (Table 1) -------------------------------------------------------
@@ -184,9 +184,9 @@ def xc_of(ncell):
     return (np.arange(ncell) + 0.5) * h
 
 
-# --- ndgpu diffusive solves ----------------------------------------------------
+# --- garnet diffusive solves ----------------------------------------------------
 
-def solve_ndgpu(solver_cls, ncell):
+def solve_garnet(solver_cls, ncell):
     h, reg, *_ = build_cellwise(ncell)
     mmap = reg.reshape(ncell, 1, 1)
     grid = Grid(shape=(ncell, 1, 1), size=(LENGTH, 1.0, 1.0))
@@ -226,7 +226,7 @@ def main():
     print(hdr)
     print("-" * len(hdr))
     for name, cls in methods:
-        k, flux, dt, no, ni = solve_ndgpu(cls, ncell)
+        k, flux, dt, no, ni = solve_garnet(cls, ncell)
         dk = (k - k_ref) / k_ref * 1e5
         th_n = norm_shape(flux[1])
         rmse = float(np.sqrt(np.mean(((th_n - ref_th_n) / ref_th_n.max()) ** 2))) * 100

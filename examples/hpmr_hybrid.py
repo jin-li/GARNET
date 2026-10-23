@@ -21,8 +21,8 @@ Cross sections are placeholders; worths are illustrative, not predictive.
 import sys
 import time
 
-from ndgpu.benchmarks import build_hpmr2d, hpmr_transport_mask
-from ndgpu.tri import TriDiffusionEigenSolver, TriSP3EigenSolver
+from garnet.benchmarks import build_hpmr2d, hpmr_transport_mask
+from garnet.tri import TriDiffusionEigenSolver, TriSP3EigenSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 6
 device = sys.argv[2] if len(sys.argv) > 2 else "cpu"

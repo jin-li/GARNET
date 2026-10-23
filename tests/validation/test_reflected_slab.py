@@ -6,15 +6,15 @@ Ch. 7) has a closed-form eigenvalue from the transcendental condition
 ``D_c B tan(B a) = (D_r / L) coth(b / L)`` -- so this benchmark checks the
 discretization error against exact mathematics, not another code. It is a filled
 1-D geometry, so it is solved two ways: the low-level ``DiffusionEigenSolver`` on
-the benchmark's grid, and the high-level ``ndgpu.Model``; both must converge to
+the benchmark's grid, and the high-level ``garnet.Model``; both must converge to
 the analytic value at second order, and both must agree.
 """
 import numpy as np
 import pytest
 
-import ndgpu
-from ndgpu import DiffusionEigenSolver
-from ndgpu.benchmarks import (bare_k, build_reflected_slab, reflected_k,
+import garnet
+from garnet import DiffusionEigenSolver
+from garnet.benchmarks import (bare_k, build_reflected_slab, reflected_k,
                              SLAB_CORE, SLAB_REFLECTOR)
 
 TIGHT = dict(tol_k=1e-10, tol_source=1e-9)
@@ -44,9 +44,9 @@ def test_low_level_solver_converges_to_analytic_second_order():
 
 
 def test_model_api_matches_analytic_and_low_level():
-    # The same slab through ndgpu.Model (1-D, filled geometry).
+    # The same slab through garnet.Model (1-D, filled geometry).
     a, b = 25.0, 20.0
-    k_model = (ndgpu.Model(size=(a + b,), cells=(90,))
+    k_model = (garnet.Model(size=(a + b,), cells=(90,))
                .fill(SLAB_CORE).add_box(SLAB_REFLECTOR, x=(a, a + b))
                .set_boundary(x=("reflective", "zero-flux"))
                .run(**TIGHT).k_eff)
