@@ -8,7 +8,7 @@ interior coupling; vacuum/zero-flux must order correctly around it.
 import numpy as np
 import pytest
 
-from ndgpu import HexDiffusionEigenSolver, HexGrid, Material, offset_to_axial
+from garnet import HexDiffusionEigenSolver, HexGrid, Material, offset_to_axial
 
 TOL = dict(tol_k=1e-9, tol_source=1e-8)
 

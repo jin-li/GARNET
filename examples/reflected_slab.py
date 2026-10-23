@@ -12,9 +12,9 @@ Usage: python examples/reflected_slab.py [cells] [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu import DiffusionEigenSolver
-from ndgpu.benchmarks import (bare_k, build_reflected_slab, reflected_k,
+import garnet
+from garnet import DiffusionEigenSolver
+from garnet.benchmarks import (bare_k, build_reflected_slab, reflected_k,
                              SLAB_CORE, SLAB_REFLECTOR)
 
 cells = int(sys.argv[1]) if len(sys.argv) > 1 else 90
@@ -38,7 +38,7 @@ print(f"  DiffusionEigenSolver ({cells} cells) : k = {k_low:.6f}   "
 
 # --- with the Model API: the same slab as a 1-D Model ------------------------
 a, b = p.core_half_width, p.reflector_width
-model = (ndgpu.Model(size=(a + b,), cells=(cells,))
+model = (garnet.Model(size=(a + b,), cells=(cells,))
          .fill(SLAB_CORE).add_box(SLAB_REFLECTOR, x=(a, a + b))
          .set_boundary(x=("reflective", "zero-flux")))
 print(model.run(device=device, tol_k=1e-10, tol_source=1e-9))

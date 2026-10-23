@@ -8,8 +8,8 @@ import sys
 
 import numpy as np
 
-from ndgpu import DiffusionEigenSolver, SP3EigenSolver
-from ndgpu.benchmarks import K_REFERENCE_2D, build_c5g7_2d
+from garnet import DiffusionEigenSolver, SP3EigenSolver
+from garnet.benchmarks import K_REFERENCE_2D, build_c5g7_2d
 
 s = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 device = sys.argv[2] if len(sys.argv) > 2 else "auto"

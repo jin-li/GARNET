@@ -1,4 +1,4 @@
-"""General-geometry reactor on an unstructured mesh via ndgpu.MeshModel.
+"""General-geometry reactor on an unstructured mesh via garnet.MeshModel.
 
 MeshModel runs the matrix-free finite-volume solver on an arbitrary mesh -- a
 Gmsh ``.msh`` file, or a Mesh you assemble yourself -- in 2-D or 3-D. Materials
@@ -7,7 +7,7 @@ predicate on the cell centroid. Here we build a 3-D hex mesh in code and carve a
 *spherical* fuel region out of a reflector with a predicate, to show that the
 region need not be box-shaped.
 
-    m = ndgpu.MeshModel("core.msh")     # or MeshModel(mesh_object)
+    m = garnet.MeshModel("core.msh")     # or MeshModel(mesh_object)
     m.fill(reflector).assign(fuel, tag=1).set_boundary("vacuum")
     print(m.run())
 
@@ -18,9 +18,9 @@ import sys
 
 import numpy as np
 
-import ndgpu
-from ndgpu import Material
-from ndgpu.mesh import assemble_mesh_3d
+import garnet
+from garnet import Material
+from garnet.mesh import assemble_mesh_3d
 
 n = int(sys.argv[1]) if len(sys.argv) > 1 else 24
 radius = float(sys.argv[2]) if len(sys.argv) > 2 else 35.0
@@ -53,7 +53,7 @@ mesh = hex_mesh(n, L)
 centre = np.array([L / 2, L / 2, L / 2])
 
 model = (
-    ndgpu.MeshModel(mesh)
+    garnet.MeshModel(mesh)
     .fill(reflector)
     .assign(fuel, where=lambda c: np.linalg.norm(c - centre) <= radius)   # a sphere of fuel
     .set_boundary("vacuum")

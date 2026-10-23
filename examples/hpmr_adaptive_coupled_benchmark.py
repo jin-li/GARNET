@@ -16,11 +16,11 @@ from pathlib import Path
 import numpy as np
 
 from hpmr_bdf_cpu_benchmark import _problem_at, _trajectory_frames
-from ndgpu import asnumpy
-from ndgpu.benchmarks.hpmr_thermal import build_hpmr_coupling
-from ndgpu.benchmarks.hpmr_transient_bench import build_case
-from ndgpu.coupling import coupled_transient
-from ndgpu.thermal import ThermalMaterial
+from garnet import asnumpy
+from garnet.benchmarks.hpmr_thermal import build_hpmr_coupling
+from garnet.benchmarks.hpmr_transient_bench import build_case
+from garnet.coupling import coupled_transient
+from garnet.thermal import ThermalMaterial
 
 
 CASE_DEFINITIONS = {

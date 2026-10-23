@@ -1,6 +1,6 @@
 """A hexagonal assembly lattice on the body-fitted triangular solver.
 
-Demonstrates ndgpu.HexLattice: place assemblies at hex sites (axial (R, C)
+Demonstrates garnet.HexLattice: place assemblies at hex sites (axial (R, C)
 coordinates), pick diffusion or SP3 transport, and get the human-readable
 report. Here a fissile assembly is surrounded by a ring of reflector
 assemblies; running it with both methods shows the transport (SP3) correction
@@ -11,8 +11,8 @@ Usage: python examples/hex_lattice.py [refine] [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 device = sys.argv[2] if len(sys.argv) > 2 else "auto"
@@ -23,7 +23,7 @@ reflector = Material(name="reflector", diffusion=[1.15, 0.90], sigma_a=[0.0002, 
                      nu_sigma_f=[0.0, 0.0], sigma_s=[[0.0, 0.045], [0.0, 0.0]])
 
 # A central fuel assembly with its six nearest hex neighbours as reflector.
-lattice = ndgpu.HexLattice(pitch=20.0, refine=refine).set_boundary("vacuum")
+lattice = garnet.HexLattice(pitch=20.0, refine=refine).set_boundary("vacuum")
 lattice.set_site((0, 0), fuel)
 for rc in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)]:
     lattice.set_site(rc, reflector)

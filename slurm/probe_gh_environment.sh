@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Inventory the native aarch64 Python/CUDA environment on a GH200 node before
-# creating NDgpu's persistent scratch environment.
+# creating GARNET's persistent scratch environment.
 
-#SBATCH --job-name=ndgpu-gh-probe
+#SBATCH --job-name=garnet-gh-probe
 #SBATCH --cluster=gmerlin7
 #SBATCH --partition=gh-interactive
 #SBATCH --nodes=1
@@ -11,9 +11,9 @@
 #SBATCH --hint=nomultithread
 #SBATCH --time=00:10:00
 #SBATCH --mem=8G
-#SBATCH --chdir=/data/scratch/shared/poncet_m/ndgpu-slurm-debug
-#SBATCH --output=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/ndgpu-gh-probe-%j.log
-#SBATCH --error=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/ndgpu-gh-probe-%j.log
+#SBATCH --chdir=/data/scratch/shared/poncet_m/garnet-slurm-debug
+#SBATCH --output=/data/scratch/shared/poncet_m/garnet-slurm-debug/garnet-gh-probe-%j.log
+#SBATCH --error=/data/scratch/shared/poncet_m/garnet-slurm-debug/garnet-gh-probe-%j.log
 
 set -o pipefail
 

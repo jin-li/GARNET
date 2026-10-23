@@ -10,7 +10,7 @@ build/
 .venv/
 venv/
 
-# Note: dist/ndgpu-src.zip is a tracked deliverable (uploaded to Colab), so
+# Note: dist/garnet-src.zip is a tracked deliverable (uploaded to Colab), so
 # dist/ is intentionally NOT ignored.
 
 # Local reference copies of papers (not redistributable) + Windows ADS junk

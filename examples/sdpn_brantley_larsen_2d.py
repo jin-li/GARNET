@@ -5,7 +5,7 @@ fuel bars (1 cm wide, 9 cm tall) at x in [1,2],[4,5],[7,8], y in [0,9], in a
 10x10 cm square of moderator. Reflective at x=0 and y=0, vacuum at x=10 and y=10.
 Strong transport effect -- diffusion (SP1) is ~2800 pcm below the transport
 reference, and the SPN/SDPN hierarchy climbs toward it. Because every material
-interface is grid-aligned, ndgpu's 2nd-order FV converges cheaply, so this
+interface is grid-aligned, garnet's 2nd-order FV converges cheaply, so this
 isolates "are the equations right?" from any geometry-resolution error.
 
 Reference (Table 6, OpenMOC = 0.80536):
@@ -18,9 +18,9 @@ import time
 
 import numpy as np
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SP5EigenSolver,
+from garnet import (Grid, Material, DiffusionEigenSolver, SP5EigenSolver,
                    SP7EigenSolver, SDP2EigenSolver, SDP3EigenSolver)
-from ndgpu.solver import SPNEigenSolver, SDPNEigenSolver
+from garnet.solver import SPNEigenSolver, SDPNEigenSolver
 
 K_REF = 0.80536                      # OpenMOC transport reference
 PAPER = {"SP1": 0.77680, "SP3": 0.79904, "SP5": 0.80280, "SP7": 0.80354,
@@ -94,15 +94,15 @@ def main():
     if extrap:
         ns = [int(x) for x in args] or [80, 160, 240]
         print(f"Richardson extrapolation over meshes {ns} (h->0):\n")
-        hdr = f"{'method':6s}{'ndgpu k_inf':>12s}{'paper k':>10s}{'d (pcm)':>9s}"
+        hdr = f"{'method':6s}{'garnet k_inf':>12s}{'paper k':>10s}{'d (pcm)':>9s}"
         print(hdr); print("-" * len(hdr))
         for name, cls, cap in METHODS:
             ks = [_solve(cls, cap, n, marshak) for n in ns]
             kinf = _richardson(ks, ns)
             print(f"{name:6s}{kinf:>12.5f}{PAPER[name]:>10.5f}"
                   f"{(kinf - PAPER[name]) * 1e5:>9.1f}")
-        print("\nWith the coupled Marshak boundary, ndgpu reproduces the paper's "
-              "Table 6 k_eff\n(SDP3 carries a small residual). d = ndgpu - paper, pcm.")
+        print("\nWith the coupled Marshak boundary, garnet reproduces the paper's "
+              "Table 6 k_eff\n(SDP3 carries a small residual). d = garnet - paper, pcm.")
     else:
         n = int(args[0]) if args else 80
         hdr = f"{'method':6s}{'k_eff':>10s}{'paper k':>10s}{'d (pcm)':>9s}"

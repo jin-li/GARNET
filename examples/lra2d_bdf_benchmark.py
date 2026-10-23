@@ -23,8 +23,8 @@ from collections import Counter
 import json
 from pathlib import Path
 
-from ndgpu.benchmarks import lra2d_static_keff, run_lra2d_cpu
-from ndgpu.benchmarks.lra import (CHEREZOV_BY_FEM_ORDER, CHEREZOV_FEMCORE,
+from garnet.benchmarks import lra2d_static_keff, run_lra2d_cpu
+from garnet.benchmarks.lra import (CHEREZOV_BY_FEM_ORDER, CHEREZOV_FEMCORE,
                                   K_REFERENCE, TRANSIENT_REFERENCE)
 
 
@@ -144,11 +144,11 @@ def main():
         }
 
     result = run(args.order)
-    ndgpu_metrics = metrics(result)
+    garnet_metrics = metrics(result)
     include_static_endpoints = (args.include_static_endpoints
                                 or args.cherezov_controls)
     if include_static_endpoints:
-        ndgpu_metrics["rods_out"] = lra2d_static_keff(
+        garnet_metrics["rods_out"] = lra2d_static_keff(
             refine=args.refine, control="out",
             axial_buckling=args.axial_buckling,
             control_worth_scale=args.control_worth_scale,
@@ -156,9 +156,9 @@ def main():
 
     def relative_differences(reference):
         return {
-            key: ((ndgpu_metrics[key] - value) / value)
+            key: ((garnet_metrics[key] - value) / value)
             for key, value in reference.items()
-            if key in ndgpu_metrics and value != 0.0
+            if key in garnet_metrics and value != 0.0
         }
 
     payload = {
@@ -175,7 +175,7 @@ def main():
             "automatic_order_selection": args.automatic_order,
             "spatial_discretization": "cell-centred finite volume",
         },
-        "ndgpu": ndgpu_metrics,
+        "garnet": garnet_metrics,
         "anl_reference": {**K_REFERENCE, **TRANSIENT_REFERENCE},
         "cherezov_femcore": CHEREZOV_FEMCORE,
         "cherezov_fem_order_1": CHEREZOV_BY_FEM_ORDER[1],
@@ -214,7 +214,7 @@ def main():
         be_rtol = (args.adaptive_rtol if args.backward_euler_rtol is None
                    else args.backward_euler_rtol)
         backward_euler = run(1, adaptive_rtol=be_rtol)
-        primary, baseline = payload["ndgpu"], metrics(backward_euler)
+        primary, baseline = payload["garnet"], metrics(backward_euler)
         baseline["adaptive_rtol"] = be_rtol
         payload["backward_euler"] = baseline
         payload["comparison_to_backward_euler"] = {

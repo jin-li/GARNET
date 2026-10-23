@@ -1,6 +1,6 @@
 # Coupled neutronics / thermal calculations
 
-`ndgpu` solves the neutronics of a reactor core. This document covers the
+`garnet` solves the neutronics of a reactor core. This document covers the
 thermal side added alongside it — a conduction solver with a volumetric
 heat-pipe sink — and the two ways the two physics are coupled: **internally**,
 by a fixed-point driver inside the package, and **externally**, as two separate
@@ -229,7 +229,7 @@ whole core, not surfaces. preCICE needs connectivity only for projection-based
 mappings; `nearest-neighbor` wants coordinates alone.
 
 **The mapping is exact.** Both participants build their vertex list from the
-single function `ndgpu.coupling.coupling_vertices`, on identically-constructed
+single function `garnet.coupling.coupling_vertices`, on identically-constructed
 problems, so every vertex's nearest neighbour is itself at distance zero: the
 mapping is the identity permutation and data crosses preCICE bit-exact. That is
 what makes the comparison against the internal driver a test of coupling
@@ -238,7 +238,7 @@ will map each vertex to a nearby wrong cell and the coupling quietly becomes a
 smoother, which is why there is an explicit exactness test.
 
 **Neither participant contains physics.** Both call `neutronics_step` and
-`thermal_step` from `ndgpu.coupling`, the same functions `CoupledSolver` calls.
+`thermal_step` from `garnet.coupling`, the same functions `CoupledSolver` calls.
 If each script re-implemented its half, the two couplings agreeing would only
 show that the same assumptions were made twice.
 
@@ -266,10 +266,10 @@ box; it needs GLIBC_2.38 and cannot load, so `pip install pyprecice` (source-onl
 on PyPI) would link against it and fail at import. Use conda-forge:
 
 ```bash
-conda create -n ndgpu-precice --override-channels -c conda-forge \
+conda create -n garnet-precice --override-channels -c conda-forge \
     python=3.13 pyprecice numpy scipy pytest
-conda run -n ndgpu-precice python -m pip install -e . --no-deps
-conda run -n ndgpu-precice bash examples/precice/run.sh --refine 4 --groups 11
+conda run -n garnet-precice python -m pip install -e . --no-deps
+conda run -n garnet-precice bash examples/precice/run.sh --refine 4 --groups 11
 ```
 
 `examples/precice/precice-config.xml` uses constant relaxation (for the
@@ -287,7 +287,7 @@ Run:
 ```bash
 pytest tests/verification/test_conduction.py tests/verification/test_feedback.py \
        tests/verification/test_power_density.py tests/verification/test_coupling.py
-conda run -n ndgpu-precice python -m pytest tests/validation/test_coupled_precice.py
+conda run -n garnet-precice python -m pytest tests/validation/test_coupled_precice.py
 ```
 
 **Conduction against closed form.** The sinked equation has an exact hyperbolic
@@ -393,7 +393,7 @@ The first quasi-static acceleration stage is available as an explicit advanced
 API:
 
 ```python
-from ndgpu import (fixed_shape_coupled_transient,
+from garnet import (fixed_shape_coupled_transient,
                    quasistatic_coupled_transient)
 
 qs = fixed_shape_coupled_transient(

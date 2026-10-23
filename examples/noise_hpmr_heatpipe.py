@@ -41,11 +41,11 @@ import sys
 
 import numpy as np
 
-from ndgpu import NoiseSolver, NoiseSource
-from ndgpu.benchmarks.hpmr import (build_hpmr2d, hpmr_raster, PITCH, FUEL,
+from garnet import NoiseSolver, NoiseSource
+from garnet.benchmarks.hpmr import (build_hpmr2d, hpmr_raster, PITCH, FUEL,
                                    HPMR_FUEL_SITES, HPMR_BE_SITES,
                                    HPMR_DRUM_SITES)
-from ndgpu.hexraster import rasterize_hex_sites
+from garnet.hexraster import rasterize_hex_sites
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 device = sys.argv[2] if len(sys.argv) > 2 else "cpu"

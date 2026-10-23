@@ -1,7 +1,7 @@
 """Simplified double-P1 (SDP1) solver verification.
 
 SDP1 is the N=1 simplified double-PN approximation of Carreno, Vidal-Ferrandiz,
-Ginestar & Verdu, Ann. Nucl. Energy 207 (2024) 110675. In ndgpu's symmetrized
+Ginestar & Verdu, Ann. Nucl. Energy 207 (2024) 110675. In garnet's symmetrized
 two-moment (Phi1 = phi0 + 2 phi2, phi2) block it is algebraically identical to
 SP3 except for the second-moment diffusion coefficient:
 
@@ -17,7 +17,7 @@ media, while reducing exactly to diffusion (k_infinity) in an infinite medium.
 import numpy as np
 import pytest
 
-from ndgpu import (
+from garnet import (
     Grid,
     Material,
     PWR_TWO_GROUP,
@@ -31,8 +31,8 @@ from ndgpu import (
     SDP3EigenSolver,
     k_infinite,
 )
-from ndgpu.operator import SP3GroupOperator
-from ndgpu.solver import SDPNEigenSolver, SPNEigenSolver
+from garnet.operator import SP3GroupOperator
+from garnet.solver import SDPNEigenSolver, SPNEigenSolver
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 
@@ -225,7 +225,7 @@ class _SP3General(SPNEigenSolver):
 
 
 def test_spn_uform_order1_matches_dedicated_sp3():
-    """The general SPN U-form at order 1 reproduces ndgpu's dedicated symmetric
+    """The general SPN U-form at order 1 reproduces garnet's dedicated symmetric
     SP3 solver -- validating the standard SPN coefficient matrices that SP5/SP7
     reuse."""
     grid, mats, mmap = _hetero_slab()

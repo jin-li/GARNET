@@ -19,7 +19,7 @@ did not alter the equations, tolerances, or convergence tests. Weights 0.25,
 
 The experiment was motivated by Austin, Chalmers, and Warburton's GPU study of
 initial guesses for sequences of PDE linear systems
-([doi:10.1137/20M1368677](https://doi.org/10.1137/20M1368677)). NDgpu's outer
+([doi:10.1137/20M1368677](https://doi.org/10.1137/20M1368677)). GARNET's outer
 problem differs materially: its group solves live inside a rebalanced,
 stateful upscatter/fission-source fixed point.
 

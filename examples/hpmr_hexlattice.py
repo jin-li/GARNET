@@ -4,7 +4,7 @@ The ANL/INL heat-pipe microreactor is a hexagonal lattice of assemblies (a
 central assembly, a ring of fuel, a beryllium reflector) with twelve control
 drums around the periphery. Each drum is a beryllium cylinder carrying a thin
 B4C absorber arc that rotates to change reactivity. All of this maps onto
-ndgpu.HexLattice: set_site for the assemblies, and set_drum for the drums, whose
+garnet.HexLattice: set_site for the assemblies, and set_drum for the drums, whose
 arc is volume-mixed by area fraction and rotated with the angle_deg argument.
 
 Sweeping every drum's angle from 0 (arc inserted, facing the core) to 180 (arc
@@ -16,8 +16,8 @@ Usage: python examples/hpmr_hexlattice.py [refine] [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu.benchmarks.hpmr import (hpmr_placeholder_materials,
+import garnet
+from garnet.benchmarks.hpmr import (hpmr_placeholder_materials,
                                    HPMR_FUEL_SITES, HPMR_BE_SITES,
                                    HPMR_DRUM_SITES, PITCH, DRUM_ABSORBER_INNER,
                                    DRUM_RADIUS, DRUM_ARC_HALF_DEG, CENTRAL, FUEL,
@@ -33,7 +33,7 @@ drum_body, b4c = mats[DRUM_BE], mats[DRUM_ABSORBER]
 
 def hpmr(drum_angle_deg):
     """Build the HP-MR with every control drum rotated to the given angle."""
-    lat = ndgpu.HexLattice(pitch=PITCH, refine=refine).set_boundary("vacuum")
+    lat = garnet.HexLattice(pitch=PITCH, refine=refine).set_boundary("vacuum")
     lat.set_site((0, 0), central)
     for s in HPMR_FUEL_SITES:
         lat.set_site(s, fuel)

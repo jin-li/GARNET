@@ -1,12 +1,12 @@
 """Pin-resolved HP-MR assembly geometry and pin-power reconstruction.
 
-The heterogeneous assembly (:mod:`ndgpu.benchmarks.hpmr_assembly`) is decoded
+The heterogeneous assembly (:mod:`garnet.benchmarks.hpmr_assembly`) is decoded
 from the VTB Serpent deck, so the geometry has an independent check available:
 the pin counts and radii must reproduce the assembly volume fractions recorded
-separately in :mod:`ndgpu.benchmarks.hpmr`. Two sources agreeing is the test --
+separately in :mod:`garnet.benchmarks.hpmr`. Two sources agreeing is the test --
 neither is fitted to the other.
 
-The reconstruction side (:mod:`ndgpu.pin_power`) is pinned on the two things
+The reconstruction side (:mod:`garnet.pin_power`) is pinned on the two things
 that silently give wrong answers rather than errors: sampling the core flux in
 the wrong coordinate frame, and pin positions that miss their own assembly.
 """
@@ -14,15 +14,15 @@ the wrong coordinate frame, and pin positions that miss their own assembly.
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks.hpmr import (FUEL, PITCH, _FUEL_SITES, build_hpmr2d,
+from garnet.benchmarks.hpmr import (FUEL, PITCH, _FUEL_SITES, build_hpmr2d,
                                    hpmr_materials_builtin)
-from ndgpu.benchmarks.hpmr_assembly import (N_FUEL, N_HP, N_MOD, PIN_PITCH,
+from garnet.benchmarks.hpmr_assembly import (N_FUEL, N_HP, N_MOD, PIN_PITCH,
                                             R_FUEL, R_HP, R_HP_SHELL, R_MOD,
                                             R_MOD_SHELL, build_hpmr_assembly2d,
                                             pin_fluxes, pin_materials_builtin,
                                             pin_powers, vtb_pin_lattice)
-from ndgpu.hexraster import hex_site_xy
-from ndgpu.pin_power import reconstruct_pin_powers, tri_cell_centroids
+from garnet.hexraster import hex_site_xy
+from garnet.pin_power import reconstruct_pin_powers, tri_cell_centroids
 
 # Volume fractions recorded in hpmr.py, decoded independently of the pin map.
 DOC_FRACTIONS = {"fuel_compact": 0.3193, "moderator": 0.0931,
@@ -157,8 +157,8 @@ def test_every_pin_lands_in_its_own_fuel_assembly():
 
 def test_reconstruction_is_shape_times_form():
     """P = S x f, with S sampled per pin -- not one scalar per assembly."""
-    from ndgpu import TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr_assembly import vtb_pin_lattice
+    from garnet import TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr_assembly import vtb_pin_lattice
 
     asm = build_hpmr_assembly2d(refine=3)
     fuel = np.array([k == "fuel" for k in asm.pin_kind])

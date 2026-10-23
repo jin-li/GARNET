@@ -5,7 +5,7 @@
 # This script is intentionally tiny: it only prints a few lines, writes a
 # timestamped log in a shared scratch directory, and sleeps briefly. If this
 # job does not leave output behind, the issue is with the batch environment or
-# filesystem path rather than NDgpu.
+# filesystem path rather than GARNET.
 
 #SBATCH --job-name=slurm-mini
 #SBATCH --cluster=merlin7
@@ -14,13 +14,13 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:05:00
 #SBATCH --mem=1G
-#SBATCH --chdir=/data/scratch/shared/poncet_m/ndgpu-slurm-debug
-#SBATCH --output=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/slurm-mini-%j.out
-#SBATCH --error=/data/scratch/shared/poncet_m/ndgpu-slurm-debug/slurm-mini-%j.err
+#SBATCH --chdir=/data/scratch/shared/poncet_m/garnet-slurm-debug
+#SBATCH --output=/data/scratch/shared/poncet_m/garnet-slurm-debug/slurm-mini-%j.out
+#SBATCH --error=/data/scratch/shared/poncet_m/garnet-slurm-debug/slurm-mini-%j.err
 
 set -euo pipefail
 
-base_dir="${NDGPU_DEBUG_DIR:-/data/scratch/shared/poncet_m/ndgpu-slurm-debug}"
+base_dir="${GARNET_DEBUG_DIR:-/data/scratch/shared/poncet_m/garnet-slurm-debug}"
 mkdir -p "$base_dir"
 
 job_id="${SLURM_JOB_ID:-manual}"

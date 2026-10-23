@@ -26,17 +26,17 @@ def test_example_sources_compile_and_have_no_checkout_paths():
         assert not any(value in text for value in forbidden), path
 
 
-def test_example_ndgpu_imports_resolve_against_current_api():
+def test_example_garnet_imports_resolve_against_current_api():
     for path in example_sources():
         tree = ast.parse(path.read_text(), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name == "ndgpu" or alias.name.startswith("ndgpu."):
+                    if alias.name == "garnet" or alias.name.startswith("garnet."):
                         importlib.import_module(alias.name)
             elif isinstance(node, ast.ImportFrom):
                 module_name = node.module or ""
-                if module_name == "ndgpu" or module_name.startswith("ndgpu."):
+                if module_name == "garnet" or module_name.startswith("garnet."):
                     module = importlib.import_module(module_name)
                     for alias in node.names:
                         if alias.name != "*":
@@ -60,7 +60,7 @@ def test_cross_example_import_works_from_documented_entry_point():
 
 
 def test_hpmr_example_metadata_is_public_and_immutable():
-    from ndgpu.benchmarks import (HPMR_BE_SITES, HPMR_DRUM_SITES,
+    from garnet.benchmarks import (HPMR_BE_SITES, HPMR_DRUM_SITES,
                                   HPMR_FUEL_SITES,
                                   hpmr_placeholder_materials)
 

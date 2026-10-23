@@ -17,10 +17,10 @@ current sources the adjacent bulk cells). The checks:
 import numpy as np
 import pytest
 
-from ndgpu import Material
-from ndgpu.tri import TriGrid, TriDiffusionEigenSolver
-from ndgpu.tri_sn import TriSNTransportSolver
-from ndgpu.hybrid_tri_sn import HybridTriSNDiffusionSolver
+from garnet import Material
+from garnet.tri import TriGrid, TriDiffusionEigenSolver
+from garnet.tri_sn import TriSNTransportSolver
+from garnet.hybrid_tri_sn import HybridTriSNDiffusionSolver
 
 FUEL = Material(diffusion=[1.1], sigma_a=[0.012], nu_sigma_f=[0.030],
                 sigma_s=[[0.0]], name="fuel")

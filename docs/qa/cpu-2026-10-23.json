@@ -1,0 +1,292 @@
+{
+  "date": "2026-10-23",
+  "base_commit": "9241d5414c58528246d4484c71cd236a0d71ca3e",
+  "scope": "Default CPU suite; slow cases deselected by project configuration.",
+  "source_fingerprint": {
+    "sha256": "bbd2c4196d7a112fdec0651c0c82db2765d0c3513561efc22d4201189c5b21b7",
+    "files": 119,
+    "method": "Sorted relative POSIX path, NUL, contents, NUL, for ndgpu/**/*.py, tests/**/*.py, and pyproject.toml."
+  },
+  "environment": {
+    "python": "3.12.12",
+    "platform": "Linux x86_64",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "8.4.2",
+    "cupy_installed": true,
+    "precice_installed": false,
+    "omp_num_threads": 1,
+    "openblas_num_threads": 1,
+    "pytest_plugin_autoload": false
+  },
+  "command": "python -m pytest tests -q -ra -p no:cacheprovider --durations=10 --junitxml=cpu-2026-10-23.xml",
+  "reference_inputs": "FEMFFUSION_DIR supplied an examples/ symlink to a local FEMFFUSION/Examples directory for the five cross-section reader tests. The separate hard-coded VVER mesh path was absent.",
+  "collection": {
+    "total": 614,
+    "selected": 601,
+    "slow_deselected": 13,
+    "selected_by_directory": {
+      "tests/validation": 90,
+      "tests/verification": 511
+    },
+    "selected_test_modules": 57
+  },
+  "regular_suite": {
+    "counts": {
+      "skipped": 7,
+      "passed": 594,
+      "failed": 1
+    },
+    "duration_seconds": 838.816,
+    "timestamp": "2026-10-23T14:32:22.303016+02:00",
+    "failures": [
+      {
+        "test_id": "tests/verification/test_examples_current.py::test_cross_example_import_works_from_documented_entry_point",
+        "message": "subprocess.TimeoutExpired: Command '['/opt/psi/conda-envs/x86_64/ra-standard_py312/bin/python', 'examples/hpmr_adaptive_coupled_benchmark.py', '--help']' timed out after 10 seconds"
+      }
+    ],
+    "skips": [
+      {
+        "test_id": "tests/validation/test_coupled_precice.py",
+        "message": "collection skipped"
+      },
+      {
+        "test_id": "tests/validation/test_vver440.py::test_vver440_msh_matches_femffusion",
+        "message": "FEMFFUSION VVER440.msh not present"
+      },
+      {
+        "test_id": "tests/validation/test_vver440.py::test_vver440_msh_converges_on_keff_with_loose_source_tolerance",
+        "message": "FEMFFUSION VVER440.msh not present"
+      },
+      {
+        "test_id": "tests/verification/test_diffusion_analytic.py::test_gpu_device_request_errors_cleanly_without_cuda",
+        "message": "cupy present; this test targets CUDA-less machines"
+      },
+      {
+        "test_id": "tests/verification/test_fused_kernels.py::test_dsa_solver_accepts_a_host_residual[ndgpu.sn-SNTransportSolver-args0]",
+        "message": "needs a CUDA device"
+      },
+      {
+        "test_id": "tests/verification/test_fused_kernels.py::test_dsa_solver_accepts_a_host_residual[ndgpu.tri_sn-TriSNTransportSolver-args1]",
+        "message": "needs a CUDA device"
+      },
+      {
+        "test_id": "tests/verification/test_tri_sn.py::test_3d_cmfd_multigrid_solver_matches_lu",
+        "message": "could not import 'pyamg': No module named 'pyamg'"
+      }
+    ],
+    "modules": {
+      "tests.validation.test_anl7416_8a1": {
+        "passed": 6
+      },
+      "tests.validation.test_biblis_iaea": {
+        "passed": 3
+      },
+      "tests.validation.test_brantley_larsen_2d": {
+        "passed": 12
+      },
+      "tests.validation.test_c5g7": {
+        "passed": 5
+      },
+      "tests.validation.test_c5g7_td": {
+        "passed": 6
+      },
+      "tests.validation.test_coupled_precice": {
+        "skipped": 1
+      },
+      "tests.validation.test_hpmr": {
+        "passed": 16
+      },
+      "tests.validation.test_local_refine": {
+        "passed": 4
+      },
+      "tests.validation.test_lra2d": {
+        "passed": 12
+      },
+      "tests.validation.test_model_twigl": {
+        "passed": 3
+      },
+      "tests.validation.test_noise_femffusion": {
+        "passed": 2
+      },
+      "tests.validation.test_noise_point_kinetics": {
+        "passed": 11
+      },
+      "tests.validation.test_reflected_slab": {
+        "passed": 3
+      },
+      "tests.validation.test_twigl_langenbuch": {
+        "passed": 3
+      },
+      "tests.validation.test_vver440": {
+        "passed": 2,
+        "skipped": 2
+      },
+      "tests.verification.test_adjoint": {
+        "passed": 11
+      },
+      "tests.verification.test_batched_group_source": {
+        "passed": 7
+      },
+      "tests.verification.test_boundary_conditions": {
+        "passed": 2
+      },
+      "tests.verification.test_conduction": {
+        "passed": 18
+      },
+      "tests.verification.test_coupling": {
+        "passed": 18
+      },
+      "tests.verification.test_cylindrical": {
+        "passed": 4
+      },
+      "tests.verification.test_diffusion_analytic": {
+        "passed": 5,
+        "skipped": 1
+      },
+      "tests.verification.test_examples_current": {
+        "passed": 3,
+        "failed": 1
+      },
+      "tests.verification.test_feedback": {
+        "passed": 16
+      },
+      "tests.verification.test_femffusion_io": {
+        "passed": 5
+      },
+      "tests.verification.test_fused_kernels": {
+        "passed": 43,
+        "skipped": 2
+      },
+      "tests.verification.test_griffin_xs": {
+        "passed": 5
+      },
+      "tests.verification.test_hex_lattice": {
+        "passed": 3
+      },
+      "tests.verification.test_hpmr_assembly_pin_power": {
+        "passed": 10
+      },
+      "tests.verification.test_hybrid": {
+        "passed": 16
+      },
+      "tests.verification.test_hybrid_sn": {
+        "passed": 6
+      },
+      "tests.verification.test_hybrid_tri_sn": {
+        "passed": 5
+      },
+      "tests.verification.test_linalg_krylov": {
+        "passed": 25
+      },
+      "tests.verification.test_mixing": {
+        "passed": 7
+      },
+      "tests.verification.test_model_api": {
+        "passed": 19
+      },
+      "tests.verification.test_multigroup_step": {
+        "passed": 19
+      },
+      "tests.verification.test_neutron_balance": {
+        "passed": 3
+      },
+      "tests.verification.test_perturbation": {
+        "passed": 3
+      },
+      "tests.verification.test_power_density": {
+        "passed": 7
+      },
+      "tests.verification.test_preconditioner": {
+        "passed": 4
+      },
+      "tests.verification.test_quasistatic": {
+        "passed": 21
+      },
+      "tests.verification.test_sdp1": {
+        "passed": 20
+      },
+      "tests.verification.test_sdpn_derivation": {
+        "passed": 4
+      },
+      "tests.verification.test_sdpn_symmetric": {
+        "passed": 15
+      },
+      "tests.verification.test_sn": {
+        "passed": 6
+      },
+      "tests.verification.test_sn_dsa": {
+        "passed": 8
+      },
+      "tests.verification.test_sp3_analytic": {
+        "passed": 4
+      },
+      "tests.verification.test_sph": {
+        "passed": 5
+      },
+      "tests.verification.test_timescheme": {
+        "passed": 38
+      },
+      "tests.verification.test_transient_kinetics_theory": {
+        "passed": 6
+      },
+      "tests.verification.test_transient_per_material": {
+        "passed": 7
+      },
+      "tests.verification.test_transient_point_kinetics": {
+        "passed": 36
+      },
+      "tests.verification.test_transient_sn": {
+        "passed": 20
+      },
+      "tests.verification.test_tri_prisms": {
+        "passed": 5
+      },
+      "tests.verification.test_tri_reactor_api": {
+        "passed": 5
+      },
+      "tests.verification.test_tri_sn": {
+        "passed": 27,
+        "skipped": 1
+      },
+      "tests.verification.test_tri_sp3": {
+        "passed": 2
+      },
+      "tests.verification.test_unstructured_mesh": {
+        "passed": 13
+      }
+    },
+    "junit_xml": "cpu-2026-10-23.xml"
+  },
+  "example_launch_recheck": {
+    "counts": {
+      "failed": 1
+    },
+    "duration_seconds": 13.94,
+    "timestamp": "2026-10-23T14:41:55.040488+02:00",
+    "failures": [
+      {
+        "test_id": "tests/verification/test_examples_current.py::test_cross_example_import_works_from_documented_entry_point",
+        "message": "subprocess.TimeoutExpired: Command '['/opt/psi/conda-envs/x86_64/ra-standard_py312/bin/python', 'examples/hpmr_adaptive_coupled_benchmark.py', '--help']' timed out after 10 seconds"
+      }
+    ],
+    "skips": [],
+    "modules": {
+      "tests.verification.test_examples_current": {
+        "failed": 1
+      }
+    },
+    "junit_xml": "cpu-example-recheck-2026-10-23.xml"
+  },
+  "readme_quickstart": {
+    "converged": true,
+    "device": "cpu (numpy)",
+    "k_eff": 1.1352040511640966,
+    "flux_shape": [
+      2,
+      24,
+      24,
+      24
+    ]
+  }
+}

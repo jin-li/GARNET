@@ -1,6 +1,6 @@
-# The NDgpu Model API
+# The GARNET Model API
 
-> New to NDgpu? Start with the [user guide](user_guide.md). It explains the
+> New to GARNET? Start with the [user guide](user_guide.md). It explains the
 > supported modeling scope and follows one reactor through geometry, steady
 > neutronics, SPH hand-off, kinetics, thermal feedback, GPU coupling, results,
 > and validation. This page is the detailed builder reference.
@@ -21,7 +21,7 @@ Three builders share one report type (`ReactorResult`):
 | [`MeshModel`](#meshmodel--unstructured) | arbitrary unstructured mesh (Gmsh or assembled), 2-D / 3-D | diffusion |
 | [`HexLattice` → `TriReactor`](#hexlattice--trireactor) | hexagonal/prismatic cores on the triangular solver | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
 
-Materials are ordinary `ndgpu.Material` objects throughout, so defining cross
+Materials are ordinary `garnet.Material` objects throughout, so defining cross
 sections is unchanged — only the grid/array bookkeeping is removed.
 
 ---
@@ -32,7 +32,7 @@ A `Material` is a homogenized multigroup cross-section set (macroscopic, 1/cm; D
 in cm). Group order is fast → thermal.
 
 ```python
-from ndgpu import Material
+from garnet import Material
 
 fuel = Material(
     name="fuel",
@@ -60,10 +60,10 @@ background) and `add_box` (rectangular overrides, ranges in cm; a `None` axis
 spans the whole core). Methods return `self`, so they chain.
 
 ```python
-import ndgpu
+import garnet
 
 model = (
-    ndgpu.Model(size=(120, 120, 120), cells=(40, 40, 40))   # 3-D, cm
+    garnet.Model(size=(120, 120, 120), cells=(40, 40, 40))   # 3-D, cm
     .fill(reflector)                                        # background material
     .add_box(fuel, x=(30, 90), y=(30, 90), z=(30, 90))      # central fuel block
     .set_boundary("vacuum")
@@ -113,7 +113,7 @@ Tolerances default to `tol_k=1e-6`, `tol_source=1e-5`.
 The report:
 
 ```
-NDgpu reactor solution
+GARNET reactor solution
 ======================
   geometry    : 120 x 120 x 120 cm,  40 x 40 x 40 cells (64,000)  [3D]
   groups      : 2     method: diffusion     device: cpu (numpy)
@@ -206,7 +206,7 @@ region rather than by box only:
 
 ```python
 mm = (
-    ndgpu.MeshModel("core.msh")                  # or MeshModel(mesh_object)
+    garnet.MeshModel("core.msh")                  # or MeshModel(mesh_object)
     .fill(reflector)
     .assign(fuel, tag=1)                          # by Gmsh physical tag
     .assign(absorber, where=lambda c: c[2] > 100) # by a predicate on the cell centroid
@@ -236,7 +236,7 @@ to be listed manually:
 
 ```python
 core = (
-    ndgpu.HexLattice(pitch=20.0, refine=4)
+    garnet.HexLattice(pitch=20.0, refine=4)
     .set_disk(3, reflector)                 # background, overwritten below
     .set_disk(2, fuel)
     .set_boundary("vacuum")                 # radial core edge
@@ -283,14 +283,14 @@ internal integer indices. Inactive padding is filled automatically:
 ```python
 core.configure_thermal(
     {
-        "fuel": ndgpu.ThermalMaterial(0.25, sink_coeff=0.015,
+        "fuel": garnet.ThermalMaterial(0.25, sink_coeff=0.015,
                                       sink_temperature=650, heat_capacity=2.5),
-        "reflector": ndgpu.ThermalMaterial(0.35, heat_capacity=2.0),
-        "axial reflector": ndgpu.ThermalMaterial(0.32, heat_capacity=2.1),
+        "reflector": garnet.ThermalMaterial(0.35, heat_capacity=2.0),
+        "axial reflector": garnet.ThermalMaterial(0.32, heat_capacity=2.1),
     },
     total_power=2.0e6,
     feedback={
-        "fuel": ndgpu.FeedbackSpec(reference_temperature=800,
+        "fuel": garnet.FeedbackSpec(reference_temperature=800,
                                     doppler=[2e-4, 0.0]),
     },
     thermal_mask_bc=0.01,
@@ -358,7 +358,7 @@ lat.set_drum((0, 3), body=beryllium, absorber=b4c,
 (withdrawn), so sweeping 0→180 traces the **drum-worth curve**. Any number of
 drums may be placed and rotated independently. `build(samples=8)` controls arc
 sub-sampling resolution. The report's neutron balance accounts for the mixed
-absorber. This reproduces `ndgpu.benchmarks.build_hpmr2d`'s polar drum model
+absorber. This reproduces `garnet.benchmarks.build_hpmr2d`'s polar drum model
 exactly; see `examples/hpmr_hexlattice.py`, which builds the full HP-MR
 microreactor — 55 assemblies and 12 drums — and sweeps the worth curve.
 
@@ -374,8 +374,8 @@ eigenvalue** and the **transient power**, so it validates the whole Model API.
 
 ```python
 import numpy as np
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 seed_xs = dict(diffusion=1 / (3 * np.array([0.238095, 0.83333])),
                sigma_a=[0.010, 0.150], nu_sigma_f=[0.007, 0.200],
@@ -389,7 +389,7 @@ seed = Material(name="seed", **seed_xs)
 seed_c = Material(name="seed (perturbable)", **seed_xs)   # distinct object -> its own region
 
 model = (
-    ndgpu.Model(size=(80, 80), cells=(40, 40))
+    garnet.Model(size=(80, 80), cells=(40, 40))
     .fill(blanket)
     .add_box(seed, x=(0, 24), y=(24, 56)).add_box(seed, x=(24, 56), y=(0, 24))  # L-shaped seed
     .add_box(seed_c, x=(24, 56), y=(24, 56))                                    # central seed
@@ -428,7 +428,7 @@ references.
 
 ## Reference
 
-- The builders, `TriReactor`, and `ReactorResult` live in `ndgpu/model.py`.
+- The builders, `TriReactor`, and `ReactorResult` live in `garnet/model.py`.
 - SPH *generation* and unusual solver formulations still use the low-level
   solver functions. Their corrected material list returns to the public API via
   `TriReactor.with_materials(...)`; custom preconditioners enter through

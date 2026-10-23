@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from ndgpu.timescheme import BDF, BDFStepController, make_time_scheme
+from garnet.timescheme import BDF, BDFStepController, make_time_scheme
 
 
 @pytest.mark.parametrize("order", range(1, 7))

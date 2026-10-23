@@ -10,7 +10,7 @@ spectrum differs from the material (cumulative) spectrum, and the mix-array
 import numpy as np
 import pytest
 
-from ndgpu import (Grid, Kinetics, Material, TransientSDP1Solver,
+from garnet import (Grid, Kinetics, Material, TransientSDP1Solver,
                    TransientSolver)
 
 # Two-region, two-group toy core (TWIGL-flavoured numbers).

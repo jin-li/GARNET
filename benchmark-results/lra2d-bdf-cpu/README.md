@@ -25,13 +25,13 @@ solve and reports the raw value alongside rods-in. This prevents the raw
 
 The original ANL-7416/DIF3D input uses reflector absorptions
 `Sigma_a1=6.034e-4 cm-1` and `Sigma_a2=1.911e-2 cm-1`. Cherezov Table 4 prints
-both one decade too large. The earlier ndgpu checkpoint corrected only the
+both one decade too large. The earlier garnet checkpoint corrected only the
 fast value, retaining `Sigma_a2=1.911e-1`; it then disabled the specified
 `Bz^2=1e-4 cm-2` axial leakage because those two errors happened to offset in
 the rods-in eigenvalue. The cancellation failed for rods-out and produced the
 apparent 377 pcm control-worth deficit.
 
-ndgpu now restores both original reflector absorptions and includes `D_g Bz^2`
+garnet now restores both original reflector absorptions and includes `D_g Bz^2`
 by default. The Doppler edit also scales only physical fast absorption, leaving
 the axial-leakage contribution unchanged. `--no-axial-buckling` remains an
 explicit diagnostic and no longer defines the benchmark.
@@ -62,7 +62,7 @@ not an anomalous control worth.
 
 ## Coupled transient result
 
-| quantity | ndgpu FV 3.75 cm | original reference | Cherezov FEMCORE |
+| quantity | garnet FV 3.75 cm | original reference | Cherezov FEMCORE |
 |---|---:|---:|---:|
 | rods in | 0.99623051 | 0.99633 | 0.99639 |
 | rods out | 1.01481578 | 1.01546 | 1.01550 |
@@ -78,7 +78,7 @@ Relative to the original reference, the transient differences are +2.37% in
 first-peak time, +3.48% in first-peak power, +2.96% in second-peak power,
 +2.74% in 3 s power, -0.21% in mean temperature, and +0.18% in peak
 temperature. Relative to FEMCORE, the power metrics are within 1.6%; its
-temperature result is 3.3--3.7% higher than ndgpu and the original reference.
+temperature result is 3.3--3.7% higher than garnet and the original reference.
 
 This run used 461 accepted and 21 rejected steps, 14,889 total FGMRES
 applications, 352,629 inner iterations, and 496 feedback constituent solves.

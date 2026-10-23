@@ -1,6 +1,6 @@
-# NDgpu user guide
+# GARNET user guide
 
-NDgpu is a finite-volume multigroup reactor solver designed for fast,
+GARNET is a finite-volume multigroup reactor solver designed for fast,
 device-resident calculations on structured grids. Its main application is a
 homogenized full-core model on a body-fitted triangular grid, including
 SPH-corrected diffusion, delayed-neutron transients, heat conduction, and
@@ -46,7 +46,7 @@ intended for SPH-corrected coupled transients.
 | Existing CAD-derived/Gmsh mesh | `MeshModel` | An unstructured diffusion calculation is required |
 | Custom discretization or research method | Solver classes | You need direct access to operators, arrays, or an experimental method |
 
-NDgpu is a homogenized diffusion-family solver, not a general CAD or
+GARNET is a homogenized diffusion-family solver, not a general CAD or
 pin-resolved transport system. A design should be represented by macroscopic
 cross sections over cells or assemblies. The tri-grid is especially suitable
 for hexagonal cores, control drums, and axially extruded prismatic regions.
@@ -84,9 +84,9 @@ sections are in cm⁻¹, and diffusion coefficients are in centimetres. Energy
 groups are ordered fast to thermal.
 
 ```python
-import ndgpu
+import garnet
 
-fuel = ndgpu.Material(
+fuel = garnet.Material(
     name="fuel",
     diffusion=[1.25, 0.35],
     sigma_a=[0.012, 0.120],
@@ -98,7 +98,7 @@ fuel = ndgpu.Material(
     chi=[1.0, 0.0],
 )
 
-reflector = ndgpu.Material(
+reflector = garnet.Material(
     name="reflector",
     diffusion=[1.15, 0.25],
     sigma_a=[0.001, 0.020],
@@ -106,7 +106,7 @@ reflector = ndgpu.Material(
     sigma_s=[[0.0, 0.035], [0.0, 0.0]],
 )
 
-absorber = ndgpu.Material(
+absorber = garnet.Material(
     name="absorber",
     diffusion=[0.50, 0.12],
     sigma_a=[0.040, 0.80],
@@ -132,7 +132,7 @@ Hex sites use axial `(R, C)` coordinates. Paint broad regions first: later
 calls overwrite earlier ones.
 
 ```python
-axial_reflector = ndgpu.Material(
+axial_reflector = garnet.Material(
     name="axial reflector",
     diffusion=[1.10, 0.23],
     sigma_a=[0.0015, 0.023],
@@ -141,7 +141,7 @@ axial_reflector = ndgpu.Material(
 )
 
 core = (
-    ndgpu.HexLattice(pitch=18.0, refine=3)
+    garnet.HexLattice(pitch=18.0, refine=3)
     .set_disk(2, reflector)                  # 19-site background
     .set_disk(1, fuel)                       # central seven sites
     .set_site((0, 0), fuel)                  # individual override
@@ -187,7 +187,7 @@ An absorber drum is represented as a volume-mixed annular arc, so a thin arc
 can move smoothly across triangular cells:
 
 ```python
-lattice = ndgpu.HexLattice(pitch=30.0, refine=4)
+lattice = garnet.HexLattice(pitch=30.0, refine=4)
 lattice.set_disk(2, reflector)
 lattice.set_drum(
     (0, 2),
@@ -265,7 +265,7 @@ Kinetics can be attached while building the lattice or later with
 `decay` contain one entry per delayed-neutron family.
 
 ```python
-rodded_fuel = ndgpu.Material(
+rodded_fuel = garnet.Material(
     name="fuel",
     diffusion=fuel.diffusion,
     sigma_a=fuel.sigma_a * [1.0, 1.002],
@@ -308,24 +308,24 @@ adapter for integration with a larger thermal core code.
 ```python
 core.configure_thermal(
     {
-        "fuel": ndgpu.ThermalMaterial(
+        "fuel": garnet.ThermalMaterial(
             conductivity=0.25,
             heat_capacity=2.5,
             sink_coeff=0.015,
             sink_temperature=650.0,
         ),
-        "reflector": ndgpu.ThermalMaterial(
+        "reflector": garnet.ThermalMaterial(
             conductivity=0.35,
             heat_capacity=2.0,
         ),
-        "axial reflector": ndgpu.ThermalMaterial(
+        "axial reflector": garnet.ThermalMaterial(
             conductivity=0.32,
             heat_capacity=2.1,
         ),
     },
     total_power=50_000.0,
     feedback={
-        "fuel": ndgpu.FeedbackSpec(
+        "fuel": garnet.FeedbackSpec(
             reference_temperature=700.0,
             doppler=[2.0e-4, 0.0],
             expansion=0.0,
@@ -532,7 +532,7 @@ available in `rejected_times`, `rejected_step_widths`, and
 `rejected_time_orders`. Do not treat `rtol` as equivalent to
 FEMCORE/LSODE tolerances or make this the default until the HP-MR and GPU gates
 also pass.
-`ndgpu.BDF.error_norm(...)` and `ndgpu.BDFStepController` remain public for
+`garnet.BDF.error_norm(...)` and `garnet.BDFStepController` remain public for
 benchmark and custom-driver development.
 
 `coupled_transient` supports the same adaptive controls through
@@ -602,7 +602,7 @@ For a rectangular model, paint boxes with `Model`:
 
 ```python
 box = (
-    ndgpu.Model(size=(120.0, 120.0, 200.0), cells=(48, 48, 80))
+    garnet.Model(size=(120.0, 120.0, 200.0), cells=(48, 48, 80))
     .fill(reflector)
     .add_box(fuel, x=(20, 100), y=(20, 100), z=(20, 180))
     .set_boundary("vacuum")
@@ -614,7 +614,7 @@ For an existing Gmsh model, assign material by physical tag or centroid:
 
 ```python
 mesh_model = (
-    ndgpu.MeshModel("core.msh")
+    garnet.MeshModel("core.msh")
     .fill(reflector)
     .assign(fuel, tag=1)
     .assign(absorber, where=lambda centre: centre[2] > 180.0)

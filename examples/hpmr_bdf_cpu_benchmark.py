@@ -20,10 +20,10 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr import build_hpmr2d
-from ndgpu.benchmarks.hpmr_transient_bench import build_case
-from ndgpu.transient import TransientSolver
-from ndgpu.tri import TriDiffusionEigenSolver, TriGroupOperator
+from garnet.benchmarks.hpmr import build_hpmr2d
+from garnet.benchmarks.hpmr_transient_bench import build_case
+from garnet.transient import TransientSolver
+from garnet.tri import TriDiffusionEigenSolver, TriGroupOperator
 
 
 def _trajectory_frames(problem, refine, frame_count, asymmetric=False,

@@ -9,8 +9,8 @@ measurement. Phase 0 exists to fix that.
 
 | phase | state | where |
 |---|---|---|
-| 0 — instrumentation | **done** | `ndgpu/profiling.py` |
-| 1 — fused 7-point stencil | **done** | `ndgpu/kernels.py`, `stencil.py:apply` |
+| 0 — instrumentation | **done** | `garnet/profiling.py` |
+| 1 — fused 7-point stencil | **done** | `garnet/kernels.py`, `stencil.py:apply` |
 | 2 — fused SPN/SDPN block | **done** | `sp3.py:apply`, `spn.py:apply` (both blocks) |
 | 3 — fused/de-synchronized Krylov | **done** (except pipelining) | `kernels.py`, `linalg.py:pcg`, `cocg` |
 | 1b — fused **triangular** stencil | **done** | `tri.py:TriGroupOperator.apply` |
@@ -20,9 +20,9 @@ measurement. Phase 0 exists to fix that.
 | 6b — batched groups in the **transient** | **done**, measured: 1.03x | `transient.py:_group_batch` |
 | precision (float32 / SN dtype) | not started | |
 
-All fused kernels are GPU-only and dispatched through `ndgpu.kernels`; the
+All fused kernels are GPU-only and dispatched through `garnet.kernels`; the
 NumPy path is unchanged and is what runs when the backend is NumPy, when dtypes
-would have to be narrowed, or when fusion is switched off with `NDGPU_FUSED=0`
+would have to be narrowed, or when fusion is switched off with `GARNET_FUSED=0`
 / `kernels.set_fused(False)`. That switch is the A/B lever the benchmarks use.
 
 ## First measurement — Tesla T4, Colab, 2026-07-29
@@ -167,7 +167,7 @@ of the same allocations the GPU makes), scaling linearly with problem size:
 
 The broadcast form is kept as the fallback for when the fused kernels are
 switched off, because it is allocation-free and therefore still capture-safe --
-the generic NumPy-style fallbacks inside `ndgpu.kernels` are not, which is why
+the generic NumPy-style fallbacks inside `garnet.kernels` are not, which is why
 `_fused_reduce` is latched once at setup and must not flip between capturing a
 graph and replaying it.
 
@@ -228,7 +228,7 @@ Asked directly: how much does a GPU buy on a neutronics-only HP-MR transient?
 Measuring the CPU side first turned up an answer that reorders the whole
 question.
 
-Harness: `ndgpu/benchmarks/hpmr_transient_bench.py`, driven by
+Harness: `garnet/benchmarks/hpmr_transient_bench.py`, driven by
 `examples/hpmr_transient_bench.py` and `notebooks/colab_hpmr_transient_gpu.ipynb`.
 The manoeuvre is a uniform +0.5 $ absorption step at t=0 rather than a drum
 rotation, because a drum's absorber area fraction lands differently on every
@@ -679,7 +679,7 @@ Two observations frame the whole plan.
 
 1. **There is no custom-kernel code in the repo.** No `cupy.fuse`, no
    `ElementwiseKernel`, no `RawKernel`, no `ReductionKernel` anywhere under
-   `ndgpu/`. Everything is generic NumPy-API code that CuPy dispatches one
+   `garnet/`. Everything is generic NumPy-API code that CuPy dispatches one
    operation at a time. That is exactly what `backend.py` was designed for and
    it is the right default — this plan is about selectively breaking that
    uniformity where it costs the most.
@@ -737,7 +737,7 @@ capture the right tools, in that order.
 
 Nothing below should be merged on faith.
 
-*Implemented* as `ndgpu/profiling.py`. The useful piece turned out not to be
+*Implemented* as `garnet/profiling.py`. The useful piece turned out not to be
 `cupyx.profiler.benchmark` but `effective_launches`: time an operation on a grid
 small enough to be pure overhead, divide by the measured cost of one trivial
 kernel, and read off how many kernels it launched. No profiler, no privileges,
@@ -798,7 +798,7 @@ ANL 8-A1 and VVER cases are the regression guards.
 
 ## Phase 2 — Fuse the SPN/SDPN block apply — DONE
 
-All three block operators now go through `ndgpu.kernels`:
+All three block operators now go through `garnet.kernels`:
 
 - **SP3/SDP1 (2x2)**, `sp3.py:apply` — each moment's leakage is written straight
   into its row via `apply(out=...)`, then one `kernels.sp3_couple` pass over
@@ -872,7 +872,7 @@ Do this after Phase 1 so the fused scalar stencil already exists to build on.
 ## Phase 3 — Fuse and de-synchronize the Krylov solvers — DONE (except pipelining)
 
 *Implemented*: `pcg` and `cocg` now route their vector updates and reductions
-through `ndgpu.kernels` — `x += alpha*p; r -= alpha*Ap` is one kernel
+through `garnet.kernels` — `x += alpha*p; r -= alpha*Ap` is one kernel
 (`cg_update`), `p <- z + beta*p` is one (`cg_direction`), the Neumann
 preconditioner's damped-Jacobi sweep is one (`neumann_step`), and `xp.sum(u*v)`
 became a `ReductionKernel` (`dot`) rather than cuBLAS, per the graph-capture
@@ -925,9 +925,9 @@ Done: the **DSA solve** and the **within-group GMRES**.
   operator to the device once and solves it with Jacobi-CG. It replaces a
   per-source-iteration D2H -> host sparse LU back-solve -> H2D. The transient
   DSA factor goes through the same path.
-- `_gmres_solve` now runs `ndgpu.linalg.gmres` over grid-shaped device arrays
+- `_gmres_solve` now runs `garnet.linalg.gmres` over grid-shaped device arrays
   instead of scipy's over host vectors, so the Krylov space stays on the GPU and
-  a matvec no longer round-trips the flux. ndgpu preconditions on the *right*,
+  a matvec no longer round-trips the flux. garnet preconditions on the *right*,
   so the Arnoldi residual is the true residual and the stopping rule is
   unchanged; the DSA preconditioner is linear, which is what that requires.
   `linalg.gmres` gained `raise_on_fail` (matching `pcg`) so an inexact
@@ -1081,7 +1081,7 @@ python tools/build_src_zip.py          # notebooks install this; a stale zip
                                        # silently runs old code
 ```
 then open `notebooks/colab_gpu_fusion_phase1.ipynb` on a GPU runtime and upload
-`dist/ndgpu-src.zip`. Sections in order: launch cost and kernels-per-apply; a
+`dist/garnet-src.zip`. Sections in order: launch cost and kernels-per-apply; a
 hard correctness gate (fused vs. unfused to round-off, including the awkward
 cases — one-cell-thick grids, `active` masks, every boundary law, the
 cylindrical divergence form, a complex operator); the stencil A/B vs. grid size;

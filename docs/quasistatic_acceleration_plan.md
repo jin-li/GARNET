@@ -250,7 +250,7 @@ duplicate initial critical solve.
 
 ### New module
 
-Add `ndgpu/quasistatic.py` with:
+Add `garnet/quasistatic.py` with:
 
 ```text
 QuasiStaticConfig

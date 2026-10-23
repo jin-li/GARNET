@@ -20,9 +20,9 @@ Checks:
 import numpy as np
 import pytest
 
-from ndgpu import Material, k_infinite
-from ndgpu.tri import TriGrid
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet import Material, k_infinite
+from garnet.tri import TriGrid
+from garnet.tri_sn import TriSNTransportSolver
 
 M1 = Material(diffusion=[1.0], sigma_a=[0.02], nu_sigma_f=[0.025],
               sigma_s=[[0.0]], name="m1")
@@ -207,7 +207,7 @@ def test_3d_axial_slab_converges_to_diffusion():
     # converges to BOTH k_inf and the diffusion answer; the gap closes. A wrong
     # axial scale could not converge on both. DSA makes the low-leakage slab
     # tractable (plain source iteration stalls near dominance ratio 1).
-    from ndgpu.tri import TriDiffusionEigenSolver
+    from garnet.tri import TriDiffusionEigenSolver
     mat = Material(diffusion=[1.0], sigma_a=[0.004], nu_sigma_f=[0.0055],
                    sigma_s=[[0.0]], name="d")
     kinf = k_infinite(mat)

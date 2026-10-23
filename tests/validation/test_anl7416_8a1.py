@@ -3,7 +3,7 @@
 The first cylindrical-geometry benchmark in the suite (Benchmark Source
 Situation 8 of the Argonne Code Center Benchmark Problem Book, ANL-7416
 Suppl. 2, 1977). Problem definition, cross sections and the published
-reference values live in ndgpu.benchmarks.anl_bss8.
+reference values live in garnet.benchmarks.anl_bss8.
 
 What "agreement" means here: the three published solutions (TWODTA, TWODQD,
 ADEP) all share one spatial discretization -- mesh-point (vertex-centered)
@@ -23,9 +23,9 @@ mesh-converged answer.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, TransientSolver
-from ndgpu.benchmarks import build_anl8a1
-from ndgpu.benchmarks.anl_bss8 import K_REFERENCE, P_REFERENCE
+from garnet import DiffusionEigenSolver, TransientSolver
+from garnet.benchmarks import build_anl8a1
+from garnet.benchmarks.anl_bss8 import K_REFERENCE, P_REFERENCE
 
 K_EIGENSOLVE_REFERENCE = 0.867053   # 8-A1-1's unadjusted eigensolve (same mesh)
 

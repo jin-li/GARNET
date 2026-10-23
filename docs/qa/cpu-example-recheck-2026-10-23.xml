@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="13.940" timestamp="2026-10-23T14:41:55.040488+02:00" hostname="lclrs81.psi.ch"><testcase classname="tests.verification.test_examples_current" name="test_cross_example_import_works_from_documented_entry_point" time="13.584"><failure message="subprocess.TimeoutExpired: Command '['/opt/psi/conda-envs/x86_64/ra-standard_py312/bin/python', 'examples/hpmr_adaptive_coupled_benchmark.py', '--help']' timed out after 10 seconds">def test_cross_example_import_works_from_documented_entry_point():
+&gt;       result = subprocess.run(
+            [sys.executable, "examples/hpmr_adaptive_coupled_benchmark.py", "--help"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+
+tests/verification/test_examples_current.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/psi/conda-envs/x86_64/ra-standard_py312/lib/python3.12/subprocess.py:550: in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/psi/conda-envs/x86_64/ra-standard_py312/lib/python3.12/subprocess.py:1209: in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/psi/conda-envs/x86_64/ra-standard_py312/lib/python3.12/subprocess.py:2116: in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;Popen: returncode: -9 args: ['/opt/psi/conda-envs/x86_64/ra-standard_py312/...&gt;
+endtime = 24645073.881080907, orig_timeout = 10, stdout_seq = []
+stderr_seq = [], skip_check_and_raise = False
+
+    def _check_timeout(self, endtime, orig_timeout, stdout_seq, stderr_seq,
+                       skip_check_and_raise=False):
+        """Convenience for checking if a timeout has expired."""
+        if endtime is None:
+            return
+        if skip_check_and_raise or _time() &gt; endtime:
+&gt;           raise TimeoutExpired(
+                    self.args, orig_timeout,
+                    output=b''.join(stdout_seq) if stdout_seq else None,
+                    stderr=b''.join(stderr_seq) if stderr_seq else None)
+E           subprocess.TimeoutExpired: Command '['/opt/psi/conda-envs/x86_64/ra-standard_py312/bin/python', 'examples/hpmr_adaptive_coupled_benchmark.py', '--help']' timed out after 10 seconds
+
+/opt/psi/conda-envs/x86_64/ra-standard_py312/lib/python3.12/subprocess.py:1253: TimeoutExpired</failure></testcase></testsuite></testsuites>

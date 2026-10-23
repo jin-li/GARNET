@@ -8,7 +8,7 @@ exchanging volume fields:
 | `neutronics.py` | `Temperature` (K) | `Power` (W/cm³) |
 | `thermal.py` | `Power` (W/cm³) | `Temperature` (K) |
 
-The same problem also runs in a single process via `ndgpu.coupling.CoupledSolver`
+The same problem also runs in a single process via `garnet.coupling.CoupledSolver`
 (`examples/hpmr_coupled.py`). That is deliberate: the internal driver is the
 reference this coupling is verified against, in
 `tests/validation/test_coupled_precice.py`.
@@ -28,10 +28,10 @@ pip compiles and links against that same dead library. Use conda-forge, which
 ships binaries for both halves:
 
 ```bash
-conda create -n ndgpu-precice --override-channels -c conda-forge \
+conda create -n garnet-precice --override-channels -c conda-forge \
     python=3.13 pyprecice numpy scipy pytest
-conda run -n ndgpu-precice python -m pip install -e /path/to/ndgpu --no-deps
-conda run -n ndgpu-precice python -c "import precice; print(precice.get_version_information())"
+conda run -n garnet-precice python -m pip install -e /path/to/garnet --no-deps
+conda run -n garnet-precice python -c "import precice; print(precice.get_version_information())"
 ```
 
 (Use `python -m pip`, not `pip` — a bare `pip` may resolve to `~/.local/bin/pip`
@@ -40,7 +40,7 @@ and install into the wrong environment.)
 ## Run
 
 ```bash
-conda run -n ndgpu-precice bash examples/precice/run.sh --refine 4 --groups 11
+conda run -n garnet-precice bash examples/precice/run.sh --refine 4 --groups 11
 ```
 
 Any extra arguments go to **both** participants, which matters: they must build
@@ -48,7 +48,7 @@ identical problems. Useful ones are `--refine`, `--nz` (0 = the 2D radial core),
 `--drum-deg`, `--groups {2,11}`, `--power`, `--config`, `--csv`.
 
 Output lands in `examples/precice/run/` (override with
-`NDGPU_PRECICE_WORKDIR`), including a per-iteration CSV trace from each side.
+`GARNET_PRECICE_WORKDIR`), including a per-iteration CSV trace from each side.
 
 ## The two configurations
 
@@ -78,7 +78,7 @@ they built, and say which is which rather than failing obscurely.
   (W/cm³ and K); a conservative constraint sums contributions and, at coincident
   vertices, silently corrupts them.
 - **Identical vertex sets are load-bearing.** Both participants call
-  `ndgpu.coupling.coupling_vertices`. If they ever drift — a different `refine`,
+  `garnet.coupling.coupling_vertices`. If they ever drift — a different `refine`,
   a different drum angle — preCICE will *not* error: nearest-neighbour will map
   each vertex to a nearby wrong cell and the coupling quietly becomes a
   smoother. That is what the exact-mapping test exists to catch.

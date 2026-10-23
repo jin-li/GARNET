@@ -25,14 +25,14 @@ PYTHONPATH=. python examples/lra2d_bdf_benchmark.py \
 The preset selects the paper's reported initial width `1e-6 s`, `RTOL=1e-5`,
 maximum BDF order five, fully implicit temperature feedback, assembly thermal
 zones, and a `0.1 s` maximum width. Its JSON records two remaining differences:
-ndgpu currently holds the maximum attainable BDF order instead of comparing
+garnet currently holds the maximum attainable BDF order instead of comparing
 `q-1/q/q+1`, and its spatial discretization is cell-centred finite volume.
 
 ## CPU result
 
 The 15 cm assembly mesh and 3.75 cm refined FV mesh produced:
 
-| quantity | ndgpu FV 15 cm | ndgpu FV 3.75 cm | Cherezov FEM1 | Cherezov FEM4 |
+| quantity | garnet FV 15 cm | garnet FV 3.75 cm | Cherezov FEM1 | Cherezov FEM4 |
 |---|---:|---:|---:|---:|
 | accepted/rejected steps | 521 / 24 | 443 / 24 | 403 / 5 | 399 / 7 |
 | first peak time (s) | 1.34462 | 1.64860 | 1.352 | 1.440 |
@@ -48,7 +48,7 @@ comparison metrics.
 
 Relative to the paper's first-order spatial row, first-peak time is -0.55%,
 first-peak power +1.53%, and 3 s power -1.31%, while the second peak is +12.8%.
-That pattern supports the earlier finding that the coarse ndgpu history is a
+That pattern supports the earlier finding that the coarse garnet history is a
 low-order spatial result. It does not turn the FV mesh into a first-order FEM
 equivalent: its raw rods-in eigenvalue is 1.006500, and the refined FV
 rods-out eigenvalue remains 377 pcm below the published reference.
