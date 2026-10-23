@@ -1,16 +1,11 @@
-# GARNET: A GPU-native Advanced Reactor NEutronics Toolkit
+# GARNET♦️: A GPU-native Advanced Reactor NEutronics Toolkit
 
-GARNET is a Python reactor-physics solver for multigroup diffusion and
-simplified transport (SPN/SDPN). It uses matrix-free finite volumes with
-NumPy on CPUs and CuPy on NVIDIA GPUs. The main application is homogenized
-full-core analysis, including SPH-corrected cross sections, delayed-neutron
-transients, and heat conduction with temperature feedback.
+**GARNET**️ is a Python-based reactor physics solver for multigroup neutron diffusion and simplified transport (SPN/SDPN). It is a GPU-focused code; the employed methods are meant to simplify GPU implementation and optimise performance. The code is written with CuPy (CUDA Python) for GPU with an automatic numpy fallback for testing on CPU. The main application is homogenized full-core transient analysis.
 
 GARNET was formerly called **NDgpu**; that name may still appear in saved
 results and older reports. The Python package is now `garnet`.
 
 The core solvers support:
-
 - Cartesian and cylindrical r-z grids, body-fitted triangular meshes, and
   extruded triangular prisms; unstructured meshes for diffusion.
 - Criticality and adjoint calculations with diffusion, SP1/3/5/7, and SDP1/2/3.
