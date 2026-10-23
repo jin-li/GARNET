@@ -78,6 +78,23 @@ nested provenance are immutable snapshots; the input record is not modified.
 Physical collision scattering and absorption remain available in `raw_means`,
 separate from effective production and reduced absorption.
 
+A balance check is a consistency screen, not a precision qualification. Large
+native errors can make its tolerance wide enough to accept a large residual.
+Inspect required scattering rows, energy-group flux support, individual transfer
+errors and source convergence separately. Do not infer exactness from a printed
+zero error, or a particle-event count from a printed 100% relative error. In the
+Serpent 2.2.2 group-constant processing path, a batch with absent group flux does
+not contribute that group's XS ratio; fewer than two contributing statistical
+samples can produce a zero printed XS error. Increasing particles per processing
+batch and increasing the number of batches address different sampling concerns.
+Their adequacy requires evidence from the calculation, beyond adapter admission.
+
+The transformed diagonal must also satisfy
+`1/(3 D[g]) >= T[g] - P[g,g]`. Raw balance acceptance does not imply this
+condition. If it fails, the adapter refuses the constants rather than adjusting
+the row. The caller remains responsible for qualifying the native estimates,
+correction curve and physical closure for the intended calculation.
+
 `region.as_material()` copies effective arrays into the solver's `Material`
 interface. As in the original scalar adapter, this conversion normalizes a
 nonzero chi and gives an all-zero nonfissile spectrum a benign first-group

@@ -79,6 +79,15 @@ establish sub-pin reactor accuracy. Keep the XS regions fixed while refining
 the numerical mesh. Whole-assembly CMM coefficients must not be assigned to
 individual rings, cladding, or coolant regions.
 
+Before using regional data, inspect energy-group flux support and scattering
+transfer errors as well as the declared balance check. A balance pass can
+reflect a wide statistical tolerance. Printed zero errors do not prove
+exactness, and a 100% relative error does not identify a particle-event count.
+For sparse Serpent 2.2.2 group-constant batches, increasing particles per batch
+may need investigation separately from adding cycles. Retain native errors,
+source histories and correction provenance; the adapter does not replace the
+study's statistical or physical qualification.
+
 Gmsh 2.2 ASCII imports can retain physical material and boundary tags. See the
 [fitted mesh geometry contract](../development/subpin-mesh-geometry.md). Map each
 boundary tag explicitly to a supported boundary condition; a physical label

@@ -73,6 +73,16 @@ are not native anisotropic moment cross sections. Source curve compatibility,
 regional admissibility, spatial convergence and comparison with transport
 remain independent requirements.
 
+The raw-error balance envelope is a consistency screen rather than a precision
+criterion: large statistical errors can admit a large residual. Nonnegative
+effective diagonal scattering additionally requires
+`1/(3 D_TRC[g]) >= Sigma_t[g] - Sigma_s_production[g,g]`; failure is rejected
+without row adjustment. Sparse group flux and conditional processing-batch
+support require separate scrutiny. In Serpent 2.2.2, an absent group-flux batch
+does not contribute a group-XS ratio, so a zero printed XS error need not imply
+a well-sampled constant. More particles per batch and more batches address
+different sampling limitations; neither is qualified by adapter acceptance.
+
 
 The opt-in [corrected scalar operator](../development/corrected-fv.md) uses a
 material-aware linear least-squares gradient and one conservative current per
