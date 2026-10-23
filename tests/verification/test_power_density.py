@@ -10,8 +10,8 @@ disagree about where the fuel is.
 import numpy as np
 import pytest
 
-from ndgpu import Grid, Material
-from ndgpu.power import fission_energy_xs, power_density
+from garnet import Grid, Material
+from garnet.power import fission_energy_xs, power_density
 
 
 def _mats():

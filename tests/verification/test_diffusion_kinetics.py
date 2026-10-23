@@ -7,10 +7,10 @@ import numpy as np
 import pytest
 from scipy.linalg import eig
 
-from ndgpu import DiffusionEigenSolver, Grid, Kinetics, Material, SP3EigenSolver
-from ndgpu.diffusion_kinetics import project_diffusion_kinetics
-import ndgpu.diffusion_kinetics as diffusion_kinetics
-from ndgpu.quasistatic import project_effective_kinetics
+from garnet import DiffusionEigenSolver, Grid, Kinetics, Material, SP3EigenSolver
+from garnet.diffusion_kinetics import project_diffusion_kinetics
+import garnet.diffusion_kinetics as diffusion_kinetics
+from garnet.quasistatic import project_effective_kinetics
 
 
 def homogeneous():

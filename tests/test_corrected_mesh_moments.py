@@ -4,10 +4,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu.corrected_mesh_moments import CorrectedMeshMomentOperator
-from ndgpu.mesh import MeshGrid, MeshGroupOperator, assemble_mesh
-from ndgpu.spn import SDPNGroupOperator, _SPN_C, _SPN_G, _SDPN_C, _SDPN_G
-from ndgpu.linalg import gmres
+from garnet.corrected_mesh_moments import CorrectedMeshMomentOperator
+from garnet.mesh import MeshGrid, MeshGroupOperator, assemble_mesh
+from garnet.spn import SDPNGroupOperator, _SPN_C, _SPN_G, _SDPN_C, _SDPN_G
+from garnet.linalg import gmres
 
 
 def mesh_grid(n=4, shear=.35):
@@ -143,7 +143,7 @@ def test_coupled_patch_rank_failure_is_explicit():
 
 
 def test_three_dimensional_orthogonal_boundary_and_time_reaction():
-    from ndgpu.mesh import assemble_mesh_3d
+    from garnet.mesh import assemble_mesh_3d
     coords = np.array([(x, y, z) for z in (0., 3.) for y in (0., 2.) for x in (0., 1.)])
     mesh = assemble_mesh_3d(coords, [(0, 1, 3, 2, 4, 5, 7, 6)], [0], normal_distances=True)
     op = operator(mesh, 'sdpn', theta=.4)

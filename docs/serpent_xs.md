@@ -1,17 +1,17 @@
 # Fixed-state Serpent cross sections
 
-NDgpu reads Serpent `*_res.m` group constants as literal data, without
+GARNET reads Serpent `*_res.m` group constants as literal data, without
 executing MATLAB or requiring an additional parser package. The initial
 interface supports a fixed-state, homogenized infinite-spectrum diffusion
 eigenvalue problem. It has been validated with the supplied Serpent 2.2.0
 assembly datasets containing 2, 4, 7, 14 and 23 groups.
-The [2-D assembly example](https://github.com/jin-li/NDgpu/blob/main/examples/serpent-xs/fa-2d/README.md) also
+The [2-D assembly example](https://github.com/jin-li/GARNET/blob/main/examples/serpent-xs/fa-2d/README.md) also
 reconstructs 289 regional four-group materials with exact nonuniform cell
 dimensions and compares CPU/AMD diffusion results against Serpent.
 
 ```python
-from ndgpu import DiffusionEigenSolver, Grid
-from ndgpu.serpent_xs import read_serpent_results, read_serpent_xs
+from garnet import DiffusionEigenSolver, Grid
+from garnet.serpent_xs import read_serpent_results, read_serpent_xs
 
 record = read_serpent_xs("assembly_res.m", universe="0")
 material = record.to_diffusion_material(diffusion="cmm")
@@ -52,7 +52,7 @@ or recognized physics fields fail; unrelated expressions are ignored.
 
 The diffusion adapter uses these conventions:
 
-| NDgpu material quantity | Serpent field | Convention |
+| GARNET material quantity | Serpent field | Convention |
 | --- | --- | --- |
 | `sigma_a` | `INF_RABSXS` | Reduced absorption, including neutron multiplication corrections |
 | `sigma_s` | `INF_SP0` | Scattering production, reshaped as source group × destination group |
@@ -90,8 +90,8 @@ for definitions and generation options.
 
 ## Point-reactor validation
 
-The [example runner](https://github.com/jin-li/NDgpu/blob/main/examples/serpent-xs/point-reactor/README.md) compares
-each reflective NDgpu solve with an independent dense balance:
+The [example runner](https://github.com/jin-li/GARNET/blob/main/examples/serpent-xs/point-reactor/README.md) compares
+each reflective GARNET solve with an independent dense balance:
 
 ```text
 M = diag(RABSXS + row_sum(SP0)) - transpose(SP0)

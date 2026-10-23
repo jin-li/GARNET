@@ -14,7 +14,7 @@ only the region volumes would betray it -- so that is what these check.
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks.hpmr import hpmr_sn_homogenization
+from garnet.benchmarks.hpmr import hpmr_sn_homogenization
 
 
 @pytest.fixture(scope="module")
@@ -49,10 +49,10 @@ def test_flux_weighting_differs_from_volume_weighting(ref):
     The clads sit in a depressed flux, so weighting by it must move the pin
     constants measurably away from the area-weighted mix of the same materials.
     """
-    from ndgpu.benchmarks.hpmr_assembly import (R_HP, R_HP_SHELL, R_MOD,
+    from garnet.benchmarks.hpmr_assembly import (R_HP, R_HP_SHELL, R_MOD,
                                                 R_MOD_SHELL,
                                                 pin_materials_builtin)
-    from ndgpu.griffin_xs import volume_homogenize
+    from garnet.griffin_xs import volume_homogenize
 
     _, _, mod, mod_shell, hp, hp_shell = pin_materials_builtin()
 

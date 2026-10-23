@@ -3,12 +3,12 @@
 The 2D one-group Brantley-Larsen problem: three fuel bars (1 cm wide, 9 cm tall)
 at x in [1,2],[4,5],[7,8], y in [0,9], in a 10x10 cm moderator square;
 reflective at x=0 and y=0, vacuum at x=10 and y=10. Every material interface is
-grid-aligned, so ndgpu's 2nd-order FV converges cheaply and the eigenvalue is a
+grid-aligned, so garnet's 2nd-order FV converges cheaply and the eigenvalue is a
 *physical* check of the angular coefficients -- unlike the k_infinity / dense
 tests, which only pin internal consistency. This problem caught a sign typo in
 the paper's SDP2 c^(1) closure coefficient (Appendix A.3).
 
-ndgpu sits a uniform +45..+105 pcm above the paper for every method (its
+garnet sits a uniform +45..+105 pcm above the paper for every method (its
 per-moment Robin vacuum vs the paper's coupled Marshak boundary), and reproduces
 the full ordering, including the headline SDPN-beats-SPN-at-equal-DoF result.
 """
@@ -16,7 +16,7 @@ the full ordering, including the headline SDPN-beats-SPN-at-equal-DoF result.
 import numpy as np
 import pytest
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver,
+from garnet import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver,
                    SP5EigenSolver, SP7EigenSolver, SDP1EigenSolver,
                    SDP2EigenSolver, SDP3EigenSolver)
 
@@ -64,7 +64,7 @@ def test_keff_matches_paper(keff, name):
 
 
 def test_offset_is_uniform(keff):
-    """The ndgpu-minus-paper gap is the same small positive vacuum-BC offset for
+    """The garnet-minus-paper gap is the same small positive vacuum-BC offset for
     every method (no method is an outlier)."""
     d = np.array([(keff[n] - PAPER[n]) * 1e5 for n in PAPER])
     assert np.all(d > 0) and np.all(d < 150), dict(zip(PAPER, d))
@@ -107,7 +107,7 @@ def test_marshak_converges_to_paper():
     """The exact coupled Marshak boundary makes SPN/SDPN converge to the paper's
     Table 6 k_eff (per-moment converges tens of pcm off). Checked by 2nd-order
     Richardson from two meshes, for a representative SP and SDP method."""
-    from ndgpu.solver import SPNEigenSolver, SDPNEigenSolver
+    from garnet.solver import SPNEigenSolver, SDPNEigenSolver
 
     class SP3g(SPNEigenSolver):
         _order = 1

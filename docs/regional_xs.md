@@ -1,6 +1,6 @@
 # Opt-in regional isotropic cross sections
 
-`ndgpu.regional_xs` is an experimental, explicit, standalone adapter. Its curve
+`garnet.regional_xs` is an experimental, explicit, standalone adapter. Its curve
 evidence is supplied by the caller; this is not a verified correction table.
 It does not change the default Serpent reader or qualify a transport correction for physical use.
 Region identities are supplied as `RegionMapping(region_id, material, pin,
@@ -11,7 +11,7 @@ pin with distinct components. Use distinct component labels such as
 Universe names are recorded for audit and never parsed into geometry.
 
 ```python
-from ndgpu.regional_xs import (
+from garnet.regional_xs import (
     CurveProvenance, RegionMapping, read_regional_dataset, RegionDataset,
 )
 

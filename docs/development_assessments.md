@@ -1,5 +1,8 @@
 # NDgpu development findings and priorities
 
+Historical naming: this assessment records NDgpu before its rename to GARNET.
+Source links below follow the current `garnet/` package.
+
 Assessment date: 2026-10-05. Code baseline: upstream `d8f4433`, the NixOS
 feature `e081c17`, and the AMD feature through `13a59cc`, integrated into
 `dev` at `b48f672`.
@@ -25,7 +28,7 @@ Cartesian, cylindrical, triangular/extruded-prism and unstructured paths have
 different capabilities; they are not interchangeable entry points. The
 high-level `Model` API is not a general CAD or transport interface. See the
 [user guide](user_guide.md), [model API](model_api.md) and
-[backend implementation](../ndgpu/backend.py).
+[backend implementation](../garnet/backend.py).
 
 | Area | Current finding | Development implication |
 |---|---|---|
@@ -138,7 +141,7 @@ remain CPU paths; periodic TriSN levels have existing restrictions.
 
 The NPZ suffix describes storage, not whether data is fixed-state or
 branched. Inspection of
-[`hpmr_core_xs_g11.npz`](../ndgpu/benchmarks/data/hpmr_core_xs_g11.npz)
+[`hpmr_core_xs_g11.npz`](../garnet/benchmarks/data/hpmr_core_xs_g11.npz)
 found five fuel temperature branches at 600, 700, 800, 1000 and 1200 K.
 They follow the diagonal `Tfuel = Tmod`, not an independent two-dimensional
 temperature grid. Other materials use reference-state arrays. Burnup,
@@ -148,8 +151,8 @@ The extract contains material arrays `D`, `sa`, `nsf`, `ss`, `chi`, `kf`,
 metadata `G` and `ids`, velocities and delayed-neutron data. Fuel branch
 vectors have shape `(5, 11)` and scattering `(5, 11, 11)`, including branch
 `total` and `kf`. Velocities and kinetics are single-state arrays.
-The [Griffin reader](../ndgpu/griffin_xs.py) selects XML tables and constructs
-[Material objects](../ndgpu/materials.py); NPZ is not a required solver input
+The [Griffin reader](../garnet/griffin_xs.py) selects XML tables and constructs
+[Material objects](../garnet/materials.py); NPZ is not a required solver input
 format or an established general interchange schema.
 
 `Material` expects macroscopic cross sections in `cm^-1`, diffusion in `cm`,
@@ -158,7 +161,7 @@ neutron production, optional total and fission-energy data, and normalized
 chi. Without total, `1/(3D)` is used; that fallback must not be confused with
 the physical total cross section for arbitrary transport/SPN input.
 
-[TabulatedFeedback](../ndgpu/feedback.py) interpolates one temperature
+[TabulatedFeedback](../garnet/feedback.py) interpolates one temperature
 coordinate linearly and clamps beyond the table range. It applies ratios
 to reference values for absorption, production, diffusion, total and
 existing off-diagonal scattering, then rebuilds removal. Important limits:
@@ -231,9 +234,9 @@ interpolation and the broader interfaces discussed here remain future work.
 ## Thermal hydraulics capability and coupling schemes
 
 NDgpu already supports coupled neutronics and solid thermal analysis.
-The [thermal solver](../ndgpu/thermal.py) solves conduction, a volumetric
+The [thermal solver](../garnet/thermal.py) solves conduction, a volumetric
 sink, Robin surface losses and transient heat capacity. The
-[coupling driver](../ndgpu/coupling.py) provides steady Picard/Anderson
+[coupling driver](../garnet/coupling.py) provides steady Picard/Anderson
 iterations and coupled transient stepping. These components can run through
 the CPU/GPU array backends.
 
@@ -342,7 +345,7 @@ must be justified, rather than counted as equivalent acceleration.
 ### Existing host transfers in steady coupling
 
 The core GPU stencil is not the entire coupled path. In the current steady
-driver, [power_density](../ndgpu/power.py) calls `asnumpy(flux)` and edits
+driver, [power_density](../garnet/power.py) calls `asnumpy(flux)` and edits
 power on the CPU. `thermal_step` returns host temperature, and Picard/
 Anderson updates use NumPy. Thus each steady exchange can move full fields
 between host and device. The coupled transient path already has more
@@ -362,7 +365,7 @@ f_left × phi_homogeneous_surface_left
     = f_right × phi_homogeneous_surface_right
 ```
 
-[TriGroupOperator](../ndgpu/tri.py) implements per-group cell factors or
+[TriGroupOperator](../garnet/tri.py) implements per-group cell factors or
 per-face pairs for its three in-plane edge families. The helper
 `face_df_from_pairs` maps ordered region pairs to face factors.
 `TriDiffusionEigenSolver` accepts `df` and boundary coefficients `bcf`.
@@ -372,7 +375,7 @@ standard Cartesian, regular hexagonal or unstructured diffusion operators,
 or the general material/feedback API. Broad SPN DF treatment is not supplied
 by the triangular diffusion implementation.
 
-The [SPH plus DF fitting routine](../ndgpu/sph.py) is explicitly marked
+The [SPH plus DF fitting routine](../garnet/sph.py) is explicitly marked
 "SHELVED" and is not the supported correction path. Its code records
 partial-current matching problems near strongly absorbing regions and
 different behavior for absolute k and control worth. Those historical

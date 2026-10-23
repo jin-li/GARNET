@@ -4,9 +4,9 @@ All three published solutions of Problem 8-A1 (TWODTA, TWODQD, ADEP; ANL-7416
 Suppl. 2, pp. 187-227) use mesh-point (vertex-centered) 5-point finite
 differences on the Delta_r = 8 cm x Delta_z = 18.75 cm mesh, with zero flux
 at the outer boundary points. This standalone script (scipy only, never
-imported by ndgpu) rebuilds that scheme by box integration around the mesh
+imported by garnet) rebuilds that scheme by box integration around the mesh
 points and reruns the benchmark transient with it. It is the evidence behind
-two claims recorded in ndgpu/benchmarks/anl_bss8.py:
+two claims recorded in garnet/benchmarks/anl_bss8.py:
 
 1. Data transcription + erratum. With region 16's fast-group D taken as
    1.2997 cm (the book prints "1.2997+1"), this scheme reproduces the
@@ -16,7 +16,7 @@ two claims recorded in ndgpu/benchmarks/anl_bss8.py:
 
 2. Discretization band. The scheme's ramp worth on the benchmark mesh is
    0.398 $, *below* the mesh-converged worth (0.4195 $, from refining
-   ndgpu's cell-centered FV, which approaches it from above: 0.454 $ on the
+   garnet's cell-centered FV, which approaches it from above: 0.454 $ on the
    coarse mesh). The published excursion tail (P(4s) = 2.66-2.68) therefore
    carries the coarse-mesh vertex-scheme bias; the mesh-converged trace ends
    ~8.5% higher (P(4s) ~ 2.89).
@@ -28,7 +28,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from ndgpu.benchmarks.anl_bss8 import (_LAYOUT, _RAMP, _XS, ANL8A1_KINETICS,
+from garnet.benchmarks.anl_bss8 import (_LAYOUT, _RAMP, _XS, ANL8A1_KINETICS,
                                        P_REFERENCE)
 
 DR, DZ = 8.0, 18.75
@@ -149,7 +149,7 @@ def solve_k(t, tol=1e-10):
 
 
 def transient(k0, phi, dt=0.01, t_end=4.0):
-    """Backward-Euler march of the 8-A1 transient (mirrors ndgpu's scheme)."""
+    """Backward-Euler march of the 8-A1 transient (mirrors garnet's scheme)."""
     kin = ANL8A1_KINETICS
     beta, lam, v = kin.beta, kin.decay, kin.velocities
     _, _, (A, S12, F, VOL) = solve_k(0.0)

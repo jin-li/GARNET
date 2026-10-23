@@ -2,7 +2,7 @@
 
 Run these in the environment that has pyprecice (they skip elsewhere):
 
-    conda run -n ndgpu-precice python -m pytest tests/validation/test_coupled_precice.py
+    conda run -n garnet-precice python -m pytest tests/validation/test_coupled_precice.py
 
 Three tiers, in increasing strength and decreasing sharpness:
 
@@ -32,9 +32,9 @@ import pytest
 
 precice = pytest.importorskip("precice")
 
-from ndgpu.benchmarks.hpmr import build_hpmr2d
-from ndgpu.benchmarks.hpmr_thermal import build_hpmr_coupling
-from ndgpu.coupling import CoupledSolver
+from garnet.benchmarks.hpmr import build_hpmr2d
+from garnet.benchmarks.hpmr_thermal import build_hpmr_coupling
+from garnet.coupling import CoupledSolver
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(REPO, "examples", "precice")
@@ -78,7 +78,7 @@ def run_participants(tmp_path, config="precice-config.xml", extra=(), timeout=90
 
 def internal_run(refine=REFINE, nz=0, **solve_kwargs):
     if nz:
-        from ndgpu.benchmarks.hpmr import build_hpmr3d
+        from garnet.benchmarks.hpmr import build_hpmr3d
         p = build_hpmr3d(refine=refine, nz=nz, drum_angle_deg=DRUM_DEG,
                          absorber="polar")
     else:

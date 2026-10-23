@@ -1,8 +1,8 @@
 """Integration checks for the opt-in corrected common-mesh eigen drivers."""
 import numpy as np
 import pytest
-from ndgpu import Material, MeshDiffusionEigenSolver, MeshSP3EigenSolver, MeshSDP1EigenSolver
-from ndgpu.mesh import assemble_mesh
+from garnet import Material, MeshDiffusionEigenSolver, MeshSP3EigenSolver, MeshSDP1EigenSolver
+from garnet.mesh import assemble_mesh
 
 
 def square_mesh(shear=0.):

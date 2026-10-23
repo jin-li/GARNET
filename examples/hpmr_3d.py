@@ -9,16 +9,16 @@ reflectors, drums and their B4C arcs running the full height, vacuum z faces).
 absorber (default "polar") selects the drum B4C-arc treatment: "polar"
 volume-mixes the exact polar area fraction (smooth, mesh-convergent worth) and
 "raster" stamps whole cells. Cross sections are placeholders; swap in
-SPH-corrected FEMFFUSION sets via ndgpu.femffusion + build_hpmr3d(materials=...).
+SPH-corrected FEMFFUSION sets via garnet.femffusion + build_hpmr3d(materials=...).
 """
 
 import sys
 
 import numpy as np
 
-from ndgpu.benchmarks import build_hpmr3d
-from ndgpu.benchmarks.hpmr import FUEL
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.benchmarks import build_hpmr3d
+from garnet.benchmarks.hpmr import FUEL
+from garnet.tri import TriDiffusionEigenSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 nz = int(sys.argv[2]) if len(sys.argv) > 2 else 20
@@ -57,4 +57,4 @@ for k in range(nz - 1, -1, -1):
     print(f"  z = {z:5.1f} cm  {'#' * int(round(prof[k] * 50)):<50} {tag}")
 
 print("\n(placeholder cross sections: shapes and worths are illustrative,"
-      "\n not predictive; see ndgpu/benchmarks/hpmr.py)")
+      "\n not predictive; see garnet/benchmarks/hpmr.py)")

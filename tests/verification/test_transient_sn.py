@@ -36,8 +36,8 @@ independent of the solver:
 import numpy as np
 import pytest
 
-from ndgpu import Grid, Kinetics, Material, TransientSNSolver
-from ndgpu.sn import SNTransportSolver
+from garnet import Grid, Kinetics, Material, TransientSNSolver
+from garnet.sn import SNTransportSolver
 
 D, SIGMA_A, NU_SIGMA_F = 1.3, 0.030, 0.035
 BASE = Material(name="1g", diffusion=[D], sigma_a=[SIGMA_A], nu_sigma_f=[NU_SIGMA_F])
@@ -163,14 +163,14 @@ def tri_nsf_step(eps):
 
 
 def tri_grid(is3d=False):
-    from ndgpu.tri import TriGrid
+    from garnet.tri import TriGrid
     # Minimal axial extent: psi is retained between steps, so nz drives memory.
     return (TriGrid(shape=(2, 2, 2, 3), side=4.0, height=12.0) if is3d
             else TriGrid(shape=(4, 4, 2), side=3.0))
 
 
 def tri_solver(grid, problem, scheme, **kw):
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.tri_sn import TriSNTransportSolver
     return TransientSNSolver(grid, problem, KIN, bc="periodic",
                              engine_cls=TriSNTransportSolver, scheme=scheme,
                              **TRI_QUAD, **kw)
@@ -239,8 +239,8 @@ def test_tri_transient_matches_point_kinetics_at_scheme_order(
 def test_tri_transient_vacuum_leaks_and_stays_steady():
     """Vacuum (leaky) tri transient: k0 drops well below k_inf and the critically
     adjusted state is still an exact equilibrium."""
-    from ndgpu.tri import TriGrid
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.tri import TriGrid
+    from garnet.tri_sn import TriSNTransportSolver
 
     res = TransientSNSolver(TriGrid(shape=(8, 8, 2), side=3.0),
                             lambda t: ([TRI_MAT], None), KIN, bc="vacuum",
@@ -254,8 +254,8 @@ def test_tri_transient_rejects_levels_engine():
     """The level-scheduled sweep carries one shared cell source per ordinate, so a
     per-ordinate time source needs wider level tables (Phase 3b): refuse clearly
     rather than silently dropping the time source."""
-    from ndgpu.tri import TriGrid
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.tri import TriGrid
+    from garnet.tri_sn import TriSNTransportSolver
 
     solver = TransientSNSolver(TriGrid(shape=(8, 8, 2), side=3.0),
                                lambda t: ([TRI_MAT], None), KIN, bc="vacuum",
@@ -268,7 +268,7 @@ def test_tri_transient_rejects_levels_engine():
 def test_tri_sigma_t_shift_shifts_only_total_xs():
     """The construction-time shift must land on Sigma_t alone -- within-group
     scattering untouched -- or the transient would silently change the medium."""
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.tri_sn import TriSNTransportSolver
 
     grid = tri_grid()
     base = TriSNTransportSolver(grid, TRI_MAT, bc="periodic", **TRI_QUAD)

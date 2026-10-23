@@ -49,10 +49,10 @@ def test_volume_integrals_and_power_use_energy_not_neutron_yield():
 
 
 def test_independent_balance_has_zero_reflective_leakage_and_reciprocal_faces():
-    from ndgpu import Material
+    from garnet import Material
     # make_mesh uses 17x17 mapping; this helper checks a rectangular two-cell
     # mesh directly, isolating nonuniform interface coupling from parsing.
-    from ndgpu.mesh import assemble_mesh
+    from garnet.mesh import assemble_mesh
     mesh = assemble_mesh(np.array([[0,0],[1,0],[3,0],[0,1],[1,1],[3,1]]),
                          [(0,1,4,3),(1,2,5,4)], [0,1])
     mats = [Material([d], [0.1], [0.2]) for d in (1., 4.)]

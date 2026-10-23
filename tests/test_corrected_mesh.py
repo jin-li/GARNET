@@ -4,9 +4,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu.mesh import MeshGrid, MeshGroupOperator, assemble_mesh
-from ndgpu.corrected_mesh import CorrectedMeshGroupOperator
-from ndgpu.linalg import gmres
+from garnet.mesh import MeshGrid, MeshGroupOperator, assemble_mesh
+from garnet.corrected_mesh import CorrectedMeshGroupOperator
+from garnet.linalg import gmres
 
 
 def mesh_grid(n=5, shear=.35):

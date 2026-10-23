@@ -1,9 +1,9 @@
 """Synthetic CPU dense references; no source data, GPU or transport claim."""
 import numpy as np
 import pytest
-from ndgpu.moment_condensation import condense_moment_hierarchy, condense_moment_material
-from ndgpu.moment_materials import MomentMaterial
-from ndgpu.coupled_moments import CoupledMomentOperator, OrthogonalMesh
+from garnet.moment_condensation import condense_moment_hierarchy, condense_moment_material
+from garnet.moment_materials import MomentMaterial
+from garnet.coupled_moments import CoupledMomentOperator, OrthogonalMesh
 
 
 def fixture():

@@ -1,4 +1,4 @@
-# NDgpu documentation
+# GARNET documentation
 
 Start with the User Manual for running calculations. The Software Methodology
 Manual explains the equations, numerical methods and limits of the implementation.
@@ -26,6 +26,8 @@ development/corrected-fv
 development/corrected-mesh-moments
 amd_rocm
 kinetics_parameters
+api_audit
+verification_validation
 development/integration_inventory
 development/validation
 ```
@@ -45,6 +47,12 @@ Install `docs/requirements-build.txt` to reproduce the tested Python documentati
 environment.
 
 PDF builds additionally require pdfLaTeX, latexmk and make from TeX Live. The generated
-files are `docs/_build/latex/ndgpu-user-manual.pdf` and
-`docs/_build/latex/ndgpu-methodology-manual.pdf`. Generated HTML and PDFs are build
+files are `docs/_build/latex/garnet-user-manual.pdf` and
+`docs/_build/latex/garnet-methodology-manual.pdf`. Generated HTML and PDFs are build
 artifacts; hosting and package publication are separate actions.
+
+```{toctree}
+:maxdepth: 1
+
+development/garnet-migration
+```

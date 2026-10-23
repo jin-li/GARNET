@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from ndgpu.nodal_polynomial_reference import (
+from garnet.nodal_polynomial_reference import (
     NodalPolynomialReferenceError,
     _stationary_points,
     coupled_nodal_polynomial_axis_reference,

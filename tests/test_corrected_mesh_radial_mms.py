@@ -10,8 +10,8 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import spsolve
 
-from ndgpu.corrected_mesh import CorrectedMeshGroupOperator
-from ndgpu.mesh import MeshGrid, assemble_mesh
+from garnet.corrected_mesh import CorrectedMeshGroupOperator
+from garnet.mesh import MeshGrid, assemble_mesh
 
 
 RADII = np.array([.4107, .4186, .6309])

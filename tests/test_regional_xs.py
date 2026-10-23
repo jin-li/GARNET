@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ndgpu.regional_xs import (CurveProvenance, RegionDataset, RegionMapping,
+from garnet.regional_xs import (CurveProvenance, RegionDataset, RegionMapping,
                               aggregate_power_bins, read_regional_dataset,
                               regional_material_from_record)
-from ndgpu.serpent_xs import SerpentXSRecord
+from garnet.serpent_xs import SerpentXSRecord
 
 
 def paired(mean, error=.01):
@@ -148,10 +148,15 @@ def test_deep_immutability_and_snapshot():
     assert result.nu_sigma_f[0] == .02
 
 
-def test_dataset_manifest_roundtrip(tmp_path):
+@pytest.mark.parametrize("schema", ("garnet.regional-xs.v1", "ndgpu.regional-xs.v1"))
+def test_dataset_manifest_roundtrip(tmp_path, schema):
     result = adapt()
     path = tmp_path / "regions.json"
     RegionDataset((result,)).write_manifest(path)
+    payload = json.loads(path.read_text())
+    assert payload["schema"] == "garnet.regional-xs.v1"
+    payload["schema"] = schema
+    path.write_text(json.dumps(payload))
     restored = RegionDataset.read_manifest(path).regions[0]
     assert restored.mapping == result.mapping
     np.testing.assert_array_equal(restored.production, result.production)

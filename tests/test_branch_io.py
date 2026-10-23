@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from ndgpu import branch_io
+from garnet import branch_io
 
 
 def write_result(path, universe='u1', overrides=None):

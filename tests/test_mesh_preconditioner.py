@@ -8,16 +8,16 @@ import pytest
 from scipy.sparse.linalg import spilu
 from scipy.sparse import csc_matrix
 
-from ndgpu.mesh import _MeshGroupOperator
-from ndgpu.mesh_preconditioner import _assemble_tpfa, build_tpfa_ilu
+from garnet.mesh import _MeshGroupOperator
+from garnet.mesh_preconditioner import _assemble_tpfa, build_tpfa_ilu
 
 
 @pytest.fixture(params=["cpu", "gpu"])
 def xp(request):
     if request.param == "cpu":
         return np
-    if os.environ.get("NDGPU_TEST_GPU") != "1":
-        pytest.skip("set NDGPU_TEST_GPU=1 to require an actual GPU")
+    if os.environ.get("GARNET_TEST_GPU") != "1":
+        pytest.skip("set GARNET_TEST_GPU=1 to require an actual GPU")
     import cupy
     assert cupy.cuda.runtime.getDeviceCount() > 0
     return cupy
@@ -108,8 +108,8 @@ def test_unsupported_operator_and_singular_factorization_are_explicit():
 
 
 def test_real_mesh_moment_operator_action(xp):
-    from ndgpu import MeshGrid, MeshGroupOperator, assemble_mesh
-    from ndgpu.spn import SDPNGroupOperator
+    from garnet import MeshGrid, MeshGroupOperator, assemble_mesh
+    from garnet.spn import SDPNGroupOperator
 
     coords = np.array([(x, y) for x in (0., 1., 3., 4.) for y in (0., 1.)])
     mesh = assemble_mesh(coords, [(0, 2, 3, 1), (2, 4, 5, 3), (4, 6, 7, 5)],

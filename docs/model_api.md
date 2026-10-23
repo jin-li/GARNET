@@ -1,6 +1,6 @@
-# The NDgpu Model API
+# The GARNET Model API
 
-> New to NDgpu? Start with the [user guide](user_guide.md). It explains the
+> New to GARNET? Start with the [user guide](user_guide.md). It explains the
 > supported modeling scope and follows one reactor through geometry, steady
 > neutronics, SPH hand-off, kinetics, thermal feedback, GPU coupling, results,
 > and validation. This page is the detailed builder reference.
@@ -17,11 +17,11 @@ Three builders share one report type (`ReactorResult`):
 
 | Builder | Geometry | Methods |
 |---|---|---|
-| [`Model`](#model--structured-cartesian) | structured Cartesian, 1-D / 2-D / 3-D | diffusion, SP3, adjoint, **transient** |
+| [`Model`](#model--structured-cartesian) | structured Cartesian, 1-D / 2-D / 3-D | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
 | [`MeshModel`](#meshmodel--unstructured) | arbitrary unstructured mesh (Gmsh or assembled), 2-D / 3-D | diffusion |
 | [`HexLattice` → `TriReactor`](#hexlattice--trireactor) | hexagonal/prismatic cores on the triangular solver | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
 
-Materials are ordinary `ndgpu.Material` objects throughout, so defining cross
+Materials are ordinary `garnet.Material` objects throughout, so defining cross
 sections is unchanged — only the grid/array bookkeeping is removed.
 
 ---
@@ -32,7 +32,7 @@ A `Material` is a homogenized multigroup cross-section set (macroscopic, 1/cm; D
 in cm). Group order is fast → thermal.
 
 ```python
-from ndgpu import Material
+from garnet import Material
 
 fuel = Material(
     name="fuel",
@@ -46,7 +46,13 @@ fuel = Material(
 ```
 
 `sigma_s`, `chi`, and `total` are optional. A material with `nu_sigma_f = 0` is a
-non-fissile reflector/absorber. `total` (Σ_t) is only used by SP3.
+non-fissile reflector/absorber. `total` (Σ_t) supplies the higher angular moments
+in SPN/SDPN. Optional `kappa_fission` supplies energy-release cross sections
+for power shaping.
+
+Use `fuel.replace(sigma_a=fuel.sigma_a * 1.01)` to change selected constants.
+It returns a validated copy, retains the other fields (including
+`kappa_fission`), and copies array data so the original material is independent.
 
 ---
 
@@ -60,10 +66,10 @@ background) and `add_box` (rectangular overrides, ranges in cm; a `None` axis
 spans the whole core). Methods return `self`, so they chain.
 
 ```python
-import ndgpu
+import garnet
 
 model = (
-    ndgpu.Model(size=(120, 120, 120), cells=(40, 40, 40))   # 3-D, cm
+    garnet.Model(size=(120, 120, 120), cells=(40, 40, 40))   # 3-D, cm
     .fill(reflector)                                        # background material
     .add_box(fuel, x=(30, 90), y=(30, 90), z=(30, 90))      # central fuel block
     .set_boundary("vacuum")
@@ -72,7 +78,10 @@ model = (
 
 Later `add_box` calls overwrite earlier ones. Inspect what you built with
 `model.material_map` (an integer array, squeezed to the model's dimension) and
-`model.materials` (index 0 is the background).
+`model.materials` (index 0 is the background). Bounds select cell centres;
+a box that selects none raises `ValueError`. Calling `fill` again clears all
+previous assignments and the material list. `model.grid` exposes the underlying
+three-axis grid; unused axes have one cell and a 1 cm extent.
 
 > **Distinct regions need distinct `Material` objects.** Regions are keyed by
 > object identity: painting two boxes with the *same* `Material` gives them the
@@ -99,7 +108,7 @@ physical leakage boundary.
 ### Running
 
 ```python
-result = model.run(method="diffusion", device="auto")
+result = model.steady(method="diffusion", device="auto")  # run() also works
 print(result)                    # the human-readable report
 result.k_eff                     # float
 result.flux                      # (G, nx, ny, nz) NumPy array
@@ -107,13 +116,59 @@ result.reactivity_pcm            # (1 - 1/k) * 1e5
 result.leakage_fraction          # fraction of produced neutrons that leak out
 ```
 
-`method` is `"diffusion"` or `"sp3"`; `device` is `"auto"` / `"cpu"` / `"gpu"`.
+`method` accepts `"diffusion"`, `"sp1"`, `"sp3"`, `"sp5"`, `"sp7"`,
+`"sdp1"`, `"sdp2"`, or `"sdp3"`; `device` is `"auto"` / `"cpu"` / `"gpu"`.
 Tolerances default to `tol_k=1e-6`, `tol_source=1e-5`.
+
+Constructor options belong in `solver_kwargs`; iteration controls are ordinary
+solve keywords. The same split is available on all three steady model types:
+
+```python
+result = model.steady(
+    device="auto", solver_kwargs={"precond_degree": 1},
+    tol_k=1e-8, tol_source=1e-7, max_outer=1000,
+)
+```
+
+Degree zero is the default Jacobi preconditioner; higher degrees use Neumann
+polynomial preconditioning. Measure the trade-off on the target workload.
+Geometry, boundary conditions and device settings stay with the model and
+cannot be overridden inside `solver_kwargs`.
+
+### Material replacement and result edits
+
+`Model`, `MeshModel`, and `TriReactor` all accept a complete replacement list
+or a partial mapping. Names must identify exactly one existing material; use
+its integer index when names are repeated. Unspecified materials are retained.
+The original model and its material map are preserved.
+
+```python
+hot_fuel = fuel.replace(sigma_a=fuel.sigma_a * 1.01)
+hot_model = model.with_materials({"fuel": hot_fuel})
+# A full ordered list, such as sph_result.corrected_materials, also works.
+
+q = result.power_density(total_power=2e6)  # NumPy W/cm³
+watts = (q * result.cell_volumes).sum()   # 2e6 W in the modeled domain
+for row in result.material_summary:
+    print(row.name, row.volume_fraction, row.fission_fraction)
+raw = result.raw                         # underlying solver result
+```
+
+Power shaping uses `kappa_fission` when available and otherwise falls back to
+`nu_sigma_f`. `fission_fraction` is a fraction of neutron fission production,
+not an energy-weighted power fraction. These physical edits apply to forward
+solutions; `power_density` rejects an adjoint result. Result postprocessing
+keeps copies of the solved materials and maps, so later edits to the builder
+do not change the saved power shape. The flux itself remains user-accessible.
+
+For 1-D/2-D Cartesian models, omitted dimensions have a 1 cm extent. A 2-D
+`total_power` is therefore the power of that slice. General meshes use their
+cell areas/volumes, and triangular grids use their configured thickness.
 
 The report:
 
 ```
-NDgpu reactor solution
+GARNET reactor solution
 ======================
   geometry    : 120 x 120 x 120 cm,  40 x 40 x 40 cells (64,000)  [3D]
   groups      : 2     method: diffusion     device: cpu (numpy)
@@ -166,7 +221,7 @@ model.set_kinetics(velocities=[1e7, 3e5], beta=[0.0065], decay=[0.08])
 
 result = model.transient(
     t_end=3.0, dt=0.02,
-    materials_at=lambda t: [fuel, rod if t >= 0.5 else coolant],   # index order!
+    materials_at=lambda t: {"fuel": hot_fuel} if t >= 0.5 else {},
 )
 
 result.k0            # initial eigenvalue (fission source normalised by it)
@@ -178,22 +233,42 @@ result.peak_power, result.peak_time, result.final_power
 
 `kinetics` is `Kinetics(velocities, beta, decay)` — one velocity per group, one
 `beta`/`decay` per delayed-neutron family — set via `set_kinetics` or passed to
-`transient(kinetics=...)`. The perturbation is `materials_at(t) → list[Material]`
-returning the materials **in the model's index order** at time `t`; return the
-*same* objects while nothing changes so the solver reuses its operators. Omit it
-for an unperturbed run. The `at=` escape hatch takes a full
-`t → (materials, material_map)` callback when the geometry itself must move.
+`transient(kinetics=...)`. The perturbation callback `materials_at(t)` returns
+a partial name/index mapping or materials **in the model's index
+order** at time `t`. Each mapping is applied to the base model; `{}` restores
+its materials. Return cached `Material` objects while nothing changes so the
+solver reuses its operators. Omit it for an unperturbed run. Pass a `Kinetics`
+object directly with `model.set_kinetics(kinetics)` if it is already available.
+
+For moving assignments, `state_at(t)` returns cached `Model` frames with the
+same dimensions, physical size and boundaries. The `at=` escape hatch still
+takes a raw `t → (materials, material_map)` callback. Only one of these three
+callbacks may be supplied. `initial_steady=result` reuses a compatible public
+steady result (or the low-level solver result); it must describe the t=0 state.
+`solver_kwargs` exposes transient construction controls such as
+`precond_degree`, `precond_dtype`, `linear_solver`, and `on_step`. Time-integration
+controls such as `time_scheme`, `adaptive_bdf`, and `linsolve_kwargs` go directly
+to `transient`. Full low-level telemetry remains available as `result.raw`.
 
 The report includes a power-vs-time sparkline:
 
 ```
   initial steady state : k0 = 0.913100  (fission source normalised by k0; unperturbed -> P/P0 stays 1)
-  time span            : 0 -> 0.5 s, dt = 0.005 s, 100 steps, ...
+  time span            : 0 -> 0.5 s, 100 recorded intervals, ...
   power P/P0:
     peak      : 2.1310 at t = 0.5 s
     final     : 2.1310 at t = 0.5 s
     trace     : ▁▁▂▃▃▄▄▅▅▆▆▆▇▇▇▇████...
 ```
+
+### Cartesian thermal coupling
+
+`Model` also provides `configure_thermal`, `coupled_steady`, `coupled_transient`,
+and `quasistatic_transient`, with the same named thermal/feedback inputs as
+[`TriReactor`](#thermal-coupling). The geometry and diffusion solver are selected
+automatically. The complete runnable
+[Cartesian diffusion workflow](../examples/diffusion_workflow.py) shows power
+edits, a material perturbation, hot equilibrium and a coupled transient.
 
 ---
 
@@ -206,7 +281,7 @@ region rather than by box only:
 
 ```python
 mm = (
-    ndgpu.MeshModel("core.msh")                  # or MeshModel(mesh_object)
+    garnet.MeshModel("core.msh")                  # or MeshModel(mesh_object)
     .fill(reflector)
     .assign(fuel, tag=1)                          # by Gmsh physical tag
     .assign(absorber, where=lambda c: c[2] > 100) # by a predicate on the cell centroid
@@ -219,7 +294,12 @@ print(mm.run(device="auto"))
 `assign` takes either `tag=` (match the mesh's per-cell tag) or `where=` (a
 boolean mask over cells, or a callable receiving each cell centroid). The report
 is volume-weighted, so material fractions and the balance are correct on
-non-uniform meshes. `MeshModel` is diffusion-only (there is no SP3 mesh solver).
+non-uniform meshes. Ambiguous selectors, wrong mask shapes and assignments
+selecting no cells raise `ValueError`. Paths may be strings or `pathlib.Path`.
+`materials`, `material_map`, `with_materials`, `steady`/`run`, `solver_kwargs`,
+and the result power/material edits follow the Cartesian API. `MeshModel` is
+steady diffusion-only; it has no mesh transient, adjoint or thermal-coupling
+front end.
 
 ---
 
@@ -236,7 +316,7 @@ to be listed manually:
 
 ```python
 core = (
-    ndgpu.HexLattice(pitch=20.0, refine=4)
+    garnet.HexLattice(pitch=20.0, refine=4)
     .set_disk(3, reflector)                 # background, overwritten below
     .set_disk(2, fuel)
     .set_boundary("vacuum")                 # radial core edge
@@ -272,8 +352,9 @@ sph_model = core.with_materials(sph_result.corrected_materials,
 sph_solution = sph_model.steady(device="gpu")
 ```
 
-The replacement list preserves material count/order. Geometry, volume mixing,
-kinetics, and configured thermal data are retained.
+The replacement list preserves material count/order; a partial name/index
+mapping is also accepted. Geometry, volume mixing, kinetics, and configured
+thermal data are retained. Maps are copied so edits do not affect the original.
 
 ### Thermal coupling
 
@@ -283,14 +364,14 @@ internal integer indices. Inactive padding is filled automatically:
 ```python
 core.configure_thermal(
     {
-        "fuel": ndgpu.ThermalMaterial(0.25, sink_coeff=0.015,
+        "fuel": garnet.ThermalMaterial(0.25, sink_coeff=0.015,
                                       sink_temperature=650, heat_capacity=2.5),
-        "reflector": ndgpu.ThermalMaterial(0.35, heat_capacity=2.0),
-        "axial reflector": ndgpu.ThermalMaterial(0.32, heat_capacity=2.1),
+        "reflector": garnet.ThermalMaterial(0.35, heat_capacity=2.0),
+        "axial reflector": garnet.ThermalMaterial(0.32, heat_capacity=2.1),
     },
     total_power=2.0e6,
     feedback={
-        "fuel": ndgpu.FeedbackSpec(reference_temperature=800,
+        "fuel": garnet.FeedbackSpec(reference_temperature=800,
                                     doppler=[2e-4, 0.0]),
     },
     thermal_mask_bc=0.01,
@@ -358,7 +439,7 @@ lat.set_drum((0, 3), body=beryllium, absorber=b4c,
 (withdrawn), so sweeping 0→180 traces the **drum-worth curve**. Any number of
 drums may be placed and rotated independently. `build(samples=8)` controls arc
 sub-sampling resolution. The report's neutron balance accounts for the mixed
-absorber. This reproduces `ndgpu.benchmarks.build_hpmr2d`'s polar drum model
+absorber. This reproduces `garnet.benchmarks.build_hpmr2d`'s polar drum model
 exactly; see `examples/hpmr_hexlattice.py`, which builds the full HP-MR
 microreactor — 55 assemblies and 12 drums — and sweeps the worth curve.
 
@@ -374,8 +455,8 @@ eigenvalue** and the **transient power**, so it validates the whole Model API.
 
 ```python
 import numpy as np
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 seed_xs = dict(diffusion=1 / (3 * np.array([0.238095, 0.83333])),
                sigma_a=[0.010, 0.150], nu_sigma_f=[0.007, 0.200],
@@ -389,7 +470,7 @@ seed = Material(name="seed", **seed_xs)
 seed_c = Material(name="seed (perturbable)", **seed_xs)   # distinct object -> its own region
 
 model = (
-    ndgpu.Model(size=(80, 80), cells=(40, 40))
+    garnet.Model(size=(80, 80), cells=(40, 40))
     .fill(blanket)
     .add_box(seed, x=(0, 24), y=(24, 56)).add_box(seed, x=(24, 56), y=(0, 24))  # L-shaped seed
     .add_box(seed_c, x=(24, 56), y=(24, 56))                                    # central seed
@@ -428,7 +509,9 @@ references.
 
 ## Reference
 
-- The builders, `TriReactor`, and `ReactorResult` live in `ndgpu/model.py`.
+- The builders, `TriReactor`, and `ReactorResult` live in `garnet/model.py`.
+- The [API audit](api_audit.md) records the reviewed workflows, changes,
+  regression checks and remaining limitations.
 - SPH *generation* and unusual solver formulations still use the low-level
   solver functions. Their corrected material list returns to the public API via
   `TriReactor.with_materials(...)`; custom preconditioners enter through

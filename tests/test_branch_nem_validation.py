@@ -4,10 +4,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu.branch_nem_validation import assess_nem_solution
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.branch_nem_validation import assess_nem_solution
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
 
 
 def homogeneous(*, degree=4, groups=1, boundary='reflective', base=False):

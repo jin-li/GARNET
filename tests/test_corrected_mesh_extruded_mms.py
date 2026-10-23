@@ -10,8 +10,8 @@ import time
 import numpy as np
 from scipy.sparse.linalg import spsolve
 
-from ndgpu.corrected_mesh import CorrectedMeshGroupOperator
-from ndgpu.mesh import MeshGrid, assemble_mesh, assemble_mesh_3d
+from garnet.corrected_mesh import CorrectedMeshGroupOperator
+from garnet.mesh import MeshGrid, assemble_mesh, assemble_mesh_3d
 from test_corrected_mesh_radial_mms import RADII, radial_cell_averages
 
 

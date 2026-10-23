@@ -4,11 +4,11 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from ndgpu.diffusion_currents import export_diffusion_face_currents
-from ndgpu.grid import Grid
-from ndgpu.materials import Material
-from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
-from ndgpu.solver import DiffusionEigenSolver, MeshDiffusionEigenSolver, MeshSP3EigenSolver
+from garnet.diffusion_currents import export_diffusion_face_currents
+from garnet.grid import Grid
+from garnet.materials import Material
+from garnet.nodal_mesh import build_rectilinear_mesh_3d
+from garnet.solver import DiffusionEigenSolver, MeshDiffusionEigenSolver, MeshSP3EigenSolver
 
 
 def materials():

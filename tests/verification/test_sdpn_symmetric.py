@@ -17,8 +17,8 @@ auto-selection logic.
 import numpy as np
 import pytest
 
-from ndgpu import Grid, SDP2EigenSolver, SDP3EigenSolver, SP5EigenSolver
-from ndgpu.operator import (SDPNGroupOperator, _SPN_C, _SPN_G, _SDPN_C,
+from garnet import Grid, SDP2EigenSolver, SDP3EigenSolver, SP5EigenSolver
+from garnet.operator import (SDPNGroupOperator, _SPN_C, _SPN_G, _SDPN_C,
                             _diag_similarity)
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
@@ -83,7 +83,7 @@ def test_symmetrized_transient_block_is_self_adjoint():
 
 def _bl_problem(n=40):
     """Small Brantley-Larsen-style heterogeneous 2D core with vacuum faces."""
-    from ndgpu import Material
+    from garnet import Material
     fuel = Material(name="fuel", diffusion=[1.0 / 4.5], sigma_a=[0.15],
                     nu_sigma_f=[0.24], total=[1.5], chi=[1.0])
     mod = Material(name="mod", diffusion=[1.0 / 3.0], sigma_a=[0.07],
@@ -117,7 +117,7 @@ def test_k_invariant_under_symmetrization_choice(cls):
 def test_congruent_sdp3_equals_plain_operator_in_transformed_basis():
     """The congruence operator must be EXACTLY R L_plain S: same physics, new
     basis. Verified action-by-action on random states (zero-flux bc)."""
-    from ndgpu.operator import (CongruentSDPNOperator, _congruence_transform)
+    from garnet.operator import (CongruentSDPNOperator, _congruence_transform)
 
     grid = Grid(shape=(6, 5, 1), size=(7.0, 6.0, 1.0))
     D1, st, rem = _rand_fields(grid.shape)
@@ -136,7 +136,7 @@ def test_congruent_sdp3_equals_plain_operator_in_transformed_basis():
 
 
 def test_congruent_sdp3_rejects_vacuum_faces():
-    from ndgpu.operator import CongruentSDPNOperator
+    from garnet.operator import CongruentSDPNOperator
 
     grid = Grid(shape=(4, 4, 1), size=(4.0, 4.0, 1.0))
     D1, st, rem = _rand_fields(grid.shape)
@@ -177,8 +177,8 @@ def test_auto_selection_paths():
 def test_auto_congruence_from_boundary_conditions():
     """SDP3 auto (symmetrize=None) turns the congruence basis + CG on exactly
     when every boundary the operator sees is reflective/zero-flux."""
-    from ndgpu.linalg import pcg, bicgstab
-    from ndgpu.operator import CongruentSDPNOperator
+    from garnet.linalg import pcg, bicgstab
+    from garnet.operator import CongruentSDPNOperator
 
     grid, mats, mmap, bc_vac = _bl_problem(20)
     bc_rz = (("reflective", "zero-flux"), ("reflective", "zero-flux"),
@@ -206,8 +206,8 @@ def test_auto_congruence_from_boundary_conditions():
 
 
 def test_transient_auto_congruence_from_boundary_conditions():
-    from ndgpu.linalg import pcg, bicgstab
-    from ndgpu.transient import Kinetics, TransientSDPNSolver
+    from garnet.linalg import pcg, bicgstab
+    from garnet.transient import Kinetics, TransientSDPNSolver
 
     grid, mats, mmap, bc_vac = _bl_problem(10)
     kin = Kinetics(beta=[0.0065], decay=[0.08], velocities=[2.2e5])

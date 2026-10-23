@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from ndgpu.branch_validation import (
+from garnet.branch_validation import (
     assess_rod_worth, centered_temperature_coefficient, coefficient_convergence,
     compare_reconstruction_chain, interval_rod_worth, normalized_power_rms,
     reactivity, reactivity_change,

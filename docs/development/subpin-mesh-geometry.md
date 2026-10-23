@@ -1,6 +1,6 @@
 # Fitted mesh geometry and physical tags
 
-`ndgpu.mesh.Mesh` supports optional face geometry for experimental fitted-mesh
+`garnet.mesh.Mesh` supports optional face geometry for experimental fitted-mesh
 finite-volume development. Existing positional constructors remain valid; the
 new fields default to `None` for manually constructed meshes. Both assembly
 functions populate the fields:
@@ -35,7 +35,7 @@ Euclidean boundary distances. Pass `normal_distances=True` to opt into projected
 by TPFA, without adding a nonorthogonal flux correction.
 
 ```python
-from ndgpu.mesh import assemble_mesh
+from garnet.mesh import assemble_mesh
 
 mesh = assemble_mesh(
     [(0, 0), (1, 0), (1, 1), (0, 1)],

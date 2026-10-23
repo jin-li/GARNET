@@ -30,7 +30,7 @@ from scipy.optimize import brentq
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import eigsh
 
-from ndgpu import Material, MeshDiffusionEigenSolver, assemble_mesh_3d
+from garnet import Material, MeshDiffusionEigenSolver, assemble_mesh_3d
 
 LENGTH = 12.0
 D = 1.0
@@ -214,7 +214,7 @@ def main():
                   "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
                   "dirty": subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True),
                   "sources_sha256": {str(p.relative_to(root)): sha(p) for p in
-                      [Path(__file__).resolve(), *sorted((root/"ndgpu").rglob("*.py"))]},
+                      [Path(__file__).resolve(), *sorted((root/"garnet").rglob("*.py"))]},
                   "environment_sha256": {str(p): sha(p) for p in
                       [Path(sys.executable), root/"flake.lock", root/"uv.lock"] if p.exists()},
                   "threads": {k: os.environ.get(k) for k in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",

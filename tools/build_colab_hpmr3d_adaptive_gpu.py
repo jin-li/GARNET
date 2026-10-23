@@ -20,7 +20,7 @@ def cell(kind, source):
 
 cells = [
     cell("markdown", r"""
-    # NDgpu adaptive BDF on a 3-D, 11-group HP-MR core
+    # GARNET adaptive BDF on a 3-D, 11-group HP-MR core
 
     This is an executable GPU acceptance experiment for the latest transient work. It does not embed or assume a speedup. Instead it measures the selected Colab GPU and checks that faster runs solve the same problem.
 
@@ -33,7 +33,7 @@ cells = [
 
     The default `QUICK=True` case is already 3-D and uses the 11-group ENDF/B-VIII-derived library (about 145k active flux unknowns at refinement 2 × 10 axial layers). Set `QUICK=False` for the production-oriented refinement 4 × 20-layer gate. Startup and transient march time are kept separate, and all benchmark legs reuse exactly the same converged hot equilibrium.
 
-    > In Colab choose **Runtime → Change runtime type → T4 GPU**. From the repository, first run `python tools/build_src_zip.py`, then upload `dist/ndgpu-src.zip` in the next cell.
+    > In Colab choose **Runtime → Change runtime type → T4 GPU**. From the repository, first run `python tools/build_src_zip.py`, then upload `dist/garnet-src.zip` in the next cell.
     """),
     cell("code", r"""
     # Colab install. A local Jupyter run uses the current checkout.
@@ -61,15 +61,15 @@ cells = [
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import ndgpu
+    import garnet
     import cupy as cp
 
-    from ndgpu import BDF, kernels
-    from ndgpu.benchmarks.hpmr import build_hpmr3d
-    from ndgpu.benchmarks.hpmr_thermal import (
+    from garnet import BDF, kernels
+    from garnet.benchmarks.hpmr import build_hpmr3d
+    from garnet.benchmarks.hpmr_thermal import (
         build_hpmr_coupling, hpmr_endfb8_builtin)
-    from ndgpu.coupling import CoupledSolver, coupled_transient
-    from ndgpu.linalg import FGMRESWorkspace, fgmres
+    from garnet.coupling import CoupledSolver, coupled_transient
+    from garnet.linalg import FGMRESWorkspace, fgmres
 
     assert cp.cuda.runtime.getDeviceCount() > 0, (
         "No CUDA GPU is visible. Enable a GPU runtime and rerun from the top.")
@@ -83,7 +83,7 @@ cells = [
     props = cp.cuda.runtime.getDeviceProperties(cp.cuda.runtime.getDevice())
     free_b, total_b = cp.cuda.runtime.memGetInfo()
     GPU_NAME = props["name"].decode()
-    print("ndgpu:", inspect.getfile(ndgpu))
+    print("garnet:", inspect.getfile(garnet))
     print("GPU  :", GPU_NAME)
     print(f"VRAM : {free_b/2**30:.2f} GiB free / {total_b/2**30:.2f} GiB total")
     print("CuPy :", cp.__version__)
@@ -510,7 +510,7 @@ cells = [
             "gpu": GPU_NAME,
             "cupy": cp.__version__,
             "python": platform.python_version(),
-            "ndgpu_path": inspect.getfile(ndgpu),
+            "garnet_path": inspect.getfile(garnet),
         },
         "configuration": {
             "quick": QUICK, "refine": REFINE, "nz": NZ,

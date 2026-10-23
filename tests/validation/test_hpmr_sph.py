@@ -14,9 +14,9 @@ diffusion solves. Run with `pytest -m slow` (or unmarked in the nightly suite).
 import numpy as np
 import pytest
 
-from ndgpu import (TriDiffusionEigenSolver, TriSP3EigenSolver,
+from garnet import (TriDiffusionEigenSolver, TriSP3EigenSolver,
                    flux_weighted_homogenize, region_average, sph_correct)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
+from garnet.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 

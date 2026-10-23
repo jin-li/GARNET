@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.nem_geometry import CuboidNodalGrid
 
 
 def chain(edges, axis=0):

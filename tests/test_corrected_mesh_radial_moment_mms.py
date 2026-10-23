@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import spsolve
 
-from ndgpu.corrected_mesh_moments import CorrectedMeshMomentOperator
-from ndgpu.mesh import MeshGrid
-from ndgpu.spn import _SPN_C, _SPN_G, _SDPN_C, _SDPN_G
+from garnet.corrected_mesh_moments import CorrectedMeshMomentOperator
+from garnet.mesh import MeshGrid
+from garnet.spn import _SPN_C, _SPN_G, _SDPN_C, _SDPN_G
 from test_corrected_mesh_radial_mms import RADII, polar_mesh, radial_cell_averages
 
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from ndgpu import (
+from garnet import (
     Grid,
     ONE_GROUP_DEMO,
     PWR_TWO_GROUP,

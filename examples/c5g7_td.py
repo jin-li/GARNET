@@ -12,8 +12,8 @@ import sys
 
 import numpy as np
 
-from ndgpu import TransientSolver
-from ndgpu.benchmarks import C5G7TD_CASES, build_c5g7_td
+from garnet import TransientSolver
+from garnet.benchmarks import C5G7TD_CASES, build_c5g7_td
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 case = args[0] if len(args) > 0 else "TD1-1"

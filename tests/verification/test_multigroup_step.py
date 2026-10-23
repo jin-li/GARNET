@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from ndgpu import Grid
-from ndgpu.linalg import FGMRESWorkspace, PCGWorkspace, fgmres, fixed_pcg
-from ndgpu.multigroup import (AdjointCoarseCorrectionPreconditioner,
+from garnet import Grid
+from garnet.linalg import FGMRESWorkspace, PCGWorkspace, fgmres, fixed_pcg
+from garnet.multigroup import (AdjointCoarseCorrectionPreconditioner,
                               BlockJacobiPreconditioner,
                               EnergyModeCoarseCorrectionPreconditioner,
                               EnergyGroupGaussSeidelPreconditioner,
@@ -12,7 +12,7 @@ from ndgpu.multigroup import (AdjointCoarseCorrectionPreconditioner,
                               MultigroupStepOperator,
                               SourceShapeCoarseCorrectionPreconditioner,
                               SpatialCoarseSpace)
-from ndgpu.operator import GroupOperator
+from garnet.operator import GroupOperator
 
 
 def _matrix_from_apply(apply, shape):
@@ -86,7 +86,7 @@ def test_conservative_coarse_operator_is_exact_rap():
     space = SpatialCoarseSpace(block.cell_shape, factors=(2, 1, 1))
 
     class Zero:
-        ndgpu_out = True
+        garnet_out = True
 
         def __call__(self, residual, out=None):
             if out is None:
@@ -109,7 +109,7 @@ def test_cmfd_is_exact_on_piecewise_constant_coarse_subspace():
     space = SpatialCoarseSpace(block.cell_shape, factors=(2, 1, 1))
 
     class Zero:
-        ndgpu_out = True
+        garnet_out = True
 
         def __call__(self, residual, out=None):
             if out is None:
@@ -357,10 +357,10 @@ def test_source_shape_correction_is_exact_on_regional_amplitudes():
 
 def test_11_group_hpmr_driver_path_matches_fixed_point():
     """End-to-end gate with real upscatter, delayed spectra and tri geometry."""
-    from ndgpu import TransientSolver, TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr_transient_bench import (build_case,
+    from garnet import TransientSolver, TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr_transient_bench import (build_case,
                                                        scale_absorption)
-    from ndgpu.tri import TriGroupOperator
+    from garnet.tri import TriGroupOperator
 
     p, kinetics = build_case(refine=1, nz=0, groups="11")
     perturbed = scale_absorption(p.materials, 0.997065)
@@ -399,12 +399,12 @@ def test_11_group_hpmr_driver_path_matches_fixed_point():
 
 def test_11_group_monolithic_path_survives_moving_drum_rebuilds():
     """Every control frame replaces blend fields/operators, not equations."""
-    from ndgpu import TransientSolver, TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu.benchmarks.hpmr_thermal import (hpmr_drum_ramp,
+    from garnet import TransientSolver, TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr_thermal import (hpmr_drum_ramp,
                                                hpmr_endfb8_builtin,
                                                hpmr_kinetics_11g)
-    from ndgpu.tri import TriGroupOperator
+    from garnet.tri import TriGroupOperator
 
     materials = hpmr_endfb8_builtin()
     p = build_hpmr2d(refine=1, drum_angle_deg=150.0, absorber="polar",

@@ -8,7 +8,7 @@ are known in closed form, so these tests check the discretization error itself
 import numpy as np
 import pytest
 
-from ndgpu import (
+from garnet import (
     DiffusionEigenSolver,
     Grid,
     Material,

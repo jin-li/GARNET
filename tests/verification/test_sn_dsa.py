@@ -16,7 +16,7 @@ Three trust anchors:
 import numpy as np
 import pytest
 
-from ndgpu import Grid, Material, SNTransportSolver, k_infinite
+from garnet import Grid, Material, SNTransportSolver, k_infinite
 
 
 def _absorber_problem(n=20):

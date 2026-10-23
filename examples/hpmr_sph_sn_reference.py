@@ -1,6 +1,6 @@
 """HP-MR SPH factors from an S_N transport reference, against the SP3 reference.
 
-The SPH pipeline (:mod:`ndgpu.sph`) folds a reference's angular treatment of the
+The SPH pipeline (:mod:`garnet.sph`) folds a reference's angular treatment of the
 near-black B4C control-drum arc into the coarse diffusion constants so plain
 TriDiffusion reproduces the reference eigenvalue -- and hence the drum worth --
 that it otherwise misses. examples/hpmr_sph_reference_families.py drives it from
@@ -29,13 +29,13 @@ import time
 
 import numpy as np
 
-from ndgpu import asnumpy
+from garnet import asnumpy
 
-from ndgpu import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
+from garnet import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
                    TriSDP2EigenSolver, TriSP3EigenSolver,
                    flux_weighted_homogenize, region_average, sph_correct)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
+from garnet.tri_sn import TriSNTransportSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 n_polar = int(sys.argv[2]) if len(sys.argv) > 2 else 2

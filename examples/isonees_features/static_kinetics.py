@@ -9,10 +9,10 @@ import sys
 from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
-from ndgpu.kinetics_data import read_regional_kinetics
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+from garnet.kinetics_data import read_regional_kinetics
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
 
 
 RAW_BETA = np.array([.002, .004])
@@ -31,7 +31,7 @@ def raw_contract():
         total_production=[[[NU_SIGMA_F]]],
         delayed_production=(NU_SIGMA_F*RAW_BETA).reshape(1, 2, 1, 1).tolist(),
         provenance={'synthetic_definition': hashlib.sha256(
-            b'NDgpu synthetic one-group two-family example v1').hexdigest()},
+            b'GARNET synthetic one-group two-family example v1').hexdigest()},
         approximations=['Manufactured one-group material; constant raw family fractions.'])
 
 
@@ -42,7 +42,7 @@ def solve():
     ], 'reflective', leakage_boundary='primary_rule')
     solver = NEMHigherOrderDiffusionSolver(
         grid, [1.2], [.03], [[0.]], [NU_SIGMA_F], [1.], degree=8)
-    with TemporaryDirectory(prefix='ndgpu-synthetic-') as directory:
+    with TemporaryDirectory(prefix='garnet-synthetic-') as directory:
         path = Path(directory)/'raw_kinetics.json'
         path.write_text(json.dumps(raw_contract()), encoding='utf-8')
         data = read_regional_kinetics(path)

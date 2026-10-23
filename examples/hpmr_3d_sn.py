@@ -22,9 +22,9 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks import build_hpmr3d
-from ndgpu.tri import TriDiffusionEigenSolver
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet.benchmarks import build_hpmr3d
+from garnet.tri import TriDiffusionEigenSolver
+from garnet.tri_sn import TriSNTransportSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 nz = int(sys.argv[2]) if len(sys.argv) > 2 else 10

@@ -1,7 +1,7 @@
 """Native-family summaries retain distinct isotope decay channels."""
 import numpy as np
 import pytest
-from ndgpu.kinetics_families import summarize_delayed_channels
+from garnet.kinetics_families import summarize_delayed_channels
 
 
 def test_two_isotope_native_families_and_reduction_objectives():
@@ -39,9 +39,9 @@ def test_zero_production_and_exact_common_decay():
 
 
 def test_isotope_channels_end_to_end_unequal_volume_NEM():
-    from ndgpu.nem_geometry import CuboidNodalGrid
-    from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-    from ndgpu.nem_kinetics import solve_nem_adjoint,project_nem_kinetics
+    from garnet.nem_geometry import CuboidNodalGrid
+    from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+    from garnet.nem_kinetics import solve_nem_adjoint,project_nem_kinetics
     grid = CuboidNodalGrid([[[0.,1.],[0.,2.],[0.,3.]],[[1.,3.],[0.,2.],[0.,3.]]],'reflective')
     solver = NEMHigherOrderDiffusionSolver(grid,[.5],[.07],[[0.]],[.1],[1.],degree=8)
     fwd = solver.solve_eigenvalue(rtol=1e-12)

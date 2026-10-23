@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from numpy.polynomial import legendre as leg
 from numpy.polynomial import polynomial as poly
-from ndgpu.nem_polynomial_axis import NEMPolynomialAxisResponse, NEMPolynomialAxisError, profile_minimum
-from ndgpu.nodal_polynomial_reference import coupled_nodal_polynomial_axis_reference
+from garnet.nem_polynomial_axis import NEMPolynomialAxisResponse, NEMPolynomialAxisError, profile_minimum
+from garnet.nodal_polynomial_reference import coupled_nodal_polynomial_axis_reference
 
 
 @pytest.mark.parametrize('degree',[4,6,8,10,12,14,16])

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from ndgpu.mesh import Mesh, assemble_mesh, assemble_mesh_3d, read_gmsh
+from garnet.mesh import Mesh, assemble_mesh, assemble_mesh_3d, read_gmsh
 
 
 def _assert_oriented(mesh):

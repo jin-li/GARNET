@@ -1,6 +1,6 @@
 # Corrected order-1 mesh moments
 
-`ndgpu.corrected_mesh_moments.CorrectedMeshMomentOperator` implements a fixed
+`garnet.corrected_mesh_moments.CorrectedMeshMomentOperator` implements a fixed
 linear nonorthogonal finite-volume closure for the two pseudo-moments of SP3
 and SDP1. The constructor follows `SDPNGroupOperator`; `coeffs` selects the
 family and `boundary_g` selects its coupled Marshak matrix. State storage is

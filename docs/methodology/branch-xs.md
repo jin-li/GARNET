@@ -105,8 +105,8 @@ do not qualify the outer intervals or the global derivative maximum.
 
 ## Independent validation
 
-`ndgpu.branch_validation` distinguishes interpolation versus exact-state
-NDgpu, exact-state NDgpu versus continuous-energy transport, and the full
+`garnet.branch_validation` distinguishes interpolation versus exact-state
+GARNET, exact-state GARNET versus continuous-energy transport, and the full
 interpolated prediction versus transport. A 20 pcm interpolation limit applies
 to the first comparison, not to total model error. Power comparisons use
 identical physical bins and explicit normalization/weights.

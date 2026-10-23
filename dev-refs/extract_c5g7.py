@@ -1,5 +1,5 @@
 """Extract C5G7 7-group cross sections from OpenMOC's c5g7-mgxs-hdf5.py by
-exec-ing it with a stubbed h5py, then emit ndgpu/benchmarks/_c5g7_data.py."""
+exec-ing it with a stubbed h5py, then emit garnet/benchmarks/_c5g7_data.py."""
 
 import sys
 import types
@@ -67,7 +67,7 @@ for name in order:
 out.append("}")
 out.append("# fmt: on")
 
-dest = Path(__file__).parents[1] / "ndgpu" / "benchmarks" / "_c5g7_data.py"
+dest = Path(__file__).parents[1] / "garnet" / "benchmarks" / "_c5g7_data.py"
 dest.parent.mkdir(exist_ok=True)
 dest.write_text("\n".join(out) + "\n")
 print(f"wrote {dest}")

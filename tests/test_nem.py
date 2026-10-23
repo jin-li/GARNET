@@ -4,8 +4,8 @@ import itertools
 import numpy as np
 import pytest
 
-from ndgpu.nem import NEMDiffusionSolver, NEMSolverError
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.nem import NEMDiffusionSolver, NEMSolverError
+from garnet.nem_geometry import CuboidNodalGrid
 
 PAIRS = ((0,2),(1,3),(4,5))
 
@@ -266,7 +266,7 @@ def test_reflective_zero_absorption_is_singular():
 
 
 def test_loss_lu_cached_and_configuration_guard(monkeypatch):
-    import ndgpu.nem as module
+    import garnet.nem as module
     original = module.splu;calls = []
     def count(*args,**kwargs):
         calls.append(1);return original(*args,**kwargs)

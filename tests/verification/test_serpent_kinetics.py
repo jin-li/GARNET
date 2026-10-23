@@ -3,7 +3,7 @@ import hashlib
 
 import pytest
 
-from ndgpu.serpent_kinetics import read_serpent_kinetics
+from garnet.serpent_kinetics import read_serpent_kinetics
 
 
 _COUNTER = "if (exist('idx', 'var')); idx = idx + 1; else; idx = 1; end;\n"
@@ -53,7 +53,7 @@ def test_repeated_globals_are_immutable_provenance_not_averaged_samples(tmp_path
     assert result.estimates["ADJ_IFP_ANA_LAMBDA"].mean[0] == 0.6
     assert "native_score_weighted_arithmetic_lambda:ADJ_IFP_IMP_LAMBDA" in result.flags
     assert "analog cycle" in result.native_definitions["ADJ_IFP_GEN_TIME"]
-    assert "unqualified_NDgpu_MC_time_equivalence" in result.flags
+    assert "unqualified_GARNET_MC_time_equivalence" in result.flags
     assert "native_score_weighted_arithmetic_lambda:ADJ_IFP_ANA_LAMBDA" in result.flags
     assert "not established" in result.native_definitions["FWD_ANA_LAMBDA"]
     assert not any(flag.startswith("missing:") for flag in result.flags)
@@ -151,4 +151,4 @@ def test_native_definition_qualification_requires_exact_version(tmp_path):
     assert not result.native_definitions
     assert "unqualified_total_lambda_definition:ADJ_IFP_IMP_LAMBDA" in result.flags
     assert "unqualified_time_convention:ADJ_IFP_GEN_TIME" in result.flags
-    assert "unqualified_NDgpu_MC_time_equivalence" in result.flags
+    assert "unqualified_GARNET_MC_time_equivalence" in result.flags

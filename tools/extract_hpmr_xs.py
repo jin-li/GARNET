@@ -1,6 +1,6 @@
 """Re-extract the vendored HP-MR cross sections from the VTB Griffin library.
 
-The two ``ndgpu/benchmarks/data/hpmr_*_xs_g11.npz`` archives are what make the
+The two ``garnet/benchmarks/data/hpmr_*_xs_g11.npz`` archives are what make the
 HP-MR cases self-contained -- 10 KB apiece against a 1.5 MB library that lives
 outside the package. They were originally produced by hand, which is how they
 came to carry only the six cross-section arrays and to silently drop the
@@ -32,15 +32,15 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from ndgpu.griffin_xs import (read_kinetics, read_material,  # noqa: E402
+from garnet.griffin_xs import (read_kinetics, read_material,  # noqa: E402
                               read_velocity, temperature_grid)
 
 DEFAULT_XML = ROOT / "dev-refs" / "vtb_isoxml" / "fullcore_xml_G11_endfb8_ss_tr.xml"
-DATA = ROOT / "ndgpu" / "benchmarks" / "data"
+DATA = ROOT / "garnet" / "benchmarks" / "data"
 
-#: id -> key, matching ndgpu.benchmarks.hpmr.hpmr_materials_builtin
+#: id -> key, matching garnet.benchmarks.hpmr.hpmr_materials_builtin
 CORE_IDS = {803: "803", 805: "805", 810: "810", 811: "811", 820: "820"}
-#: id -> name, matching ndgpu.benchmarks.hpmr_assembly.PIN_MATERIAL_NAMES
+#: id -> name, matching garnet.benchmarks.hpmr_assembly.PIN_MATERIAL_NAMES
 PIN_IDS = {803: "graphite", 801: "fuel_compact", 802: "moderator",
            816: "mod_shell", 815: "heatpipe", 817: "hp_shell"}
 
@@ -101,9 +101,9 @@ def _fuel_branch(xml):
     moderator together is the branch that matches it. An independent moderator
     temperature would need a second field and a 2-D interpolation.
     """
-    from ndgpu.benchmarks.hpmr import (_ASSEMBLY_VOLUME_FRACTIONS,
+    from garnet.benchmarks.hpmr import (_ASSEMBLY_VOLUME_FRACTIONS,
                                        _XS_FUEL_COMPACT)
-    from ndgpu.griffin_xs import volume_homogenize
+    from garnet.griffin_xs import volume_homogenize
 
     axes = temperature_grid(xml, KINETICS_ID)
     t_fuel = axes["Tfuel"]

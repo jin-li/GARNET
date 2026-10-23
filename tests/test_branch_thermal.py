@@ -4,8 +4,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from ndgpu.branch_thermal import build_thermal_star, ThermalStarEvidence
-from ndgpu.branch_xs import BranchState, BranchLibrary, BenchmarkModeratorPath, NativeBranchState
+from garnet.branch_thermal import build_thermal_star, ThermalStarEvidence
+from garnet.branch_xs import BranchState, BranchLibrary, BenchmarkModeratorPath, NativeBranchState
 
 
 def inputs():

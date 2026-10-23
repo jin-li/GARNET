@@ -1,6 +1,6 @@
-# NDgpu Software Methodology Manual
+# GARNET Software Methodology Manual
 
-This manual describes the equations, discretizations, data contracts and numerical evidence behind NDgpu. It accompanies the separate [User Manual](../user/index.md). The equations use scalar neutron flux $\phi$, importance $\phi^*$, and eigenvalue $k$. A converged numerical solution is evidence for the specified discrete problem; it does not establish that its homogenization, boundary data or nuclear constants represent another reactor state.
+This manual describes the equations, discretizations, data contracts and numerical evidence behind GARNET. It accompanies the separate [User Manual](../user/index.md). The equations use scalar neutron flux $\phi$, importance $\phi^*$, and eigenvalue $k$. A converged numerical solution is evidence for the specified discrete problem; it does not establish that its homogenization, boundary data or nuclear constants represent another reactor state.
 
 ```{toctree}
 :maxdepth: 2

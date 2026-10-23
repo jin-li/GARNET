@@ -1,7 +1,7 @@
 # Hybrid tri-Sₙ / tri-diffusion solver — design & steps
 
-> **Status: implemented** as `ndgpu.HybridTriSNDiffusionSolver`
-> (`ndgpu/hybrid_tri_sn.py`), following the steps below with the SCB drum scheme
+> **Status: implemented** as `garnet.HybridTriSNDiffusionSolver`
+> (`garnet/hybrid_tri_sn.py`), following the steps below with the SCB drum scheme
 > and the interface net-current coupling. The limits are exact (empty mask =
 > `TriDiffusionEigenSolver`, full mask = `TriSNTransportSolver`) and an isolated
 > drum recovers ~all of the diffusion→Sₙ correction
@@ -12,7 +12,7 @@
 
 Goal: on the body-fitted HP-MR triangular mesh, run discrete-ordinates transport
 (`TriSNTransportSolver`) **only in the control-drum cells** and diffusion
-(`ndgpu.tri`) everywhere else, coupled at the interface — the triangular-mesh
+(`garnet.tri`) everywhere else, coupled at the interface — the triangular-mesh
 counterpart of the Cartesian `HybridSNDiffusionSolver`. This lets the true-drum
 self-shielding be captured on the real geometry at a fraction of full-core Sₙ
 cost.
@@ -57,7 +57,7 @@ source on the ring of bulk cells), *not* by pinning the drum scalar flux
    triangular-FV diffusion matrix per group over the whole mesh with
    `active = bulk` — harmonic-mean edge D and the tri geometry couplings
    (`w = 4 D / h²`, Robin term `8 D α / (h(hα + 2√3 D))`) already in
-   `ndgpu.tri.TriGroupOperator`; interface edges carry no diffusion coupling
+   `garnet.tri.TriGroupOperator`; interface edges carry no diffusion coupling
    (the drum is not a diffusion neighbour). Factorize once per group (as the
    Cartesian hybrid does with `scipy.factorized`). The bulk cell on each
    interface edge receives, as a **source term**, the net current the drum sends
@@ -88,7 +88,7 @@ source on the ring of bulk cells), *not* by pinning the drum scalar flux
    iteration for k (the drums are non-fissile, so the fuel drives k and the drum
    only affects the balance through its interface current = net absorption).
    Anderson-accelerate the interface state if the 12-drum coupling converges
-   slowly (as the reflective-boundary fixed point needed in `ndgpu.sn`).
+   slowly (as the reflective-boundary fixed point needed in `garnet.sn`).
 
 6. **Limits & validation.** `drum_mask` empty → pure `TriDiffusionEigenSolver`
    (bit-for-bit); `drum_mask == active` → pure `TriSNTransportSolver` (every bulk

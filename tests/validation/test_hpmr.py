@@ -7,9 +7,9 @@ symmetry, orderings, mesh stability), not absolute reactivity.
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks.hpmr import (DRUM_ABSORBER, FUEL, MATERIAL_NAMES,
+from garnet.benchmarks.hpmr import (DRUM_ABSORBER, FUEL, MATERIAL_NAMES,
                                    _placeholder_materials, build_hpmr2d)
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.tri import TriDiffusionEigenSolver
 
 TOL = dict(tol_k=1e-8, tol_source=1e-7)
 
@@ -121,7 +121,7 @@ def test_polar_worth_curve_smoother_than_raster():
 
 
 def test_3d_polar_absorber_extrudes_from_2d():
-    from ndgpu.benchmarks.hpmr import build_hpmr3d
+    from garnet.benchmarks.hpmr import build_hpmr3d
     p2 = build_hpmr2d(refine=4, drum_angle_deg=120.0, absorber="polar")
     p3 = build_hpmr3d(refine=4, nz=10, drum_angle_deg=120.0, absorber="polar")
     assert p3.mix_material is not None
@@ -137,7 +137,7 @@ def test_3d_polar_absorber_extrudes_from_2d():
 def test_3d_polar_worth_resolved_at_coarse_mesh():
     # At refine 4 the raster under-resolves the drum worth (~1950 pcm); the
     # polar mix recovers the bulk of it (~2650 pcm) even on this coarse mesh.
-    from ndgpu.benchmarks.hpmr import build_hpmr3d
+    from garnet.benchmarks.hpmr import build_hpmr3d
 
     def k3(ang):
         p = build_hpmr3d(refine=4, nz=10, drum_angle_deg=ang, absorber="polar")
@@ -155,7 +155,7 @@ def test_3d_polar_worth_resolved_at_coarse_mesh():
 
 
 def test_3d_geometry_counts():
-    from ndgpu.benchmarks.hpmr import AXIAL_REFLECTOR, build_hpmr3d
+    from garnet.benchmarks.hpmr import AXIAL_REFLECTOR, build_hpmr3d
     r, nz = 4, 10
     p2, p3 = build_hpmr2d(refine=r), build_hpmr3d(refine=r, nz=nz)
     assert p3.grid.shape == p2.grid.shape + (nz,)
@@ -172,7 +172,7 @@ def test_3d_geometry_counts():
 
 
 def test_3d_nz_alignment_and_material_count_raise():
-    from ndgpu.benchmarks.hpmr import build_hpmr3d, _placeholder_materials
+    from garnet.benchmarks.hpmr import build_hpmr3d, _placeholder_materials
     with pytest.raises(ValueError, match="multiple of 10"):
         build_hpmr3d(refine=4, nz=12)
     with pytest.raises(ValueError, match="expected 7 materials"):
@@ -180,7 +180,7 @@ def test_3d_nz_alignment_and_material_count_raise():
 
 
 def test_3d_axial_leakage_worth_and_symmetry():
-    from ndgpu.benchmarks.hpmr import build_hpmr3d
+    from garnet.benchmarks.hpmr import build_hpmr3d
     solve = dict(tol_k=1e-7, tol_source=1e-6)
 
     def k3(angle):
@@ -212,7 +212,7 @@ def test_custom_materials_swap_in():
     mats = _placeholder_materials()
     assert len(mats) == len(MATERIAL_NAMES)
     k_ref = _k(4, 0.0)
-    from ndgpu.materials import Material
+    from garnet.materials import Material
     f = mats[FUEL]
     mats[FUEL] = Material(name="fuel+10%", diffusion=f.diffusion,
                           sigma_a=f.sigma_a, nu_sigma_f=1.1 * f.nu_sigma_f,

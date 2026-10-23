@@ -5,10 +5,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import argparse
 import json
 import numpy as np
-from ndgpu import Material, MeshDiffusionEigenSolver, MeshSP3EigenSolver, MeshSDP1EigenSolver
-from ndgpu.mesh import assemble_mesh
-from ndgpu.backend import asnumpy, device_name
-from ndgpu import kernels
+from garnet import Material, MeshDiffusionEigenSolver, MeshSP3EigenSolver, MeshSDP1EigenSolver
+from garnet.mesh import assemble_mesh
+from garnet.backend import asnumpy, device_name
+from garnet import kernels
 
 
 def run(device='cpu', fused=False):

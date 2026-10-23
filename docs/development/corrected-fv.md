@@ -1,6 +1,6 @@
 # Corrected scalar finite volume (experimental opt-in)
 
-`ndgpu.corrected_mesh.CorrectedMeshGroupOperator` provides a fixed linear,
+`garnet.corrected_mesh.CorrectedMeshGroupOperator` provides a fixed linear,
 conservative nonorthogonal correction for scalar diffusion. It accepts the
 `MeshGroupOperator` constructor arguments and exposes `apply`, `diag`,
 `inv_diag`, and volume-valued `rhs_weight`. It always advertises
@@ -8,7 +8,7 @@ conservative nonorthogonal correction for scalar diffusion. It accepts the
 operators and solver selection are unchanged by importing this module.
 
 ```python
-from ndgpu.corrected_mesh import CorrectedMeshGroupOperator
+from garnet.corrected_mesh import CorrectedMeshGroupOperator
 op = CorrectedMeshGroupOperator(xp, grid, D, removal)
 ```
 

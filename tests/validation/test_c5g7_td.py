@@ -12,9 +12,9 @@ scripts, not here.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, TransientSolver
-from ndgpu.benchmarks import build_c5g7_2d, build_c5g7_td
-from ndgpu.benchmarks.c5g7_td import CASES, _rod_fraction, _water_factor
+from garnet import DiffusionEigenSolver, TransientSolver
+from garnet.benchmarks import build_c5g7_2d, build_c5g7_td
+from garnet.benchmarks.c5g7_td import CASES, _rod_fraction, _water_factor
 
 
 def test_case_table_and_perturbation_laws():
