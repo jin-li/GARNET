@@ -7,9 +7,9 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_reference import qualify_nem_reference_factors
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_reference import qualify_nem_reference_factors
 
 
 def solve():

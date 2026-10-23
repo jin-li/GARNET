@@ -11,8 +11,8 @@ Usage: python examples/reflected_core.py [fuel_half_width_cm] [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 half = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0   # fuel block half-width
 device = sys.argv[2] if len(sys.argv) > 2 else "auto"
@@ -38,7 +38,7 @@ reflector = Material(
 box = 120.0
 lo, hi = box / 2 - half, box / 2 + half
 model = (
-    ndgpu.Model(size=(box, box, box), cells=(40, 40, 40))
+    garnet.Model(size=(box, box, box), cells=(40, 40, 40))
     .fill(reflector)
     .add_box(fuel, x=(lo, hi), y=(lo, hi), z=(lo, hi))
     .set_boundary("vacuum")                  # leak from the outer surface

@@ -1,0 +1,247 @@
+{
+  "date": "2026-10-23",
+  "base_commit": "9241d5414c58528246d4484c71cd236a0d71ca3e",
+  "tested_checkout": "/tmp/garnet-rebrand/repo",
+  "checkout_destination": "/afs/psi.ch/user/p/poncet_m/WP2/PM41/GARNET",
+  "source_fingerprint": {
+    "sha256": "91bc7ccba329b8cebadb4d0afc300f3e99aecdd7363eac468144bab0621d2c38",
+    "files": 119,
+    "method": "Sorted relative path, NUL, file bytes, NUL for garnet/**/*.py, tests/**/*.py and pyproject.toml."
+  },
+  "environment": {
+    "python": "3.12.12",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "8.4.2",
+    "openblas_threads": 1,
+    "openmp_threads": 1,
+    "pytest_plugin_autoload": false
+  },
+  "cpu_command": "python -m pytest tests -q -ra -p no:cacheprovider --durations=10 --junitxml=garnet-cpu-2026-10-23.xml",
+  "cpu_suite": {
+    "tests": 602,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 7,
+    "passed": 595,
+    "selected": 601,
+    "slow_deselected": 13,
+    "seconds": 774.359
+  },
+  "cpu_modules": {
+    "tests.validation.test_anl7416_8a1": {
+      "passed": 6
+    },
+    "tests.validation.test_biblis_iaea": {
+      "passed": 3
+    },
+    "tests.validation.test_brantley_larsen_2d": {
+      "passed": 12
+    },
+    "tests.validation.test_c5g7": {
+      "passed": 5
+    },
+    "tests.validation.test_c5g7_td": {
+      "passed": 6
+    },
+    "tests.validation.test_coupled_precice": {
+      "skipped": 1
+    },
+    "tests.validation.test_hpmr": {
+      "passed": 16
+    },
+    "tests.validation.test_local_refine": {
+      "passed": 4
+    },
+    "tests.validation.test_lra2d": {
+      "passed": 12
+    },
+    "tests.validation.test_model_twigl": {
+      "passed": 3
+    },
+    "tests.validation.test_noise_femffusion": {
+      "passed": 2
+    },
+    "tests.validation.test_noise_point_kinetics": {
+      "passed": 11
+    },
+    "tests.validation.test_reflected_slab": {
+      "passed": 3
+    },
+    "tests.validation.test_twigl_langenbuch": {
+      "passed": 3
+    },
+    "tests.validation.test_vver440": {
+      "passed": 2,
+      "skipped": 2
+    },
+    "tests.verification.test_adjoint": {
+      "passed": 11
+    },
+    "tests.verification.test_batched_group_source": {
+      "passed": 7
+    },
+    "tests.verification.test_boundary_conditions": {
+      "passed": 2
+    },
+    "tests.verification.test_conduction": {
+      "passed": 18
+    },
+    "tests.verification.test_coupling": {
+      "passed": 18
+    },
+    "tests.verification.test_cylindrical": {
+      "passed": 4
+    },
+    "tests.verification.test_diffusion_analytic": {
+      "passed": 5,
+      "skipped": 1
+    },
+    "tests.verification.test_examples_current": {
+      "passed": 4
+    },
+    "tests.verification.test_feedback": {
+      "passed": 16
+    },
+    "tests.verification.test_femffusion_io": {
+      "passed": 5
+    },
+    "tests.verification.test_fused_kernels": {
+      "passed": 43,
+      "skipped": 2
+    },
+    "tests.verification.test_griffin_xs": {
+      "passed": 5
+    },
+    "tests.verification.test_hex_lattice": {
+      "passed": 3
+    },
+    "tests.verification.test_hpmr_assembly_pin_power": {
+      "passed": 10
+    },
+    "tests.verification.test_hybrid": {
+      "passed": 16
+    },
+    "tests.verification.test_hybrid_sn": {
+      "passed": 6
+    },
+    "tests.verification.test_hybrid_tri_sn": {
+      "passed": 5
+    },
+    "tests.verification.test_linalg_krylov": {
+      "passed": 25
+    },
+    "tests.verification.test_mixing": {
+      "passed": 7
+    },
+    "tests.verification.test_model_api": {
+      "passed": 19
+    },
+    "tests.verification.test_multigroup_step": {
+      "passed": 19
+    },
+    "tests.verification.test_neutron_balance": {
+      "passed": 3
+    },
+    "tests.verification.test_perturbation": {
+      "passed": 3
+    },
+    "tests.verification.test_power_density": {
+      "passed": 7
+    },
+    "tests.verification.test_preconditioner": {
+      "passed": 4
+    },
+    "tests.verification.test_quasistatic": {
+      "passed": 21
+    },
+    "tests.verification.test_sdp1": {
+      "passed": 20
+    },
+    "tests.verification.test_sdpn_derivation": {
+      "passed": 4
+    },
+    "tests.verification.test_sdpn_symmetric": {
+      "passed": 15
+    },
+    "tests.verification.test_sn": {
+      "passed": 6
+    },
+    "tests.verification.test_sn_dsa": {
+      "passed": 8
+    },
+    "tests.verification.test_sp3_analytic": {
+      "passed": 4
+    },
+    "tests.verification.test_sph": {
+      "passed": 5
+    },
+    "tests.verification.test_timescheme": {
+      "passed": 38
+    },
+    "tests.verification.test_transient_kinetics_theory": {
+      "passed": 6
+    },
+    "tests.verification.test_transient_per_material": {
+      "passed": 7
+    },
+    "tests.verification.test_transient_point_kinetics": {
+      "passed": 36
+    },
+    "tests.verification.test_transient_sn": {
+      "passed": 20
+    },
+    "tests.verification.test_tri_prisms": {
+      "passed": 5
+    },
+    "tests.verification.test_tri_reactor_api": {
+      "passed": 5
+    },
+    "tests.verification.test_tri_sn": {
+      "passed": 27,
+      "skipped": 1
+    },
+    "tests.verification.test_tri_sp3": {
+      "passed": 2
+    },
+    "tests.verification.test_unstructured_mesh": {
+      "passed": 13
+    }
+  },
+  "static_checks": {
+    "python_files_parsed": 180,
+    "notebooks_validated": 17,
+    "notebook_code_cells_parsed": 111,
+    "shell_scripts_checked": 11,
+    "historical_data_files_preserved": 25,
+    "source_archive_entries": 64,
+    "live_legacy_name_matches": 0,
+    "readme_historical_name_mentions": 1
+  },
+  "library_sources_with_only_name_substitutions": 56,
+  "archive_install_smoke": {
+    "distribution": "garnet",
+    "version": "0.1.0",
+    "installed_from_source_archive": true,
+    "module_path": "/tmp/garnet-rebrand/installed/garnet/__init__.py",
+    "legacy_import_available": false,
+    "fused_environment_flag_verified": true,
+    "bundled_hp_mr_groups": 11,
+    "readme_example_converged": true,
+    "k_eff": 1.1352040511640966,
+    "flux_shape": [
+      2,
+      24,
+      24,
+      24
+    ]
+  },
+  "source_archive_sha256": "e28c0749f7dfa8ca3f935b3b2ec492d066db43da803d05d480e319ecadb85b71",
+  "rendered_lra_report": {
+    "rebuilt": true,
+    "figures_regenerated_from_preserved_data": true,
+    "sha256": "b0612ce4d8873fa1936893e14cbb5ca364141e2d3bdc355d146c33a9ed1c408b"
+  },
+  "gpu_execution_repeated": false,
+  "junit_xml": "garnet-cpu-2026-10-23.xml"
+}

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ndgpu.serpent_xs import read_serpent_results, read_serpent_xs
+from garnet.serpent_xs import read_serpent_results, read_serpent_xs
 
 
 def paired(means, errors=None):
@@ -135,9 +135,9 @@ def test_non_adf_field_and_missing_estimate_rejected(tmp_path):
 
 
 def test_optional_native_six_face_core_probe():
-    source = os.environ.get("NDGPU_SERPENT_ADF_CORE_PROBE")
+    source = os.environ.get("GARNET_SERPENT_ADF_CORE_PROBE")
     if not source:
-        pytest.skip("set NDGPU_SERPENT_ADF_CORE_PROBE to an existing local result file")
+        pytest.skip("set GARNET_SERPENT_ADF_CORE_PROBE to an existing local result file")
     path = Path(source)
     assert path.is_file()
     records = read_serpent_results(path)
@@ -158,9 +158,9 @@ def test_optional_native_six_face_core_probe():
 
 
 def test_optional_unqualified_core_probe_preserves_strict_xs_gate():
-    source = os.environ.get("NDGPU_SERPENT_ADF_INVALID_CORE_PROBE")
+    source = os.environ.get("GARNET_SERPENT_ADF_INVALID_CORE_PROBE")
     if not source:
-        pytest.skip("set NDGPU_SERPENT_ADF_INVALID_CORE_PROBE to an unqualified local result file")
+        pytest.skip("set GARNET_SERPENT_ADF_INVALID_CORE_PROBE to an unqualified local result file")
     assert Path(source).is_file()
     with pytest.raises(ValueError,match="INF_(?:DIFFCOEF|TOT): values must be strictly positive"):
         read_serpent_results(source)

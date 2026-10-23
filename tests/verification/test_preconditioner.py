@@ -9,11 +9,11 @@ degree-3 Neumann-PCG was the fastest GPU solver for 2e4-3e6 unknowns).
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, PWR_TWO_GROUP
-from ndgpu.backend import get_backend
-from ndgpu.linalg import neumann_preconditioner, pcg
-from ndgpu.operator import GroupOperator
-from ndgpu.solver import Fields
+from garnet import DiffusionEigenSolver, Grid, PWR_TWO_GROUP
+from garnet.backend import get_backend
+from garnet.linalg import neumann_preconditioner, pcg
+from garnet.operator import GroupOperator
+from garnet.solver import Fields
 
 GRID = Grid(shape=(32, 32, 32), size=(120.0, 120.0, 120.0))
 
@@ -62,7 +62,7 @@ def test_anderson_matches_power_iteration_and_cuts_outers_structured():
 
 
 def test_anderson_matches_power_iteration_on_the_mesh_solver():
-    from ndgpu.mesh import assemble_mesh, UnstructuredDiffusionSolver
+    from garnet.mesh import assemble_mesh, UnstructuredDiffusionSolver
     # A bare rectangular reactor on a quad mesh (self-contained, loosely coupled).
     n, L = 30, 90.0
     dx = L / n

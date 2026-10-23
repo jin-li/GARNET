@@ -1,7 +1,7 @@
 """Non-symmetric Krylov options (GMRES, BiCGStab) next to the default CG.
 
 CG is the default everywhere because the discretized operators are kept SPD
-by construction. GMRES and BiCGStab (ndgpu.linalg) are the escape hatches for
+by construction. GMRES and BiCGStab (garnet.linalg) are the escape hatches for
 future operators that cannot be symmetrized; these tests pin down that they
 (a) solve what CG solves, bit-tight, through every solver entry point that
 exposes ``linear_solver=``, and (b) solve a genuinely non-symmetric system,
@@ -11,12 +11,12 @@ which is the case CG cannot handle at all.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material, TransientSolver
-from ndgpu.benchmarks import build_twigl
-from ndgpu.linalg import (PCGWorkspace, bicgstab, fgmres, get_linear_solver, gmres,
+from garnet import DiffusionEigenSolver, Grid, Material, TransientSolver
+from garnet.benchmarks import build_twigl
+from garnet.linalg import (PCGWorkspace, bicgstab, fgmres, get_linear_solver, gmres,
                           mixed_precision_preconditioner,
                           neumann_preconditioner, pcg)
-from ndgpu.operator import GroupOperator
+from garnet.operator import GroupOperator
 
 NONSYM = [gmres, bicgstab]
 

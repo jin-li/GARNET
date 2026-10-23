@@ -4,11 +4,11 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import numpy as np
-from ndgpu.branch_xs import (BenchmarkModeratorPath, BranchState, NativeBranchState,
+from garnet.branch_xs import (BenchmarkModeratorPath, BranchState, NativeBranchState,
                              build_nem_solver)
-from ndgpu.branch_validation import compare_reconstruction_chain
-from ndgpu.branch_thermal import build_thermal_star
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.branch_validation import compare_reconstruction_chain
+from garnet.branch_thermal import build_thermal_star
+from garnet.nem_geometry import CuboidNodalGrid
 
 
 def solve():

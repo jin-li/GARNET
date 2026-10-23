@@ -1,10 +1,10 @@
 """Compose opt-in yield transfer, general C, reference factors and projection."""
 import numpy as np
-from ndgpu.kinetics_yield_transfer import transfer_delayed_yields
-from ndgpu.kinetics_production import assemble_kinetics_production
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_reference import qualify_nem_reference_factors
-from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+from garnet.kinetics_yield_transfer import transfer_delayed_yields
+from garnet.kinetics_production import assemble_kinetics_production
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_reference import qualify_nem_reference_factors
+from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
 from test_nem import tensor_grid, materials
 
 

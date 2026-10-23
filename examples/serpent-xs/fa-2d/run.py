@@ -15,10 +15,10 @@ from scipy import sparse
 from scipy.sparse.linalg import LinearOperator, eigs, splu
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from ndgpu import kernels
-from ndgpu.backend import asnumpy, get_backend, is_rocm
-from ndgpu.mesh import assemble_mesh, UnstructuredDiffusionSolver
-from ndgpu.serpent_xs import read_serpent_results
+from garnet import kernels
+from garnet.backend import asnumpy, get_backend, is_rocm
+from garnet.mesh import assemble_mesh, UnstructuredDiffusionSolver
+from garnet.serpent_xs import read_serpent_results
 
 
 def rectangles(path):
@@ -244,9 +244,9 @@ def main(argv=None):
                 label = f'r{refinement}_{device}_fusion_{int(fused)}'
                 with (args.output_dir/f'{label}.csv').open('w', newline='') as stream:
                     writer = csv.writer(stream, lineterminator='\n')
-                    writer.writerow(['universe', 'row_y', 'column_x', 'area_cm2', 'serpent_power', 'ndgpu_power',
+                    writer.writerow(['universe', 'row_y', 'column_x', 'area_cm2', 'serpent_power', 'garnet_power',
                                      *[f'serpent_flux_fraction_g{g+1}' for g in range(4)],
-                                     *[f'ndgpu_flux_fraction_g{g+1}' for g in range(4)]])
+                                     *[f'garnet_flux_fraction_g{g+1}' for g in range(4)]])
                     total = integrals.sum()
                     for i in range(289):
                         r, c = divmod(i, 17)

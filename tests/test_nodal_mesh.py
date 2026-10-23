@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from ndgpu.mesh import assemble_mesh_3d, MeshGrid, MeshGroupOperator
-from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
+from garnet.mesh import assemble_mesh_3d, MeshGrid, MeshGroupOperator
+from garnet.nodal_mesh import build_rectilinear_mesh_3d
 
 
 def assembled_reference(x, y, z, mask, tags):

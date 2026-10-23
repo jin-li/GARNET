@@ -5,7 +5,7 @@ conservation of the homogenization), that homogenized diffusion lands within
 ~2% of the published transport reference K_REFERENCE_2D, and that the whole
 SPN/SDPN angular hierarchy behaves physically on C5G7. The hierarchy test
 deliberately instantiates every solver so it always exercises the *current*
-coefficient tables (_SPN_C/_SDPN_C in ndgpu.operator) -- coefficient
+coefficient tables (_SPN_C/_SDPN_C in garnet.operator) -- coefficient
 regressions (like the paper's SDP2/SDP3 table errors) surface here as broken
 ordering or a blown eigenvalue, without pinning any solver output value.
 """
@@ -13,11 +13,11 @@ ordering or a blown eigenvalue, without pinning any solver output value.
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, SP3EigenSolver, SP5EigenSolver,
+from garnet import (DiffusionEigenSolver, SP3EigenSolver, SP5EigenSolver,
                    SP7EigenSolver, SDP1EigenSolver, SDP2EigenSolver,
                    SDP3EigenSolver)
-from ndgpu.benchmarks import build_c5g7_2d
-from ndgpu.benchmarks.c5g7 import FUEL_FRACTION, K_REFERENCE_2D
+from garnet.benchmarks import build_c5g7_2d
+from garnet.benchmarks.c5g7 import FUEL_FRACTION, K_REFERENCE_2D
 
 
 def test_c5g7_geometry():
@@ -35,7 +35,7 @@ def test_c5g7_geometry():
     assert np.array_equal(prob.pin_map, prob.pin_map.T)
     # homogenization conserved reaction rates at the mixing level
     uo2_cell = prob.materials[0]
-    from ndgpu.benchmarks._c5g7_data import C5G7_XS
+    from garnet.benchmarks._c5g7_data import C5G7_XS
     expected = FUEL_FRACTION * np.array(C5G7_XS["UO2"]["nu_fission"])
     assert np.allclose(uo2_cell.nu_sigma_f, expected)
 

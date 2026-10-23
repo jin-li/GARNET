@@ -5,14 +5,14 @@ boundary conditions, the steady solve, kinetics and the transient -- against the
 published TWIGL seed-blanket references (Hageman & Yasinsky, 1969): the static
 eigenvalue and the transient power at 0.1 s / 0.5 s for the step and ramp
 perturbations. The cross sections match the FEMFFUSION 2D_TWIGL example, the same
-data the low-level benchmark (ndgpu.benchmarks.twigl) is transcribed from, so a
+data the low-level benchmark (garnet.benchmarks.twigl) is transcribed from, so a
 mismatch would flag a wrapper bug rather than a data disagreement.
 """
 import numpy as np
 import pytest
 
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 _SEED = dict(diffusion=1 / (3 * np.array([0.238095, 0.83333])),
              sigma_a=[0.010, 0.150], nu_sigma_f=[0.007, 0.200],
@@ -26,7 +26,7 @@ def _twigl(r=4):
     blanket = Material(name="blanket", **_BLANKET)
     seed = Material(name="seed", **_SEED)
     seed_c = Material(name="seed-c", **_SEED)         # distinct object -> its own region
-    model = (ndgpu.Model(size=(80, 80), cells=(10 * r, 10 * r))
+    model = (garnet.Model(size=(80, 80), cells=(10 * r, 10 * r))
              .fill(blanket)
              .add_box(seed, x=(0, 24), y=(24, 56)).add_box(seed, x=(24, 56), y=(0, 24))
              .add_box(seed_c, x=(24, 56), y=(24, 56))

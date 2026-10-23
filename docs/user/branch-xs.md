@@ -1,6 +1,6 @@
 # Static branch libraries
 
-The experimental `ndgpu.branch_xs` module provides immutable table states,
+The experimental `garnet.branch_xs` module provides immutable table states,
 exact selection, bounded absolute interpolation and fresh CPU NEM operators.
 It is separate from `TabulatedFeedback`: it does not clamp requests or apply
 ratios to an existing solver. Run the data-free example from the checkout:
@@ -48,9 +48,9 @@ available; importing XS alone does not create qualified ADFs.
 1. Reproduce exact table states, including physical region and face mapping.
 2. Freeze the interpolation elements and hold out transport states.
 3. Solve predictions using only training XS and factors.
-4. Construct exact-state NDgpu solutions from the returned withheld data.
+4. Construct exact-state GARNET solutions from the returned withheld data.
 5. Report interpolation error, exact-state model error and total prediction
-   error separately. Use `ndgpu.branch_validation` for consistent reactivity
+   error separately. Use `garnet.branch_validation` for consistent reactivity
    changes, coefficients, uncertainty screening and interval rod worth.
 
 Temperature coefficients require an explicitly defined density path and
@@ -66,12 +66,12 @@ depletion interpolation.
 
 ## Import returned Serpent files
 
-`ndgpu.branch_io.import_returned_serpent_state` accepts a returned result file
+`garnet.branch_io.import_returned_serpent_state` accepts a returned result file
 (or several files), explicit conditions and an ordered mapping from your region
 IDs to native universe names:
 
 ```python
-from ndgpu.branch_io import import_returned_serpent_state
+from garnet.branch_io import import_returned_serpent_state
 
 state, evidence = import_returned_serpent_state(
     "cold_res.m", state_id="fuel-cold",
@@ -95,7 +95,7 @@ factors; it does not reconstruct or qualify ADFs.
 
 ## Construct a thermal star
 
-`ndgpu.branch_thermal.build_thermal_star` takes five original native-backed
+`garnet.branch_thermal.build_thermal_star` takes five original native-backed
 states in order: nominal, fuel-low, fuel-high, moderator-low, moderator-high.
 Low/high mean actual temperature, so the moderator-low point has higher density.
 Supply the actual `moderator_temperature` in each state's conditions or metadata,
@@ -142,7 +142,7 @@ auxiliary reference recovery separately. Existing calls using only `rtol`
 retain their previous stopping behavior. Numerical convergence does not replace
 positive-profile, interface and physical conservation checks.
 
-Use `ndgpu.branch_nem_validation.assess_nem_solution(solver, result,
+Use `garnet.branch_nem_validation.assess_nem_solution(solver, result,
 balance_tolerance=1e-5)` to check a receiving solution before interpreting its
 accuracy. It checks the unchanged solver configuration, finite fields,
 nonnegative physical fluxes, positive total fission production, full-matrix

@@ -47,7 +47,7 @@ paths must not be changed merely to land the first diffusion implementation.
 
 The relevant serial/single-GPU path is:
 
-1. `Fields` in `ndgpu/solver.py` maps material and mixing data to full-domain
+1. `Fields` in `garnet/solver.py` maps material and mixing data to full-domain
    per-cell arrays on a NumPy or CuPy backend.
 2. `DiffusionEigenSolver` or `TriDiffusionEigenSolver` constructs one
    matrix-free within-group operator per energy group.
@@ -56,7 +56,7 @@ The relevant serial/single-GPU path is:
    default.
 5. `GroupOperator.apply()` or `TriGroupOperator.apply()` applies a fused local
    stencil on GPU.
-6. `ndgpu.linalg.pcg()` computes all Krylov reductions through local CuPy or
+6. `garnet.linalg.pcg()` computes all Krylov reductions through local CuPy or
    NumPy reductions.
 7. Fission normalization, source convergence, and Anderson acceleration also
    reduce full-domain arrays directly through the local array backend.
@@ -153,7 +153,7 @@ the explicitly labeled bring-up stage.
 
 ## Distributed data model
 
-Add `ndgpu/distributed.py` with small, explicit objects rather than scattering
+Add `garnet/distributed.py` with small, explicit objects rather than scattering
 MPI conditionals through numerical kernels.
 
 ### `DistributedContext`
@@ -173,7 +173,7 @@ Suggested construction:
 
 ```python
 from mpi4py import MPI
-from ndgpu.distributed import DistributedContext
+from garnet.distributed import DistributedContext
 
 dist = DistributedContext.from_mpi(MPI.COMM_WORLD, device="gpu")
 ```
@@ -268,7 +268,7 @@ pcg(..., reductions=dist.reductions)
 
 The serial reduction provider delegates to the current fused NumPy/CuPy dot.
 The MPI provider computes a local device scalar and performs an all-reduce.
-This keeps `ndgpu.linalg` independently testable and lets other linear solvers
+This keeps `garnet.linalg` independently testable and lets other linear solvers
 adopt the same interface later.
 
 The first distributed PCG should use standard mathematically equivalent
@@ -351,7 +351,7 @@ explicit distributed solver first:
 
 ```python
 from mpi4py import MPI
-from ndgpu import DistributedTriDiffusionEigenSolver
+from garnet import DistributedTriDiffusionEigenSolver
 
 solver = DistributedTriDiffusionEigenSolver(
     problem.grid,
@@ -385,34 +385,34 @@ summary on rank zero plus rank-level communication telemetry files.
 
 ### New files
 
-- `ndgpu/distributed.py`: communicator, reductions, partition metadata, device
+- `garnet/distributed.py`: communicator, reductions, partition metadata, device
   selection, host-staging fallback, and distributed result helpers.
-- `ndgpu/distributed_stencil.py`: Cartesian and triangular distributed operator
+- `garnet/distributed_stencil.py`: Cartesian and triangular distributed operator
   wrappers and halo workspaces.
-- `ndgpu/distributed_solver.py`: distributed power iteration and public
+- `garnet/distributed_solver.py`: distributed power iteration and public
   diffusion solver classes.
 - `examples/hpmr_eigen_multi_gpu.py`: standalone HP-MR benchmark/production
   entry point.
-- `slurm/run_ndgpu_multi_gpu.sh`: one-rank-per-GPU Slurm launcher with strict
+- `slurm/run_garnet_multi_gpu.sh`: one-rank-per-GPU Slurm launcher with strict
   preflight and verbose rank placement.
 - `tests/verification/test_distributed_diffusion.py`: subprocess MPI correctness
   gates for CPU and optional GPU markers.
 
 ### Existing files
 
-- `ndgpu/linalg.py`: inject global reduction operations into PCG without
+- `garnet/linalg.py`: inject global reduction operations into PCG without
   changing serial defaults.
-- `ndgpu/solver.py`: factor local power-iteration work so serial and distributed
+- `garnet/solver.py`: factor local power-iteration work so serial and distributed
   drivers share group source assembly and convergence policy.
-- `ndgpu/stencil.py`: expose partition-safe coefficient construction and local
+- `garnet/stencil.py`: expose partition-safe coefficient construction and local
   interior/boundary apply hooks.
-- `ndgpu/tri.py`: expose triangular face coefficients by owned row range and
+- `garnet/tri.py`: expose triangular face coefficients by owned row range and
   distinguish physical boundaries from partition interfaces.
-- `ndgpu/backend.py`: select a GPU from local rank and report device/rank
+- `garnet/backend.py`: select a GPU from local rank and report device/rank
   placement; no MPI import in the serial path.
-- `ndgpu/profiling.py`: add halo, collective, wait, interior, and boundary
+- `garnet/profiling.py`: add halo, collective, wait, interior, and boundary
   timing regions.
-- `ndgpu/__init__.py`: export distributed classes only through lazy or
+- `garnet/__init__.py`: export distributed classes only through lazy or
   dependency-safe imports.
 - `pyproject.toml`: add the optional `mpi` dependency group.
 - `docs/user_guide.md`: document launch, ownership, output, and limitations

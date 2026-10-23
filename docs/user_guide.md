@@ -1,6 +1,6 @@
-# NDgpu user guide
+# GARNET user guide
 
-NDgpu is a finite-volume multigroup reactor solver designed for fast,
+GARNET is a finite-volume multigroup reactor solver designed for fast,
 device-resident calculations on structured grids. Its main application is a
 homogenized full-core model on a body-fitted triangular grid, including
 SPH-corrected diffusion, delayed-neutron transients, heat conduction, and
@@ -22,9 +22,9 @@ integration, see [coupling.md](coupling.md).
 | Criticality | `steady()` / `run()` | Diffusion; SP1/3/5/7 and SDP1/2/3 on the tri-grid |
 | Importance | `steady(adjoint=True)` | Adjoint k-eigenvalue calculation |
 | Neutron kinetics | `transient()` | Multigroup diffusion with delayed-neutron families |
-| SPH hand-off | `TriReactor.with_materials()` | Reuse the same geometry with corrected constants |
+| SPH hand-off | `with_materials()` | Cartesian, triangular and general-mesh models; full lists or partial name/index mappings |
 | Thermal feedback | `configure_thermal()` | Material conductivity, heat capacity, sinks, Doppler and density feedback |
-| Coupled calculations | `coupled_steady()`, `coupled_transient()`, `quasistatic_transient()` | In-process, device-resident diffusion/conduction coupling |
+| Coupled calculations | `coupled_steady()`, `coupled_transient()`, `quasistatic_transient()` | Cartesian and triangular diffusion/conduction coupling |
 | Moving controls | `state_at(t)` | Cached same-shaped reactor states, including rotating drum frames |
 | CPU/GPU portability | `device="auto"` | NumPy CPU fallback or CuPy/CUDA GPU execution |
 
@@ -46,7 +46,7 @@ intended for SPH-corrected coupled transients.
 | Existing CAD-derived/Gmsh mesh | `MeshModel` | An unstructured diffusion calculation is required |
 | Custom discretization or research method | Solver classes | You need direct access to operators, arrays, or an experimental method |
 
-NDgpu is a homogenized diffusion-family solver, not a general CAD or
+GARNET is a homogenized diffusion-family solver, not a general CAD or
 pin-resolved transport system. A design should be represented by macroscopic
 cross sections over cells or assemblies. The tri-grid is especially suitable
 for hexagonal cores, control drums, and axially extruded prismatic regions.
@@ -71,11 +71,11 @@ print(solution.device)
 ```
 
 For a hosted GPU check, run
-[`colab_coupled_transient_gpu_latest.ipynb`](https://github.com/jin-li/NDgpu/blob/main/notebooks/colab_coupled_transient_gpu_latest.ipynb).
+[`colab_coupled_transient_gpu_latest.ipynb`](https://github.com/jin-li/GARNET/blob/main/notebooks/colab_coupled_transient_gpu_latest.ipynb).
 It exercises the current tri-grid API, steady solve, transient, coupled
 transient, thermal subcycling, profiler counters, and an optional one-minute
 3-D HP-MR workload. The proposed acceleration path for that long calculation
-is documented in [quasistatic_acceleration_plan.md](https://github.com/jin-li/NDgpu/blob/main/docs/quasistatic_acceleration_plan.md).
+is documented in [quasistatic_acceleration_plan.md](https://github.com/jin-li/GARNET/blob/main/docs/quasistatic_acceleration_plan.md).
 
 ## 1. Define homogenized materials
 
@@ -84,9 +84,9 @@ sections are in cm⁻¹, and diffusion coefficients are in centimetres. Energy
 groups are ordered fast to thermal.
 
 ```python
-import ndgpu
+import garnet
 
-fuel = ndgpu.Material(
+fuel = garnet.Material(
     name="fuel",
     diffusion=[1.25, 0.35],
     sigma_a=[0.012, 0.120],
@@ -98,7 +98,7 @@ fuel = ndgpu.Material(
     chi=[1.0, 0.0],
 )
 
-reflector = ndgpu.Material(
+reflector = garnet.Material(
     name="reflector",
     diffusion=[1.15, 0.25],
     sigma_a=[0.001, 0.020],
@@ -106,7 +106,7 @@ reflector = ndgpu.Material(
     sigma_s=[[0.0, 0.035], [0.0, 0.0]],
 )
 
-absorber = ndgpu.Material(
+absorber = garnet.Material(
     name="absorber",
     diffusion=[0.50, 0.12],
     sigma_a=[0.040, 0.80],
@@ -126,13 +126,20 @@ the absolute normalization.
 Give thermally coupled materials unique, non-empty names. Name-keyed thermal
 and feedback dictionaries avoid exposing the integer material ordering.
 
+For a variation on an existing material, use
+`hot_fuel = fuel.replace(sigma_a=fuel.sigma_a * 1.01)`. This validates and copies
+the constants while retaining scattering, spectra and energy-release data.
+`core.with_materials({"fuel": hot_fuel})` returns a separate model on the same
+geometry. All three model types support this partial name/index mapping as well
+as a complete ordered list.
+
 ## 2. Build a 2-D or 3-D tri-grid reactor
 
 Hex sites use axial `(R, C)` coordinates. Paint broad regions first: later
 calls overwrite earlier ones.
 
 ```python
-axial_reflector = ndgpu.Material(
+axial_reflector = garnet.Material(
     name="axial reflector",
     diffusion=[1.10, 0.23],
     sigma_a=[0.0015, 0.023],
@@ -141,7 +148,7 @@ axial_reflector = ndgpu.Material(
 )
 
 core = (
-    ndgpu.HexLattice(pitch=18.0, refine=3)
+    garnet.HexLattice(pitch=18.0, refine=3)
     .set_disk(2, reflector)                  # 19-site background
     .set_disk(1, fuel)                       # central seven sites
     .set_site((0, 0), fuel)                  # individual override
@@ -187,7 +194,7 @@ An absorber drum is represented as a volume-mixed annular arc, so a thin arc
 can move smoothly across triangular cells:
 
 ```python
-lattice = ndgpu.HexLattice(pitch=30.0, refine=4)
+lattice = garnet.HexLattice(pitch=30.0, refine=4)
 lattice.set_disk(2, reflector)
 lattice.set_drum(
     (0, 2),
@@ -265,7 +272,7 @@ Kinetics can be attached while building the lattice or later with
 `decay` contain one entry per delayed-neutron family.
 
 ```python
-rodded_fuel = ndgpu.Material(
+rodded_fuel = garnet.Material(
     name="fuel",
     diffusion=fuel.diffusion,
     sigma_a=fuel.sigma_a * [1.0, 1.002],
@@ -308,24 +315,24 @@ adapter for integration with a larger thermal core code.
 ```python
 core.configure_thermal(
     {
-        "fuel": ndgpu.ThermalMaterial(
+        "fuel": garnet.ThermalMaterial(
             conductivity=0.25,
             heat_capacity=2.5,
             sink_coeff=0.015,
             sink_temperature=650.0,
         ),
-        "reflector": ndgpu.ThermalMaterial(
+        "reflector": garnet.ThermalMaterial(
             conductivity=0.35,
             heat_capacity=2.0,
         ),
-        "axial reflector": ndgpu.ThermalMaterial(
+        "axial reflector": garnet.ThermalMaterial(
             conductivity=0.32,
             heat_capacity=2.1,
         ),
     },
     total_power=50_000.0,
     feedback={
-        "fuel": ndgpu.FeedbackSpec(
+        "fuel": garnet.FeedbackSpec(
             reference_temperature=700.0,
             doppler=[2.0e-4, 0.0],
             expansion=0.0,
@@ -414,7 +421,7 @@ power error against the available full-diffusion reference from 5.708% to
 0.173% at a 25.5% transient-time cost. The HPMR example applies this guard
 profile automatically when IQS is selected; pass `--unguarded-iqs` only for
 fixed-cadence benchmark comparisons. See
-[`benchmark-results/hpmr-iqs-gh200`](https://github.com/jin-li/NDgpu/blob/main/benchmark-results/hpmr-iqs-gh200/README.md).
+[`benchmark-results/hpmr-iqs-gh200`](https://github.com/jin-li/GARNET/blob/main/benchmark-results/hpmr-iqs-gh200/README.md).
 For expensive adjoint solves, combine a larger `adjoint_every` with
 `adjoint_residual_tol`: the former limits maximum adjoint age and the latter
 refreshes early when the amplitude-free transposed-eigenproblem residual is too
@@ -532,7 +539,7 @@ available in `rejected_times`, `rejected_step_widths`, and
 `rejected_time_orders`. Do not treat `rtol` as equivalent to
 FEMCORE/LSODE tolerances or make this the default until the HP-MR and GPU gates
 also pass.
-`ndgpu.BDF.error_norm(...)` and `ndgpu.BDFStepController` remain public for
+`garnet.BDF.error_norm(...)` and `garnet.BDFStepController` remain public for
 benchmark and custom-driver development.
 
 `coupled_transient` supports the same adaptive controls through
@@ -549,7 +556,7 @@ steps reuse bounded FGMRES basis/work storage and, when the free-VRAM guard
 allows it, batched energy-group contractions. Coupled profiles expose
 `group_batch_active` and `fgmres_workspace_bytes`; check both before comparing
 timings. The executable 3-D, 11-group accuracy and performance gate is
-[`notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb`](https://github.com/jin-li/NDgpu/blob/main/notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb).
+[`notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb`](https://github.com/jin-li/GARNET/blob/main/notebooks/colab_hpmr3d_adaptive_bdf_gpu.ipynb).
 
 For a long run, `multigroup_kwargs={"coarse_correction": True}` adds an
 adjoint-weighted rank-one amplitude correction. It reduces group work but first
@@ -592,9 +599,9 @@ def control_state(t):
     return frames[0.0]
 ```
 
-All frames must have the same grid shape. The base reactor owns the thermal
-configuration; a state supplies the time-dependent material and volume-mix
-arrays.
+All frames must preserve grid dimensions, physical size, boundaries, active
+cells and material count. The base reactor owns the thermal configuration; a
+state supplies the time-dependent material and volume-mix arrays.
 
 ## Cartesian and unstructured alternatives
 
@@ -602,19 +609,45 @@ For a rectangular model, paint boxes with `Model`:
 
 ```python
 box = (
-    ndgpu.Model(size=(120.0, 120.0, 200.0), cells=(48, 48, 80))
+    garnet.Model(size=(120.0, 120.0, 200.0), cells=(48, 48, 80))
     .fill(reflector)
     .add_box(fuel, x=(20, 100), y=(20, 100), z=(20, 180))
     .set_boundary("vacuum")
 )
-print(box.run(method="diffusion", device="auto"))
+result = box.steady(method="diffusion", device="auto")  # run() also works
+print(result)
+q = result.power_density(total_power=2e6)  # W/cm³; integrates to 2 MW
+print((q * result.cell_volumes).sum())
 ```
+
+`Model` supports the same `configure_thermal`, `coupled_steady`,
+`coupled_transient` and `quasistatic_transient` calls described above. Neutron
+transients accept `materials_at(t)` returning either an ordered list or a
+partial mapping such as `{"fuel": hot_fuel}`; `{}` selects the base materials.
+For moving assignments, `state_at(t)` may return a cached Cartesian `Model`.
+Only one perturbation callback may be supplied.
+
+Both `Model` and `TriReactor` accept a `Kinetics` object in `set_kinetics` and a
+compatible public steady result in `transient(initial_steady=result)`.
+Construction controls such as the Neumann preconditioner degree go in
+`solver_kwargs={"precond_degree": 1}`; tolerance and time-integration controls
+go directly to `steady` or `transient`. Steady `MeshModel` runs use this split
+too. `result.raw` retains the underlying solver result and its telemetry.
+
+Steady forward results expose `material_summary` rows (`name`,
+`volume_fraction`, `fission_fraction`) and `power_density(total_power=...)`.
+The latter uses a snapshot of the solved materials and maps. One- and
+two-dimensional Cartesian models represent a 1 cm extent in each omitted
+direction, so use the power of that modeled slice.
+
+See [diffusion_workflow.py](../examples/diffusion_workflow.py) for a complete
+Cartesian calculation with named perturbations and thermal feedback.
 
 For an existing Gmsh model, assign material by physical tag or centroid:
 
 ```python
 mesh_model = (
-    ndgpu.MeshModel("core.msh")
+    garnet.MeshModel("core.msh")
     .fill(reflector)
     .assign(fuel, tag=1)
     .assign(absorber, where=lambda centre: centre[2] > 180.0)
@@ -623,7 +656,7 @@ mesh_model = (
 mesh_solution = mesh_model.run(device="auto")
 ```
 
-`MeshModel` currently provides steady diffusion. Use `TriReactor` for the
+`MeshModel` currently provides steady diffusion. Use `Model` or `TriReactor` for the
 complete SPN/SDPN, transient, and coupled workflow.
 
 ## Accuracy and validation checklist
@@ -658,12 +691,14 @@ validation in `tests/verification/` and `tests/validation/`.
 | `examples/hpmr_coupled_transient.py` | Full-diffusion or quasi-static coupled transient and profiling |
 | `examples/hpmr_sph_reference_families.py` | SPH generation and reference-method comparison |
 | `examples/twigl_benchmark.py` | Validated static and transient Cartesian workflow |
+| `examples/diffusion_workflow.py` | Named Cartesian material edits, power, kinetics and thermal feedback |
 | `examples/unstructured_mesh.py` | Gmsh/finite-volume `MeshModel` workflow |
 
 ## Public API at a glance
 
 ```text
 Material(...)
+  .replace(**changes) -> Material
 
 HexLattice(pitch, refine)
   .set_site(...) / .set_sites(...) / .set_ring(...) / .set_disk(...)
@@ -685,11 +720,17 @@ TriReactor
 
 Model(size, cells)
   .fill(...) / .add_box(...) / .set_boundary(...) / .set_kinetics(...)
-  .run(...) / .transient(...)
+  .steady(...) / .run(...) / .transient(...)
+  .with_materials(list_or_mapping) -> Model
+  .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
+  .quasistatic_transient(...)
 
 MeshModel(mesh)
   .fill(...) / .assign(...) / .add_box(...) / .set_boundary(...)
-  .run(...)
+  .steady(...) / .run(...) / .with_materials(list_or_mapping)
+
+ReactorResult
+  .power_density(total_power=...) / .cell_volumes / .material_summary / .raw
 ```
 
 When the public objects do not expose a research-specific option,

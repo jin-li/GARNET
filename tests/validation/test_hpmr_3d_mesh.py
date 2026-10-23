@@ -13,9 +13,9 @@ Marked slow: a full-core 3D solve on both solvers (~50k wedges). Run with
 import numpy as np
 import pytest
 
-from ndgpu.mesh import assemble_mesh_3d, UnstructuredDiffusionSolver
-from ndgpu.tri import TriDiffusionEigenSolver
-from ndgpu.benchmarks.hpmr import (hpmr_locally_refined_mesh, build_hpmr3d,
+from garnet.mesh import assemble_mesh_3d, UnstructuredDiffusionSolver
+from garnet.tri import TriDiffusionEigenSolver
+from garnet.benchmarks.hpmr import (hpmr_locally_refined_mesh, build_hpmr3d,
                                    _placeholder_materials, FUEL, CENTRAL,
                                    AXIAL_REFLECTOR, TOTAL_HEIGHT,
                                    AXIAL_REFLECTOR_HEIGHT)

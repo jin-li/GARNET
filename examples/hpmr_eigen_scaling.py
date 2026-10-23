@@ -7,9 +7,9 @@ import json
 import platform
 import time
 
-from ndgpu.backend import device_name, get_backend, synchronize
-from ndgpu.benchmarks import build_hpmr2d
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.backend import device_name, get_backend, synchronize
+from garnet.benchmarks import build_hpmr2d
+from garnet.tri import TriDiffusionEigenSolver
 
 
 parser = argparse.ArgumentParser(description=__doc__)

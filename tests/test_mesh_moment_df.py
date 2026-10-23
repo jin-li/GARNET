@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from ndgpu import MeshGrid, MeshGroupOperator, MeshSP3EigenSolver, MeshSDP1EigenSolver
-from ndgpu.linalg import bicgstab
+from garnet import MeshGrid, MeshGroupOperator, MeshSP3EigenSolver, MeshSDP1EigenSolver
+from garnet.linalg import bicgstab
 from test_mesh_moments import rectangles, boxes, materials
 
 
@@ -196,7 +196,7 @@ def test_boundary_factor_limits_and_nonmultiplicative_elimination():
                                          ({'bc':.2,'marshak_vacuum':True},'supports only'),
                                          ({'order':2,'bc':'reflective'},'order-1')])
 def test_opt_in_boundary_and_order_gates(kwargs,match):
-    from ndgpu import MeshSPNEigenSolver
+    from garnet import MeshSPNEigenSolver
     with pytest.raises(ValueError,match=match):
         MeshSPNEigenSolver(rectangles(),materials(),[0,1],moment_df_model='common_trace',device='cpu',**kwargs)
 

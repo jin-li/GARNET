@@ -18,9 +18,9 @@ physics *value*, only a relation that must hold whatever the cross sections are.
 import numpy as np
 import pytest
 
-from ndgpu import TransientSolver, TriDiffusionEigenSolver
-from ndgpu.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d
-from ndgpu.tri import TriGroupOperator
+from garnet import TransientSolver, TriDiffusionEigenSolver
+from garnet.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d
+from garnet.tri import TriGroupOperator
 
 REFINE = 2
 BETA = float(HPMR_KINETICS.beta.sum())
@@ -123,7 +123,7 @@ def test_drum_worth_is_measured_not_assumed():
     reactivity -- the drum is nearly withdrawn above ~150 deg, so the whole
     travel from there to 180 is worth a fraction of what a few degrees near
     90 deg buys."""
-    from ndgpu.benchmarks.hpmr_thermal import (hpmr_angle_for_dollars,
+    from garnet.benchmarks.hpmr_thermal import (hpmr_angle_for_dollars,
                                                hpmr_drum_worth)
 
     near = hpmr_drum_worth(90.0, [96.0], refine=REFINE)[96.0]

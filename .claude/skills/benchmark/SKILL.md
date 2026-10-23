@@ -1,9 +1,9 @@
 ---
 name: benchmark
-description: Benchmarking protocol for ndgpu solver comparisons (solver variants, orders, preconditioners, meshes, devices). Use BEFORE running any performance or accuracy comparison and when writing up its results — every reported row must pair accuracy (k_eff + Δpcm vs a named reference) with cost (wall time + iteration counts).
+description: Benchmarking protocol for garnet solver comparisons (solver variants, orders, preconditioners, meshes, devices). Use BEFORE running any performance or accuracy comparison and when writing up its results — every reported row must pair accuracy (k_eff + Δpcm vs a named reference) with cost (wall time + iteration counts).
 ---
 
-# ndgpu benchmarking protocol
+# garnet benchmarking protocol
 
 Core rule: **never report speed without accuracy, and never report accuracy
 without cost.** A solver comparison that shows only one axis is not a result;
@@ -152,7 +152,7 @@ thrown away:
 
 ## Environment notes
 
-- Run python from the repo directory (`~/claude-tests/ndgpu`) or imports fail.
+- Run python from the repo directory (`~/WP2/PM41/GARNET`) or imports fail.
 - This box is CPU-only (numpy backend, 8 cores, single-threaded stencils):
   polynomial/heavier preconditioners often cut applies but lose wall time
   here — report both numbers and note the GPU outlook rather than discarding

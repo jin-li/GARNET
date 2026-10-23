@@ -1,6 +1,6 @@
 """HP-MR heterogeneous assembly: S_N reference, form function, pin reconstruction.
 
-The full-core HP-MR model (:mod:`ndgpu.benchmarks.hpmr`) homogenizes each fuel
+The full-core HP-MR model (:mod:`garnet.benchmarks.hpmr`) homogenizes each fuel
 hex into one material. That discards the flux shape INSIDE the assembly, and
 equivalence factoring does not bring it back -- SPH and GET correct
 assembly-integrated reaction rates, not the distribution within a region. This
@@ -33,15 +33,15 @@ import time
 
 import numpy as np
 
-from ndgpu import TriDiffusionEigenSolver, flux_weighted_homogenize
-from ndgpu.benchmarks.hpmr import (build_hpmr2d, hpmr_materials_builtin,
+from garnet import TriDiffusionEigenSolver, flux_weighted_homogenize
+from garnet.benchmarks.hpmr import (build_hpmr2d, hpmr_materials_builtin,
                                    HPMR_FUEL_SITES, PITCH)
-from ndgpu.benchmarks.hpmr_assembly import (build_hpmr_assembly2d, pin_fluxes,
+from garnet.benchmarks.hpmr_assembly import (build_hpmr_assembly2d, pin_fluxes,
                                             pin_materials_builtin, pin_powers)
-from ndgpu.hexraster import hex_site_xy
-from ndgpu.materials import Material
-from ndgpu.pin_power import peaking, reconstruct_pin_powers
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet.hexraster import hex_site_xy
+from garnet.materials import Material
+from garnet.pin_power import peaking, reconstruct_pin_powers
+from garnet.tri_sn import TriSNTransportSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 6
 core_refine = int(sys.argv[2]) if len(sys.argv) > 2 else 6

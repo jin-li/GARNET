@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 from scipy.linalg import eigvals
-from ndgpu.moment_materials import MomentMaterial
-from ndgpu.coupled_moments import BoundaryFace,InteriorFace,OrthogonalMesh,CoupledMomentOperator
+from garnet.moment_materials import MomentMaterial
+from garnet.coupled_moments import BoundaryFace,InteriorFace,OrthogonalMesh,CoupledMomentOperator
 
 
 def material(which=0,isotropic=False):

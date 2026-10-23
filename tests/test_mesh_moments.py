@@ -3,13 +3,13 @@
 import numpy as np
 import pytest
 
-from ndgpu import (Grid, Material, MeshGrid, MeshGroupOperator,
+from garnet import (Grid, Material, MeshGrid, MeshGroupOperator,
                    MeshDiffusionEigenSolver, MeshSP1EigenSolver,
                    MeshSP3EigenSolver, MeshSDP1EigenSolver,
                    MeshSPNEigenSolver, MeshSDPNEigenSolver,
                    UnstructuredDiffusionSolver, assemble_mesh, assemble_mesh_3d)
-from ndgpu.solver import SPNEigenSolver, SDPNEigenSolver
-from ndgpu.spn import SDPNGroupOperator
+from garnet.solver import SPNEigenSolver, SDPNEigenSolver
+from garnet.spn import SDPNGroupOperator
 
 
 def rectangles(widths=(1., 2.), height=1.):

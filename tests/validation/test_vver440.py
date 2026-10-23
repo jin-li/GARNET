@@ -12,9 +12,9 @@ import os
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks import build_vver440
-from ndgpu.benchmarks.vver440 import K_REFERENCE
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.benchmarks import build_vver440
+from garnet.benchmarks.vver440 import K_REFERENCE
+from garnet.tri import TriDiffusionEigenSolver
 
 
 def test_vver440_triangular_geometry_and_k():
@@ -33,8 +33,8 @@ def test_vver440_triangular_geometry_and_k():
 def test_vver440_bulk_transient():
     # A distributed +0.1$ step (material 1) far below prompt-critical: a benign,
     # well-resolved transient with a prompt jump and slow delayed rise to ~1.1.
-    from ndgpu import TransientSolver
-    from ndgpu.tri import TriGroupOperator
+    from garnet import TransientSolver
+    from garnet.tri import TriGroupOperator
     p = build_vver440(refine=1, perturbation="bulk")
     res = TransientSolver(p.grid, p.problem_at, p.kinetics, active=p.active,
                           mask_bc=p.mask_bc, device="cpu",
@@ -51,8 +51,8 @@ _MSH = os.path.expanduser(
 
 @pytest.mark.skipif(not os.path.exists(_MSH), reason="FEMFFUSION VVER440.msh not present")
 def test_vver440_msh_matches_femffusion():
-    from ndgpu.benchmarks.vver440 import build_vver440_msh
-    from ndgpu.mesh import UnstructuredDiffusionSolver
+    from garnet.benchmarks.vver440 import build_vver440_msh
+    from garnet.mesh import UnstructuredDiffusionSolver
     mesh, mats, cm, alpha = build_vver440_msh(_MSH)
     assert mesh.n_cells == 1263
     res = UnstructuredDiffusionSolver(mesh, mats, cm, alpha).solve(tol_k=1e-7)
@@ -66,8 +66,8 @@ def test_vver440_msh_converges_on_keff_with_loose_source_tolerance():
     # outer residual, so k reaches the right eigenvalue. An earlier version tied
     # the inner tol to tol_source, which pinned it loose here and let Anderson
     # drift to a wrong k (+26 pcm) without converging.
-    from ndgpu.benchmarks.vver440 import build_vver440_msh
-    from ndgpu.mesh import UnstructuredDiffusionSolver
+    from garnet.benchmarks.vver440 import build_vver440_msh
+    from garnet.mesh import UnstructuredDiffusionSolver
     mesh, mats, cm, alpha = build_vver440_msh(_MSH)
     k_ref = UnstructuredDiffusionSolver(mesh, mats, cm, alpha).solve(
         tol_k=1e-9, tol_source=1e-8).k_eff                       # fully converged

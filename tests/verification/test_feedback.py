@@ -9,11 +9,11 @@ invisible in k but wrong in the spectrum. Both are pinned here.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material
-from ndgpu.feedback import (ThermalFeedback, calibrate, measure_pcm_per_K,
+from garnet import DiffusionEigenSolver, Grid, Material
+from garnet.feedback import (ThermalFeedback, calibrate, measure_pcm_per_K,
                             scale_to, uniform)
-from ndgpu.solver import Fields
-from ndgpu.backend import get_backend
+from garnet.solver import Fields
+from garnet.backend import get_backend
 
 T_REF = 800.0
 
@@ -210,14 +210,14 @@ def test_tabulated_feedback_reproduces_the_library_at_its_nodes():
     """Interpolating the library's branches must return the library's own
     numbers at the tabulation points -- if it does not, the interpolation is
     reading the wrong axis or the wrong node."""
-    from ndgpu import TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr import (_ASSEMBLY_VOLUME_FRACTIONS,
+    from garnet import TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr import (_ASSEMBLY_VOLUME_FRACTIONS,
                                        _XS_FUEL_COMPACT, build_hpmr2d,
                                        hpmr_materials_builtin)
-    from ndgpu.benchmarks.hpmr_assembly import PIN_XS_IDS, pin_materials_builtin
-    from ndgpu.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
+    from garnet.benchmarks.hpmr_assembly import PIN_XS_IDS, pin_materials_builtin
+    from garnet.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
                                                hpmr_tabulated_feedback)
-    from ndgpu.griffin_xs import volume_homogenize
+    from garnet.griffin_xs import volume_homogenize
 
     fb = hpmr_tabulated_feedback()
     p = build_hpmr2d(refine=2, drum_angle_deg=180.0, absorber="polar",
@@ -239,9 +239,9 @@ def test_tabulated_feedback_reproduces_the_library_at_its_nodes():
 
 
 def test_tabulated_feedback_is_monotonic_and_negative():
-    from ndgpu import TriDiffusionEigenSolver
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
+    from garnet import TriDiffusionEigenSolver
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
                                                hpmr_tabulated_feedback)
 
     fb = hpmr_tabulated_feedback()
@@ -266,11 +266,11 @@ def test_tabulated_feedback_clamps_outside_the_evaluated_range():
     """Extrapolating a resonance-broadening curve past the evaluated range is
     not supported by the data, and a coupling iterate can transiently overshoot,
     so values outside the nodes must clamp rather than run away."""
-    from ndgpu.backend import get_backend
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
+    from garnet.backend import get_backend
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr_thermal import (hpmr_endfb8_builtin,
                                                hpmr_tabulated_feedback)
-    from ndgpu.solver import Fields
+    from garnet.solver import Fields
 
     fb = hpmr_tabulated_feedback()
     p = build_hpmr2d(refine=2, drum_angle_deg=180.0, absorber="polar",
@@ -290,8 +290,8 @@ def test_tabulated_feedback_clamps_outside_the_evaluated_range():
 
 
 def test_hook_is_inherited_by_the_triangular_and_sp3_solvers():
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
-    from ndgpu import TriDiffusionEigenSolver, TriSP3EigenSolver
+    from garnet.benchmarks.hpmr import build_hpmr2d
+    from garnet import TriDiffusionEigenSolver, TriSP3EigenSolver
 
     p = build_hpmr2d(refine=2, drum_angle_deg=180.0, absorber="polar")
     fb = ThermalFeedback(t_ref=[T_REF] * len(p.materials),

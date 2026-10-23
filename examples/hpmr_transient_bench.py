@@ -7,7 +7,7 @@
 No thermal coupling, no feedback: just the neutronics time loop, so what is
 timed is the diffusion transient itself and nothing else. The harness and the
 reasoning behind the columns live in
-:mod:`ndgpu.benchmarks.hpmr_transient_bench`; this is the command line over it.
+:mod:`garnet.benchmarks.hpmr_transient_bench`; this is the command line over it.
 
 **us/CG-iter is the column that says what to optimize.** One CG iteration is a
 fixed number of kernels over N-element arrays. If it is flat in problem size,
@@ -26,7 +26,7 @@ import argparse
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr_transient_bench import (HEADER, SIGMA_A_SCALE,
+from garnet.benchmarks.hpmr_transient_bench import (HEADER, SIGMA_A_SCALE,
                                                    format_row, parse_size,
                                                    transient_bench)
 

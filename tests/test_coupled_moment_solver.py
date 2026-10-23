@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.linalg import eig
-from ndgpu.coupled_moments import CoupledMomentOperator,OrthogonalMesh
-from ndgpu.coupled_moment_solver import CoupledMomentEigenSolver
-from ndgpu.moment_materials import MomentMaterial
+from garnet.coupled_moments import CoupledMomentOperator,OrthogonalMesh
+from garnet.coupled_moment_solver import CoupledMomentEigenSolver
+from garnet.moment_materials import MomentMaterial
 
 # Reuse the independent synthetic face-unknown fixture, never external XS.
 spec=importlib.util.spec_from_file_location('coupled_oracle_fixture',Path(__file__).with_name('test_coupled_moments.py'))
@@ -50,7 +50,7 @@ def test_permutation_invariance():
     def perm(x):
         return MomentMaterial(x.total[::-1],x.chi[::-1],x.nu_sigma_f[::-1],x.kappa_fission[::-1],{}, {},
             {k:v[::-1,::-1] for k,v in x.loss.items()}, {}, {},dict(x.provenance),{})
-    from ndgpu.coupled_moments import InteriorFace,BoundaryFace
+    from garnet.coupled_moments import InteriorFace,BoundaryFace
     grid=OrthogonalMesh([3,2],[[2],[0]],(InteriorFace(1,0,1.7,(.7,),(1,),.7,1.3),),(BoundaryFace(1,.8,(-.4,),(-1,),.4,'vacuum'),))
     b=CoupledMomentEigenSolver(CoupledMomentOperator(grid,[perm(m[1]),perm(m[0])])).solve()
     assert a.converged and b.converged
@@ -94,9 +94,9 @@ def test_zero_fission_negative_power_and_invalid_controls():
 
 @pytest.mark.parametrize('family',['sp3','sdp1'])
 def test_existing_isotropic_common_basis_small_mesh_algebra(family):
-    from ndgpu import Grid
-    from ndgpu.spn import SDPNGroupOperator,_SPN_C,_SDPN_C
-    from ndgpu.coupled_moments import InteriorFace
+    from garnet import Grid
+    from garnet.spn import SDPNGroupOperator,_SPN_C,_SDPN_C
+    from garnet.coupled_moments import InteriorFace
     m=fixtures.material(isotropic=True)
     grid=OrthogonalMesh([1,1],[[.5],[1.5]],(InteriorFace(0,1,1,(1,),(1,),.5,.5),))
     op=CoupledMomentOperator(grid,[m,m],family=family)

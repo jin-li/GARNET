@@ -10,7 +10,7 @@ automatic order/step control not yet accepted**
 Cherezov, Vasiliev, and Ferroukhi organize a coupled transient into three
 iteration levels: BDF time integration is the global level, the implicit
 neutronics/thermal fixed point is the constituent level, and multigroup plus
-within-group iterations form the inner level. ndgpu previously had BDF2 only
+within-group iterations form the inner level. garnet previously had BDF2 only
 in the discrete-ordinates transient; the production diffusion/coupling and
 monolithic multigroup paths were backward-Euler-only.
 

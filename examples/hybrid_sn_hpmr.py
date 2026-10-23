@@ -10,7 +10,7 @@ Three solves per drum state:
   * diffusion (whole core),
   * full S_N (discrete-ordinates transport, whole core) -- the reference,
   * hybrid -- S_N transport in the drum block only, diffusion in the bulk,
-    coupled by the interface net current (ndgpu.HybridSNDiffusionSolver).
+    coupled by the interface net current (garnet.HybridSNDiffusionSolver).
 
 As with SP3, the interesting quantity is the control-drum WORTH (a reactivity
 difference): diffusion over-predicts the near-black absorber's worth because it
@@ -28,7 +28,7 @@ import time
 
 import numpy as np
 
-from ndgpu import (DiffusionEigenSolver, Grid, HybridSNDiffusionSolver, Material,
+from garnet import (DiffusionEigenSolver, Grid, HybridSNDiffusionSolver, Material,
                    SNTransportSolver)
 
 n = int(sys.argv[1]) if len(sys.argv) > 1 else 24

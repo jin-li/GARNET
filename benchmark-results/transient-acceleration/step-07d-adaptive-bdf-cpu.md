@@ -63,7 +63,7 @@ added.
 For the published `RTOL=1e-5` LRA run, Cherezov Table 7 reports approximately
 399–403 accepted steps and 5–7 rejected steps for representative first/fourth
 spatial orders. FEMCORE rapidly reaches BDF5 and predominantly stays there.
-ndgpu likewise spends 561 of 569 accepted steps at BDF5 (two BDF1–4 startup
+garnet likewise spends 561 of 569 accepted steps at BDF5 (two BDF1–4 startup
 ramps, before and after 2 s), but currently takes 569 accepted and 26 rejected
 steps. It is therefore more conservative and rejects more often.
 

@@ -34,8 +34,8 @@ without a checkout).
 
 Community benchmark cores solved end-to-end and compared to literature /
 reference-code results. The problem definitions **and their reference
-values** live together in `ndgpu/benchmarks/` (e.g.
-`ndgpu.benchmarks.twigl.P_REFERENCE`); tests import them from there, so
+values** live together in `garnet/benchmarks/` (e.g.
+`garnet.benchmarks.twigl.P_REFERENCE`); tests import them from there, so
 there is a single source of truth for every published number.
 
 | File | Benchmark | Reference |
@@ -48,7 +48,7 @@ there is a single source of truth for every published number.
 | `test_hpmr.py` | HP-MR microreactor 2D/3D | behavioural (placeholder XS): symmetry, drum worth, mesh stability |
 | `test_coupled_precice.py` | HP-MR neutronics/thermal coupled through preCICE | the internal `CoupledSolver` — exact mapping, lockstep iterates, shared fixed point. Skips without `pyprecice`; run it in the env that has it (see `docs/coupling.md`) |
 
-Related directories: `ndgpu/benchmarks/` holds the benchmark *problem
+Related directories: `garnet/benchmarks/` holds the benchmark *problem
 builders + reference constants* (importable library code);
 `examples/` holds runnable demo scripts (`speed_benchmark.py` is the
 CPU-vs-GPU performance harness, not a physics benchmark); `dev-refs/` holds

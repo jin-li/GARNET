@@ -1,4 +1,4 @@
-# NDgpu User Manual
+# GARNET User Manual
 
 Use this manual to select a supported workflow, build a model and interpret its outputs. The companion [Software Methodology Manual](../methodology/index.md) explains equations, discretizations and qualification limits. Examples here use synthetic data or existing public benchmark entry points. No private study data are needed for the introductory runs.
 

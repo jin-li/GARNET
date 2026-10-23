@@ -1,10 +1,10 @@
 """HP-MR SPH factors from three transport references: SP3 vs SDP1 vs SDP2.
 
-The SPH pipeline (:mod:`ndgpu.sph`) folds a transport reference's angular
+The SPH pipeline (:mod:`garnet.sph`) folds a transport reference's angular
 treatment of the near-black B4C control-drum arc into the coarse diffusion
 constants, so plain TriDiffusion reproduces the transport eigenvalue -- and
 hence the drum worth -- that it otherwise misses by ~100 pcm at insertion. The
-reference is any ndgpu eigensolver's *physical* scalar flux phi0; the three
+reference is any garnet eigensolver's *physical* scalar flux phi0; the three
 matched-DoF simplified-transport families extract that flux differently:
 
     SP3  (Brantley-Larsen)   phi0 = Phi1 - 2 phi2      2-moment block
@@ -33,10 +33,10 @@ import sys
 
 import numpy as np
 
-from ndgpu import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
+from garnet import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
                    TriSDP2EigenSolver, TriSP3EigenSolver,
                    flux_weighted_homogenize, region_average, sph_correct)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
+from garnet.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 device = sys.argv[2] if len(sys.argv) > 2 else "cpu"
@@ -139,4 +139,4 @@ print(f"\n  SPH-corrected worth spans {spread:.0f} pcm across the three "
       f" pcm shift from plain diffusion -- the angular order is a small,\n"
       f"  controlled correction on top of the large diffusion error it removes.")
 print("\n(placeholder cross sections: worths are illustrative, not predictive;"
-      "\n see ndgpu/benchmarks/hpmr.py)")
+      "\n see garnet/benchmarks/hpmr.py)")

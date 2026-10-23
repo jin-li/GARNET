@@ -1,7 +1,7 @@
 """Independent pencil and compatibility checks for separate NEM controls."""
 import numpy as np
 import pytest
-from ndgpu.nem import NEMDiffusionSolver
+from garnet.nem import NEMDiffusionSolver
 from test_nem import tensor_grid, materials, full_augmented
 
 

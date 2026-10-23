@@ -7,8 +7,8 @@ nearest-neighbour mapping between them is exact only for identical vertex sets.
 Building it twice from one function is what keeps that true.
 
 Neither participant contains physics: they call ``neutronics_step`` and
-``thermal_step`` from :mod:`ndgpu.coupling`, the same functions the internal
-:class:`~ndgpu.coupling.CoupledSolver` calls. That is the whole point of the
+``thermal_step`` from :mod:`garnet.coupling`, the same functions the internal
+:class:`~garnet.coupling.CoupledSolver` calls. That is the whole point of the
 cross-verification -- if each script re-implemented its own half, the two
 couplings agreeing would only show that the same author made the same
 assumptions twice.
@@ -22,13 +22,13 @@ import os
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr import build_hpmr2d, build_hpmr3d
-from ndgpu.benchmarks.hpmr_thermal import build_hpmr_coupling, hpmr_endfb8_builtin
-from ndgpu.coupling import coupling_vertices
+from garnet.benchmarks.hpmr import build_hpmr2d, build_hpmr3d
+from garnet.benchmarks.hpmr_thermal import build_hpmr_coupling, hpmr_endfb8_builtin
+from garnet.coupling import coupling_vertices
 
 
 def parse_args(participant: str) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description=f"ndgpu preCICE participant: {participant}")
+    ap = argparse.ArgumentParser(description=f"garnet preCICE participant: {participant}")
     ap.add_argument("--refine", type=int, default=4)
     ap.add_argument("--nz", type=int, default=0,
                     help="axial layers; 0 (default) = the 2D radial core")

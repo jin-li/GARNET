@@ -10,7 +10,7 @@ order, and the r = 0 axis must behave as a natural (regular) boundary.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material
+from garnet import DiffusionEigenSolver, Grid, Material
 
 J0_ZERO = 2.404825557695773
 

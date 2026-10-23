@@ -18,7 +18,7 @@ the checks are:
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, HybridSNDiffusionSolver, Material,
+from garnet import (DiffusionEigenSolver, Grid, HybridSNDiffusionSolver, Material,
                    SNTransportSolver)
 
 BC3 = (("vacuum", "vacuum"), ("vacuum", "vacuum"), "reflective")

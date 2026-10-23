@@ -8,8 +8,8 @@ their interplay with the active-mask machinery.
 import numpy as np
 import pytest
 
-from ndgpu import PWR_TWO_GROUP, k_from_buckling, k_infinite
-from ndgpu.tri import TriDiffusionEigenSolver, TriGrid
+from garnet import PWR_TWO_GROUP, k_from_buckling, k_infinite
+from garnet.tri import TriDiffusionEigenSolver, TriGrid
 
 H = 120.0
 TOL = dict(tol_k=1e-10, tol_source=1e-9)
@@ -47,7 +47,7 @@ def test_extruded_vver440_matches_2d():
     # The full VVER-440 core (heterogeneous, active mask, vacuum in-plane)
     # extruded with reflective z faces must reproduce the 2D k exactly:
     # the z direction adds no gradient.
-    from ndgpu.benchmarks import build_vver440
+    from garnet.benchmarks import build_vver440
     p = build_vver440(refine=1)
     solve = dict(tol_k=1e-9, tol_source=1e-8)
     k2d = TriDiffusionEigenSolver(p.grid, p.materials, p.material_map,

@@ -12,9 +12,9 @@ coarse raster misses, so the drum worth appears.
 import numpy as np
 import pytest
 
-from ndgpu import k_infinite
-from ndgpu.benchmarks.hpmr import _placeholder_materials, hpmr_locally_refined_mesh
-from ndgpu.mesh import UnstructuredDiffusionSolver
+from garnet import k_infinite
+from garnet.benchmarks.hpmr import _placeholder_materials, hpmr_locally_refined_mesh
+from garnet.mesh import UnstructuredDiffusionSolver
 
 
 def test_nonconforming_reflective_is_kinf():

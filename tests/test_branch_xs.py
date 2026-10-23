@@ -2,9 +2,9 @@
 from dataclasses import replace, FrozenInstanceError
 import numpy as np
 import pytest
-from ndgpu.branch_xs import (BranchState, BranchLibrary, NativeBranchState,
+from garnet.branch_xs import (BranchState, BranchLibrary, NativeBranchState,
                             import_serpent_state, build_nem_solver)
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.nem_geometry import CuboidNodalGrid
 
 
 def state(name, t=600., rho=.7, strength=1., **kw):
@@ -114,10 +114,16 @@ def test_missing_and_negative_axis_and_degenerate_simplex():
     with pytest.raises(ValueError):lib.evaluate({})
 
 
-def test_safe_json_round_trip(tmp_path):
+@pytest.mark.parametrize("schema", ["garnet.branch-xs.v1", "ndgpu.branch-xs.v1"])
+def test_safe_json_round_trip(tmp_path, schema):
     native=NativeBranchState({'r':{'fields':{'INF_NSF':[.1,.01]},'sha256':'abc'}})
     a=state('a',t=400.,native=native);b=state('b',t=900.)
     lib=line(a,b);path=tmp_path/'branch.json';lib.save(path)
+    import json
+    payload=json.loads(path.read_text())
+    assert payload['schema'] == 'garnet.branch-xs.v1'
+    payload['schema']=schema
+    path.write_text(json.dumps(payload))
     restored=BranchLibrary.load(path)
     np.testing.assert_array_equal(restored.select('a').D,a.D)
     assert restored.select('a').native.records['r']['fields']['INF_NSF']==(.1,.01)
@@ -146,7 +152,7 @@ def test_factory_fresh_operator_full_matrix_and_dense_reference():
 
 
 def test_serpent_import_preserves_errors_hash_and_explicit_diffusion(tmp_path):
-    from ndgpu.serpent_xs import SerpentXSRecord
+    from garnet.serpent_xs import SerpentXSRecord
     fields={'VERSION':'Serpent 2.2.0','GC_UNIVERSE_NAME':'fuel',
       'MACRO_NG':np.array([2]),'MACRO_E':np.array([20.,6.25e-7,0.]),
       'INF_RABSXS':np.array([.01,.1,.1,.02]),'INF_ABS':np.array([.01,.1,.1,.02]),
@@ -178,7 +184,7 @@ def test_metadata_compatibility_nuclear_geometry_solver_identities():
 
 
 def test_temperature_helper_benchmark_path_and_off_path_rejection():
-    from ndgpu.branch_xs import BenchmarkModeratorPath
+    from garnet.branch_xs import BenchmarkModeratorPath
     path=BenchmarkModeratorPath()
     assert path.evaluate(573.15)==.72683
     assert path.evaluate(558.15)==.75572
@@ -233,7 +239,7 @@ def test_geometry_bounds_identity_mismatch_rejected():
 
 
 def test_changed_density_knots_cannot_reuse_reserved_benchmark_identity():
-    from ndgpu.branch_xs import BenchmarkModeratorPath
+    from garnet.branch_xs import BenchmarkModeratorPath
     with pytest.raises(ValueError,match='new path_id'):
         BenchmarkModeratorPath(densities=(.76,.73,.69))
     custom=BenchmarkModeratorPath(densities=(.76,.73,.69),path_id='explicit-other-path')

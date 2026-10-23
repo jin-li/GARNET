@@ -1,5 +1,5 @@
 {
-  description = "NDgpu development environment (Nix Python and uv)";
+  description = "GARNET development environment (Nix Python and uv)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/b6c8664de9b6cc07fe5666a29f91884ba81197c4";
 
@@ -16,7 +16,7 @@
         rocm-device-libs rocm-runtime rocm-comgr
       ];
       rocmHome = pkgs.symlinkJoin {
-        name = "ndgpu-rocm-${rocm.clr.version}";
+        name = "garnet-rocm-${rocm.clr.version}";
         paths = rocmPaths;
       };
     in {

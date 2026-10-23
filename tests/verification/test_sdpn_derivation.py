@@ -3,7 +3,7 @@
 The SDPN c^(m)/g tables cannot be validated by internal-consistency tests (k_inf,
 dense eigensolve) -- those pass for *any* tables. Both real bugs found so far
 were coefficient errors: the paper's SDP2 c^(1) sign typo (A.3), and the paper's
-SDP3 c rows 2-3 (wrong in the paper AND in the authors' FEMFFUSION code; ndgpu
+SDP3 c rows 2-3 (wrong in the paper AND in the authors' FEMFFUSION code; garnet
 carries independently re-derived values, see _SDPN_C in operator.py).
 
 Two tiers:
@@ -20,7 +20,7 @@ Two tiers:
 import numpy as np
 import pytest
 
-from ndgpu.operator import _SDPN_C, _SDPN_G
+from garnet.operator import _SDPN_C, _SDPN_G
 
 sympy = pytest.importorskip("sympy")
 sp = sympy

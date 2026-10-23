@@ -3,7 +3,7 @@
 This is a development gate, not yet a public transient option.  It constructs
 the exact backward-Euler block system after analytic precursor elimination,
 solves it with flexible GMRES and an inexact energy-group sweep, and compares
-against :class:`ndgpu.TransientSolver` from the same normalized steady state.
+against :class:`garnet.TransientSolver` from the same normalized steady state.
 
 Run from the repository root::
 
@@ -17,10 +17,10 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr_transient_bench import (SIGMA_A_SCALE, build_case,
+from garnet.benchmarks.hpmr_transient_bench import (SIGMA_A_SCALE, build_case,
                                                     scale_absorption)
-from ndgpu.linalg import fgmres
-from ndgpu.multigroup import (AdjointCoarseCorrectionPreconditioner,
+from garnet.linalg import fgmres
+from garnet.multigroup import (AdjointCoarseCorrectionPreconditioner,
                               BlockJacobiPreconditioner,
                               EnergyModeCoarseCorrectionPreconditioner,
                               EnergyGroupGaussSeidelPreconditioner,
@@ -28,9 +28,9 @@ from ndgpu.multigroup import (AdjointCoarseCorrectionPreconditioner,
                               MultigroupStepOperator,
                               SourceShapeCoarseCorrectionPreconditioner,
                               SpatialCoarseSpace)
-from ndgpu.solver import Fields
-from ndgpu.transient import TransientSolver
-from ndgpu.tri import TriDiffusionEigenSolver, TriGroupOperator
+from garnet.solver import Fields
+from garnet.transient import TransientSolver
+from garnet.tri import TriDiffusionEigenSolver, TriGroupOperator
 
 
 def _delayed_terms(fields, kinetics, source, dt):

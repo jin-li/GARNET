@@ -3,10 +3,10 @@ import numpy as np
 import pytest
 from types import SimpleNamespace
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver, SP5EigenSolver,
+from garnet import (Grid, Material, DiffusionEigenSolver, SP3EigenSolver, SP5EigenSolver,
                    SDP1EigenSolver, MeshDiffusionEigenSolver)
-from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
-from ndgpu import solver as solver_module
+from garnet.nodal_mesh import build_rectilinear_mesh_3d
+from garnet import solver as solver_module
 
 
 def material():

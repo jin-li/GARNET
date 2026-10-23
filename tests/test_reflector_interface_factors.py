@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from ndgpu.reflector_interface_factors import extend_reflector_interface_factors as extend
+from garnet.reflector_interface_factors import extend_reflector_interface_factors as extend
 
 
 def fixture():

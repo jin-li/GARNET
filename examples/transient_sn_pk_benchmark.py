@@ -1,6 +1,6 @@
 """Time-dependent S_N transport against exact point kinetics.
 
-The validation benchmark for :class:`ndgpu.TransientSNSolver`. A *uniform*
+The validation benchmark for :class:`garnet.TransientSNSolver`. A *uniform*
 perturbation of a bare slab leaves the flux shape untouched, so the space-angle
 transport equations collapse exactly onto the point-kinetics ODEs -- an
 independent reference for the whole transient stack (angular-flux time source,
@@ -28,7 +28,7 @@ import sys
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from ndgpu import Grid, Kinetics, Material, TransientSNSolver
+from garnet import Grid, Kinetics, Material, TransientSNSolver
 
 D, SIGMA_A, NU_SIGMA_F = 1.3, 0.030, 0.035
 V, BETA, LAM = 2.2e5, 0.0065, 0.08

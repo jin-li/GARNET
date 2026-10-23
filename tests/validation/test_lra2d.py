@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver
-from ndgpu.benchmarks import build_lra2d, lra2d_static_keff
-from ndgpu.benchmarks.lra import (GEOMETRIC_CORE_AREA_CM2, K_REFERENCE,
+from garnet import DiffusionEigenSolver
+from garnet.benchmarks import build_lra2d, lra2d_static_keff
+from garnet.benchmarks.lra import (GEOMETRIC_CORE_AREA_CM2, K_REFERENCE,
                                   PAPER_CORE_AREA_CM2, CHEREZOV_BY_FEM_ORDER,
                                   LRAAdiabaticState, LRATransientResult)
 
@@ -108,7 +108,7 @@ def test_lra_adiabatic_heat_and_doppler_laws_are_exact():
 
 
 def test_lra_doppler_does_not_scale_axial_leakage():
-    from ndgpu.solver import Fields
+    from garnet.solver import Fields
 
     p = build_lra2d(refine=1)
     mats, mmap = p.problem_at(0.0)
