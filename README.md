@@ -12,6 +12,26 @@ The core solvers support:
 - Neutron kinetics, coupled thermal transients, and quasi-static acceleration.
 - SPH correction and cross-section readers for Griffin and FEMFFUSION data.
 
+## Built for GPU
+
+- **Matrix-free stencils.** On structured grids, operators work directly with
+  each cell and its neighbours, avoiding the cost of assembling and storing
+  large sparse matrices.
+- **Device-resident fields.** Fluxes, material data, and temperatures stay on
+  the GPU during iterations, reducing transfers to and from the CPU.
+- **CUDA kernel fusion.** Custom kernels combine small array operations into
+  fewer GPU launches, reducing launch overhead and temporary arrays.
+- **Neumann polynomial preconditioning.** The optional preconditioner uses a
+  few cheap parallel passes to improve each solver correction. This can reduce
+  iterations and global synchronizations: the pauses needed to combine results
+  across the GPU.
+- **Warm starts and adaptive tolerances.** Solves reuse previous solutions.
+  Early iterations use looser accuracy targets, which tighten as the calculation
+  converges. Working memory is reused too.
+
+See the [GPU profiling and measurements](docs/gpu_kernel_optimization_plan.md)
+for timings and hardware-dependent trade-offs.
+
 ## Install
 
 Python 3.10 or later is required. From a checkout:
