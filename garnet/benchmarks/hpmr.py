@@ -27,6 +27,9 @@ graphite/YH2-moderated TRISO core with Be reflector and B4C arcs -- good for
 exercising geometry, symmetry and drum-worth behaviour, not for predicting
 k_eff. Swap in SPH-corrected constants (e.g. read with garnet.femffusion) via
 the ``materials`` argument, ordered as ``MATERIAL_NAMES``.
+
+Reference concept and VTB geometry: Stauff et al., Nuclear Science and
+Engineering (2024), doi:10.1080/00295639.2024.2375175.
 """
 
 from __future__ import annotations

@@ -6,6 +6,11 @@ operator onto a forward/adjoint shape and march the resulting amplitude and
 effective delayed-neutron precursors.  Adaptive spatial shape correction is
 built on top of these primitives; keeping the primitives standalone makes
 their normalization and kinetics testable against exact homogeneous limits.
+
+Background: Devooght and Mund, "Generalized Quasi-Static Method for Nuclear
+Reactor Space-Time Kinetics", Nuclear Science and Engineering 76 (1980),
+10-17, doi:10.13182/NSE80-A19288. GARNET uses a single amplitude with
+adjoint-projected kinetics and spatial precursor inventories.
 """
 
 from __future__ import annotations

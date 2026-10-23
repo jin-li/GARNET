@@ -22,9 +22,9 @@ integration, see [coupling.md](coupling.md).
 | Criticality | `steady()` / `run()` | Diffusion; SP1/3/5/7 and SDP1/2/3 on the tri-grid |
 | Importance | `steady(adjoint=True)` | Adjoint k-eigenvalue calculation |
 | Neutron kinetics | `transient()` | Multigroup diffusion with delayed-neutron families |
-| SPH hand-off | `TriReactor.with_materials()` | Reuse the same geometry with corrected constants |
+| SPH hand-off | `with_materials()` | Cartesian, triangular and general-mesh models; full lists or partial name/index mappings |
 | Thermal feedback | `configure_thermal()` | Material conductivity, heat capacity, sinks, Doppler and density feedback |
-| Coupled calculations | `coupled_steady()`, `coupled_transient()`, `quasistatic_transient()` | In-process, device-resident diffusion/conduction coupling |
+| Coupled calculations | `coupled_steady()`, `coupled_transient()`, `quasistatic_transient()` | Cartesian and triangular diffusion/conduction coupling |
 | Moving controls | `state_at(t)` | Cached same-shaped reactor states, including rotating drum frames |
 | CPU/GPU portability | `device="auto"` | NumPy CPU fallback or CuPy/CUDA GPU execution |
 
@@ -125,6 +125,13 @@ the absolute normalization.
 
 Give thermally coupled materials unique, non-empty names. Name-keyed thermal
 and feedback dictionaries avoid exposing the integer material ordering.
+
+For a variation on an existing material, use
+`hot_fuel = fuel.replace(sigma_a=fuel.sigma_a * 1.01)`. This validates and copies
+the constants while retaining scattering, spectra and energy-release data.
+`core.with_materials({"fuel": hot_fuel})` returns a separate model on the same
+geometry. All three model types support this partial name/index mapping as well
+as a complete ordered list.
 
 ## 2. Build a 2-D or 3-D tri-grid reactor
 
@@ -592,9 +599,9 @@ def control_state(t):
     return frames[0.0]
 ```
 
-All frames must have the same grid shape. The base reactor owns the thermal
-configuration; a state supplies the time-dependent material and volume-mix
-arrays.
+All frames must preserve grid dimensions, physical size, boundaries, active
+cells and material count. The base reactor owns the thermal configuration; a
+state supplies the time-dependent material and volume-mix arrays.
 
 ## Cartesian and unstructured alternatives
 
@@ -607,8 +614,34 @@ box = (
     .add_box(fuel, x=(20, 100), y=(20, 100), z=(20, 180))
     .set_boundary("vacuum")
 )
-print(box.run(method="diffusion", device="auto"))
+result = box.steady(method="diffusion", device="auto")  # run() also works
+print(result)
+q = result.power_density(total_power=2e6)  # W/cm³; integrates to 2 MW
+print((q * result.cell_volumes).sum())
 ```
+
+`Model` supports the same `configure_thermal`, `coupled_steady`,
+`coupled_transient` and `quasistatic_transient` calls described above. Neutron
+transients accept `materials_at(t)` returning either an ordered list or a
+partial mapping such as `{"fuel": hot_fuel}`; `{}` selects the base materials.
+For moving assignments, `state_at(t)` may return a cached Cartesian `Model`.
+Only one perturbation callback may be supplied.
+
+Both `Model` and `TriReactor` accept a `Kinetics` object in `set_kinetics` and a
+compatible public steady result in `transient(initial_steady=result)`.
+Construction controls such as the Neumann preconditioner degree go in
+`solver_kwargs={"precond_degree": 1}`; tolerance and time-integration controls
+go directly to `steady` or `transient`. Steady `MeshModel` runs use this split
+too. `result.raw` retains the underlying solver result and its telemetry.
+
+Steady forward results expose `material_summary` rows (`name`,
+`volume_fraction`, `fission_fraction`) and `power_density(total_power=...)`.
+The latter uses a snapshot of the solved materials and maps. One- and
+two-dimensional Cartesian models represent a 1 cm extent in each omitted
+direction, so use the power of that modeled slice.
+
+See [diffusion_workflow.py](../examples/diffusion_workflow.py) for a complete
+Cartesian calculation with named perturbations and thermal feedback.
 
 For an existing Gmsh model, assign material by physical tag or centroid:
 
@@ -623,7 +656,7 @@ mesh_model = (
 mesh_solution = mesh_model.run(device="auto")
 ```
 
-`MeshModel` currently provides steady diffusion. Use `TriReactor` for the
+`MeshModel` currently provides steady diffusion. Use `Model` or `TriReactor` for the
 complete SPN/SDPN, transient, and coupled workflow.
 
 ## Accuracy and validation checklist
@@ -658,12 +691,14 @@ validation in `tests/verification/` and `tests/validation/`.
 | `examples/hpmr_coupled_transient.py` | Full-diffusion or quasi-static coupled transient and profiling |
 | `examples/hpmr_sph_reference_families.py` | SPH generation and reference-method comparison |
 | `examples/twigl_benchmark.py` | Validated static and transient Cartesian workflow |
+| `examples/diffusion_workflow.py` | Named Cartesian material edits, power, kinetics and thermal feedback |
 | `examples/unstructured_mesh.py` | Gmsh/finite-volume `MeshModel` workflow |
 
 ## Public API at a glance
 
 ```text
 Material(...)
+  .replace(**changes) -> Material
 
 HexLattice(pitch, refine)
   .set_site(...) / .set_sites(...) / .set_ring(...) / .set_disk(...)
@@ -685,11 +720,17 @@ TriReactor
 
 Model(size, cells)
   .fill(...) / .add_box(...) / .set_boundary(...) / .set_kinetics(...)
-  .run(...) / .transient(...)
+  .steady(...) / .run(...) / .transient(...)
+  .with_materials(list_or_mapping) -> Model
+  .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
+  .quasistatic_transient(...)
 
 MeshModel(mesh)
   .fill(...) / .assign(...) / .add_box(...) / .set_boundary(...)
-  .run(...)
+  .steady(...) / .run(...) / .with_materials(list_or_mapping)
+
+ReactorResult
+  .power_density(total_power=...) / .cell_volumes / .material_summary / .raw
 ```
 
 When the public objects do not expose a research-specific option,

@@ -1,7 +1,8 @@
 """Order-N simplified-PN / simplified-double-PN block operators.
 
-The general M = N+1 moment machinery for the SDPN family (Carreno et al., Ann.
-Nucl. Energy 207 (2024) 110675) and the standard SPN family that shares its
+The general M = N+1 moment machinery for the SDPN family (Carreño,
+Vidal-Ferràndiz, Ginestar and Verdú, Ann. Nucl. Energy 207 (2024) 110675,
+doi:10.1016/j.anucene.2024.110675) and the standard SPN family that shares its
 diffusive U-form: the coefficient tables (``_SDPN_C`` / ``_SPN_C`` and the
 Marshak boundary matrices ``_SDPN_G`` / ``_SPN_G``), the plain per-moment block
 (:class:`SDPNGroupOperator`), and the symmetrizing-congruence CG path for tables

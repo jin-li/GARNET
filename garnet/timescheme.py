@@ -41,6 +41,12 @@ of a BDF forces ``sum_j a_j = 0``, hence ``H = a0 C`` at equilibrium, hence
 for *any* a0, which is what keeps power evolution driven purely by the applied
 perturbation. The theta-method is not of this form (it carries F^n, not past
 states), so it has no matching precursor treatment and is prompt-only.
+
+Reactor-transient reference: Cherezov, Vasiliev and Ferroukhi, "Application of
+Backward Differential Formula and Anderson's method for multigroup diffusion
+transient equation", Ann. Nucl. Energy 210 (2025), 110837,
+doi:10.1016/j.anucene.2024.110837. This module supplies the time formulas;
+the spatial discretization and error-controller choices are GARNET's own.
 """
 
 from __future__ import annotations

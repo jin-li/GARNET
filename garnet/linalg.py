@@ -239,8 +239,10 @@ def neumann_preconditioner(apply_A, inv_diag, degree):
     pure stencil streaming, no dot products -- and cuts the CG iteration
     count (and with it the per-iteration global reductions, the only
     synchronization points on the GPU). Degree 0 is plain Jacobi.
-    Cf. Zhang et al., NED 316 (2017): Neumann-PCG was the fastest of the
-    preconditioners compared on GPU for fine-mesh FV diffusion.
+    GPU fine-mesh diffusion reference: Y. E et al., Nuclear Engineering and
+    Design 320 (2017), 88-102, doi:10.1016/j.nucengdes.2017.04.001.
+    Their comparison motivates the Neumann-PCG option; its degree and benefit
+    are workload dependent.
     """
     xp = kernels.module_of(inv_diag)
     try:
@@ -826,6 +828,9 @@ def fgmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0,
            workspace=None):
     """Solve a real non-symmetric system with flexible restarted GMRES.
 
+    Reference: Saad, SIAM J. Sci. Comput. 14 (1993), 461-469,
+    doi:10.1137/0914028, for variable right preconditioning.
+
     This has the same public signature and true-residual stopping rule as
     :func:`gmres`, but stores every preconditioned Arnoldi vector ``Z[j]``.
     Consequently ``precond`` may be variable, nonlinear, or an inexact
@@ -1141,6 +1146,9 @@ ANDERSON_RESTART_GROWTH = 1.5
 
 def anderson_step(X, F, beta=1.0):
     """One Anderson update from histories of iterates and residuals.
+
+    Reference: Walker and Ni, SIAM J. Numer. Anal. 49 (2011), 1715-1735,
+    doi:10.1137/10078356X, for the least-squares difference-history form.
 
     X : list of past iterates x_k (flat arrays). F : list of residuals
     f_k = g(x_k) - x_k. Returns the next iterate: the least-squares mixture of

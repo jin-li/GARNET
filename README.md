@@ -69,7 +69,7 @@ SPH data, moving control drums, and coupled calculations.
 
 ## Documentation
 
-- [User guide](docs/user_guide.md) and [model API reference](docs/model_api.md).
+- [User guide](docs/user_guide.md), [model API reference](docs/model_api.md), and [API audit](docs/api_audit.md).
 - [Thermal coupling](docs/coupling.md): conduction, feedback, energy balance,
   and preCICE integration.
 - [Finite-volume theory report](docs/report.html): discretization and solver
@@ -110,3 +110,40 @@ Optional tests require CUDA, preCICE, or external reference files. See the
 and the [test layout](tests/README.md) for the verification/validation split.
 
 Licensed under the [GNU GPL v3](LICENSE).
+
+## References
+
+Key sources for the formulations and numerical methods:
+
+- **SDPN:** A. Carreño, A. Vidal-Ferràndiz, D. Ginestar and G. Verdú (2024),
+  [Development of a diffusive simplified double PN approximation to the neutron transport equation](https://doi.org/10.1016/j.anucene.2024.110675).
+  *Annals of Nuclear Energy* **207**, 110675. SDPN equations, coefficient tables,
+  and boundary conditions.
+- **SP3:** P. S. Brantley and E. W. Larsen (2000),
+  [The Simplified P3 Approximation](https://doi.org/10.13182/NSE134-01).
+  *Nuclear Science and Engineering* **134**, 1–21. Two-moment formulation and
+  Marshak boundary conditions.
+- **GPU diffusion and preconditioning:** Y. E et al. (2017),
+  [Development of a GPU-accelerated 3D neutron dynamics code for PB-FHR](https://doi.org/10.1016/j.nucengdes.2017.04.001).
+  *Nuclear Engineering and Design* **320**, 88–102. Fine-mesh finite volumes
+  and Neumann-polynomial preconditioned CG on GPU.
+- **SPH equivalence:** V. Labouré et al. (2019),
+  [Hybrid super homogenization and discontinuity factor method for continuous finite element diffusion](https://doi.org/10.1016/j.anucene.2019.01.003).
+  *Annals of Nuclear Energy* **128**, 443–454. Reaction-rate/leakage equivalence
+  and SPH normalization, adapted here to finite volumes.
+- **Diffusion transients:** A. Cherezov, A. Vasiliev and H. Ferroukhi (2025),
+  [Application of Backward Differential Formula and Anderson’s method for multigroup diffusion transient equation](https://doi.org/10.1016/j.anucene.2024.110837).
+  *Annals of Nuclear Energy* **210**, 110837. BDF integration, multigroup
+  iteration, and transient benchmark comparisons.
+- **Quasi-static kinetics:** J. Devooght and E. Mund (1980),
+  [Generalized Quasi-Static Method for Nuclear Reactor Space-Time Kinetics](https://doi.org/10.13182/NSE80-A19288).
+  *Nuclear Science and Engineering* **76**, 10–17. Background for flux
+  amplitude/shape factorization; GARNET uses a single amplitude.
+- **Anderson acceleration:** H. F. Walker and P. Ni (2011),
+  [Anderson Acceleration for Fixed-Point Iterations](https://doi.org/10.1137/10078356X).
+  *SIAM Journal on Numerical Analysis* **49**, 1715–1735. The least-squares
+  mixing form used for SPH and coupled fixed-point solves.
+- **Flexible Krylov solves:** Y. Saad (1993),
+  [A Flexible Inner-Outer Preconditioned GMRES Algorithm](https://doi.org/10.1137/0914028).
+  *SIAM Journal on Scientific Computing* **14**, 461–469. FGMRES with variable
+  inner preconditioning for coupled energy-group systems.

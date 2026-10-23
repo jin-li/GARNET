@@ -392,7 +392,8 @@ class UnstructuredDiffusionSolver:
             Di, Dj = Dg[fi], Dg[fj]
             face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd       # harmonic-mean coupling
             # per-slot weights (0 where padded); diag from the same face weights.
-            w_ell = np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
+            w_ell = (np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
+                     if face_w.size else np.zeros(fmap.shape, dtype=dtype))
             diag = removal[g] * area
             diag = diag + np.bincount(fi, weights=face_w, minlength=n)
             diag = diag + np.bincount(fj, weights=face_w, minlength=n)

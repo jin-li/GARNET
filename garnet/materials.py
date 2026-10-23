@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, replace
 
 import numpy as np
 
@@ -42,6 +42,8 @@ class Material:
 
     def __post_init__(self):
         self.diffusion = np.atleast_1d(np.asarray(self.diffusion, dtype=np.float64))
+        if self.diffusion.ndim != 1 or not self.diffusion.size:
+            raise ValueError("diffusion must be a non-empty one-dimensional group array")
         G = self.n_groups
         self.sigma_a = np.asarray(self.sigma_a, dtype=np.float64).reshape(G)
         self.nu_sigma_f = np.asarray(self.nu_sigma_f, dtype=np.float64).reshape(G)
@@ -52,21 +54,39 @@ class Material:
             self.chi = np.zeros(G)
             self.chi[0] = 1.0
         self.chi = np.asarray(self.chi, dtype=np.float64).reshape(G)
+        for key in ("diffusion", "sigma_a", "nu_sigma_f", "sigma_s", "chi"):
+            if not np.all(np.isfinite(getattr(self, key))):
+                raise ValueError(f"{key} must contain finite values")
         if np.any(self.diffusion <= 0):
             raise ValueError("diffusion coefficients must be positive")
         if np.any(self.sigma_a < 0) or np.any(self.nu_sigma_f < 0) or np.any(self.sigma_s < 0):
             raise ValueError("cross sections must be non-negative")
+        if np.any(self.chi < 0):
+            raise ValueError("chi must be non-negative")
         if self.is_fissile and not np.isclose(self.chi.sum(), 1.0):
             raise ValueError(f"chi must sum to 1 for fissile material, got {self.chi.sum()}")
         if self.total is not None:
             self.total = np.asarray(self.total, dtype=np.float64).reshape(G)
-            if np.any(self.total <= 0):
-                raise ValueError("total cross sections must be positive")
+            if not np.all(np.isfinite(self.total)) or np.any(self.total <= 0):
+                raise ValueError("total cross sections must be finite and positive")
         if self.kappa_fission is not None:
             self.kappa_fission = np.asarray(self.kappa_fission,
                                             dtype=np.float64).reshape(G)
-            if np.any(self.kappa_fission < 0):
-                raise ValueError("kappa_fission must be non-negative")
+            if not np.all(np.isfinite(self.kappa_fission)) or np.any(self.kappa_fission < 0):
+                raise ValueError("kappa_fission must be finite and non-negative")
+
+    def replace(self, **changes) -> "Material":
+        """Return an independent, validated copy with selected fields changed.
+
+        For example, ``fuel.replace(sigma_a=fuel.sigma_a * 1.01)`` preserves
+        scattering, spectra and fission-energy data as well as the name.
+        Array data are copied, so editing the new material leaves this one alone.
+        """
+        values = {field.name: getattr(self, field.name) for field in fields(self)}
+        values.update(changes)
+        values = {key: value.copy() if isinstance(value, np.ndarray) else value
+                  for key, value in values.items()}
+        return replace(self, **values)
 
     @property
     def sigma_t(self) -> np.ndarray:
@@ -119,6 +139,9 @@ class Kinetics:
         self.velocities = np.atleast_1d(np.asarray(self.velocities, dtype=np.float64))
         self.beta = np.atleast_1d(np.asarray(self.beta, dtype=np.float64))
         self.decay = np.atleast_1d(np.asarray(self.decay, dtype=np.float64))
+        for key in ("velocities", "beta", "decay"):
+            if not np.all(np.isfinite(getattr(self, key))):
+                raise ValueError(f"{key} must contain finite values")
         if self.velocities.ndim > 2 or self.beta.ndim > 2 or self.decay.ndim != 1:
             raise ValueError("velocities/beta must be 1D or 2D (per-material), decay 1D")
         if self.beta.shape[-1] != self.decay.shape[0]:
@@ -127,6 +150,11 @@ class Kinetics:
             raise ValueError("velocities and decay constants must be positive, beta non-negative")
         if self.chi_delayed is not None:
             self.chi_delayed = np.asarray(self.chi_delayed, dtype=np.float64)
+            if (self.chi_delayed.ndim not in (1, 2) or
+                    not np.all(np.isfinite(self.chi_delayed)) or
+                    np.any(self.chi_delayed < 0) or
+                    np.any(self.chi_delayed.sum(axis=-1) <= 0)):
+                raise ValueError("chi_delayed must contain finite, non-negative spectra with positive sums")
             if self.chi_delayed.ndim == 2 and len(self.chi_delayed) != self.n_families:
                 raise ValueError("2D chi_delayed must have one spectrum per precursor family")
             self.chi_delayed = (self.chi_delayed

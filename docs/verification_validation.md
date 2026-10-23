@@ -6,6 +6,34 @@ evidence to the core features exposed in the [README](../README.md). Test
 assertions are the executable acceptance criteria; benchmark reports retain
 the mesh, time step, physics data, and hardware behind their results.
 
+## Diffusion API check
+
+The diffusion API audit on 23 October 2026 added 44 workflow cases. The full
+default CPU suite passed: **639 passed, 0 failed, 7 skipped, 13 slow cases
+excluded**, in 712.10 s. A final focused run passed all **75 cases**, covering
+the original model/TWIGL checks, new workflows, example imports, and the last
+mesh-boundary input guard. The skips are the same optional dependencies,
+external mesh inputs and CUDA cases listed in the earlier CPU record below.
+
+The new checks verify named material replacement, constructor-option forwarding,
+power integration on all three model types, snapshot consistency, Cartesian
+thermal feedback and coupled equilibrium, invalid-input errors, and a one-cell
+Gmsh mesh. Acceptance criteria and remaining API gaps are in the
+[audit report](api_audit.md); the
+[workflow tests](../tests/verification/test_diffusion_workflow_api.py) are the
+executable specification.
+
+The refreshed `dist/garnet-src.zip` was installed in isolation. It reproduced
+the README eigenvalue `1.1352040511640966`, the `(2, 24, 24, 24)` flux shape,
+and a power field integrating to 2 MW, and ran the new Cartesian coupled
+example successfully. Syntax was checked in 177 Python files. GPU execution
+and the excluded slow studies were not repeated.
+
+Evidence: [full pytest record](qa/garnet-api-cpu-2026-10-23.xml) and
+[environment, source fingerprints, focused checks and archive validation](qa/garnet-api-2026-10-23.json).
+The record distinguishes the full-suite source snapshot from the two files
+with the subsequent boundary guard and its final focused checks.
+
 ## GARNET rename check
 
 The renamed checkout was checked on 23 October 2026 in a local staging

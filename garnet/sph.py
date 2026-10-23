@@ -27,6 +27,12 @@ reference between families feeds SPH genuinely different angular closures of the
 same problem rather than a re-extraction of one field. See
 examples/hpmr_sph_reference_families.py for an SP3-vs-SDP1-vs-SDP2 comparison on
 the HP-MR drum arc.
+
+Equivalence and leakage-normalization reference: Labouré et al., "Hybrid
+super homogenization and discontinuity factor method for continuous finite
+element diffusion", Ann. Nucl. Energy 128 (2019), 443-454,
+doi:10.1016/j.anucene.2019.01.003. The finite-volume diffusion-scaling choices
+and their departures from the paper's CFEM treatment are documented below.
 """
 
 from __future__ import annotations

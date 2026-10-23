@@ -29,16 +29,20 @@ Example -- a reflected Cartesian core::
 from __future__ import annotations
 
 import math
+import os
+from copy import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
 
+from ._model_support import (box_range, checked_kinetics, checked_materials,
+                             replace_materials, solver_options)
 from .grid import Grid
 from .hexraster import hex_site_xy, rasterize_hex_sites
 from .materials import Kinetics, Material
 from .mesh import UnstructuredDiffusionSolver, read_gmsh
-from .stencil import face_alpha
+from .stencil import face_alpha, normalize_bc
 from .solver import (DiffusionEigenSolver, SDP1EigenSolver, SDP2EigenSolver,
                      SDP3EigenSolver, SP1EigenSolver, SP3EigenSolver,
                      SP5EigenSolver, SP7EigenSolver)
@@ -60,7 +64,11 @@ _AXES = ("x", "y", "z")
 
 def _albedo(spec) -> float:
     """Robin coefficient for a boundary name/albedo (zero-flux -> a large finite alpha)."""
-    a = face_alpha(spec)
+    if np.ndim(spec) != 0:
+        raise ValueError("MeshModel boundary must be a single face name or albedo")
+    a = face_alpha(normalize_bc(spec)[0][0])
+    if math.isnan(a):
+        raise ValueError("boundary albedo cannot be NaN")
     return 1e8 if a == float("inf") else float(a)
 
 
@@ -121,6 +129,15 @@ def _diagnostics(materials, cell_material, flux_flat, cell_volume, active,
     return production, absorption, rows
 
 
+@dataclass(frozen=True)
+class MaterialSummary:
+    """Volume and fission-production fractions for one solved material."""
+
+    name: str
+    volume_fraction: float
+    fission_fraction: float
+
+
 class ReactorResult:
     """A solved reactor with a human-readable report.
 
@@ -145,6 +162,16 @@ class ReactorResult:
         self.adjoint = adjoint
         self.flux = flux                          # (G, *shape) numpy
         self.n_groups = flux.shape[0]
+        # Keep postprocessing tied to the solved state when the builder or its
+        # material arrays are subsequently edited.
+        self._materials = tuple(m.replace() for m in materials)
+        self._material_map = np.asarray(cell_material).copy()
+        self.cell_volumes = np.broadcast_to(
+            np.asarray(cell_volume, float), flux.shape[1:]).copy()
+        self._active = (np.ones(flux.shape[1:], bool) if active is None else
+                        np.asarray(active, bool).copy())
+        self._mix_material = None if mix_material is None else np.asarray(mix_material).copy()
+        self._mix_weight = None if mix_weight is None else np.asarray(mix_weight).copy()
         self._geometry_line = geometry_line
         self._boundary_line = boundary_line
 
@@ -152,7 +179,7 @@ class ReactorResult:
         act = (np.ones(flat.shape[1], bool) if active is None
                else np.asarray(active).reshape(-1).astype(bool))
         prod, absorb, rows = _diagnostics(
-            materials, cell_material, flat, cell_volume, act,
+            materials, cell_material, flat, self.cell_volumes.reshape(-1), act,
             mix_material=mix_material, mix_weight=mix_weight)
         absorb += absorption_correction           # volume-mixed sub-cell absorbers (drum arcs)
         loss = prod / self.k_eff                  # neutrons available per generation
@@ -161,6 +188,28 @@ class ReactorResult:
         thermal = flat[-1][act]
         self.peaking = float(thermal.max() / thermal.mean()) if thermal.size else float("nan")
         self._material_stats = rows
+        self.material_summary = tuple(MaterialSummary(name, volf, fisf)
+                                      for name, volf, _fis, fisf in rows)
+
+    def power_density(self, total_power):
+        """Return a NumPy power-density field in W/cm³ at the given domain power.
+
+        Its integral ``(q * result.cell_volumes).sum()`` equals ``total_power``
+        in W. Two-dimensional calculations use a 1 cm slice unless their grid
+        specifies a different thickness. Energy-release cross sections are used
+        when supplied; otherwise the shape uses neutron fission production.
+        """
+        from .power import power_density
+
+        if self.adjoint:
+            raise ValueError("power density requires a forward flux, not an adjoint importance")
+        if not np.isfinite(total_power) or total_power < 0.0:
+            raise ValueError("total_power must be finite and non-negative")
+        return power_density(
+            self.flux, self._materials, self._material_map,
+            total_power=total_power, volume_weight=self.cell_volumes,
+            active=self._active, mix_material=self._mix_material,
+            mix_weight=self._mix_weight)
 
     def summary(self) -> str:
         kind = "adjoint (importance) solution" if self.adjoint else "solution"
@@ -210,15 +259,23 @@ class ReactorResult:
 class ModelResult(ReactorResult):
     """:class:`ReactorResult` for a structured :class:`Model` (keeps ``.model``)."""
 
-    def __init__(self, model, result, method, adjoint=False):
+    def __init__(self, model, result, method, adjoint=False, *, problem=None):
         self.model = model
+        self.raw = result
+        materials, material_map, mix, weight = (
+            (model.materials, model._map, None, None) if problem is None else problem)
+        if isinstance(materials, Material):
+            materials = [materials]
+        if material_map is None:
+            material_map = np.zeros(model.grid.shape, dtype=np.int64)
         super().__init__(
             k_eff=result.k_eff, converged=result.converged,
             outer_iterations=result.outer_iterations,
             inner_iterations=result.inner_iterations,
             solve_seconds=result.solve_seconds, device=result.device, method=method,
-            flux=result.flux_numpy, materials=model._materials,
-            cell_material=model._map, adjoint=adjoint,
+            flux=result.flux_numpy, materials=materials,
+            cell_material=material_map, cell_volume=model.grid.cell_volume, adjoint=adjoint,
+            mix_material=mix, mix_weight=weight,
             geometry_line=model._geometry_line(), boundary_line=model._boundary_line())
 
 
@@ -235,8 +292,9 @@ class TransientModelResult:
     time and power arrays (:attr:`times`, :attr:`power`) are plain NumPy.
     """
 
-    def __init__(self, model, tres, kinetics):
+    def __init__(self, model, tres, kinetics, *, steady_problem=None):
         self.model = model
+        self.raw = tres
         self.kinetics = kinetics
         self.k0 = float(tres.k0)
         self.times = np.asarray(tres.times)
@@ -245,7 +303,7 @@ class TransientModelResult:
         self.solve_seconds = tres.solve_seconds
         self.total_inner_iterations = tres.total_inner_iterations
         self.flux = tres.flux_numpy                    # final scalar flux
-        self.steady = ModelResult(model, tres.steady, "diffusion")
+        self.steady = ModelResult(model, tres.steady, "diffusion", problem=steady_problem)
         ip = int(np.argmax(self.power))
         self.peak_power, self.peak_time = float(self.power[ip]), float(self.times[ip])
         self.final_power, self.final_time = float(self.power[-1]), float(self.times[-1])
@@ -268,12 +326,14 @@ class TransientModelResult:
             "=======================",
             f"  geometry    : {self.model._geometry_line()}",
             f"  groups      : {self.steady.n_groups}     boundary: {self.model._boundary_line()}",
-            f"  kinetics    : {kin.n_families} delayed {fam}, beta = {kin.beta_total * 1e5:.0f} pcm",
+            f"  kinetics    : {kin.n_families} delayed {fam}, " +
+            ("material-dependent beta" if kin.beta.ndim == 2 else
+             f"beta = {kin.beta_total * 1e5:.0f} pcm"),
             "",
             f"  initial steady state : k0 = {self.k0:.6f}  "
             f"(fission source normalised by k0; unperturbed -> P/P0 stays 1)",
-            f"  time span            : 0 -> {self.final_time:g} s, dt = {self.dt:g} s, "
-            f"{self.times.size - 1} steps, {self.solve_seconds:.2f} s on {self.device}",
+            f"  time span            : 0 -> {self.final_time:g} s, "
+            f"{self.times.size - 1} recorded intervals, {self.solve_seconds:.2f} s on {self.device}",
             "",
             "  power P/P0:",
             f"    peak      : {self.peak_power:.4f} at t = {self.peak_time:g} s",
@@ -296,7 +356,182 @@ class TransientModelResult:
 # ---------------------------------------------------------------------------
 # Structured Cartesian model
 # ---------------------------------------------------------------------------
-class Model:
+class _CoupledModel:
+    """Common thermal-coupling API for Cartesian and triangular models."""
+
+    def _ordered_thermal_materials(self, spec):
+        from .thermal import ThermalMaterial
+
+        if not isinstance(spec, Mapping):
+            values = list(spec)
+            if len(values) != len(self.materials):
+                raise ValueError("thermal material list must align with materials")
+            return values
+        names = [m.name for m in self.materials]
+        if any(not n for n in names) or len(set(names)) != len(names):
+            raise ValueError("named thermal mapping needs unique non-empty material names")
+        geometry = self._coupling_geometry()
+        material_map = geometry["material_map"]
+        active = geometry.get("active")
+        active = np.ones(material_map.shape, bool) if active is None else active
+        unknown = set(spec) - set(names)
+        if unknown:
+            raise ValueError(f"unknown thermal material names: {sorted(unknown)}")
+        used = set(np.unique(material_map[active]).tolist())
+        mix = geometry.get("mix_material")
+        if mix is not None:
+            used.update(np.unique(mix[
+                active & (mix >= 0) & (geometry["mix_weight"] > 0)]).tolist())
+        out = []
+        for i, name in enumerate(names):
+            if name in spec:
+                out.append(spec[name])
+            elif i not in used:
+                out.append(ThermalMaterial(1e-12, name=f"inactive {name}"))
+            else:
+                raise ValueError(f"no thermal material supplied for active {name!r}")
+        return out
+
+    def _feedback_from_mapping(self, specs, ambient_temperature):
+        from .feedback import ThermalFeedback
+
+        names = [m.name for m in self.materials]
+        if any(not n for n in names) or len(set(names)) != len(names):
+            raise ValueError("named feedback mapping needs unique non-empty material names")
+        unknown = set(specs) - set(names)
+        if unknown:
+            raise ValueError(f"unknown feedback material names: {sorted(unknown)}")
+        rows, t_ref, expansion = [], [], []
+        any_groupwise = False
+        any_expansion = False
+        for name in names:
+            item = specs.get(name, FeedbackSpec(ambient_temperature))
+            if isinstance(item, Mapping):
+                item = FeedbackSpec(**item)
+            if not isinstance(item, FeedbackSpec):
+                raise TypeError("feedback mapping values must be FeedbackSpec or dict")
+            row = np.atleast_1d(np.asarray(item.doppler, dtype=float))
+            if row.size not in (1, self.n_groups):
+                raise ValueError(f"feedback for {name!r} needs scalar or "
+                                 f"{self.n_groups}-group doppler")
+            any_groupwise |= row.size > 1
+            rows.append(row)
+            t_ref.append(float(item.reference_temperature))
+            expansion.append(0.0 if item.expansion is None else float(item.expansion))
+            any_expansion |= item.expansion is not None
+        doppler = (np.vstack([np.broadcast_to(r, (self.n_groups,)) for r in rows])
+                   if any_groupwise else np.array([r[0] for r in rows]))
+        return ThermalFeedback(t_ref, doppler,
+                               np.array(expansion) if any_expansion else None)
+
+    def configure_thermal(self, thermal_materials, *, total_power, feedback=None,
+                          thermal_bc="adiabatic", thermal_mask_bc="adiabatic",
+                          ambient_temperature=300.0, warm_start=True,
+                          eigen_kwargs=None):
+        """Attach conduction and feedback data used by coupled calculations.
+
+        ``thermal_materials`` may be a list in solver material order or a
+        ``{material_name: ThermalMaterial}`` mapping. ``feedback`` may be an
+        existing feedback object or a named mapping of :class:`FeedbackSpec`.
+        Missing feedback entries mean zero feedback; inactive padding materials
+        need not be present in the thermal mapping.
+        """
+        from .feedback import ThermalFeedback
+
+        checked_materials(self.materials)
+        thermal = self._ordered_thermal_materials(thermal_materials)
+        if feedback is None:
+            feedback = ThermalFeedback(
+                np.full(len(self.materials), float(ambient_temperature)),
+                np.zeros(len(self.materials)))
+        elif isinstance(feedback, Mapping):
+            feedback = self._feedback_from_mapping(feedback, ambient_temperature)
+        if (hasattr(feedback, "n_materials") and
+                feedback.n_materials != len(self.materials)):
+            raise ValueError("feedback material count does not match reactor materials")
+        if not np.isfinite(total_power) or total_power < 0.0:
+            raise ValueError("total_power must be finite and non-negative")
+        self._thermal_config = dict(
+            thermal_materials=thermal, total_power=float(total_power),
+            feedback=feedback, thermal_bc=thermal_bc,
+            thermal_mask_bc=thermal_mask_bc,
+            ambient_temperature=float(ambient_temperature),
+            warm_start=bool(warm_start),
+            eigen_kwargs=dict(eigen_kwargs or {"tol_k": 1e-9,
+                                               "tol_source": 1e-8}))
+        return self
+
+    def coupling_context(self, *, device="auto", dtype=np.float64, **overrides):
+        """Create the low-level :class:`CouplingContext` for advanced use."""
+        from .coupling import CouplingContext
+
+        if self._thermal_config is None:
+            raise ValueError("thermal physics is not configured; call configure_thermal()")
+        kw = dict(self._thermal_config)
+        kw.update(overrides)
+        geometry = self._coupling_geometry()
+        return CouplingContext(
+            materials=self.materials, kinetics=self.kinetics,
+            device=device, dtype=dtype, **dict(geometry, **kw))
+
+    def coupled_steady(self, *, device="auto", context_kwargs=None,
+                       **solve_kwargs):
+        """Solve the self-consistent steady neutronics/thermal state."""
+        from .coupling import CoupledSolver
+
+        ctx = self.coupling_context(device=device, **(context_kwargs or {}))
+        return CoupledSolver(ctx).solve(**solve_kwargs)
+
+    def coupled_transient(self, t_end, dt, *, device="auto", problem_at=None,
+                          state_at=None, **kwargs):
+        """Run the GPU-resident coupled transient through the public model API."""
+        from .coupling import coupled_transient
+
+        if self.kinetics is None:
+            raise ValueError("no kinetics: call set_kinetics() first")
+        if problem_at is not None and state_at is not None:
+            raise ValueError("use problem_at or state_at, not both")
+        if state_at is not None:
+            def problem_at(t):
+                state = state_at(t)
+                return self._state_problem(state)
+        ctx = self.coupling_context(device=device)
+        return coupled_transient(ctx, t_end=t_end, dt=dt,
+                                 problem_at=problem_at, **kwargs)
+
+    def quasistatic_transient(self, t_end, dt, *, shape_dt=2.0,
+                              device="auto", problem_at=None, state_at=None,
+                              **kwargs):
+        """Run an improved quasi-static coupled transient.
+
+        The adjoint-weighted population amplitude and precursors advance every
+        ``dt`` while the full spatial shape is corrected every ``shape_dt``;
+        the returned power includes the shape's adjoint-weighted fission-power
+        factor. Time-dependent IQS is the default; ``shape_method="adiabatic"``
+        selects instantaneous eigen shapes. Residual thresholds can force early
+        corrections or full-diffusion fallback intervals for rapid localized
+        motion; ``iqs_predictor_tol`` adaptively shortens subsequent shape
+        intervals after a large amplitude-predictor disagreement.
+        ``adjoint_residual_tol`` can refresh a reused importance shape before
+        its configured ``adjoint_every`` maximum age.
+        """
+        from .quasistatic import quasistatic_coupled_transient
+
+        if self.kinetics is None:
+            raise ValueError("no kinetics: call set_kinetics() first")
+        if problem_at is not None and state_at is not None:
+            raise ValueError("use problem_at or state_at, not both")
+        if state_at is not None:
+            def problem_at(t):
+                state = state_at(t)
+                return self._state_problem(state)
+        ctx = self.coupling_context(device=device)
+        return quasistatic_coupled_transient(
+            ctx, t_end=t_end, dt=dt, shape_dt=shape_dt,
+            problem_at=problem_at, **kwargs)
+
+
+class Model(_CoupledModel):
     """A rectangular reactor defined in centimetres and painted with materials.
 
     size  : physical extent, ``(Lx,)``, ``(Lx, Ly)`` or ``(Lx, Ly, Lz)`` in cm;
@@ -308,12 +543,17 @@ class Model:
 
     def __init__(self, size, cells):
         size = tuple(float(s) for s in np.atleast_1d(size))
-        cells = tuple(int(c) for c in np.atleast_1d(cells))
+        counts = np.atleast_1d(cells)
+        if (counts.ndim != 1 or not np.all(np.isfinite(counts)) or
+                np.any(counts < 1) or np.any(counts != np.floor(counts)) or
+                counts.dtype.kind == "b"):
+            raise ValueError("cells must contain positive integers")
+        cells = tuple(int(c) for c in counts)
         if len(size) != len(cells):
             raise ValueError("size and cells must have the same length")
         if not 1 <= len(size) <= 3:
             raise ValueError("size must be 1, 2 or 3 numbers (1D/2D/3D)")
-        if any(s <= 0 for s in size) or any(c < 1 for c in cells):
+        if any(not np.isfinite(s) or s <= 0 for s in size):
             raise ValueError("sizes must be positive and cell counts >= 1")
         self.ndim = len(size)
         self.size = size
@@ -324,22 +564,24 @@ class Model:
         self._map = np.zeros(self._shape, dtype=np.int64)
         self._bc = ["vacuum"] * self.ndim
         self._kinetics = None
+        self._thermal_config = None
+        self.grid = Grid(shape=self._shape, size=self._size3)
         self._centers = [(np.arange(n) + 0.5) * (L / n)
                          for n, L in zip(self._shape, self._size3)]
 
     def _index(self, material):
+        checked_materials([material], groups=self.n_groups)
         for i, m in enumerate(self._materials):
             if m is material:
                 return i
         self._materials.append(material)
+        self._thermal_config = None
         return len(self._materials) - 1
 
     def fill(self, material) -> "Model":
-        """Set the background material filling the whole core (index 0)."""
-        if self._materials:
-            self._materials[0] = material
-        else:
-            self._materials.append(material)
+        """Fill the whole core, clearing earlier material assignments."""
+        self._materials = checked_materials([material])
+        self._thermal_config = None
         self._map[...] = 0
         return self
 
@@ -347,33 +589,35 @@ class Model:
         """Paint an axis-aligned box (ranges in cm; ``None`` spans the whole core)."""
         if not self._materials:
             raise ValueError("call fill() to set the background material first")
-        idx = self._index(material)
         mask = np.ones(self._shape, dtype=bool)
         for ax, rng in enumerate((x, y, z)):
             if rng is None:
                 continue
             if ax >= self.ndim:
                 raise ValueError(f"cannot set {_AXES[ax]} range on a {self.ndim}D model")
-            lo, hi = rng
+            lo, hi = box_range(rng, _AXES[ax])
             sel = (self._centers[ax] >= lo) & (self._centers[ax] <= hi)
             shape = [1, 1, 1]
             shape[ax] = self._shape[ax]
             mask &= sel.reshape(shape)
-        self._map[mask] = idx
+        if not np.any(mask):
+            raise ValueError("box selects no cell centres; check its bounds and mesh resolution")
+        self._map[mask] = self._index(material)
         return self
 
     def set_boundary(self, spec=None, *, x=None, y=None, z=None) -> "Model":
         """Boundary conditions by name (``"vacuum"``/``"reflective"``/``"zero-flux"``/
         albedo). ``spec`` sets every real axis; ``x``/``y``/``z`` override one axis
         (a face spec or a ``(lo, hi)`` pair). Collapsed axes stay reflective."""
-        if spec is not None:
-            self._bc = [spec] * self.ndim
+        boundary = list(self._bc) if spec is None else [spec] * self.ndim
         for ax, val in enumerate((x, y, z)):
             if val is None:
                 continue
             if ax >= self.ndim:
                 raise ValueError(f"cannot set {_AXES[ax]} boundary on a {self.ndim}D model")
-            self._bc[ax] = val
+            boundary[ax] = val
+        normalize_bc(tuple(boundary + ["reflective"] * (3 - self.ndim)))
+        self._bc = boundary
         return self
 
     @property
@@ -385,6 +629,46 @@ class Model:
     def materials(self) -> list:
         """Materials in index order (index 0 is the background fill)."""
         return list(self._materials)
+
+    @property
+    def n_groups(self):
+        if not self._materials:
+            raise ValueError("empty model: call fill() with a material first")
+        return self._materials[0].n_groups
+
+    @property
+    def kinetics(self):
+        return self._kinetics
+
+    def with_materials(self, materials) -> "Model":
+        """Copy this model with a full material list or partial name/index mapping.
+
+        ``core.with_materials({"fuel": hot_fuel})`` preserves the original
+        geometry, boundary conditions, kinetics and thermal configuration.
+        """
+        values = replace_materials(self._materials, materials)
+        out = copy(self)
+        out._materials = values
+        out._map = self._map.copy()
+        out._bc = list(self._bc)
+        out._thermal_config = (None if self._thermal_config is None else
+                               dict(self._thermal_config))
+        return out
+
+    def _coupling_geometry(self):
+        return dict(grid=self.grid, material_map=self._map, bc=self._full_bc(),
+                    solver_cls=DiffusionEigenSolver)
+
+    def _state_problem(self, state):
+        if not isinstance(state, Model):
+            raise TypeError("state_at must return a Model")
+        if state.grid != self.grid or state.ndim != self.ndim:
+            raise ValueError("state_at must preserve grid dimensions and physical size")
+        if normalize_bc(state._full_bc()) != normalize_bc(self._full_bc()):
+            raise ValueError("state_at must preserve boundary conditions")
+        checked_materials(state.materials, count=len(self.materials),
+                          groups=self.n_groups, context="state_at materials")
+        return state._materials, state._map
 
     def _full_bc(self):
         return tuple(self._bc[ax] if ax < self.ndim else "reflective" for ax in range(3))
@@ -405,7 +689,8 @@ class Model:
         return " | ".join(parts)
 
     def run(self, method: str = "diffusion", device: str = "auto", adjoint: bool = False,
-            tol_k: float = 1e-6, tol_source: float = 1e-5, **solve_kw) -> ModelResult:
+            tol_k: float = 1e-6, tol_source: float = 1e-5, *, solver_kwargs=None,
+            **solve_kw) -> ModelResult:
         """Solve the k-eigenvalue problem and return a :class:`ModelResult`.
 
         method : ``"diffusion"``, ``"sp3"``, or the simplified double-PN
@@ -413,33 +698,57 @@ class Model:
         SP3/SP5/SP7, more accurate than SPN in strongly heterogeneous media).
         device : ``"auto"``/``"cpu"``/``"gpu"``.
         adjoint : solve the adjoint (importance) problem instead of the forward one.
+        solver_kwargs : constructor settings such as precond_degree or dtype;
+                        the remaining keywords are passed to solve().
         """
         if not self._materials:
             raise ValueError("empty model: call fill() with a material first")
+        method = method.lower()
         if method not in _STRUCTURED:
             raise ValueError(f"method must be one of {sorted(_STRUCTURED)}, got {method!r}")
         groups = self._materials[0].n_groups
         if any(m.n_groups != groups for m in self._materials):
             raise ValueError("all materials must have the same number of groups")
 
-        grid = Grid(shape=self._shape, size=self._size3)
+        grid = self.grid
         material = self._materials[0] if len(self._materials) == 1 else self._materials
         kw = dict(bc=self._full_bc(), device=device)
         if len(self._materials) > 1:
             kw["material_map"] = self._map
-        solver = _STRUCTURED[method](grid, material, **kw)
+        solver = _STRUCTURED[method](grid, material, **solver_options(kw, solver_kwargs))
         res = solver.solve(tol_k=tol_k, tol_source=tol_source, adjoint=adjoint, **solve_kw)
         return ModelResult(self, res, method, adjoint=adjoint)
 
-    def set_kinetics(self, velocities, beta, decay, chi_delayed=None) -> "Model":
-        """Attach point-kinetics data for :meth:`transient` (one velocity per group,
-        one beta/decay per delayed-neutron family)."""
-        self._kinetics = Kinetics(velocities=velocities, beta=beta, decay=decay,
-                                  chi_delayed=chi_delayed)
+    steady = run
+
+    def set_kinetics(self, velocities=None, beta=None, decay=None, chi_delayed=None,
+                     *, kinetics=None) -> "Model":
+        """Attach a Kinetics object or velocity/beta/decay component arrays.
+
+        Both ``set_kinetics(kinetics_object)`` and the original
+        ``set_kinetics(velocities=..., beta=..., decay=...)`` are supported.
+        """
+        if isinstance(velocities, Kinetics):
+            if kinetics is not None:
+                raise ValueError("pass one Kinetics object")
+            kinetics, velocities = velocities, None
+        if kinetics is not None:
+            if any(value is not None for value in (velocities, beta, decay, chi_delayed)):
+                raise ValueError("pass a Kinetics object or its component arrays, not both")
+        else:
+            if velocities is None or beta is None or decay is None:
+                raise ValueError("velocities, beta and decay are required")
+            kinetics = Kinetics(velocities, beta, decay, chi_delayed)
+        if self._materials:
+            checked_kinetics(kinetics, self.n_groups, material_count=len(self.materials))
+        elif not isinstance(kinetics, Kinetics):
+            raise TypeError("kinetics must be a Kinetics object")
+        self._kinetics = kinetics
         return self
 
     def transient(self, t_end: float, dt: float, kinetics=None, materials_at=None,
-                  at=None, device: str = "auto", **solve_kw) -> TransientModelResult:
+                  at=None, device: str = "auto", *, state_at=None,
+                  solver_kwargs=None, **solve_kw) -> TransientModelResult:
         """Run a time-dependent solve, starting from this model's steady state.
 
         A steady eigenvalue solve is always performed first; its eigenvalue k0
@@ -450,43 +759,54 @@ class Model:
 
         kinetics     : :class:`~garnet.Kinetics`, or set it earlier with
                        :meth:`set_kinetics`.
-        materials_at : optional ``t -> list[Material]`` returning the materials
-                       (in this model's index order) at time t -- how the cross
+        materials_at : optional ``t -> list[Material]`` in index order or a
+                       partial ``{name_or_index: Material}`` mapping -- how the cross
                        sections evolve (a rod ramp, a temperature feedback...).
                        Return the *same* Material objects while nothing changes so
                        operators are only rebuilt when they must be. Omit for an
                        unperturbed run (which must stay at P/P0 = 1).
         at           : advanced escape hatch -- a full ``t -> (materials,
                        material_map)`` callback (lets the geometry move too).
+        state_at     : alternatively, return cached Model frames with the same
+                       grid and boundaries; only material assignments change.
+        solver_kwargs: constructor controls such as precond_degree, dtype,
+                       linear_solver or on_step; other keywords go to solve().
         """
         if not self._materials:
             raise ValueError("empty model: call fill() first")
         kin = kinetics if kinetics is not None else self._kinetics
         if kin is None:
             raise ValueError("no kinetics: use set_kinetics(...) or transient(kinetics=...)")
-        groups = self._materials[0].n_groups
-        if any(m.n_groups != groups for m in self._materials):
-            raise ValueError("all materials must have the same number of groups")
-        if len(kin.velocities) != groups:
-            raise ValueError(f"kinetics.velocities must have {groups} entries (one per group)")
+        checked_materials(self.materials)
+        checked_kinetics(kin, self.n_groups, material_count=len(self.materials))
+        if sum(callback is not None for callback in (at, state_at, materials_at)) > 1:
+            raise ValueError("use only one of materials_at, state_at or at")
 
-        grid = Grid(shape=self._shape, size=self._size3)
+        grid = self.grid
         if at is not None:
             problem_at = at
+        elif state_at is not None:
+            def problem_at(t):
+                return self._state_problem(state_at(t))
         else:
             base, mp, cache = list(self._materials), self._map, {}
 
             def problem_at(t):
-                mats = materials_at(t) if materials_at is not None else base
+                mats = (replace_materials(base, materials_at(t), context="materials_at")
+                        if materials_at is not None else base)
                 key = tuple(id(m) for m in mats)
                 if key not in cache:               # keep only the latest so operators
                     cache.clear()                  # are rebuilt exactly when materials change
                     cache[key] = list(mats)
                 return cache[key], mp
 
-        solver = TransientSolver(grid, problem_at, kin, bc=self._full_bc(), device=device)
+        if isinstance(solve_kw.get("initial_steady"), ReactorResult):
+            solve_kw["initial_steady"] = solve_kw["initial_steady"].raw
+        solver = TransientSolver(grid, problem_at, kin, **solver_options(
+            dict(bc=self._full_bc(), device=device), solver_kwargs))
+        initial_problem = solver._unpack(problem_at(0.0))
         tres = solver.solve(t_end=t_end, dt=dt, **solve_kw)
-        return TransientModelResult(self, tres, kin)
+        return TransientModelResult(self, tres, kin, steady_problem=initial_problem)
 
 
 # ---------------------------------------------------------------------------
@@ -505,13 +825,14 @@ class MeshModel:
     """
 
     def __init__(self, mesh):
-        self.mesh = read_gmsh(mesh) if isinstance(mesh, str) else mesh
+        self.mesh = read_gmsh(os.fspath(mesh)) if isinstance(mesh, (str, os.PathLike)) else mesh
         self._materials: list[Material] = []
         self._cellmat = np.zeros(self.mesh.n_cells, dtype=np.int64)
         self._bc = "vacuum"
         self._dim = self.mesh.coords.shape[1]
 
     def _index(self, material):
+        checked_materials([material], groups=self._materials[0].n_groups)
         for i, m in enumerate(self._materials):
             if m is material:
                 return i
@@ -519,11 +840,8 @@ class MeshModel:
         return len(self._materials) - 1
 
     def fill(self, material) -> "MeshModel":
-        """Set the material for every cell (index 0)."""
-        if self._materials:
-            self._materials[0] = material
-        else:
-            self._materials.append(material)
+        """Fill every cell, clearing earlier material assignments."""
+        self._materials = checked_materials([material])
         self._cellmat[...] = 0
         return self
 
@@ -536,7 +854,8 @@ class MeshModel:
         """
         if not self._materials:
             raise ValueError("call fill() first")
-        idx = self._index(material)
+        if tag is not None and where is not None:
+            raise ValueError("use tag or where, not both")
         if tag is not None:
             sel = np.asarray(self.mesh.cell_tag) == tag
         elif where is not None:
@@ -544,14 +863,17 @@ class MeshModel:
                    if callable(where) else np.asarray(where, bool))
         else:
             raise ValueError("assign needs either tag= or where=")
-        self._cellmat[sel] = idx
+        if sel.shape != (self.mesh.n_cells,):
+            raise ValueError(f"where mask must have shape ({self.mesh.n_cells},)")
+        if not np.any(sel):
+            raise ValueError("assignment selects no cells; check the tag or selector")
+        self._cellmat[sel] = self._index(material)
         return self
 
     def add_box(self, material, x=None, y=None, z=None) -> "MeshModel":
         """Assign ``material`` to cells whose centroid falls in the given box (cm)."""
         if not self._materials:
             raise ValueError("call fill() first")
-        idx = self._index(material)
         c = self.mesh.centroid
         sel = np.ones(self.mesh.n_cells, bool)
         for ax, rng in enumerate((x, y, z)):
@@ -559,21 +881,39 @@ class MeshModel:
                 continue
             if ax >= self._dim:
                 raise ValueError(f"mesh is {self._dim}D; no {_AXES[ax]} axis")
-            sel &= (c[:, ax] >= rng[0]) & (c[:, ax] <= rng[1])
-        self._cellmat[sel] = idx
-        return self
+            lo, hi = box_range(rng, _AXES[ax])
+            sel &= (c[:, ax] >= lo) & (c[:, ax] <= hi)
+        return self.assign(material, where=sel)
 
     def set_boundary(self, spec) -> "MeshModel":
         """Set the boundary condition on every boundary face (name or albedo)."""
+        _albedo(spec)
         self._bc = spec
         return self
+
+    @property
+    def materials(self):
+        """Materials in index order."""
+        return list(self._materials)
+
+    @property
+    def material_map(self):
+        """Per-cell material indices, in mesh cell order (a copy)."""
+        return self._cellmat.copy()
+
+    def with_materials(self, materials) -> "MeshModel":
+        """Copy this mesh model with a full list or partial name/index mapping."""
+        out = copy(self)
+        out._materials = replace_materials(self._materials, materials)
+        out._cellmat = self._cellmat.copy()
+        return out
 
     def _geometry_line(self):
         return (f"{self.mesh.n_cells:,} cells, {len(self.mesh.faces):,} interior faces, "
                 f"volume {self.mesh.area.sum():.3g} cm^{self._dim}  [{self._dim}D unstructured]")
 
     def run(self, device: str = "auto", tol_k: float = 1e-6, tol_source: float = 1e-5,
-            **solve_kw) -> ReactorResult:
+            *, solver_kwargs=None, **solve_kw) -> ReactorResult:
         """Solve on the unstructured mesh and return a :class:`ReactorResult`."""
         if not self._materials:
             raise ValueError("empty model: call fill() first")
@@ -581,14 +921,20 @@ class MeshModel:
         if any(m.n_groups != groups for m in self._materials):
             raise ValueError("all materials must have the same number of groups")
         solver = UnstructuredDiffusionSolver(self.mesh, self._materials, self._cellmat,
-                                             alpha_boundary=_albedo(self._bc), device=device)
+            **solver_options(dict(alpha_boundary=_albedo(self._bc), device=device),
+                             solver_kwargs))
         res = solver.solve(tol_k=tol_k, tol_source=tol_source, **solve_kw)
-        return ReactorResult(
+        out = ReactorResult(
             k_eff=res.k_eff, converged=res.converged, outer_iterations=res.outer_iterations,
             inner_iterations=res.inner_iterations, solve_seconds=res.solve_seconds,
             device=res.device, method="diffusion", flux=res.flux, materials=self._materials,
             cell_material=self._cellmat, cell_volume=self.mesh.area,
             geometry_line=self._geometry_line(), boundary_line=f"all faces: {self._bc}")
+        out.model = self
+        out.raw = res
+        return out
+
+    steady = run
 
 
 # ---------------------------------------------------------------------------
@@ -635,7 +981,7 @@ def hex_disk(radius: int) -> list[tuple[int, int]]:
             if max(abs(R), abs(C), abs(-R - C)) <= radius]
 
 
-class TriReactor:
+class TriReactor(_CoupledModel):
     """A reusable reactor definition on :class:`~garnet.TriGrid`.
 
     This is the user-facing bridge between geometry construction and solver
@@ -656,15 +1002,13 @@ class TriReactor:
         if not isinstance(grid, TriGrid):
             raise TypeError("TriReactor needs a TriGrid")
         self.grid = grid
-        self.materials = list(materials)
-        if not self.materials:
-            raise ValueError("TriReactor needs at least one material")
-        self.material_map = np.asarray(material_map, dtype=np.int64)
+        self.materials = checked_materials(materials)
+        self.material_map = np.array(material_map, dtype=np.int64, copy=True)
         if self.material_map.shape != tuple(grid.shape):
             raise ValueError(f"material_map shape {self.material_map.shape} != "
                              f"grid shape {tuple(grid.shape)}")
         self.active = (np.ones(grid.shape, dtype=bool) if active is None else
-                       np.asarray(active, dtype=bool))
+                       np.array(active, dtype=bool, copy=True))
         if self.active.shape != tuple(grid.shape):
             raise ValueError("active mask must match the grid shape")
         used = self.material_map
@@ -673,9 +1017,9 @@ class TriReactor:
         if (mix_material is None) != (mix_weight is None):
             raise ValueError("mix_material and mix_weight must be supplied together")
         self.mix_material = (None if mix_material is None else
-                             np.asarray(mix_material, dtype=np.int64))
+                             np.array(mix_material, dtype=np.int64, copy=True))
         self.mix_weight = (None if mix_weight is None else
-                           np.asarray(mix_weight, dtype=float))
+                           np.array(mix_weight, dtype=float, copy=True))
         if self.mix_material is not None:
             if (self.mix_material.shape != tuple(grid.shape) or
                     self.mix_weight.shape != tuple(grid.shape)):
@@ -688,7 +1032,8 @@ class TriReactor:
         if any(m.n_groups != groups for m in self.materials):
             raise ValueError("all materials must have the same number of groups")
         self.bc, self.mask_bc = bc, mask_bc
-        self.kinetics = kinetics
+        self.kinetics = (None if kinetics is None else checked_kinetics(
+            kinetics, groups, material_count=len(self.materials)))
         self.raster = raster
         self.name = str(name)
         self._geometry = geometry_line or (
@@ -713,6 +1058,23 @@ class TriReactor:
         z = f" | z faces: {z_spec}" if self.is_3d else ""
         return f"core edge: {self.mask_bc}{z}"
 
+    def _coupling_geometry(self):
+        return dict(grid=self.grid, material_map=self.material_map,
+                    active=self.active, mask_bc=self.mask_bc, bc=self.bc,
+                    mix_material=self.mix_material, mix_weight=self.mix_weight)
+
+    def _state_problem(self, state):
+        if not isinstance(state, TriReactor):
+            raise TypeError("state_at must return a TriReactor")
+        if state.grid != self.grid:
+            raise ValueError("state_at must preserve grid dimensions and physical size")
+        if (normalize_bc(state.bc) != normalize_bc(self.bc) or
+                state.mask_bc != self.mask_bc or not np.array_equal(state.active, self.active)):
+            raise ValueError("state_at must preserve boundary conditions and active cells")
+        checked_materials(state.materials, count=len(self.materials),
+                          groups=self.n_groups, context="state_at materials")
+        return state.materials, state.material_map, state.mix_material, state.mix_weight
+
     def set_kinetics(self, kinetics=None, *, velocities=None, beta=None,
                      decay=None, chi_delayed=None) -> "TriReactor":
         """Attach delayed-neutron data for :meth:`transient` and coupling."""
@@ -723,23 +1085,19 @@ class TriReactor:
             if velocities is None or beta is None or decay is None:
                 raise ValueError("velocities, beta and decay are required")
             kinetics = Kinetics(velocities, beta, decay, chi_delayed)
-        if not isinstance(kinetics, Kinetics):
-            raise TypeError("kinetics must be a Kinetics object")
-        if kinetics.velocities.shape[-1] != self.n_groups:
-            raise ValueError(f"kinetics needs {self.n_groups} velocities per row")
-        self.kinetics = kinetics
+        self.kinetics = checked_kinetics(kinetics, self.n_groups,
+                                        material_count=len(self.materials))
         return self
 
     def with_materials(self, materials, *, name=None) -> "TriReactor":
         """Return this geometry with a replacement material list.
 
-        The order and length must be unchanged. This is the direct hand-off for
+        Accepts a full list in the same order, or a partial mapping such as
+        ``{"fuel": hot_fuel}``. This is the direct hand-off for
         ``SphResult.corrected_materials`` or a new cross-section library while
         preserving the validated mesh, controls, kinetics, and thermal setup.
         """
-        materials = list(materials)
-        if len(materials) != len(self.materials):
-            raise ValueError("replacement materials must preserve count/order")
+        materials = replace_materials(self.materials, materials)
         out = TriReactor(
             self.grid, materials, self.material_map, active=self.active,
             bc=self.bc, mask_bc=self.mask_bc,
@@ -761,7 +1119,7 @@ class TriReactor:
         init = dict(active=self.active, mask_bc=self.mask_bc, bc=self.bc,
                     mix_material=self.mix_material, mix_weight=self.mix_weight,
                     device=device)
-        init.update(solver_kwargs or {})
+        init = solver_options(init, solver_kwargs)
         solver = _TRI[method](self.grid, self.materials, self.material_map, **init)
         res = solver.solve(tol_k=tol_k, tol_source=tol_source,
                            adjoint=adjoint, **solve_kwargs)
@@ -783,35 +1141,31 @@ class TriReactor:
 
     def transient(self, t_end, dt, *, kinetics=None, materials_at=None,
                   state_at=None, device="auto", precond_degree=0,
-                  precond_dtype=None, linear_solver="cg", **solve_kwargs):
+                  precond_dtype=None, linear_solver="cg", solver_kwargs=None,
+                  **solve_kwargs):
         """Run neutron kinetics, optionally changing materials or full states.
 
-        ``materials_at(t)`` returns materials in this reactor's stable index
-        order. ``state_at(t)`` may instead return another :class:`TriReactor`
-        with the same grid shape, enabling cached control-geometry frames.
+        ``materials_at(t)`` returns materials in index order or a partial
+        name/index mapping. ``state_at(t)`` may instead return a cached
+        :class:`TriReactor` preserving the grid, boundaries and active cells.
+        ``solver_kwargs`` forwards constructor controls; other keywords go to
+        the time integrator. ``initial_steady`` accepts a public steady result.
         """
         from .tri import TriGroupOperator
 
         kin = self.kinetics if kinetics is None else kinetics
         if kin is None:
             raise ValueError("no kinetics: call set_kinetics() or pass kinetics=")
+        checked_kinetics(kin, self.n_groups, material_count=len(self.materials))
         if materials_at is not None and state_at is not None:
             raise ValueError("use materials_at or state_at, not both")
-        base = self
         cache = {}
 
         def problem_at(t):
             if state_at is not None:
-                state = state_at(t)
-                if not isinstance(state, TriReactor):
-                    raise TypeError("state_at must return a TriReactor")
-                if state.shape != base.shape:
-                    raise ValueError("state_at returned a different grid shape")
-                return (state.materials, state.material_map,
-                        state.mix_material, state.mix_weight)
-            mats = self.materials if materials_at is None else list(materials_at(t))
-            if len(mats) != len(self.materials):
-                raise ValueError("materials_at must preserve material count/order")
+                return self._state_problem(state_at(t))
+            mats = (self.materials if materials_at is None else
+                    replace_materials(self.materials, materials_at(t), context="materials_at"))
             key = tuple(id(m) for m in mats)
             if key not in cache:
                 cache.clear()
@@ -819,187 +1173,19 @@ class TriReactor:
             return (cache[key], self.material_map,
                     self.mix_material, self.mix_weight)
 
-        solver = TransientSolver(
-            self.grid, problem_at, kin, bc=self.bc, active=self.active,
+        init = solver_options(dict(bc=self.bc, active=self.active,
             mask_bc=self.mask_bc, mix_material=self.mix_material,
             mix_weight=self.mix_weight, group_operator=TriGroupOperator,
             eig_solver=TriDiffusionEigenSolver, precond_degree=precond_degree,
             precond_dtype=precond_dtype, linear_solver=linear_solver,
-            device=device)
+            device=device), solver_kwargs)
+        if isinstance(solve_kwargs.get("initial_steady"), ReactorResult):
+            solve_kwargs["initial_steady"] = solve_kwargs["initial_steady"].raw
+        solver = TransientSolver(self.grid, problem_at, kin, **init)
         result = solver.solve(t_end=t_end, dt=dt, **solve_kwargs)
         result.reactor = self
         return result
 
-    def _ordered_thermal_materials(self, spec):
-        from .thermal import ThermalMaterial
-
-        if not isinstance(spec, Mapping):
-            values = list(spec)
-            if len(values) != len(self.materials):
-                raise ValueError("thermal material list must align with materials")
-            return values
-        names = [m.name for m in self.materials]
-        if any(not n for n in names) or len(set(names)) != len(names):
-            raise ValueError("named thermal mapping needs unique non-empty material names")
-        used = set(np.unique(self.material_map[self.active]).tolist())
-        if self.mix_material is not None:
-            used.update(np.unique(self.mix_material[
-                self.active & (self.mix_material >= 0) & (self.mix_weight > 0)]).tolist())
-        out = []
-        for i, name in enumerate(names):
-            if name in spec:
-                out.append(spec[name])
-            elif i not in used:
-                out.append(ThermalMaterial(1e-12, name=f"inactive {name}"))
-            else:
-                raise ValueError(f"no thermal material supplied for active {name!r}")
-        return out
-
-    def _feedback_from_mapping(self, specs, ambient_temperature):
-        from .feedback import ThermalFeedback
-
-        names = [m.name for m in self.materials]
-        if any(not n for n in names) or len(set(names)) != len(names):
-            raise ValueError("named feedback mapping needs unique non-empty material names")
-        rows, t_ref, expansion = [], [], []
-        any_groupwise = False
-        any_expansion = False
-        for name in names:
-            item = specs.get(name, FeedbackSpec(ambient_temperature))
-            if isinstance(item, Mapping):
-                item = FeedbackSpec(**item)
-            if not isinstance(item, FeedbackSpec):
-                raise TypeError("feedback mapping values must be FeedbackSpec or dict")
-            row = np.atleast_1d(np.asarray(item.doppler, dtype=float))
-            if row.size not in (1, self.n_groups):
-                raise ValueError(f"feedback for {name!r} needs scalar or "
-                                 f"{self.n_groups}-group doppler")
-            any_groupwise |= row.size > 1
-            rows.append(row)
-            t_ref.append(float(item.reference_temperature))
-            expansion.append(0.0 if item.expansion is None else float(item.expansion))
-            any_expansion |= item.expansion is not None
-        doppler = (np.vstack([np.broadcast_to(r, (self.n_groups,)) for r in rows])
-                   if any_groupwise else np.array([r[0] for r in rows]))
-        return ThermalFeedback(t_ref, doppler,
-                               np.array(expansion) if any_expansion else None)
-
-    def configure_thermal(self, thermal_materials, *, total_power, feedback=None,
-                          thermal_bc="adiabatic", thermal_mask_bc="adiabatic",
-                          ambient_temperature=300.0, warm_start=True,
-                          eigen_kwargs=None) -> "TriReactor":
-        """Attach conduction and feedback data used by coupled calculations.
-
-        ``thermal_materials`` may be a list in solver material order or a
-        ``{material_name: ThermalMaterial}`` mapping. ``feedback`` may be an
-        existing feedback object or a named mapping of :class:`FeedbackSpec`.
-        Missing feedback entries mean zero feedback; inactive padding materials
-        need not be present in the thermal mapping.
-        """
-        from .feedback import ThermalFeedback
-
-        thermal = self._ordered_thermal_materials(thermal_materials)
-        if feedback is None:
-            feedback = ThermalFeedback(
-                np.full(len(self.materials), float(ambient_temperature)),
-                np.zeros(len(self.materials)))
-        elif isinstance(feedback, Mapping):
-            feedback = self._feedback_from_mapping(feedback, ambient_temperature)
-        if (hasattr(feedback, "n_materials") and
-                feedback.n_materials != len(self.materials)):
-            raise ValueError("feedback material count does not match reactor materials")
-        if not np.isfinite(total_power) or total_power < 0.0:
-            raise ValueError("total_power must be finite and non-negative")
-        self._thermal_config = dict(
-            thermal_materials=thermal, total_power=float(total_power),
-            feedback=feedback, thermal_bc=thermal_bc,
-            thermal_mask_bc=thermal_mask_bc,
-            ambient_temperature=float(ambient_temperature),
-            warm_start=bool(warm_start),
-            eigen_kwargs=dict(eigen_kwargs or {"tol_k": 1e-9,
-                                               "tol_source": 1e-8}))
-        return self
-
-    def coupling_context(self, *, device="auto", dtype=np.float64, **overrides):
-        """Create the low-level :class:`CouplingContext` for advanced use."""
-        from .coupling import CouplingContext
-
-        if self._thermal_config is None:
-            raise ValueError("thermal physics is not configured; call configure_thermal()")
-        kw = dict(self._thermal_config)
-        kw.update(overrides)
-        return CouplingContext(
-            grid=self.grid, materials=self.materials,
-            material_map=self.material_map, active=self.active,
-            mask_bc=self.mask_bc, bc=self.bc,
-            mix_material=self.mix_material, mix_weight=self.mix_weight,
-            kinetics=self.kinetics, device=device, dtype=dtype, **kw)
-
-    def coupled_steady(self, *, device="auto", context_kwargs=None,
-                       **solve_kwargs):
-        """Solve the self-consistent steady neutronics/thermal state."""
-        from .coupling import CoupledSolver
-
-        ctx = self.coupling_context(device=device, **(context_kwargs or {}))
-        return CoupledSolver(ctx).solve(**solve_kwargs)
-
-    def coupled_transient(self, t_end, dt, *, device="auto", problem_at=None,
-                          state_at=None, **kwargs):
-        """Run the GPU-resident coupled transient through the public model API."""
-        from .coupling import coupled_transient
-
-        if self.kinetics is None:
-            raise ValueError("no kinetics: call set_kinetics() first")
-        if problem_at is not None and state_at is not None:
-            raise ValueError("use problem_at or state_at, not both")
-        if state_at is not None:
-            def problem_at(t):
-                state = state_at(t)
-                if not isinstance(state, TriReactor):
-                    raise TypeError("state_at must return a TriReactor")
-                if state.shape != self.shape:
-                    raise ValueError("state_at returned a different grid shape")
-                return (state.materials, state.material_map,
-                        state.mix_material, state.mix_weight)
-        ctx = self.coupling_context(device=device)
-        return coupled_transient(ctx, t_end=t_end, dt=dt,
-                                 problem_at=problem_at, **kwargs)
-
-    def quasistatic_transient(self, t_end, dt, *, shape_dt=2.0,
-                              device="auto", problem_at=None, state_at=None,
-                              **kwargs):
-        """Run an improved quasi-static coupled transient.
-
-        The adjoint-weighted population amplitude and precursors advance every
-        ``dt`` while the full spatial shape is corrected every ``shape_dt``;
-        the returned power includes the shape's adjoint-weighted fission-power
-        factor. Time-dependent IQS is the default; ``shape_method="adiabatic"``
-        selects instantaneous eigen shapes. Residual thresholds can force early
-        corrections or full-diffusion fallback intervals for rapid localized
-        motion; ``iqs_predictor_tol`` adaptively shortens subsequent shape
-        intervals after a large amplitude-predictor disagreement.
-        ``adjoint_residual_tol`` can refresh a reused importance shape before
-        its configured ``adjoint_every`` maximum age.
-        """
-        from .quasistatic import quasistatic_coupled_transient
-
-        if self.kinetics is None:
-            raise ValueError("no kinetics: call set_kinetics() first")
-        if problem_at is not None and state_at is not None:
-            raise ValueError("use problem_at or state_at, not both")
-        if state_at is not None:
-            def problem_at(t):
-                state = state_at(t)
-                if not isinstance(state, TriReactor):
-                    raise TypeError("state_at must return a TriReactor")
-                if state.shape != self.shape:
-                    raise ValueError("state_at returned a different grid shape")
-                return (state.materials, state.material_map,
-                        state.mix_material, state.mix_weight)
-        ctx = self.coupling_context(device=device)
-        return quasistatic_coupled_transient(
-            ctx, t_end=t_end, dt=dt, shape_dt=shape_dt,
-            problem_at=problem_at, **kwargs)
 
 
 def _drum_absorber_mix(raster, pitch, drums, samples):

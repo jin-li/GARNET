@@ -5,6 +5,11 @@ simplified-double-P1 approximations, kept separate from the general order-N
 SDPN/SPN machinery in ``spn.py`` because its 2x2 structure admits a hand-written
 symmetric form that is the fast CG special case used by the SP3/SDP1 solvers and
 their transient/triangular subclasses.
+
+SP3 reference: Brantley and Larsen, "The Simplified P3 Approximation",
+Nuclear Science and Engineering 134 (2000), 1-21, doi:10.13182/NSE134-01.
+The SDP1 variant follows Carreño et al. (2024),
+doi:10.1016/j.anucene.2024.110675; its coefficient changes are noted below.
 """
 
 from __future__ import annotations
