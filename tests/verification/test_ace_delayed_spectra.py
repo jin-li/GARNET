@@ -4,8 +4,8 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from ndgpu.ace_precursors import ACEPrecursorError
-from ndgpu.ace_delayed_spectra import (
+from garnet.ace_precursors import ACEPrecursorError
+from garnet.ace_delayed_spectra import (
     ACEOutgoingPDF, ACEDelayedFamilySpectrum, read_ace_delayed_spectra,
 )
 

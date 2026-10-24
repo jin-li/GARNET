@@ -9,9 +9,9 @@ import sys
 import numpy as np
 import pytest
 from scipy.linalg import eig
-import ndgpu.coupled_moment_gpu as adapter
-from ndgpu.coupled_moments import CoupledMomentOperator
-from ndgpu.coupled_moment_solver import CoupledMomentEigenSolver
+import garnet.coupled_moment_gpu as adapter
+from garnet.coupled_moments import CoupledMomentOperator
+from garnet.coupled_moment_solver import CoupledMomentEigenSolver
 
 spec = importlib.util.spec_from_file_location(
     'gpu_oracle_fixture', Path(__file__).with_name('test_coupled_moments.py'))
@@ -219,8 +219,8 @@ def test_constructor_transfers_once_and_requires_runtime_family(monkeypatch):
 
 
 def test_raw_negative_output_is_not_clipped_and_info_is_required():
-    from ndgpu.moment_materials import MomentMaterial
-    from ndgpu.coupled_moments import OrthogonalMesh
+    from garnet.moment_materials import MomentMaterial
+    from garnet.coupled_moments import OrthogonalMesh
     m = fixtures.material()
     bad = MomentMaterial(m.total, np.array([1., -.4]), m.nu_sigma_f,
                          m.kappa_fission, {}, {}, dict(m.loss), {}, {}, dict(m.provenance), {})

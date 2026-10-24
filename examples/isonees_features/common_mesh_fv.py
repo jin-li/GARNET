@@ -5,8 +5,8 @@ import sys
 # Permit the documented direct invocation from an uninstalled checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
-from ndgpu import Material, MeshDiffusionEigenSolver
-from ndgpu.nodal_mesh import build_rectilinear_mesh_3d
+from garnet import Material, MeshDiffusionEigenSolver
+from garnet.nodal_mesh import build_rectilinear_mesh_3d
 
 
 def solve():

@@ -28,12 +28,12 @@ import sys
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr import build_hpmr2d, build_hpmr3d
-from ndgpu.benchmarks.hpmr_thermal import (AMBIENT_K, RATED_POWER_W,
+from garnet.benchmarks.hpmr import build_hpmr2d, build_hpmr3d
+from garnet.benchmarks.hpmr_thermal import (AMBIENT_K, RATED_POWER_W,
                                            SINK_TEMPERATURE_K,
                                            build_hpmr_coupling,
                                            hpmr_endfb8_builtin)
-from ndgpu.coupling import CoupledSolver, temperature_defect_pcm, uncoupled_k
+from garnet.coupling import CoupledSolver, temperature_defect_pcm, uncoupled_k
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 drum_deg = float(sys.argv[2]) if len(sys.argv) > 2 else 180.0

@@ -1,7 +1,7 @@
 """SPH on the 2D HP-MR with the transport reference swapped across families.
 
-The SPH pipeline (:mod:`ndgpu.sph`) is reference-agnostic: it consumes the
-*physical scalar flux* phi0 of any ndgpu eigensolver Result and the region
+The SPH pipeline (:mod:`garnet.sph`) is reference-agnostic: it consumes the
+*physical scalar flux* phi0 of any garnet eigensolver Result and the region
 reaction rates that flux implies. For the block transport solvers phi0 is the
 reconstructed 0th angular moment (SP3: phi0 = Phi1 - 2 phi2; SDPN: the even-
 moment vector dotted with the phi0 closure weights), so swapping the reference
@@ -22,10 +22,10 @@ sequences of diffusion solves. Run with ``pytest -m slow``.
 import numpy as np
 import pytest
 
-from ndgpu import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
+from garnet import (TriDiffusionEigenSolver, TriSDP1EigenSolver,
                    TriSDP2EigenSolver, TriSP3EigenSolver,
                    flux_weighted_homogenize, region_average, sph_correct)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
+from garnet.benchmarks.hpmr import build_hpmr2d, DRUM_ABSORBER
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 

@@ -17,7 +17,7 @@ import time
 
 import numpy as np
 
-from ndgpu import (Grid, Material, DiffusionEigenSolver, SDP1EigenSolver,
+from garnet import (Grid, Material, DiffusionEigenSolver, SDP1EigenSolver,
                    SDP2EigenSolver, SDP3EigenSolver)
 
 

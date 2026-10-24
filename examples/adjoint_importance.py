@@ -16,13 +16,13 @@ Usage: python examples/adjoint_importance.py [n_cells_per_axis] [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu import PWR_TWO_GROUP
+import garnet
+from garnet import PWR_TWO_GROUP
 
 n = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 device = sys.argv[2] if len(sys.argv) > 2 else "auto"
 
-core = lambda: (ndgpu.Model(size=(80, 80, 80), cells=(n, n, n))
+core = lambda: (garnet.Model(size=(80, 80, 80), cells=(n, n, n))
                 .fill(PWR_TWO_GROUP).set_boundary("vacuum"))
 
 forward = core().run(device=device)

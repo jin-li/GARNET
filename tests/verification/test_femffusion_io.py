@@ -1,7 +1,7 @@
 """FEMFFUSION cross-section file readers.
 
 The .xsec reader is checked against the hand-transcribed VVER-440 table in
-ndgpu.benchmarks.vver440 (both originate from FEMFFUSION's
+garnet.benchmarks.vver440 (both originate from FEMFFUSION's
 examples/2D_VVER440/2D_VVER440.xsec, so they must agree exactly), and the XML
 reader against values read straight off the C5G7 file, including the
 SigmaS[to, from] -> sigma_s[from, to] transpose and upscatter.
@@ -12,8 +12,8 @@ import os
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks.vver440 import _XS
-from ndgpu.femffusion import read_material_xml, read_xsec
+from garnet.benchmarks.vver440 import _XS
+from garnet.femffusion import read_material_xml, read_xsec
 
 FEMFFUSION = os.environ.get(
     "FEMFFUSION_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "..", "FEMFFUSION"))
@@ -55,8 +55,8 @@ def test_xsec_core_map_and_kinetics():
 @needs_femffusion
 def test_xsec_solves_vver440():
     # End-to-end: file -> materials -> tri solver reproduces the benchmark k.
-    from ndgpu.benchmarks import build_vver440
-    from ndgpu.tri import TriDiffusionEigenSolver
+    from garnet.benchmarks import build_vver440
+    from garnet.tri import TriDiffusionEigenSolver
 
     xs = read_xsec(VVER_XSEC)
     p = build_vver440(refine=1)
@@ -88,10 +88,10 @@ def test_xml_c5g7_values_and_transpose():
 
 @needs_femffusion
 def test_xml_c5g7_cross_transcription():
-    # The FEMFFUSION XML and NDgpu's OpenMOC-derived table are independent
+    # The FEMFFUSION XML and GARNET's OpenMOC-derived table are independent
     # transcriptions of the same NEA C5G7 set; after the SigmaS transpose they
     # must agree entry-for-entry.
-    from ndgpu.benchmarks._c5g7_data import C5G7_XS
+    from garnet.benchmarks._c5g7_data import C5G7_XS
     mats = {m.name: m for m in read_material_xml(C5G7_XML)}
     for xml_name, ref_name in [("fuelUO2", "UO2"), ("fuelMOX4.3", "MOX-4.3%"),
                                ("moderator", "Water")]:

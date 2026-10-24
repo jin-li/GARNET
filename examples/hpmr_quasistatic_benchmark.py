@@ -34,12 +34,12 @@ from pathlib import Path
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d
-from ndgpu.benchmarks.hpmr_thermal import (build_hpmr_coupling,
+from garnet.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d
+from garnet.benchmarks.hpmr_thermal import (build_hpmr_coupling,
                                            hpmr_endfb8_builtin)
-from ndgpu.coupling import coupled_transient
-from ndgpu.quasistatic import quasistatic_coupled_transient
-from ndgpu.tri import TriDiffusionEigenSolver
+from garnet.coupling import coupled_transient
+from garnet.quasistatic import quasistatic_coupled_transient
+from garnet.tri import TriDiffusionEigenSolver
 
 
 @dataclass(frozen=True)
@@ -272,7 +272,7 @@ def write_csv(path, rows):
 
 
 def make_figures(output_dir, cases, histories, summary):
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/ndgpu-matplotlib")
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/garnet-matplotlib")
     import matplotlib.pyplot as plt
 
     colors = {"full": "black", "adiabatic": "#e69f00",

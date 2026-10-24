@@ -22,7 +22,7 @@ Four checks, mirroring how the 1D reference is trusted:
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, Material, SP3EigenSolver,
+from garnet import (DiffusionEigenSolver, Grid, Material, SP3EigenSolver,
                    SDP1EigenSolver, SNTransportSolver, k_infinite, quadrature_2d)
 
 # 2D on the structured grid: vacuum in x, y and reflective (no leakage) in z.

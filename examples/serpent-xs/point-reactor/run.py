@@ -21,10 +21,10 @@ import scipy
 # Support direct execution from an uninstalled source checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from ndgpu import DiffusionEigenSolver, Grid
-from ndgpu import kernels
-from ndgpu.backend import device_name, get_backend, is_rocm
-from ndgpu.serpent_xs import read_serpent_xs
+from garnet import DiffusionEigenSolver, Grid
+from garnet import kernels
+from garnet.backend import device_name, get_backend, is_rocm
+from garnet.serpent_xs import read_serpent_xs
 
 
 def normalized(values):

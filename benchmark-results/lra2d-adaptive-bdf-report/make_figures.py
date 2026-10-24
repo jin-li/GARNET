@@ -31,6 +31,28 @@ def load(name):
     return json.loads((DATA / name).read_text())
 
 
+def solver_metrics(payload):
+    """Read current metrics or an archived result with an earlier solver label."""
+    if "garnet" in payload:
+        return payload["garnet"]
+    candidates = [value for value in payload.values()
+                  if isinstance(value, dict)
+                  and {"first_peak_time_s", "solve_seconds"} <= value.keys()]
+    if len(candidates) != 1:
+        raise ValueError("expected one solver-metrics record in benchmark result")
+    return candidates[0]
+
+
+def static_metrics(payload):
+    """Locate the static endpoint record independently of its historical label."""
+    candidates = [value for key, value in payload.items()
+                  if key.startswith("static_") and isinstance(value, dict)
+                  and {"rods_in", "rods_out"} <= value.keys()]
+    if len(candidates) != 1:
+        raise ValueError("expected one static endpoint record in benchmark summary")
+    return candidates[0]
+
+
 summary = json.loads((ROOT / "benchmark-summary.json").read_text())
 tight = load("bdf5-rtol-1e-6.json")
 practical = load("bdf5-rtol-1e-3.json")
@@ -50,7 +72,7 @@ def save(fig, name):
 
 
 # LRA geometry, reconstructed from the public benchmark problem.
-from ndgpu.benchmarks import build_lra2d  # noqa: E402
+from garnet.benchmarks import build_lra2d  # noqa: E402
 
 problem = build_lra2d(refine=1)
 regions = problem.material_map[:, :, 0].copy()
@@ -124,7 +146,7 @@ axes[2].axhline(1.0, color="black", ls="--", lw=0.8)
 axes[2].set(xlabel="time (s)", ylabel="accepted defect")
 for ax in axes:
     ax.axvline(2.0, ls=":", lw=0.9, color="0.25")
-    ax.axvline(practical["ndgpu"]["first_peak_time_s"], ls=":", lw=0.9,
+    ax.axvline(solver_metrics(practical)["first_peak_time_s"], ls=":", lw=0.9,
                color="#cc3311")
 axes[0].set_title("Automatic BDF response near the prompt peak and rod-stop event")
 save(fig, "controller_history")
@@ -162,13 +184,13 @@ labels = [r"$k_{in}$", r"$k_{out}$", r"$t_1$", r"$P_1$", r"$P_2$",
 anl = summary["anl_reference"]
 
 def complete_metrics(payload):
-    result = dict(payload["ndgpu"])
-    result.update(summary["static_ndgpu"])
+    result = dict(solver_metrics(payload))
+    result.update(static_metrics(summary))
     return result
 
 series = [
-    ("ndgpu assembly T, tight", complete_metrics(tight), "#0077bb"),
-    ("ndgpu cell-local T, tight", complete_metrics(cell_tight), "#ee7733"),
+    ("GARNET assembly T, tight", complete_metrics(tight), "#0077bb"),
+    ("GARNET cell-local T, tight", complete_metrics(cell_tight), "#ee7733"),
     ("FEMCORE", summary["cherezov_femcore"], "#aa4499"),
 ]
 x = np.arange(len(keys))
@@ -188,7 +210,7 @@ save(fig, "anl_accuracy")
 # Spatial convergence of the benchmark-faithful cell-local feedback model.
 cell_widths = np.asarray([15.0 / row["case"]["refine"]
                           for row in cell_spatial])
-spatial_metrics = [row["ndgpu"] for row in cell_spatial]
+spatial_metrics = [solver_metrics(row) for row in cell_spatial]
 fig, axes = plt.subplots(1, 3, figsize=(8.0, 3.25), sharex=True)
 for key, label, color, marker in (
     ("first_peak_time_s", r"$t_1$", "#0077bb", "o"),
@@ -230,8 +252,8 @@ save(fig, "spatial_convergence")
 
 
 # Matched-error normalized cost on the benchmark-faithful cell-local model.
-bdf = cell_matched["ndgpu"]
-be = cell_backward["ndgpu"]
+bdf = solver_metrics(cell_matched)
+be = solver_metrics(cell_backward)
 names = ["accepted steps", "FGMRES applications", "inner iterations", "wall time"]
 ratios = [be["steps"] / bdf["steps"],
           be["fgmres_applications"] / bdf["fgmres_applications"],
@@ -246,19 +268,19 @@ ax.tick_params(axis="x", rotation=18)
 save(fig, "matched_cost")
 
 
-# Published FEMCORE CPU ladder and ndgpu measurements.  The paper does not
+# Published FEMCORE CPU ladder and garnet measurements.  The paper does not
 # identify its CPU, so this is a raw-time comparison rather than a speedup.
 fem = summary["cherezov_performance"]["fem_rows"]
 fig, ax = plt.subplots(figsize=(5.9, 4.0))
 ax.loglog([row["dof"] for row in fem], [row["seconds"] for row in fem],
           "o-", color="#aa4499", label="FEMCORE (published)")
-ndgpu_dof = [44**2, 165**2]
-ndgpu_seconds = [cell_spatial[2]["ndgpu"]["solve_seconds"],
-                 cell_spatial[-1]["ndgpu"]["solve_seconds"]]
-ax.loglog(ndgpu_dof, ndgpu_seconds, "s", color="#0077bb", ms=6,
-          label="ndgpu (i5-1145G7)")
+garnet_dof = [44**2, 165**2]
+garnet_seconds = [solver_metrics(cell_spatial[2])["solve_seconds"],
+                  solver_metrics(cell_spatial[-1])["solve_seconds"]]
+ax.loglog(garnet_dof, garnet_seconds, "s", color="#0077bb", ms=6,
+          label="GARNET (i5-1145G7)")
 for x_value, y_value, label in zip(
-        ndgpu_dof, ndgpu_seconds, ("3.75 cm", "1 cm")):
+        garnet_dof, garnet_seconds, ("3.75 cm", "1 cm")):
     ax.annotate(label, (x_value, y_value), xytext=(5, -11),
                 textcoords="offset points", fontsize=8)
 ax.set(xlabel="scalar spatial degrees of freedom / FV cells",

@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_reference import reconstruct_nem_reference, qualify_nem_reference_factors
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_reference import reconstruct_nem_reference, qualify_nem_reference_factors
 from test_nem import tensor_grid, materials
 
 

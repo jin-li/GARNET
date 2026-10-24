@@ -22,7 +22,7 @@ leakage/Doppler separation.
 
 ## Evidence
 
-The archived 1 cm DIF3D input/result reports `k_in=0.996325`. ndgpu gives
+The archived 1 cm DIF3D input/result reports `k_in=0.996325`. garnet gives
 `0.99632537` at the same cell width. Its endpoint convergence is:
 
 | FV cell width | rods in | rods out |

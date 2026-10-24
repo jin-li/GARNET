@@ -1,12 +1,12 @@
 """C5G7 2D benchmark: diffusion / SP3 / SDP1 / SDP2 / SDP3 vs the paper's Table 7.
 
 Runs the OECD/NEA C5G7 2D MOX benchmark (7 groups, quarter core + water
-reflector, k_ref = 1.18655 from OpenMC/MCNP) through ndgpu's full angular
+reflector, k_ref = 1.18655 from OpenMC/MCNP) through garnet's full angular
 hierarchy and lines the eigenvalues up against Table 7 of Carreno et al.,
 Ann. Nucl. Energy 207 (2024) 110675.
 
 Caveat on the absolute pcm: the paper resolves each cylindrical fuel pin with a
-FE mesh, whereas ndgpu volume-homogenizes each 1.26 cm pin cell -- an extra
+FE mesh, whereas garnet volume-homogenizes each 1.26 cm pin cell -- an extra
 modeling bias on top of the angular approximation. So the interesting comparison
 is the *hierarchy behavior*, which the paper flags as the C5G7 story: unlike the
 strongly heterogeneous BWR case, here higher order does NOT help -- SP5/SP7 and
@@ -17,10 +17,10 @@ stagnation.
 import sys
 import time
 
-from ndgpu import (DiffusionEigenSolver, SP1EigenSolver, SP3EigenSolver,
+from garnet import (DiffusionEigenSolver, SP1EigenSolver, SP3EigenSolver,
                    SP5EigenSolver, SP7EigenSolver, SDP1EigenSolver,
                    SDP2EigenSolver, SDP3EigenSolver)
-from ndgpu.benchmarks import K_REFERENCE_2D, build_c5g7_2d
+from garnet.benchmarks import K_REFERENCE_2D, build_c5g7_2d
 
 # Paper Table 7: (k_eff, Delta_k pcm vs 1.18655). Delta_k = |k_ref - k|/k_ref.
 PAPER = {

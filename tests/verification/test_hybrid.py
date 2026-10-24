@@ -19,11 +19,11 @@ strictly between diffusion (over-predicts) and full SP3 (the reference).
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, SDP1EigenSolver, SDP2EigenSolver,
+from garnet import (DiffusionEigenSolver, Grid, SDP1EigenSolver, SDP2EigenSolver,
                    SDP3EigenSolver, SP3EigenSolver, TriDiffusionEigenSolver,
                    TriSP3EigenSolver)
-from ndgpu.benchmarks.hpmr import build_hpmr2d, hpmr_transport_mask
-from ndgpu.materials import Material
+from garnet.benchmarks.hpmr import build_hpmr2d, hpmr_transport_mask
+from garnet.materials import Material
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 

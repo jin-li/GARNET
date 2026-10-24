@@ -8,7 +8,7 @@ Usage: python examples/speed_benchmark.py [sizes...]   e.g. python examples/spee
 
 import sys
 
-from ndgpu import DiffusionEigenSolver, Grid, PWR_TWO_GROUP, get_backend, k_bare_box
+from garnet import DiffusionEigenSolver, Grid, PWR_TWO_GROUP, get_backend, k_bare_box
 
 import numpy as np
 

@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
-from ndgpu.kinetics_production import assemble_kinetics_production
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.kinetics_production import assemble_kinetics_production
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
 from test_nem import tensor_grid, materials
 
 
 def test_zero_sampled_bin_and_delayed_tail_through_nem_projection():
-    from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+    from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
     grid = tensor_grid(([0.,.7,1.9],[0.,1.3],[0.,.8]))
     mat = materials(grid,2)
     mat[4][:] = [1.,0.]

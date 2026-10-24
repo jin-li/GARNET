@@ -11,10 +11,10 @@ mis-scaled boundary term all break it while CG still converges happily.
 import numpy as np
 import pytest
 
-from ndgpu import Grid
-from ndgpu.backend import asnumpy
-from ndgpu.thermal import ConductionSolver, ThermalMaterial
-from ndgpu.tri import TriGrid
+from garnet import Grid
+from garnet.backend import asnumpy
+from garnet.thermal import ConductionSolver, ThermalMaterial
+from garnet.tri import TriGrid
 
 # One physically-scaled parameter set, shared by the analytic tests, chosen so
 # the diffusion length L_d = sqrt(k/h) = 4.32 cm is comparable to the slab
@@ -162,7 +162,7 @@ def test_hpmr_core_energy_balance_closes():
     """The real body-fitted triangular core, drum arcs volume-mixed: the
     balance identity must hold on the jagged active mask too, where no closed
     form exists."""
-    from ndgpu.benchmarks.hpmr import build_hpmr2d
+    from garnet.benchmarks.hpmr import build_hpmr2d
 
     p = build_hpmr2d(refine=4, drum_angle_deg=90.0, absorber="polar")
     tm = [ThermalMaterial(conductivity=1e-6),                       # void

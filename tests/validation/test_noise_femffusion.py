@@ -1,4 +1,4 @@
-"""Cross-check ndgpu's frequency-domain noise solver against FEMFFUSION.
+"""Cross-check garnet's frequency-domain noise solver against FEMFFUSION.
 
 Replicates FEMFFUSION's own noise regression case (test/1D_noise_SPN: a 1D
 two-group slab, 1 Hz absorption fluctuation in one cell) and compares the
@@ -10,7 +10,7 @@ approximations:
 
 The two codes share the noise formulation (critical adjustment, omega = 2*pi*f,
 the identical chi_eff(w), and -- for SP3 -- the coupled Marshak vacuum boundary),
-so they differ only in spatial discretization (ndgpu cell-centred finite volume
+so they differ only in spatial discretization (garnet cell-centred finite volume
 vs FEMFFUSION continuous-Galerkin finite elements). At the reference 60-cell mesh
 they agree to a fraction of a percent, and the difference falls at ~second order
 under refinement (verified separately at 120 cells: delta-phi L2 diffusion
@@ -20,9 +20,9 @@ under refinement (verified separately at 120 cells: delta-phi L2 diffusion
 import numpy as np
 import pytest
 
-from ndgpu import NoiseSolver, NoiseSource
-from ndgpu.backend import asnumpy
-from ndgpu.benchmarks import build_femffusion_1d_noise
+from garnet import NoiseSolver, NoiseSource
+from garnet.backend import asnumpy
+from garnet.benchmarks import build_femffusion_1d_noise
 
 
 @pytest.mark.parametrize("angular", ["diffusion", "sp3"])

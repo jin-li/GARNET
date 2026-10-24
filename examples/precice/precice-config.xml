@@ -38,7 +38,7 @@
     <provide-mesh name="Thermal-Mesh" />
     <write-data name="Temperature" mesh="Thermal-Mesh" />
     <read-data name="Power" mesh="Thermal-Mesh" />
-    <!-- Both participants define the SAME vertex set (ndgpu.coupling.
+    <!-- Both participants define the SAME vertex set (garnet.coupling.
          coupling_vertices on identically-built problems), so every vertex's
          nearest neighbour is itself at distance zero: the mapping is the
          identity permutation and the data crosses preCICE bit-exact.
@@ -76,7 +76,7 @@
     <exchange data="Temperature" mesh="Neutronics-Mesh" from="Thermal"
               to="Neutronics" initialize="true" substeps="false" />
 
-    <!-- Constant relaxation, matching ndgpu's CoupledSolver(relaxation=omega)
+    <!-- Constant relaxation, matching garnet's CoupledSolver(relaxation=omega)
          expression for expression, so the two couplings produce the SAME
          iterates and not merely the same fixed point. Swap in the IQN-ILS
          block from README.md for production speed. -->

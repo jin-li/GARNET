@@ -28,11 +28,11 @@ from itertools import combinations
 
 import numpy as np
 
-from ndgpu import NoiseSolver
-from ndgpu.benchmarks.hpmr import (build_hpmr3d, PITCH, FUEL, BE_REFLECTOR,
+from garnet import NoiseSolver
+from garnet.benchmarks.hpmr import (build_hpmr3d, PITCH, FUEL, BE_REFLECTOR,
                                    HPMR_FUEL_SITES, HPMR_BE_SITES,
                                    HPMR_DRUM_SITES)
-from ndgpu.hexraster import rasterize_hex_sites, hex_site_xy
+from garnet.hexraster import rasterize_hex_sites, hex_site_xy
 
 f_hz = float(sys.argv[1]) if len(sys.argv) > 1 else 100.0
 device = sys.argv[2] if len(sys.argv) > 2 else "cpu"

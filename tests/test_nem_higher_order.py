@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 from numpy.polynomial import legendre as leg
-from ndgpu.nem import NEMDiffusionSolver
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_geometry import CuboidNodalGrid
+from garnet.nem import NEMDiffusionSolver
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_geometry import CuboidNodalGrid
 from test_nem import tensor_grid,materials,independent_weights,PAIRS
 
 

@@ -28,15 +28,15 @@ jobs:
       - run: python -m build --outdir build/dist
       - name: Clean wheel installation and portable examples
         run: |
-          python -m venv /tmp/ndgpu-wheel
-          /tmp/ndgpu-wheel/bin/python -m pip install build/dist/*.whl
-          mkdir -p /tmp/ndgpu-wheel-run/examples
-          cp -R examples/isonees_features /tmp/ndgpu-wheel-run/examples/
-          cd /tmp/ndgpu-wheel-run
-          /tmp/ndgpu-wheel/bin/python -I -c "import ndgpu; assert '/tmp/ndgpu-wheel/' in ndgpu.__file__"
-          /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/common_mesh_fv.py
-          /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/nem_local_reference.py
-          /tmp/ndgpu-wheel/bin/python -I examples/isonees_features/static_kinetics.py
+          python -m venv /tmp/garnet-wheel
+          /tmp/garnet-wheel/bin/python -m pip install build/dist/*.whl
+          mkdir -p /tmp/garnet-wheel-run/examples
+          cp -R examples/isonees_features /tmp/garnet-wheel-run/examples/
+          cd /tmp/garnet-wheel-run
+          /tmp/garnet-wheel/bin/python -I -c "import garnet; assert '/tmp/garnet-wheel/' in garnet.__file__"
+          /tmp/garnet-wheel/bin/python -I examples/isonees_features/common_mesh_fv.py
+          /tmp/garnet-wheel/bin/python -I examples/isonees_features/nem_local_reference.py
+          /tmp/garnet-wheel/bin/python -I examples/isonees_features/static_kinetics.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -55,8 +55,8 @@ jobs:
       - run: python -m sphinx -M latexpdf docs docs/_build -W --keep-going
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ndgpu-manuals
+          name: garnet-manuals
           path: |
             docs/_build/html
-            docs/_build/latex/ndgpu-user-manual.pdf
-            docs/_build/latex/ndgpu-methodology-manual.pdf
+            docs/_build/latex/garnet-user-manual.pdf
+            docs/_build/latex/garnet-methodology-manual.pdf

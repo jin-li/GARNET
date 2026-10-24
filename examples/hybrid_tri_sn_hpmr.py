@@ -2,7 +2,7 @@
 
 The triangular-mesh culmination of the S_N work: full discrete-ordinates
 transport (second-order SCB) runs only in the control-drum cells and diffusion in
-the bulk, on the real body-fitted HP-MR mesh (ndgpu.HybridTriSNDiffusionSolver).
+the bulk, on the real body-fitted HP-MR mesh (garnet.HybridTriSNDiffusionSolver).
 The drums are excised from the diffusion domain and the two regions are coupled
 by the interface net current.
 
@@ -29,10 +29,10 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks import build_hpmr2d, hpmr_transport_mask
-from ndgpu.tri import TriDiffusionEigenSolver
-from ndgpu.tri_sn import TriSNTransportSolver
-from ndgpu.hybrid_tri_sn import HybridTriSNDiffusionSolver
+from garnet.benchmarks import build_hpmr2d, hpmr_transport_mask
+from garnet.tri import TriDiffusionEigenSolver
+from garnet.tri_sn import TriSNTransportSolver
+from garnet.hybrid_tri_sn import HybridTriSNDiffusionSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 TOL = dict(tol_k=5e-7, tol_source=5e-6, max_outer=200)

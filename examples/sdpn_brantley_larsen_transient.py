@@ -24,9 +24,9 @@ import time
 
 import numpy as np
 
-from ndgpu import (Grid, Kinetics, Material, TransientSDPNSolver,
+from garnet import (Grid, Kinetics, Material, TransientSDPNSolver,
                    TransientSPNSolver)
-from ndgpu.solver import SDPNEigenSolver, SPNEigenSolver
+from garnet.solver import SDPNEigenSolver, SPNEigenSolver
 
 # One-group data (paper Table 5) + a perturbed central bar (index 2).
 D_SIGMA_A = 0.002                    # central-bar absorption drop at t = 0+
