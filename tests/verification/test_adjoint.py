@@ -13,7 +13,7 @@ triangular -- genuinely nonsymmetric -- and the transpose actually matters.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP
+from garnet import DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP
 
 GRID = Grid(shape=(24, 24, 24), size=(80.0, 80.0, 80.0))
 TIGHT = dict(tol_k=1e-10, tol_source=1e-9)
@@ -82,7 +82,7 @@ def test_noise_adjoint_reciprocity(angular, f_hz):
     precision. The noise operator is complex-symmetric within a group but its
     group coupling (downscatter, chi<->nuSigma_f fission) is not, so the
     transpose is nontrivial; this also exercises the SPN moment block."""
-    from ndgpu import Kinetics, NoiseSolver
+    from garnet import Kinetics, NoiseSolver
 
     grid = Grid(shape=(6, 6, 1), size=(30.0, 30.0, 1.0))
     kin = Kinetics(velocities=[1.5e7, 4.0e5], beta=[0.0065], decay=[0.0784])
@@ -117,7 +117,7 @@ def test_noise_krylov_matches_source(angular, f_hz):
     coupled operator is complex non-symmetric (scatter + fission), so this also
     exercises fgmres_c and the block-Gauss-Seidel preconditioner; the PWR set's
     downscatter makes the coupling genuinely triangular."""
-    from ndgpu import Kinetics, NoiseSolver, NoiseSource
+    from garnet import Kinetics, NoiseSolver, NoiseSource
 
     grid = Grid(shape=(8, 8, 1), size=(40.0, 40.0, 1.0))
     kin = Kinetics(velocities=[1.5e7, 4.0e5], beta=[0.0065], decay=[0.0784])

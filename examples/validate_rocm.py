@@ -21,12 +21,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from ndgpu import kernels
-from ndgpu.backend import asnumpy, get_backend, synchronize
-from ndgpu.grid import Grid
-from ndgpu.materials import Kinetics, Material
-from ndgpu.solver import DiffusionEigenSolver, SP3EigenSolver
-from ndgpu.transient import TransientSolver
+from garnet import kernels
+from garnet.backend import asnumpy, get_backend, synchronize
+from garnet.grid import Grid
+from garnet.materials import Kinetics, Material
+from garnet.solver import DiffusionEigenSolver, SP3EigenSolver
+from garnet.transient import TransientSolver
 
 EIGEN_KW = dict(tol_k=1e-9, tol_source=1e-8, max_outer=500)
 TOLERANCES = dict(k_abs=2e-7, normalized_flux_rel_l2=2e-5,
@@ -63,9 +63,9 @@ def problem(size, *, cube=False):
 
 def factory(kind, size, device, hpmr_refine):
     if kind == "hpmr_thermal":
-        from ndgpu.benchmarks.hpmr import build_hpmr2d
-        from ndgpu.benchmarks.hpmr_thermal import build_hpmr_coupling
-        from ndgpu.coupling import CoupledSolver
+        from garnet.benchmarks.hpmr import build_hpmr2d
+        from garnet.benchmarks.hpmr_thermal import build_hpmr_coupling
+        from garnet.coupling import CoupledSolver
         p = build_hpmr2d(refine=hpmr_refine, drum_angle_deg=120,
                          absorber="polar", samples=6)
         ctx = build_hpmr_coupling(p, device=device, eigen_kwargs=EIGEN_KW)
@@ -167,7 +167,7 @@ def benchmark(kind, size, device, xp, repeats, hpmr_refine, reference=None):
 
 
 def graph_probe(xp, size, *, force_stream_error=False):
-    from ndgpu.linalg import PCGWorkspace, pcg
+    from garnet.linalg import PCGWorkspace, pcg
     grid, mats, mmap = problem(size)
     solver = DiffusionEigenSolver(grid, mats, mmap, device="gpu",
         bc=("zero-flux", "zero-flux", "reflective"))
@@ -212,8 +212,8 @@ def dsa_probe(xp, triangular):
     """Exercise the real accelerator factory with both sides of the bus."""
     from types import SimpleNamespace
     from scipy.sparse import csr_matrix
-    from ndgpu.sn import SNTransportSolver
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.sn import SNTransportSolver
+    from garnet.tri_sn import TriSNTransportSolver
     cls = TriSNTransportSolver if triangular else SNTransportSolver
     dense = np.array([[2., -1.], [-1., 2.]])
     b = np.array([1., 0.])
@@ -235,8 +235,8 @@ def dsa_probe(xp, triangular):
 
 
 def trisn_probe(xp):
-    from ndgpu.tri import TriGrid
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.tri import TriGrid
+    from garnet.tri_sn import TriSNTransportSolver
     grid = TriGrid((3, 3, 2), side=10.)
     material = Material([1.], [.08], [.12], total=[.3])
     kwargs = dict(n_polar=1, n_azi=4, engine="levels", bc="vacuum",
@@ -268,7 +268,7 @@ def trisn_probe(xp):
 
 def event_profile_probe(xp):
     """Exercise event profiling through the public coupled-transient API."""
-    from ndgpu import HexLattice, ThermalMaterial
+    from garnet import HexLattice, ThermalMaterial
     fuel = Material([1.2], [.025], [.030], [[0.]], name="profile fuel")
     core = (HexLattice(pitch=10., refine=1).set_disk(0, fuel)
             .set_boundary("reflective")
@@ -343,7 +343,7 @@ def main(argv=None):
         report["software"].update(is_hip=True,
             runtime_version=xp.cuda.runtime.runtimeGetVersion(),
             driver_version=xp.cuda.runtime.driverGetVersion())
-        for package in ("ndgpu", "scipy"):
+        for package in ("garnet", "scipy"):
             try:
                 report["software"][package] = importlib.metadata.version(package)
             except importlib.metadata.PackageNotFoundError:
@@ -380,7 +380,7 @@ def main(argv=None):
                          "trisn": optional(lambda: dsa_probe(xp, True))}
         report["trisn_levels"] = optional(lambda: trisn_probe(xp))
         report["coupled_event_profile"] = optional(lambda: event_profile_probe(xp))
-        from ndgpu.profiling import operator_profile
+        from garnet.profiling import operator_profile
         grid, mats, mmap = problem(args.sizes[0])
         solver = DiffusionEigenSolver(grid, mats, mmap, device="gpu")
         report["operator_profile"] = optional(lambda: operator_profile(

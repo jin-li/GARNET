@@ -1,4 +1,4 @@
-"""The fused CUDA kernels of ndgpu.kernels, checked without a GPU.
+"""The fused CUDA kernels of garnet.kernels, checked without a GPU.
 
 The kernels themselves only run under CuPy, but the part that is easy to get
 wrong is not the CUDA -- it is the flat-index arithmetic reaching coupling
@@ -7,7 +7,7 @@ re-implements the kernel bodies in NumPy, index for index, and pins them against
 the slice forms that are the reference. A stride bug shows up here on CPU rather
 than in a Colab session.
 
-- `emulate_stencil7` mirrors ``ndgpu.kernels._STENCIL7_SRC`` (Cartesian).
+- `emulate_stencil7` mirrors ``garnet.kernels._STENCIL7_SRC`` (Cartesian).
 - `emulate_tri` mirrors ``_TRI_SRC`` / ``_TRI_Z_SRC`` (triangular: two
   interleaved sublattices, three face families with ordered (a, b) weight
   pairs, 2D as nz = 1).
@@ -26,9 +26,9 @@ additionally exercises the real kernels through the notebook's gates.
 import numpy as np
 import pytest
 
-from ndgpu import Grid
-from ndgpu import kernels
-from ndgpu.stencil import GroupOperator
+from garnet import Grid
+from garnet import kernels
+from garnet.stencil import GroupOperator
 
 
 def emulate_stencil7(phi, diag, wx, wy, wz, row_scale=None):
@@ -234,7 +234,7 @@ def test_cpu_fallbacks_match_the_expressions_they_replace():
 
 def test_sp3_block_matches_the_expression_it_replaces():
     """SP3's apply now writes each moment into its row and couples in one pass."""
-    from ndgpu.sp3 import SP3GroupOperator
+    from garnet.sp3 import SP3GroupOperator
 
     shape = (6, 5, 4)
     rng = np.random.default_rng(13)
@@ -254,7 +254,7 @@ def test_sp3_block_matches_the_expression_it_replaces():
 def emulate_tri(phi, diag, a_hyp, b_hyp, a_v, b_v, a_h, b_h, wz, nx, ny, nz):
     """NumPy transcription of the fused tri kernel, using its exact flat indices.
 
-    Mirrors ``ndgpu.kernels._TRI_SRC`` / ``_TRI_Z_SRC`` line for line and must
+    Mirrors ``garnet.kernels._TRI_SRC`` / ``_TRI_Z_SRC`` line for line and must
     be updated with them. The tri layout is nastier than the Cartesian one --
     two sublattices interleaved on the third axis, three face families with
     ordered (a, b) weight pairs, and 2D handled as nz = 1 -- so this is where an
@@ -297,7 +297,7 @@ def emulate_tri(phi, diag, a_hyp, b_hyp, a_v, b_v, a_h, b_h, wz, nx, ny, nz):
 
 
 def _tri_operator(nx, ny, nz=None, seed=0, **kw):
-    from ndgpu.tri import TriGrid, TriGroupOperator
+    from garnet.tri import TriGrid, TriGroupOperator
 
     rng = np.random.default_rng(seed)
     shape = (nx, ny, 2) if nz is None else (nx, ny, 2, nz)
@@ -339,7 +339,7 @@ def test_tri_supports_out_and_refuses_narrowing_dtypes():
     assert op._fusable(np.dtype(np.float64))
 
     # the noise solver's complex removal must not be cast down to a real phi
-    from ndgpu.tri import TriGroupOperator
+    from garnet.tri import TriGroupOperator
 
     cop = TriGroupOperator(np, grid, 0.5 + rng.random(grid.shape),
                            (0.1 + rng.random(grid.shape))
@@ -355,8 +355,8 @@ def _block_ops():
     congruence block; SDP2's builds the plain per-moment one. Taking them off
     the solvers keeps the coefficient plumbing honest.
     """
-    from ndgpu import PWR_TWO_GROUP, SDP2EigenSolver, SDP3EigenSolver
-    from ndgpu.spn import CongruentSDPNOperator, SDPNGroupOperator
+    from garnet import PWR_TWO_GROUP, SDP2EigenSolver, SDP3EigenSolver
+    from garnet.spn import CongruentSDPNOperator, SDPNGroupOperator
 
     grid = Grid(shape=(6, 5, 4), size=(10.0, 8.0, 6.0))
     kw = dict(device="cpu", bc="reflective")
@@ -438,8 +438,8 @@ def test_block_kernel_cpu_fallbacks():
 
 def test_operators_without_out_support_take_the_allocating_path():
     """The mesh stencil has no out=; the block operators must not assume it."""
-    from ndgpu.mesh import _MeshGroupOperator
-    from ndgpu.tri import TriGroupOperator
+    from garnet.mesh import _MeshGroupOperator
+    from garnet.tri import TriGroupOperator
 
     assert not getattr(_MeshGroupOperator, "supports_out", False)
     assert GroupOperator.supports_out and TriGroupOperator.supports_out
@@ -452,7 +452,7 @@ def test_scatter_stack_matches_the_loop_it_replaces():
     so a flipped index here would pass every forward test and quietly corrupt
     perturbation theory.
     """
-    from ndgpu.solver import scatter_stack
+    from garnet.solver import scatter_stack
 
     G, shape = 4, (3, 3, 2)
     rng = np.random.default_rng(29)
@@ -481,7 +481,7 @@ def test_scatter_stack_matches_the_loop_it_replaces():
 def test_group_batch_is_declined_on_cpu():
     """CPU keeps the sparse loop: it skips absent couplings instead of
     multiplying by materialized zeros, which is strictly better there."""
-    from ndgpu import PWR_TWO_GROUP, DiffusionEigenSolver
+    from garnet import PWR_TWO_GROUP, DiffusionEigenSolver
 
     solver = DiffusionEigenSolver(Grid(shape=(4, 4, 4), size=(10.0, 10.0, 10.0)),
                                   PWR_TWO_GROUP, device="cpu")
@@ -499,8 +499,8 @@ def test_batched_group_loop_reproduces_the_unbatched_solve(monkeypatch):
     flux below g and the previous one above), the per-outer rescaling of that
     buffer alongside the state, and the batched fission source.
     """
-    from ndgpu import DiffusionEigenSolver, PWR_TWO_GROUP
-    from ndgpu.benchmarks import build_c5g7_2d
+    from garnet import DiffusionEigenSolver, PWR_TWO_GROUP
+    from garnet.benchmarks import build_c5g7_2d
 
     prob = build_c5g7_2d(cells_per_pin=1)          # 7 groups, real upscatter-free set
     tol = dict(tol_k=1e-9, tol_source=1e-8)
@@ -558,8 +558,8 @@ def test_tri_sn_sweep_is_unchanged_by_the_fused_contractions(scheme):
     compute the same sums, so a converged S_N solve must agree; this forces the
     fused path on under NumPy, where it is otherwise never taken.
     """
-    from ndgpu.benchmarks import build_hpmr2d
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.benchmarks import build_hpmr2d
+    from garnet.tri_sn import TriSNTransportSolver
 
     p = build_hpmr2d(refine=4, drum_angle_deg=0.0, absorber="polar")
     kw = dict(active=p.active, bc="vacuum", scheme=scheme, engine="levels",
@@ -595,8 +595,8 @@ except Exception:
 
 @pytest.mark.skipif(not HAVE_CUPY, reason="needs a CUDA device")
 @pytest.mark.parametrize("mod,attr,args", [
-    ("ndgpu.sn", "SNTransportSolver", ()),
-    ("ndgpu.tri_sn", "TriSNTransportSolver", (True,)),
+    ("garnet.sn", "SNTransportSolver", ()),
+    ("garnet.tri_sn", "TriSNTransportSolver", (True,)),
 ])
 def test_dsa_solver_accepts_a_host_residual(mod, attr, args):
     """The device DSA solve must take, and return, whichever backend it is given.
@@ -648,8 +648,8 @@ def test_cmfd_lu_solver_bridges_the_bus_on_a_device_backend():
 
     import scipy.sparse as sp
 
-    from ndgpu.benchmarks import build_hpmr2d
-    from ndgpu.tri_sn import TriSNTransportSolver
+    from garnet.benchmarks import build_hpmr2d
+    from garnet.tri_sn import TriSNTransportSolver
 
     p = build_hpmr2d(refine=3, drum_angle_deg=0.0, absorber="polar")
     s = TriSNTransportSolver(p.grid, p.materials, p.material_map, active=p.active,

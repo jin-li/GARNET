@@ -19,7 +19,7 @@ resolved in-window, and the match tightens to a few 1e-4 (backward-Euler O(dt)).
 import numpy as np
 import pytest
 
-from ndgpu import (DiffusionEigenSolver, Grid, Kinetics, Material,
+from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material,
                    TransientSolver, TransientSDP1Solver)
 
 D, SIGMA_A, NU_SIGMA_F = 1.3, 0.030, 0.035
@@ -565,9 +565,9 @@ def test_transient_block_time_terms_match_uform_time_matrix(
     dedicated-row time term theta*(9 phi2 - 2 Phi1)). This equivalence is
     exactly what the old, incomplete row-1 time term (theta*5*phi2) violated.
     """
-    import ndgpu.operator as op_mod
-    from ndgpu.operator import SDPNGroupOperator, SP3GroupOperator
-    from ndgpu import Grid
+    import garnet.operator as op_mod
+    from garnet.operator import SDPNGroupOperator, SP3GroupOperator
+    from garnet import Grid
 
     coeffs = getattr(op_mod, coeffs_name) if coeffs_name else None
     rng = np.random.default_rng(7)
@@ -594,7 +594,7 @@ def test_sdpn_transient_order1_matches_dedicated_sdp1():
     """TransientSDPNSolver at order 1 solves the same equations as the
     dedicated TransientSDP1Solver (different variables and Krylov solver), so
     their power traces must agree to solver tolerance."""
-    from ndgpu import TransientSDPNSolver
+    from garnet import TransientSDPNSolver
 
     d_sigma_a = 0.3 * BETA * NU_SIGMA_F
     prob = absorption_step_problem(d_sigma_a)
@@ -610,7 +610,7 @@ def test_spn_transient_order0_matches_diffusion_transient():
     """TransientSPNSolver at order 0 is SP1 = P1/diffusion kinetics through
     the U-form block machinery, so its power trace must reproduce
     TransientSolver to solver tolerance."""
-    from ndgpu import TransientSPNSolver
+    from garnet import TransientSPNSolver
 
     d_sigma_a = 0.3 * BETA * NU_SIGMA_F
     prob = absorption_step_problem(d_sigma_a)
@@ -656,7 +656,7 @@ def test_sdp3_unperturbed_transient_stays_steady():
     """The steady SDP3 state is an exact fixed point of the 4-moment transient
     block: the theta terms and their backward-Euler sources cancel exactly in
     equilibrium at every moment."""
-    from ndgpu import TransientSDP3Solver
+    from garnet import TransientSDP3Solver
 
     res = TransientSDP3Solver(GRID, lambda t: ([BASE], None), KIN,
                               device="cpu").solve(t_end=0.5, dt=0.05)
@@ -671,7 +671,7 @@ def test_sdp3_transient_tracks_point_kinetics():
     fast -- it still covers the prompt jump and the start of the delayed
     rise)."""
     from scipy.integrate import solve_ivp
-    from ndgpu import TransientSDP3Solver
+    from garnet import TransientSDP3Solver
 
     k0 = TransientSDP3Solver(GRID, lambda t: ([BASE], None), KIN,
                              device="cpu").solve(t_end=1e-3, dt=1e-3).k0

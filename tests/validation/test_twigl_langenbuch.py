@@ -1,17 +1,17 @@
 """TWIGL (2D) and Langenbuch/LMW (3D) kinetics benchmarks.
 
 Reference eigenvalues and power histories live with the problem definitions
-in ndgpu.benchmarks.twigl / .langenbuch; these tests march the transients on
+in garnet.benchmarks.twigl / .langenbuch; these tests march the transients on
 coarse meshes and check against them.
 """
 
 import numpy as np
 import pytest
 
-from ndgpu import TransientSolver
-from ndgpu.benchmarks import build_langenbuch, build_twigl
-from ndgpu.benchmarks.langenbuch import PEAK_REFERENCE
-from ndgpu.benchmarks.twigl import K_REFERENCE, P_REFERENCE
+from garnet import TransientSolver
+from garnet.benchmarks import build_langenbuch, build_twigl
+from garnet.benchmarks.langenbuch import PEAK_REFERENCE
+from garnet.benchmarks.twigl import K_REFERENCE, P_REFERENCE
 
 
 def test_twigl_step_and_ramp():

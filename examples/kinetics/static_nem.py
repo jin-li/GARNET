@@ -5,9 +5,9 @@ The unequal reflected nodes have identical one-group material, so physical
 Lambda=1/(v*nuSigmaF) and beta_eff equals the supplied raw fractions.
 """
 import numpy as np
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
 
 
 def main():

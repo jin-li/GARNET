@@ -17,9 +17,9 @@ import sys
 
 import numpy as np
 
-from ndgpu import (DiffusionEigenSolver, Grid, Kinetics, Material, NoiseSolver,
+from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material, NoiseSolver,
                    NoiseSource, zero_power_transfer_function)
-from ndgpu.perturbation import first_order_reactivity
+from garnet.perturbation import first_order_reactivity
 
 device = sys.argv[1] if len(sys.argv) > 1 else "auto"
 
@@ -54,7 +54,7 @@ for f in (0.01, 0.1, 1.0, 10.0, 100.0, 1000.0):
           f"{abs(amp / predicted - 1.0):11.2e}")
 
 # --- Part 2: global-to-local transition in a heterogeneous core --------------
-from ndgpu.benchmarks import build_twigl                       # noqa: E402
+from garnet.benchmarks import build_twigl                       # noqa: E402
 
 p = build_twigl("none", cells_per_8cm=2)
 mats, mmap = p.problem_at(0.0)

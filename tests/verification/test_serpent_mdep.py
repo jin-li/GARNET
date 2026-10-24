@@ -4,7 +4,7 @@ import hashlib
 import numpy as np
 import pytest
 
-from ndgpu.serpent_mdep import read_serpent_mdep, production_xs, build_delayed_channels
+from garnet.serpent_mdep import read_serpent_mdep, production_xs, build_delayed_channels
 
 
 TEXT = '''% Synthetic native-shaped two-group output

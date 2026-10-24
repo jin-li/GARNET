@@ -1,6 +1,6 @@
 # Contributing
 
-Changes are integrated in the `jin-li/NDgpu` fork through feature PRs to `dev`,
+Changes are integrated in the `jin-li/GARNET` fork through feature PRs to `dev`,
 then a verified `dev` to `main` PR. Target the fork explicitly. Work intended
 for the original repository needs a separate upstream review.
 

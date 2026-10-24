@@ -27,10 +27,10 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks import build_hpmr2d, hpmr_transport_mask
-from ndgpu.hybrid_tri_sn import HybridTriSNDiffusionSolver
-from ndgpu.tri import TriDiffusionEigenSolver
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet.benchmarks import build_hpmr2d, hpmr_transport_mask
+from garnet.hybrid_tri_sn import HybridTriSNDiffusionSolver
+from garnet.tri import TriDiffusionEigenSolver
+from garnet.tri_sn import TriSNTransportSolver
 
 refine = int(sys.argv[1]) if len(sys.argv) > 1 else 4
 TOL = dict(tol_k=5e-7, tol_source=5e-6, max_outer=200)

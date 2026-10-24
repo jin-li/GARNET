@@ -8,7 +8,7 @@ builders or hand-assembled solver arguments.
 import numpy as np
 import pytest
 
-from ndgpu import (FeedbackSpec, HexLattice, Kinetics, Material,
+from garnet import (FeedbackSpec, HexLattice, Kinetics, Material,
                    ThermalMaterial, TriReactor, hex_disk, hex_ring)
 
 

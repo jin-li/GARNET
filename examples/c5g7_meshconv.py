@@ -16,10 +16,10 @@ import time
 
 import numpy as np
 
-from ndgpu import (DiffusionEigenSolver, SP1EigenSolver, SP3EigenSolver,
+from garnet import (DiffusionEigenSolver, SP1EigenSolver, SP3EigenSolver,
                    SP5EigenSolver, SP7EigenSolver, SDP1EigenSolver,
                    SDP2EigenSolver, SDP3EigenSolver)
-from ndgpu.benchmarks import K_REFERENCE_2D, build_c5g7_2d
+from garnet.benchmarks import K_REFERENCE_2D, build_c5g7_2d
 
 SOLVERS = {"diffusion": DiffusionEigenSolver, "sp1": SP1EigenSolver,
            "sp3": SP3EigenSolver, "sp5": SP5EigenSolver, "sp7": SP7EigenSolver,

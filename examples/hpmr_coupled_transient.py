@@ -40,14 +40,14 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d, build_hpmr3d
-from ndgpu.benchmarks.hpmr_thermal import (RATED_POWER_W,
+from garnet.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d, build_hpmr3d
+from garnet.benchmarks.hpmr_thermal import (RATED_POWER_W,
                                            hpmr_angle_for_dollars,
                                            build_hpmr_coupling,
                                            hpmr_drum_ramp, hpmr_endfb8_builtin,
                                            sink_coefficient)
-from ndgpu import quasistatic_coupled_transient
-from ndgpu.coupling import coupled_transient
+from garnet import quasistatic_coupled_transient
+from garnet.coupling import coupled_transient
 
 ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 ap.add_argument("--refine", type=int, default=4)

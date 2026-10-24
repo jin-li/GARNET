@@ -6,9 +6,9 @@ This example is CPU-only and uses no Monte Carlo data. Unequal reflected nodes s
 
 ```python
 import numpy as np
-from ndgpu.nem_geometry import CuboidNodalGrid
-from ndgpu.nem_higher_order import NEMHigherOrderDiffusionSolver
-from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+from garnet.nem_geometry import CuboidNodalGrid
+from garnet.nem_higher_order import NEMHigherOrderDiffusionSolver
+from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
 
 grid = CuboidNodalGrid([
     [[0.0, 20.0], [0.0, 10.0], [0.0, 10.0]],
@@ -36,14 +36,14 @@ assert np.isclose(parameters.generation_time, 1/(220000*0.035))
 
 Factors use `(node,side,group)` and side order x−, y−, x+, y+, z−, z+. Exterior factors must be one. Importing a tally is distinct from constructing its matching homogeneous reference. The reference must match production kernel, geometry, polynomial degree and transverse leakage policy. Use `reconstruct_nem_reference` and the explicit reflector-inclusive qualification API for the supported reconstruction workflow. Keep negative profile diagnostics and reference-side current disagreements visible.
 
-The runnable [local reference example](https://github.com/jin-li/NDgpu/blob/main/examples/isonees_features/nem_local_reference.py) supplies an artificial reference. A successful local reconstruction does not validate the full receiving core. An auxiliary reference closure source must never be inserted into core fission or population.
+The runnable [local reference example](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/nem_local_reference.py) supplies an artificial reference. A successful local reconstruction does not validate the full receiving core. An auxiliary reference closure source must never be inserted into core fission or population.
 
 ## Regional delayed-production input
 
 For real qualified input, use the versioned supplemental contract:
 
 ```python
-from ndgpu.kinetics_data import read_regional_kinetics
+from garnet.kinetics_data import read_regional_kinetics
 # These variables must describe the same frozen solver state:
 # node_region_ids: one stable region ID per node
 # energy_bounds: exact descending boundaries of this library
@@ -60,4 +60,4 @@ If only inverse speeds are available, use `project_nem_time` for a time-only pro
 
 `generation_time` is physical static $\Lambda$, `neutron_lifetime` is $k\Lambda$, and `beta` holds projected effective channel fractions. `lambda_low_frequency` is an explicitly labeled one-family low-frequency reduction. These outputs do not start a NEM transient or establish equivalence with an unqualified Monte Carlo estimator.
 
-Any material/geometry change requires a new solver and matching forward/adjoint states. The cached response rejects replacement. Reconstruct factors again when the reference kernel changes. Use [static kinetics](https://github.com/jin-li/NDgpu/blob/main/examples/isonees_features/static_kinetics.py) and [the standalone NEM example](https://github.com/jin-li/NDgpu/blob/main/examples/kinetics/static_nem.py) for reproducible synthetic runs.
+Any material/geometry change requires a new solver and matching forward/adjoint states. The cached response rejects replacement. Reconstruct factors again when the reference kernel changes. Use [static kinetics](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/static_kinetics.py) and [the standalone NEM example](https://github.com/jin-li/GARNET/blob/main/examples/kinetics/static_nem.py) for reproducible synthetic runs.

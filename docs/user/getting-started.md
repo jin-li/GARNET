@@ -16,7 +16,7 @@ This reflected one-group synthetic problem has the analytic result $k=\nu\Sigma_
 
 ```python
 import numpy as np
-from ndgpu import Grid, Material, DiffusionEigenSolver
+from garnet import Grid, Material, DiffusionEigenSolver
 
 fuel = Material(name="synthetic fuel", diffusion=[1.2],
                 sigma_a=[0.025], nu_sigma_f=[0.030],
@@ -36,7 +36,7 @@ print(phi.shape)
 ## A finite leaking reactor
 
 ```python
-from ndgpu import Model
+from garnet import Model
 model = (Model(size=(40.0,), cells=(40,))
          .fill(fuel)
          .set_boundary("vacuum"))
@@ -47,4 +47,4 @@ print(report.k_eff, report.reactivity_pcm)
 
 This block continues the preceding material definition. A vacuum surface leaks neutrons, so its eigenvalue differs from the reflected case. `Model` handles the collapsed axes. For analytic bare-box comparisons use `zero-flux` deliberately; it represents a different surface condition.
 
-Existing runnable starting points are [bare reactor](https://github.com/jin-li/NDgpu/blob/main/examples/bare_reactor.py), [reflected core](https://github.com/jin-li/NDgpu/blob/main/examples/reflected_core.py), and [adjoint importance](https://github.com/jin-li/NDgpu/blob/main/examples/adjoint_importance.py). Run each script's documented command or `--help` before scaling its mesh.
+Existing runnable starting points are [bare reactor](https://github.com/jin-li/GARNET/blob/main/examples/bare_reactor.py), [reflected core](https://github.com/jin-li/GARNET/blob/main/examples/reflected_core.py), and [adjoint importance](https://github.com/jin-li/GARNET/blob/main/examples/adjoint_importance.py). Run each script's documented command or `--help` before scaling its mesh.

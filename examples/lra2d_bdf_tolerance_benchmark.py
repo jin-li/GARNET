@@ -10,7 +10,7 @@ import argparse
 from collections import Counter
 import json
 
-from ndgpu.benchmarks import run_lra2d_cpu
+from garnet.benchmarks import run_lra2d_cpu
 
 
 _METRIC_KEYS = (

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from ndgpu.backend import device_name, get_backend, is_rocm
+from garnet.backend import device_name, get_backend, is_rocm
 
 
 def fake_cupy(monkeypatch, *, hip, count=1, name=b"test GPU"):

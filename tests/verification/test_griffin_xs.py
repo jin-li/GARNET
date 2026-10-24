@@ -12,8 +12,8 @@ volume-homogenization reaction-rate conservation are checked too.
 import numpy as np
 import pytest
 
-from ndgpu.analytic import k_infinite
-from ndgpu.griffin_xs import read_library, read_material, volume_homogenize
+from garnet.analytic import k_infinite
+from garnet.griffin_xs import read_library, read_material, volume_homogenize
 
 # Two-group fixture. Scattering (source->sink): 1->1=0.44, 1->2=0.05,
 # 2->1=0.001 (upscatter), 2->2=0.899. Profile rows are per SINK group; each

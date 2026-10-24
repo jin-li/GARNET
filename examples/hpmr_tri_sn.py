@@ -1,6 +1,6 @@
 """Discrete-ordinates (S_N) transport on the HP-MR triangular core.
 
-S_N now runs on the actual body-fitted HP-MR mesh (ndgpu.TriSNTransportSolver),
+S_N now runs on the actual body-fitted HP-MR mesh (garnet.TriSNTransportSolver),
 not a Cartesian stand-in -- so the microreactor finally has a true-transport
 k-eigenvalue reference alongside diffusion and SP3, all on the same triangular
 grid and the same cross sections.
@@ -32,9 +32,9 @@ import time
 
 import numpy as np
 
-from ndgpu.benchmarks import build_hpmr2d
-from ndgpu.tri import TriDiffusionEigenSolver, TriSP3EigenSolver
-from ndgpu.tri_sn import TriSNTransportSolver
+from garnet.benchmarks import build_hpmr2d
+from garnet.tri import TriDiffusionEigenSolver, TriSP3EigenSolver
+from garnet.tri_sn import TriSNTransportSolver
 
 refines = [int(a) for a in sys.argv[1:]] or [4, 6, 8]
 

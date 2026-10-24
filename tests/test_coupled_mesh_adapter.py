@@ -5,9 +5,9 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from ndgpu.mesh import Mesh
-from ndgpu.coupled_mesh_adapter import to_orthogonal_mesh
-from ndgpu.coupled_moments import (
+from garnet.mesh import Mesh
+from garnet.coupled_mesh_adapter import to_orthogonal_mesh
+from garnet.coupled_moments import (
     BoundaryFace, InteriorFace, OrthogonalMesh, CoupledMomentOperator,
 )
 from test_coupled_moments import material, oracle
@@ -181,7 +181,7 @@ def test_single_cell_empty_interiors_and_required_metadata():
 
 
 def test_geometry_validator_is_called(monkeypatch):
-    import ndgpu.coupled_mesh_adapter as adapter
+    import garnet.coupled_mesh_adapter as adapter
     calls = []
     monkeypatch.setattr(adapter, '_geometry', lambda mesh: calls.append(mesh))
     mesh, ni, nb, kinds, _ = fixture()

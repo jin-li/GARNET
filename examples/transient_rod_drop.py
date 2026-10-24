@@ -16,8 +16,8 @@ Usage: python examples/transient_rod_drop.py [cpu|gpu|auto]
 
 import sys
 
-import ndgpu
-from ndgpu import Material
+import garnet
+from garnet import Material
 
 device = sys.argv[1] if len(sys.argv) > 1 else "auto"
 
@@ -30,7 +30,7 @@ rod = Material(name="control rod", diffusion=[1.2, 0.30], sigma_a=[0.02, 0.45],
 
 # Core with a central channel (coolant at t=0); rod drops in at t = 0.5 s.
 model = (
-    ndgpu.Model(size=(160, 160, 160), cells=(16, 16, 16))
+    garnet.Model(size=(160, 160, 160), cells=(16, 16, 16))
     .fill(fuel)
     .add_box(coolant, x=(60, 100), y=(60, 100))         # the rod channel
     .set_boundary("vacuum")

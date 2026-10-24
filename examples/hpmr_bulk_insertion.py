@@ -29,12 +29,12 @@ import time
 
 import numpy as np
 
-from ndgpu import Material, TriDiffusionEigenSolver
-from ndgpu.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d, build_hpmr3d
-from ndgpu.benchmarks.hpmr_thermal import (RATED_POWER_W, build_hpmr_coupling,
+from garnet import Material, TriDiffusionEigenSolver
+from garnet.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d, build_hpmr3d
+from garnet.benchmarks.hpmr_thermal import (RATED_POWER_W, build_hpmr_coupling,
                                            hpmr_endfb8_builtin,
                                            hpmr_kinetics_11g, sink_coefficient)
-from ndgpu.coupling import coupled_transient
+from garnet.coupling import coupled_transient
 
 ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 ap.add_argument("--dollars", type=float, default=0.5)

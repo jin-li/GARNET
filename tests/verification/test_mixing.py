@@ -11,9 +11,9 @@ is unchanged.
 import numpy as np
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, Material
-from ndgpu.backend import get_backend
-from ndgpu.solver import Fields
+from garnet import DiffusionEigenSolver, Grid, Material
+from garnet.backend import get_backend
+from garnet.solver import Fields
 
 MAT_A = Material(name="A", diffusion=[1.5], sigma_a=[0.02], nu_sigma_f=[0.03])
 MAT_B = Material(name="B", diffusion=[0.5], sigma_a=[0.10], nu_sigma_f=[0.00])
@@ -95,7 +95,7 @@ def test_mixed_cell_k_matches_premixed_material():
     # A reflective cell of fuel volume-mixed with moderator at weight w must
     # reproduce the k_inf of the explicitly pre-mixed material (linear XS,
     # harmonic D, fuel chi) -- the same homogenization done by hand in
-    # ndgpu.benchmarks.c5g7._homogenized_pin.
+    # garnet.benchmarks.c5g7._homogenized_pin.
     fuel = Material(name="fuel", diffusion=[1.4, 0.4], sigma_a=[0.01, 0.09],
                     nu_sigma_f=[0.006, 0.12], chi=[1.0, 0.0],
                     sigma_s=[[0.0, 0.02], [0.0, 0.0]])

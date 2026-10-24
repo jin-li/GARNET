@@ -7,8 +7,8 @@ fundamental mode is symmetric) -- an exact invariant, independent of mesh.
 
 import pytest
 
-from ndgpu import DiffusionEigenSolver, Grid, ONE_GROUP_DEMO
-from ndgpu.operator import normalize_bc
+from garnet import DiffusionEigenSolver, Grid, ONE_GROUP_DEMO
+from garnet.operator import normalize_bc
 
 TIGHT = dict(tol_k=1e-9, tol_source=1e-8)
 

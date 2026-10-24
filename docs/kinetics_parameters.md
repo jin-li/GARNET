@@ -14,7 +14,7 @@ or establish a three-dimensional transient NEM model.
 ## Existing Serpent output
 
 ```python
-from ndgpu.serpent_kinetics import read_serpent_kinetics
+from garnet.serpent_kinetics import read_serpent_kinetics
 mc = read_serpent_kinetics("input_res.m")
 beta = mc.estimates["ADJ_IFP_IMP_BETA_EFF"]
 print(beta.labels, beta.mean, beta.relative_error, mc.flags)
@@ -56,7 +56,7 @@ No proprietary source contents are distributed by this interface.
 
 ## Regional data exchange
 
-`ndgpu.kinetics_data.read_regional_kinetics(path)` reads a supplemental JSON
+`garnet.kinetics_data.read_regional_kinetics(path)` reads a supplemental JSON
 contract. It does **not** extract unavailable family production from global
 IFP results. Version 1 requires:
 
@@ -111,7 +111,7 @@ Use unique IDs such as `U235/1` and `U238/1` in the supplemental input's
 For reporting under the library's native family labels, use an explicit map:
 
 ```python
-from ndgpu.kinetics_families import summarize_delayed_channels
+from garnet.kinetics_families import summarize_delayed_channels
 summary = summarize_delayed_channels(
     parameters.beta, parameters.decay,
     channel_ids=data.family_ids,
@@ -142,7 +142,7 @@ and their relation to the exact discrete contractions below.
 ## Matching NEM adjoint and physical projection
 
 ```python
-from ndgpu.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
+from garnet.nem_kinetics import solve_nem_adjoint, project_nem_kinetics
 
 forward = solver.solve_eigenvalue(rtol=1e-11)
 adjoint = solve_nem_adjoint(solver, forward)
@@ -230,7 +230,7 @@ is no delayed production. It is not claimed to be Serpent's scalar lambda.
 
 ## Standard diffusion baseline
 
-`ndgpu.diffusion_kinetics` provides a separately labeled physical static
+`garnet.diffusion_kinetics` provides a separately labeled physical static
 projection using the existing standard diffusion forward/adjoint operators.
 It is not a matching NEM/ADF calculation. The existing quasi-static
 `project_effective_kinetics` retains its transient critical adjustment:
@@ -260,7 +260,7 @@ repetition, metadata and missing-data tests.
 Small-problem verification is not PRATIC validation. State tables require
 qualified regional data, compatible family definitions, convergence evidence
 and exact input/software provenance. A missing-data inventory remains useful
-but cannot be presented as an NDgpu calculation of beta.
+but cannot be presented as an GARNET calculation of beta.
 
 ## Isotope production and an explicit total kernel
 

@@ -9,12 +9,12 @@ must hold whatever the cross sections are.
 import numpy as np
 import pytest
 
-from ndgpu.benchmarks.hpmr import build_hpmr2d
-from ndgpu.benchmarks.hpmr_thermal import (AMBIENT_K, build_hpmr_coupling,
+from garnet.benchmarks.hpmr import build_hpmr2d
+from garnet.benchmarks.hpmr_thermal import (AMBIENT_K, build_hpmr_coupling,
                                            hpmr_feedback)
-from ndgpu.coupling import (CoupledSolver, coupled_map, neutronics_step,
+from garnet.coupling import (CoupledSolver, coupled_map, neutronics_step,
                             temperature_defect_pcm, thermal_step, uncoupled_k)
-from ndgpu.feedback import ThermalFeedback
+from garnet.feedback import ThermalFeedback
 
 
 def _problem(refine=3, angle=180.0):
@@ -43,7 +43,7 @@ def test_zero_power_leaves_no_fission_heat_in_the_core():
     """At zero power there is no source, so the temperature field is whatever
     the heat pipes and the vessel agree on -- strictly between the two, and
     reached in one iteration since nothing feeds back."""
-    from ndgpu.benchmarks.hpmr_thermal import SINK_TEMPERATURE_K
+    from garnet.benchmarks.hpmr_thermal import SINK_TEMPERATURE_K
 
     p = _problem()
     ctx = _ctx(p, power_w=0.0, warm_start=False)
@@ -139,7 +139,7 @@ def test_coupled_transient_holds_the_steady_state():
     still. Power stays at 1 and the temperature does not drift -- any error in
     the feedback hook, the power normalization or the thermal capacity shows up
     here as motion where there should be none."""
-    from ndgpu.coupling import coupled_transient
+    from garnet.coupling import coupled_transient
 
     p = _problem()
     ctx = _ctx(p)
@@ -154,7 +154,7 @@ def test_coupled_transient_holds_the_steady_state():
 
 def test_coupled_transient_accepts_monolithic_neutron_steps():
     """Coupling must not inject fixed-point-only Krylov controls."""
-    from ndgpu.coupling import coupled_transient
+    from garnet.coupling import coupled_transient
 
     p = _problem(refine=2)
     ctx = _ctx(p)
@@ -178,7 +178,7 @@ def test_coupled_transient_accepts_monolithic_neutron_steps():
 
 
 def test_coupled_transient_forwards_bdf_controls_and_reports_order():
-    from ndgpu.coupling import coupled_transient
+    from garnet.coupling import coupled_transient
 
     result = coupled_transient(
         _ctx(_problem(refine=2)), t_end=0.15, dt=0.05, dt_thermal=0.15,
@@ -191,7 +191,7 @@ def test_coupled_transient_forwards_bdf_controls_and_reports_order():
 
 def test_adaptive_coupling_aligns_variable_steps_to_thermal_exchanges():
     """Unequal neutron widths must not cross or mis-average thermal windows."""
-    from ndgpu.coupling import coupled_transient
+    from garnet.coupling import coupled_transient
 
     result = coupled_transient(
         _ctx(_problem(refine=2)), t_end=0.25, dt=0.03, dt_thermal=0.10,
@@ -218,10 +218,10 @@ def test_adaptive_coupling_aligns_variable_steps_to_thermal_exchanges():
 def test_coupled_transient_matches_the_uncoupled_one_without_feedback():
     """With the feedback coefficients zeroed the coupling cannot act, so the
     power history must be the plain transient's, step for step."""
-    from ndgpu.benchmarks.hpmr_thermal import hpmr_drum_ramp
-    from ndgpu.coupling import coupled_transient
-    from ndgpu.transient import TransientSolver
-    from ndgpu.tri import TriGroupOperator
+    from garnet.benchmarks.hpmr_thermal import hpmr_drum_ramp
+    from garnet.coupling import coupled_transient
+    from garnet.transient import TransientSolver
+    from garnet.tri import TriGroupOperator
 
     p = _problem()
     n = len(p.materials)
@@ -257,7 +257,7 @@ def _light_thermal(ctx, factor=0.005):
     """
     from dataclasses import replace as dc_replace
 
-    from ndgpu.thermal import ThermalMaterial
+    from garnet.thermal import ThermalMaterial
 
     light = [ThermalMaterial(m.conductivity, m.sink_coeff, m.sink_temperature,
                              m.heat_capacity * factor, m.name)
@@ -269,8 +269,8 @@ def test_a_drum_withdrawal_raises_power_and_feedback_pushes_back():
     """Direction check on the whole loop: withdrawing absorber adds reactivity,
     power rises, the fuel heats, and the Doppler term opposes it. Getting any
     sign wrong in that chain reverses one of these."""
-    from ndgpu.benchmarks.hpmr_thermal import hpmr_drum_ramp
-    from ndgpu.coupling import coupled_transient
+    from garnet.benchmarks.hpmr_thermal import hpmr_drum_ramp
+    from garnet.coupling import coupled_transient
 
     p = _problem(angle=150.0)
     pa = hpmr_drum_ramp(p, angle_from=150.0, angle_to=156.0, t_start=0.1,
@@ -293,8 +293,8 @@ def test_on_the_real_thermal_mass_the_feedback_is_slow():
     implicit: with rho*cp/h = 268 s, a few seconds of transient heats the fuel
     by well under a kelvin, so the excursion is arrested late. This is why the
     sign test above has to shorten the time constant."""
-    from ndgpu.benchmarks.hpmr_thermal import hpmr_drum_ramp
-    from ndgpu.coupling import coupled_transient
+    from garnet.benchmarks.hpmr_thermal import hpmr_drum_ramp
+    from garnet.coupling import coupled_transient
 
     p = _problem(angle=150.0)
     pa = hpmr_drum_ramp(p, angle_from=150.0, angle_to=156.0, t_start=0.1,
@@ -309,8 +309,8 @@ def test_thermal_substepping_changes_little():
     """dt_thermal is a cost knob, not a physics one: taking the thermal step
     5x coarser must not move the answer meaningfully, because the temperature
     moves on a 268 s constant while the neutronics step is 50 ms."""
-    from ndgpu.benchmarks.hpmr_thermal import hpmr_drum_ramp
-    from ndgpu.coupling import coupled_transient
+    from garnet.benchmarks.hpmr_thermal import hpmr_drum_ramp
+    from garnet.coupling import coupled_transient
 
     p = _problem(angle=150.0)
     pa = hpmr_drum_ramp(p, angle_from=150.0, angle_to=154.0, t_start=0.1,
@@ -325,8 +325,8 @@ def test_thermal_substepping_changes_little():
 
 def test_coupled_transient_flushes_a_partial_thermal_window():
     """The final neutronics interval must heat the core even below dt_thermal."""
-    from ndgpu.benchmarks.hpmr_thermal import hpmr_drum_ramp
-    from ndgpu.coupling import coupled_transient
+    from garnet.benchmarks.hpmr_thermal import hpmr_drum_ramp
+    from garnet.coupling import coupled_transient
 
     p = _problem(angle=150.0)
     pa = hpmr_drum_ramp(p, angle_from=150.0, angle_to=156.0, t_start=0.0,

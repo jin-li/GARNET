@@ -4,7 +4,7 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from ndgpu.ace_precursors import ACEPrecursorError, read_ace_precursors
+from garnet.ace_precursors import ACEPrecursorError, read_ace_precursors
 
 
 def table(name='1001.00c', probabilities=((.3, .3), (.7, .7)), *,

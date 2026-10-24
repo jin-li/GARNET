@@ -3,12 +3,12 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ndgpu"
+name = "garnet"
 version = "0.1.0"
-description = "GPU-native multigroup neutron diffusion k-eigenvalue solver for reactor physics"
+description = "GARNET: A GPU-native Advanced Reactor NEutronics Toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [{ name = "Mario Poncet" }]
 keywords = ["neutron diffusion", "reactor physics", "GPU", "CUDA", "criticality", "k-eigenvalue"]
 dependencies = ["numpy>=1.24", "scipy>=1.10"]
@@ -38,14 +38,15 @@ conflicts = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["ndgpu*"]
+include = ["garnet*"]
 
 [tool.setuptools.package-data]
 # Vendored cross-section libraries: without this they are dropped when the
 # source zip is pip-installed (e.g. in Colab) and the HP-MR benchmarks fail.
-"ndgpu.benchmarks" = ["data/*.npz"]
+"garnet.benchmarks" = ["data/*.npz"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 markers = [
     "slow: expensive full-core solves (deselected by default; run with -m slow)",
 ]

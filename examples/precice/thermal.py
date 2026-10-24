@@ -17,7 +17,7 @@ import precice
 from common import (Trace, build_context, check_version, gather, parse_args,
                     scatter)
 
-from ndgpu.coupling import thermal_step
+from garnet.coupling import thermal_step
 
 MESH = "Thermal-Mesh"
 

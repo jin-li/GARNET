@@ -1,4 +1,4 @@
-"""Superhomogenization pipeline (ndgpu.sph).
+"""Superhomogenization pipeline (garnet.sph).
 
 Step 1 -- flux-weighted homogenization. Collapsing a fine reference solution to
 one Material per coarse region must preserve that region's reaction rates
@@ -11,7 +11,7 @@ their own tests here.
 
 import numpy as np
 
-from ndgpu import (DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP,
+from garnet import (DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP,
                    SP3EigenSolver, flux_weighted_homogenize, region_average,
                    sph_correct)
 
@@ -19,7 +19,7 @@ from ndgpu import (DiffusionEigenSolver, Grid, Material, PWR_TWO_GROUP,
 def test_sph_material_keeps_the_fission_energy_power_coefficient():
     """An SPH model handed to thermal coupling must not change power weighting
     from kappa*Sigma_f to the nu*Sigma_f fallback."""
-    from ndgpu.sph import _scale_material
+    from garnet.sph import _scale_material
 
     mat = Material(name="fuel", diffusion=[1.2, 0.3], sigma_a=[0.01, 0.1],
                    nu_sigma_f=[0.02, 0.2], kappa_fission=[0.015, 0.11])
