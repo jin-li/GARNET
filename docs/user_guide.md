@@ -542,6 +542,49 @@ also pass.
 `garnet.BDF.error_norm(...)` and `garnet.BDFStepController` remain public for
 benchmark and custom-driver development.
 
+An experimental shared-frequency exponential method is available for diffusion:
+
+```python
+ftm = core.transient(
+    t_end=0.10, dt=0.001, time_scheme="ftm", step_solver="monolithic",
+)
+print(ftm.power)
+```
+
+FTM estimates growth from accepted neutron populations, modifies the time
+diagonal and history source separately, and integrates its exponential-source
+precursor model analytically. It supports fixed or explicit nonuniform widths;
+`adaptive_bdf` remains BDF-only. `ftm_kwargs={"frequency": 0.0}` is a useful
+analytic-precursor control and differs from BE. Rates with
+`abs(frequency * dt) > 0.5` use actual BE for that step. The
+[prototype study](../benchmark-results/exponential-prototype/README.md)
+compares BE, adaptive BE/BDF and thermal coupling at declared error budgets.
+This first-order prototype has not earned a production performance promotion.
+
+An experimental second-order neutron variant is selected with
+`time_scheme="ftm2"`, using the same `ftm_kwargs`. It applies the trapezoidal
+rule after removing the shared exponential and integrates linear transformed
+delayed-neutron production. Fixed and explicit nonuniform widths are supported.
+The accepted physical neutron derivative and endpoint production are carried
+between steps; unsafe frequencies fall back to BE and report order one.
+This scheme uses ordinary endpoint heat quadrature and leaves the heat-transfer
+solver unchanged. Its second-order result applies to smooth neutron problems;
+prompt events can ring, and coupled thermal accuracy is a separate question.
+See the [first development checkpoint](../benchmark-results/exponential-second-order/README.md)
+for verification and a neutron solve-count comparison against BE, CN and BDF.
+
+FTM2 also accepts `ftm_kwargs={"startup_be_steps": 2}` for actual BE steps
+after initialization and declared restarts. Choose suitably small initial
+widths; this option does not refine the schedule. FTM and FTM2 can request
+up to N extra endpoint solves with `frequency_iterations=N` (default zero),
+`frequency_tolerance=1e-6` and `frequency_relaxation=1.0`. Refinement requires
+monolithic steps, cannot use a prescribed frequency, and currently refuses
+implicit feedback. The result records `step_frequency_refinements` and
+`step_frequency_log_defects`; existing solve/Krylov counters include all
+repetitions. Iteration convergence is separate from time accuracy. See the
+[prompt-event checkpoint](../benchmark-results/exponential-second-order/CHUNK2.md)
+for controls, shared-mesh comparisons and remaining stability work.
+
 `coupled_transient` supports the same adaptive controls through
 `transient_kwargs`. Thermal exchange times are exact non-restarting adaptive
 endpoints, and unequal neutron-step powers are averaged by elapsed time rather

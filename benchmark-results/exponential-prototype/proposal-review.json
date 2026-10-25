@@ -1,0 +1,634 @@
+{
+  "source_sha256": {
+    "garnet/_exponential.py": "ef197ec3de3c0a80075f7c42cf3ae0c9704a06c16c3ef06c4a3f334025616504",
+    "garnet/timescheme.py": "cef1734e0c1b098f5a33afad187c6587ab6914f9e18216eb925ddef60f5ad0d2",
+    "garnet/transient.py": "cd76c81ea8953216e2779151c683613591283ccd48ad1c3bee6386c5f2418cb1",
+    "examples/exponential_transient_benchmark.py": "ce4bf8dc662f149475bb6127991921bec807129130d2a79aef45d60792d162d3",
+    "tools/assess_exponential_proposal.py": "014c5e74c6ec7ade1e6400308e2d461660802f2c923e42a1e4e3146792e2b859"
+  },
+  "point_corrector_probe": {
+    "scope": "Independent one-family point kinetics; not a spatial-solver corrector benchmark",
+    "beta": 0.0065,
+    "decay_per_s": 0.08,
+    "generation_time_s": 0.00015151515151515152,
+    "reactivity": 0.002,
+    "duration_s": 1.0,
+    "corrector_log_tolerance": 1e-11,
+    "corrector_max_iterations": 100,
+    "error_sampling": "Each run's own step endpoints against the closed-form solution",
+    "rows": [
+      {
+        "method": "backward-euler",
+        "width_s": 0.02,
+        "accepted_steps": 50,
+        "linear_subsolves": 50,
+        "max_endpoint_relative_population_error": 0.02998127569216169,
+        "maximum_abs_frequency_times_width": 0.0,
+        "last_frequency_iteration_log_defect": 0.0
+      },
+      {
+        "method": "lagged-ftm",
+        "width_s": 0.02,
+        "accepted_steps": 50,
+        "linear_subsolves": 50,
+        "max_endpoint_relative_population_error": 0.030712331777394963,
+        "maximum_abs_frequency_times_width": 0.15337643062597361,
+        "last_frequency_iteration_log_defect": 7.349623964980622e-12
+      },
+      {
+        "method": "corrected-ftm",
+        "width_s": 0.02,
+        "accepted_steps": 50,
+        "linear_subsolves": 151,
+        "max_endpoint_relative_population_error": 0.035869630677336506,
+        "maximum_abs_frequency_times_width": 0.15337643062597361,
+        "last_frequency_iteration_log_defect": 7.810389973661458e-12
+      },
+      {
+        "method": "backward-euler",
+        "width_s": 0.01,
+        "accepted_steps": 100,
+        "linear_subsolves": 100,
+        "max_endpoint_relative_population_error": 0.016869298462589888,
+        "maximum_abs_frequency_times_width": 0.0,
+        "last_frequency_iteration_log_defect": 0.0
+      },
+      {
+        "method": "lagged-ftm",
+        "width_s": 0.01,
+        "accepted_steps": 100,
+        "linear_subsolves": 100,
+        "max_endpoint_relative_population_error": 0.018686157852579433,
+        "maximum_abs_frequency_times_width": 0.09694543269497433,
+        "last_frequency_iteration_log_defect": 1.2484187295047633e-13
+      },
+      {
+        "method": "corrected-ftm",
+        "width_s": 0.01,
+        "accepted_steps": 100,
+        "linear_subsolves": 247,
+        "max_endpoint_relative_population_error": 0.020802433562042588,
+        "maximum_abs_frequency_times_width": 0.09694543269497433,
+        "last_frequency_iteration_log_defect": 1.2657160042284232e-13
+      },
+      {
+        "method": "backward-euler",
+        "width_s": 0.005,
+        "accepted_steps": 200,
+        "linear_subsolves": 200,
+        "max_endpoint_relative_population_error": 0.008939974881369772,
+        "maximum_abs_frequency_times_width": 0.0,
+        "last_frequency_iteration_log_defect": 0.0
+      },
+      {
+        "method": "lagged-ftm",
+        "width_s": 0.005,
+        "accepted_steps": 200,
+        "linear_subsolves": 200,
+        "max_endpoint_relative_population_error": 0.010538960314641077,
+        "maximum_abs_frequency_times_width": 0.05587978557809542,
+        "last_frequency_iteration_log_defect": 5.857120344288092e-15
+      },
+      {
+        "method": "corrected-ftm",
+        "width_s": 0.005,
+        "accepted_steps": 200,
+        "linear_subsolves": 435,
+        "max_endpoint_relative_population_error": 0.011154161144896424,
+        "maximum_abs_frequency_times_width": 0.05587978557809542,
+        "last_frequency_iteration_log_defect": 5.769239252995107e-15
+      },
+      {
+        "method": "backward-euler",
+        "width_s": 0.002,
+        "accepted_steps": 500,
+        "linear_subsolves": 500,
+        "max_endpoint_relative_population_error": 0.003711729848234535,
+        "maximum_abs_frequency_times_width": 0.0,
+        "last_frequency_iteration_log_defect": 0.0
+      },
+      {
+        "method": "lagged-ftm",
+        "width_s": 0.002,
+        "accepted_steps": 500,
+        "linear_subsolves": 500,
+        "max_endpoint_relative_population_error": 0.004573075886004974,
+        "maximum_abs_frequency_times_width": 0.024614647405645534,
+        "last_frequency_iteration_log_defect": 1.729588694487916e-16
+      },
+      {
+        "method": "corrected-ftm",
+        "width_s": 0.002,
+        "accepted_steps": 500,
+        "linear_subsolves": 926,
+        "max_endpoint_relative_population_error": 0.004687777684730832,
+        "maximum_abs_frequency_times_width": 0.024614647405645534,
+        "last_frequency_iteration_log_defect": 2.523536934972981e-16
+      },
+      {
+        "method": "backward-euler",
+        "width_s": 0.001,
+        "accepted_steps": 1000,
+        "linear_subsolves": 1000,
+        "max_endpoint_relative_population_error": 0.00188000728046267,
+        "maximum_abs_frequency_times_width": 0.0,
+        "last_frequency_iteration_log_defect": 0.0
+      },
+      {
+        "method": "lagged-ftm",
+        "width_s": 0.001,
+        "accepted_steps": 1000,
+        "linear_subsolves": 1000,
+        "max_endpoint_relative_population_error": 0.002354200327618017,
+        "maximum_abs_frequency_times_width": 0.01273783864886388,
+        "last_frequency_iteration_log_defect": 1.0517281490152186e-16
+      },
+      {
+        "method": "corrected-ftm",
+        "width_s": 0.001,
+        "accepted_steps": 1000,
+        "linear_subsolves": 1710,
+        "max_endpoint_relative_population_error": 0.00238479258795532,
+        "maximum_abs_frequency_times_width": 0.01273783864886388,
+        "last_frequency_iteration_log_defect": 5.4747872901828036e-17
+      }
+    ]
+  },
+  "ramp_work_comparison": {
+    "case": "uniform-ramp",
+    "scope": "Actual GARNET FV/FGMRES; work counts, not repeated timing",
+    "reference_power_refinement_error": 1.5451417922918154e-11,
+    "power_budget": 0.001,
+    "output_interpolation": "Common linear output interpolation for all methods",
+    "records": [
+      {
+        "configuration": {
+          "name": "backward-euler-h0.02",
+          "scheme": "backward-euler",
+          "dt": 0.02
+        },
+        "metrics": {
+          "march_seconds": 0.06660809700042591,
+          "accepted": 50,
+          "rejected": 0,
+          "max_power_error": 0.0052920594764687134,
+          "max_endpoint_power_error": 0.004454577546897487,
+          "relative_energy_error": 0.00373332910479518,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 692,
+          "outer_iterations": 140,
+          "operator_rebuilds": 11,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 50
+      },
+      {
+        "configuration": {
+          "name": "backward-euler-h0.01",
+          "scheme": "backward-euler",
+          "dt": 0.01
+        },
+        "metrics": {
+          "march_seconds": 0.13482409500102222,
+          "accepted": 100,
+          "rejected": 0,
+          "max_power_error": 0.002758899087714539,
+          "max_endpoint_power_error": 0.0025310299553564786,
+          "relative_energy_error": 0.001854747011987623,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 1180,
+          "outer_iterations": 255,
+          "operator_rebuilds": 21,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 100
+      },
+      {
+        "configuration": {
+          "name": "backward-euler-h0.005",
+          "scheme": "backward-euler",
+          "dt": 0.005
+        },
+        "metrics": {
+          "march_seconds": 0.22228479199839057,
+          "accepted": 200,
+          "rejected": 0,
+          "max_power_error": 0.0014099841022569004,
+          "max_endpoint_power_error": 0.0013544281858828278,
+          "relative_energy_error": 0.0009244005028810065,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 2232,
+          "outer_iterations": 491,
+          "operator_rebuilds": 41,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 200
+      },
+      {
+        "configuration": {
+          "name": "backward-euler-h0.002",
+          "scheme": "backward-euler",
+          "dt": 0.002
+        },
+        "metrics": {
+          "march_seconds": 0.5142277810009546,
+          "accepted": 500,
+          "rejected": 0,
+          "max_power_error": 0.0005764536799883757,
+          "max_endpoint_power_error": 0.0005672130762182093,
+          "relative_energy_error": 0.0003690475567208473,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 4972,
+          "outer_iterations": 1139,
+          "operator_rebuilds": 101,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 500
+      },
+      {
+        "configuration": {
+          "name": "backward-euler-h0.001",
+          "scheme": "backward-euler",
+          "dt": 0.001
+        },
+        "metrics": {
+          "march_seconds": 1.0075118609984202,
+          "accepted": 1000,
+          "rejected": 0,
+          "max_power_error": 0.0002904185332280873,
+          "max_endpoint_power_error": 0.00028809204575896974,
+          "relative_energy_error": 0.00018440508224171204,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 9157,
+          "outer_iterations": 2160,
+          "operator_rebuilds": 201,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 1000
+      },
+      {
+        "configuration": {
+          "name": "crank-nicolson-h0.02",
+          "scheme": "crank-nicolson",
+          "dt": 0.02
+        },
+        "metrics": {
+          "march_seconds": 0.07287939700108836,
+          "accepted": 50,
+          "rejected": 0,
+          "max_power_error": 0.001837986515932588,
+          "max_endpoint_power_error": 0.0008399037722709446,
+          "relative_energy_error": 0.003517698047083684,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 572,
+          "outer_iterations": 126,
+          "operator_rebuilds": 11,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 50
+      },
+      {
+        "configuration": {
+          "name": "crank-nicolson-h0.01",
+          "scheme": "crank-nicolson",
+          "dt": 0.01
+        },
+        "metrics": {
+          "march_seconds": 0.10501559600015753,
+          "accepted": 100,
+          "rejected": 0,
+          "max_power_error": 0.0005983144792969242,
+          "max_endpoint_power_error": 0.00019537562100613304,
+          "relative_energy_error": 0.001750108030976305,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 1096,
+          "outer_iterations": 243,
+          "operator_rebuilds": 21,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 100
+      },
+      {
+        "configuration": {
+          "name": "crank-nicolson-h0.005",
+          "scheme": "crank-nicolson",
+          "dt": 0.005
+        },
+        "metrics": {
+          "march_seconds": 0.23732879099952697,
+          "accepted": 200,
+          "rejected": 0,
+          "max_power_error": 0.00017370433553565157,
+          "max_endpoint_power_error": 4.8030833070034085e-05,
+          "relative_energy_error": 0.0008728702819702505,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 2023,
+          "outer_iterations": 463,
+          "operator_rebuilds": 41,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 200
+      },
+      {
+        "configuration": {
+          "name": "crank-nicolson-h0.002",
+          "scheme": "crank-nicolson",
+          "dt": 0.002
+        },
+        "metrics": {
+          "march_seconds": 0.7010284730004059,
+          "accepted": 500,
+          "rejected": 0,
+          "max_power_error": 3.075863133128465e-05,
+          "max_endpoint_power_error": 7.690102744928318e-06,
+          "relative_energy_error": 0.000348624226850891,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 4653,
+          "outer_iterations": 1099,
+          "operator_rebuilds": 101,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 500
+      },
+      {
+        "configuration": {
+          "name": "crank-nicolson-h0.001",
+          "scheme": "crank-nicolson",
+          "dt": 0.001
+        },
+        "metrics": {
+          "march_seconds": 1.0829936589998397,
+          "accepted": 1000,
+          "rejected": 0,
+          "max_power_error": 7.962616324963534e-06,
+          "max_endpoint_power_error": 1.9213054283095943e-06,
+          "relative_energy_error": 0.0001742248157461379,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 8484,
+          "outer_iterations": 2076,
+          "operator_rebuilds": 201,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 1000
+      },
+      {
+        "configuration": {
+          "name": "ftm-h0.02",
+          "scheme": "ftm",
+          "dt": 0.02
+        },
+        "metrics": {
+          "march_seconds": 0.11609569599932001,
+          "accepted": 50,
+          "rejected": 0,
+          "max_power_error": 0.005905808475214491,
+          "max_endpoint_power_error": 0.005237690775344195,
+          "relative_energy_error": 0.00031488759143183387,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 706,
+          "outer_iterations": 143,
+          "operator_rebuilds": 51,
+          "ftm_fallbacks": 0,
+          "frequency_range": [
+            0.0,
+            1.9586185207361009
+          ],
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 50
+      },
+      {
+        "configuration": {
+          "name": "ftm-h0.01",
+          "scheme": "ftm",
+          "dt": 0.01
+        },
+        "metrics": {
+          "march_seconds": 0.1620804969988967,
+          "accepted": 100,
+          "rejected": 0,
+          "max_power_error": 0.0031723577302695816,
+          "max_endpoint_power_error": 0.00295443577515897,
+          "relative_energy_error": 0.00014824282782155418,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 1180,
+          "outer_iterations": 255,
+          "operator_rebuilds": 101,
+          "ftm_fallbacks": 0,
+          "frequency_range": [
+            0.0,
+            1.9764250764231088
+          ],
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 100
+      },
+      {
+        "configuration": {
+          "name": "ftm-h0.005",
+          "scheme": "ftm",
+          "dt": 0.005
+        },
+        "metrics": {
+          "march_seconds": 0.2631225959994481,
+          "accepted": 200,
+          "rejected": 0,
+          "max_power_error": 0.0016389951765056754,
+          "max_endpoint_power_error": 0.0015840370938688952,
+          "relative_energy_error": 7.114945026365227e-05,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 2201,
+          "outer_iterations": 488,
+          "operator_rebuilds": 201,
+          "ftm_fallbacks": 0,
+          "frequency_range": [
+            0.0,
+            1.9850533253236282
+          ],
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 200
+      },
+      {
+        "configuration": {
+          "name": "ftm-h0.002",
+          "scheme": "ftm",
+          "dt": 0.002
+        },
+        "metrics": {
+          "march_seconds": 0.7795309869998164,
+          "accepted": 500,
+          "rejected": 0,
+          "max_power_error": 0.000670259266813078,
+          "max_endpoint_power_error": 0.0006606145519532092,
+          "relative_energy_error": 2.7655386387603897e-05,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 4933,
+          "outer_iterations": 1136,
+          "operator_rebuilds": 501,
+          "ftm_fallbacks": 0,
+          "frequency_range": [
+            0.0,
+            1.990152483940765
+          ],
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 500
+      },
+      {
+        "configuration": {
+          "name": "ftm-h0.001",
+          "scheme": "ftm",
+          "dt": 0.001
+        },
+        "metrics": {
+          "march_seconds": 1.480166573999668,
+          "accepted": 1000,
+          "rejected": 0,
+          "max_power_error": 0.00033759384873177645,
+          "max_endpoint_power_error": 0.00033511683755238497,
+          "relative_energy_error": 1.3685761859227874e-05,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 9181,
+          "outer_iterations": 2159,
+          "operator_rebuilds": 1001,
+          "ftm_fallbacks": 0,
+          "frequency_range": [
+            0.0,
+            1.991840479436068
+          ],
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 1000
+      },
+      {
+        "configuration": {
+          "name": "adaptive-bdf1-rtol0.0001",
+          "scheme": "bdf1",
+          "dt": 1e-05,
+          "adaptive": {
+            "rtol": 0.0001,
+            "automatic_order": false
+          }
+        },
+        "metrics": {
+          "march_seconds": 0.24122719600018172,
+          "accepted": 158,
+          "rejected": 2,
+          "max_power_error": 0.00038318069363230123,
+          "max_endpoint_power_error": 0.000375764704191317,
+          "relative_energy_error": 0.0013929595437247588,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 1434,
+          "outer_iterations": 364,
+          "operator_rebuilds": 159,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 160
+      },
+      {
+        "configuration": {
+          "name": "adaptive-bdf1-rtol1e-05",
+          "scheme": "bdf1",
+          "dt": 1e-05,
+          "adaptive": {
+            "rtol": 1e-05,
+            "automatic_order": false
+          }
+        },
+        "metrics": {
+          "march_seconds": 0.6873310880000645,
+          "accepted": 472,
+          "rejected": 4,
+          "max_power_error": 0.00012312276862602722,
+          "max_endpoint_power_error": 0.00012235687458450606,
+          "relative_energy_error": 0.0007937143957854609,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 3572,
+          "outer_iterations": 993,
+          "operator_rebuilds": 477,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 476
+      },
+      {
+        "configuration": {
+          "name": "adaptive-bdf5-rtol0.0001",
+          "scheme": "bdf5",
+          "dt": 1e-05,
+          "adaptive": {
+            "rtol": 0.0001,
+            "automatic_order": true
+          }
+        },
+        "metrics": {
+          "march_seconds": 0.24017119599920989,
+          "accepted": 104,
+          "rejected": 37,
+          "max_power_error": 0.0006783094965800984,
+          "max_endpoint_power_error": 0.00014826125280142932,
+          "relative_energy_error": 0.002620627360601757,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 1248,
+          "outer_iterations": 324,
+          "operator_rebuilds": 141,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 141
+      },
+      {
+        "configuration": {
+          "name": "adaptive-bdf5-rtol1e-05",
+          "scheme": "bdf5",
+          "dt": 1e-05,
+          "adaptive": {
+            "rtol": 1e-05,
+            "automatic_order": true
+          }
+        },
+        "metrics": {
+          "march_seconds": 0.17155549699964467,
+          "accepted": 84,
+          "rejected": 12,
+          "max_power_error": 0.000313740103870197,
+          "max_endpoint_power_error": 4.964479010105549e-06,
+          "relative_energy_error": 0.0022797749105019083,
+          "max_exchange_temperature_error_k": 0.0,
+          "inner_iterations": 845,
+          "outer_iterations": 212,
+          "operator_rebuilds": 97,
+          "ftm_fallbacks": 0,
+          "frequency_range": null,
+          "thermal_updates": 0
+        },
+        "coupled_block_solves": 96
+      }
+    ]
+  }
+}

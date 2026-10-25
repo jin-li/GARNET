@@ -343,7 +343,9 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
                   thermal_zones: str = "assembly",
                   control_worth_scale: float = 1.0,
                   adaptive_bdf: dict | None = None,
-                  steady_kwargs: dict | None = None) -> LRATransientResult:
+                  steady_kwargs: dict | None = None,
+                  time_scheme: str | None = None,
+                  ftm_kwargs: dict | None = None) -> LRATransientResult:
     """Run the coupled three-second LRA transient on CPU.
 
     This is the first reproducible garnet comparison path, deliberately built
@@ -362,6 +364,10 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
     controls subsequent accepted widths; the rod-law corner at 2 s is aligned
     exactly and restarts both neutron and thermal BDF histories.
     Returned power is the physical core-average W/cm3, not merely P/P0.
+    ``time_scheme="ftm"`` enables the shared-frequency neutron prototype with
+    an exponential source integral for adiabatic heating. Absolute temperature
+    is not frequency transformed. This mode uses fixed/explicit widths and a
+    first-order thermal history; ``adaptive_bdf`` remains BDF-only.
     ``thermal_zones="assembly"`` matches Cherezov's stated element-wise
     temperature approximation even when neutronics is refined inside each
     assembly. ``"cell"`` follows the benchmark's space-dependent heat and
@@ -369,12 +375,23 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
     fine-mesh reference model as the spatial grid is refined.
     """
     from ..solver import DiffusionEigenSolver
-    from ..timescheme import BDF
+    from ..timescheme import BDF, FrequencyTransform, make_time_scheme
     from ..transient import TransientSolver, _step_schedule
 
     bdf_order = int(bdf_order)
     if bdf_order < 1 or bdf_order > 6:
         raise ValueError("bdf_order must be between 1 and 6")
+    neutron_scheme = f"bdf{bdf_order}" if time_scheme is None else time_scheme
+    resolved_scheme = make_time_scheme(neutron_scheme, ftm_kwargs=ftm_kwargs)
+    is_ftm = isinstance(resolved_scheme, FrequencyTransform)
+    if isinstance(resolved_scheme, BDF):
+        bdf_order = resolved_scheme.max_order
+    elif resolved_scheme.name in ("backward-euler", "ftm"):
+        bdf_order = 1
+    else:
+        raise ValueError("LRA heating supports BDF/BE or experimental FTM")
+    if is_ftm and adaptive_bdf is not None:
+        raise ValueError("FTM uses fixed/explicit widths; adaptive_bdf remains BDF-only")
     if thermal_zones not in ("assembly", "cell"):
         raise ValueError("thermal_zones must be 'assembly' or 'cell'")
     if implicit_feedback and step_solver != "monolithic":
@@ -451,7 +468,8 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
 
     def thermal_correction(step, width, flux):
         carried, a0 = prepare_thermal_step(step, width)
-        return (carried + (width / a0)
+        source_weight = neutron_solver.step_source_weight if is_ftm else width / a0
+        return (carried + source_weight
                 * (ADIABATIC_ALPHA / FISSION_ENERGY_J) * power_density(flux))
 
     def accept_temperature(T_new, t):
@@ -548,7 +566,7 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
     def adaptive_order_callback(order):
         thermal_bdf.select_order(order)
 
-    transient = TransientSolver(
+    neutron_solver = TransientSolver(
         problem.grid, problem.problem_at, problem.kinetics, bc=problem.bc,
         device="cpu", xs_update_at=xs_update_at,
         on_step=on_step,
@@ -559,13 +577,14 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
                                     if automatic_order else None),
         adaptive_order_callback=(adaptive_order_callback
                                  if automatic_order else None),
-    ).solve(
+    )
+    transient = neutron_solver.solve(
         t_end=3.0, dt=(dt if adaptive_bdf is not None else widths),
         tol_step=tol_step, max_sweeps=max_sweeps,
         initial_steady=steady, rebalance=rebalance,
-        time_scheme=f"bdf{bdf_order}", step_solver=step_solver,
+        time_scheme=neutron_scheme, ftm_kwargs=ftm_kwargs, step_solver=step_solver,
         adaptive_bdf=adaptive_bdf,
-        bdf_restart_times=([2.0] if adaptive_bdf is not None else None),
+        bdf_restart_times=([2.0] if adaptive_bdf is not None or is_ftm else None),
         max_feedback_iterations=max_feedback_iterations,
     )
     if callback_step != len(transient.times) - 1:
@@ -580,7 +599,7 @@ def run_lra2d_cpu(*, refine: int = 1, dt=0.01, bdf_order: int = 5,
         temperature=np.asarray(state.temperature).copy(),
         coupling=(("implicit" if implicit_feedback else
                    ("predicted" if predict_feedback else "lagged"))
-                  + ("-backward-euler" if bdf_order == 1 else
+                  + ("-ftm" if is_ftm else "-backward-euler" if bdf_order == 1 else
                      f"-bdf{bdf_order}")
                   + f"-{thermal_zones}"),
     )

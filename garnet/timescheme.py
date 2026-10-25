@@ -1,6 +1,6 @@
 """Time-integration schemes for garnet's transient solvers.
 
-Every scheme garnet supports can be written in one shape -- the *backward-Euler
+The BE, theta and BDF schemes can be written in one shape -- the *backward-Euler
 shape* the engines already solve:
 
     (A + a0 theta) u^{n+1} = S^{n+1} + a0 theta Psi^n,     theta = 1/(v_g dt)
@@ -47,6 +47,13 @@ Backward Differential Formula and Anderson's method for multigroup diffusion
 transient equation", Ann. Nucl. Energy 210 (2025), 110837,
 doi:10.1016/j.anucene.2024.110837. This module supplies the time formulas;
 the spatial discretization and error-controller choices are GARNET's own.
+
+Experimental FTM separates the diagonal multiplier from the history-source
+multiplier: 1+omega*dt versus exp(omega*dt). The diffusion engine consumes
+``history_factor`` independently, so no carried-state division is needed.
+Its precursors and source quadrature integrate the frozen exponential model.
+The second-order ``ftm2`` variant carries the physical neutron derivative and
+integrates linear transformed precursor production, with no heat transform.
 """
 
 from __future__ import annotations
@@ -57,6 +64,7 @@ import numpy as np
 
 from . import kernels
 from .backend import asnumpy
+from ._exponential import ExponentialStep, ExponentialThetaStep, population_frequency
 
 
 def _lin(xs, coeffs):
@@ -115,6 +123,14 @@ class TimeScheme:
     def a0(self, step):
         return 1.0
 
+    def history_factor(self, step):
+        """Multiplier of carried flux in the physical history source."""
+        return self.a0(step)
+
+    def source_integral_weight(self, dt):
+        """Endpoint-source quadrature, matching the existing thermal coupler."""
+        return float(dt)
+
     def prepare_step(self, step, dt):
         """Prepare a possibly variable-width step (one-step schemes: no-op)."""
 
@@ -146,6 +162,263 @@ class TimeScheme:
         H = self._history(C_hist)
         return [(h + (dt * b) * S_new) / (a0 + l * dt)
                 for h, b, l in zip(H, beta, lam)]
+
+
+class FrequencyTransform(TimeScheme):
+    """Experimental first-order shared-frequency diffusion integration.
+
+    Flux is backward differenced after removing exp(omega*(t-t_old)).
+    Precursors integrate a constant transformed end-of-step source exactly.
+    With ``frequency=None``, omega is estimated from the last two accepted
+    neutron populations and the actual previous width. A prescribed frequency
+    is useful for verification and zero-frequency control experiments.
+
+    Exponents outside ``max_exponent`` use the actual BE coefficients for that
+    step, rather than clipping frequency or dividing by 1+omega*dt. The bound
+    keeps the time diagonal positive; it is not a full-system stability proof.
+    Adaptive BDF and transport engines do not support this prototype.
+    """
+
+    name = "ftm"
+    order = 1
+    _coefficient_type = ExponentialStep
+
+    def __init__(self, *, frequency=None, max_exponent=0.5,
+                 frequency_iterations=0, frequency_tolerance=1e-6,
+                 frequency_relaxation=1.0):
+        super().__init__()
+        self.prescribed_frequency = None if frequency is None else float(frequency)
+        if (self.prescribed_frequency is not None
+                and not np.isfinite(self.prescribed_frequency)):
+            raise ValueError("FTM frequency must be finite")
+        self.max_exponent = float(max_exponent)
+        if not np.isfinite(self.max_exponent) or not 0.0 < self.max_exponent < 1.0:
+            raise ValueError("FTM max_exponent must lie strictly between zero and one")
+        if (isinstance(frequency_iterations, (bool, np.bool_))
+                or not np.isfinite(frequency_iterations)
+                or int(frequency_iterations) != frequency_iterations
+                or frequency_iterations < 0):
+            raise ValueError("FTM frequency_iterations must be a non-negative integer")
+        self.frequency_iterations = int(frequency_iterations)
+        if self.frequency_iterations and frequency is not None:
+            raise ValueError("frequency refinement cannot use a prescribed frequency")
+        self.frequency_tolerance = float(frequency_tolerance)
+        self.frequency_relaxation = float(frequency_relaxation)
+        if not np.isfinite(self.frequency_tolerance) or self.frequency_tolerance <= 0.0:
+            raise ValueError("FTM frequency_tolerance must be finite and positive")
+        if (not np.isfinite(self.frequency_relaxation)
+                or not 0.0 < self.frequency_relaxation <= 1.0):
+            raise ValueError("FTM frequency_relaxation must lie in (0, 1]")
+        self.frequency = 0.0
+        self.fallback_reason = ""
+        self._coefficients = None
+        self._population = self._previous_population = None
+        self._accepted_width = None
+        self.frequency_refinements = 0
+        self.frequency_log_defect = None
+
+    def start(self, u0):
+        self._population = self._previous_population = None
+        self._accepted_width = None
+        return super().start(u0)
+
+    def observe_population(self, population):
+        """Commit an accepted population; never call for provisional solves."""
+        self._previous_population = self._population
+        self._population = float(population)
+
+    @property
+    def coefficient_key(self):
+        return self.frequency, bool(self.fallback_reason)
+
+    def prepare_step(self, step, dt):
+        self.frequency_refinements = 0
+        self.frequency_log_defect = None
+        frequency = self.prescribed_frequency
+        self.fallback_reason = ""
+        if frequency is None:
+            frequency = 0.0
+            if self._previous_population is not None:
+                try:
+                    frequency = population_frequency(
+                        self._population, self._previous_population,
+                        self._accepted_width)
+                except ValueError:
+                    self.fallback_reason = "invalid-population-history"
+        if not np.isfinite(frequency * dt) or abs(frequency * dt) > self.max_exponent:
+            self.fallback_reason = "frequency-bound"
+        self.frequency = 0.0 if self.fallback_reason else frequency
+        self._coefficients = self._coefficient_type(float(dt), self.frequency)
+
+    def refine_frequency(self, population):
+        """Fit the provisional endpoint without committing accepted history.
+
+        This is a bounded research corrector inspired by recursive frequency
+        updates, not a reconstruction of SIMULATE's unpublished update rules.
+        A true return requests another solve at this same endpoint. Reaching
+        the iteration cap is reported through the remaining log defect.
+        """
+        if not self.frequency_iterations or self.fallback_reason:
+            return False
+        width = self._coefficients.width
+        observed = population_frequency(float(population), self._population, width)
+        self.frequency_log_defect = width * abs(observed-self.frequency)
+        if (self.frequency_log_defect <= self.frequency_tolerance
+                or self.frequency_refinements >= self.frequency_iterations):
+            return False
+        frequency = self.frequency + self.frequency_relaxation*(observed-self.frequency)
+        if abs(frequency*width) > self.max_exponent:
+            self.fallback_reason = "frequency-bound"
+            self.frequency_log_defect = None
+            frequency = 0.0
+        self.frequency = frequency
+        self._coefficients = self._coefficient_type(width, frequency)
+        self.frequency_refinements += 1
+        return True
+
+    def a0(self, step):
+        return self._coefficients.diagonal_factor
+
+    def history_factor(self, step):
+        return self._coefficients.history_factor
+
+    def source_integral_weight(self, dt):
+        return float(dt) if self.fallback_reason else self._coefficients.source_weight
+
+    def push(self, u_new):
+        super().push(u_new)
+        self._accepted_width = self._coefficients.width
+
+    def precursor_bcoef(self, step, beta, lam, dt):
+        if self.fallback_reason:
+            return super().precursor_bcoef(step, beta, lam, dt)
+        return [b * self._coefficients.precursor(float(l))[2]
+                for b, l in zip(beta, lam)]
+
+    def precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt):
+        if self.fallback_reason:
+            return super().precursor_decayed(step, C_hist, S_prev, beta, lam, dt)
+        return [float(l) * self._coefficients.precursor(float(l))[0] * c
+                for l, c in zip(lam, C_hist[0])]
+
+    def precursor_update(self, step, C_hist, S_new, S_prev, beta, lam, dt):
+        if self.fallback_reason:
+            return super().precursor_update(step, C_hist, S_new, S_prev, beta, lam, dt)
+        out = []
+        for c, b, l in zip(C_hist[0], beta, lam):
+            retention, source, _ = self._coefficients.precursor(float(l))
+            out.append(retention * c + (b * source) * S_new)
+        return out
+
+
+class ExponentialTheta(FrequencyTransform):
+    """Experimental shared-frequency transformed trapezoidal neutron scheme.
+
+    Carries the accepted physical neutron derivative, so changing frequency
+    or width does not reuse a derivative in the previous transformed frame.
+    Precursors integrate linearly interpolated transformed production. The
+    thermal driver receives its usual endpoint source weight, not an
+    exponential heat quadrature or a transformed heat equation.
+    """
+
+    name = "ftm2"
+    order = 2
+    _coefficient_type = ExponentialThetaStep
+
+    def __init__(self, *, startup_be_steps=0, **kwargs):
+        super().__init__(**kwargs)
+        if (isinstance(startup_be_steps, (bool, np.bool_))
+                or not np.isfinite(startup_be_steps)
+                or int(startup_be_steps) != startup_be_steps or startup_be_steps < 0):
+            raise ValueError("FTM2 startup_be_steps must be a non-negative integer")
+        self.startup_be_steps = int(startup_be_steps)
+        self._startup_remaining = self.startup_be_steps
+
+    def start(self, u0):
+        result = super().start(u0)
+        self._derivative = [0.0 * u for u in u0]
+        self._beta_old = self._pending_beta = None
+        self._prepared_carried = None
+        self._startup_remaining = self.startup_be_steps
+        return result
+
+    def seed_derivative(self, derivative, beta):
+        """Seed the actual physical endpoint RHS at initialization/restart."""
+        self._derivative = [d.copy() for d in derivative]
+        self._beta_old = [b.copy() if hasattr(b, "copy") else b for b in beta]
+        self._prepared_carried = None
+
+    def prepare_step(self, step, dt):
+        super().prepare_step(step, dt)
+        if self._startup_remaining:
+            self.frequency = 0.0
+            self.fallback_reason = "startup-backward-euler"
+            self._coefficients = self._coefficient_type(float(dt), 0.0)
+        self._prepared_carried = None
+
+    def refine_frequency(self, population):
+        changed = super().refine_frequency(population)
+        if changed:
+            self._prepared_carried = None
+        return changed
+
+    def a0(self, step):
+        return 1.0 if self.fallback_reason else self._coefficients.diagonal_factor
+
+    def order_at(self, step):
+        return 1 if self.fallback_reason else 2
+
+    def carried(self, step):
+        if self.fallback_reason:
+            return list(self._u)
+        if self._prepared_carried is None:
+            c = self._coefficients
+            self._prepared_carried = [c.old_state_factor*u + c.width*d
+                                      for u, d in zip(self._u, self._derivative)]
+        return list(self._prepared_carried)
+
+    def push(self, u_new):
+        width = self._coefficients.width
+        diagonal, history = self.a0(0), self.history_factor(0)
+        self._derivative = [(diagonal*u-history*p)/width
+                            for u, p in zip(u_new, self.carried(0))]
+        if self._pending_beta is not None:
+            self._beta_old = [b.copy() if hasattr(b, "copy") else b
+                              for b in self._pending_beta]
+        super().push(u_new)
+        self._prepared_carried = None
+        self._startup_remaining = max(0, self._startup_remaining-1)
+
+    def source_integral_weight(self, dt):
+        return float(dt)
+
+    def precursor_bcoef(self, step, beta, lam, dt):
+        if self.fallback_reason:
+            return TimeScheme.precursor_bcoef(self, step, beta, lam, dt)
+        return [b * self._coefficients.linear_precursor(float(l))[3]
+                for b, l in zip(beta, lam)]
+
+    def precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt):
+        if self.fallback_reason:
+            return TimeScheme.precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt)
+        if self._beta_old is None:
+            raise RuntimeError("FTM2 needs the accepted endpoint production history")
+        out = []
+        for c, b, l in zip(C_hist[0], self._beta_old, lam):
+            retention, old, _, _ = self._coefficients.linear_precursor(float(l))
+            out.append(float(l) * (retention*c + old*b*S_prev))
+        return out
+
+    def precursor_update(self, step, C_hist, S_new, S_prev, beta, lam, dt):
+        self._pending_beta = list(beta)
+        if self.fallback_reason:
+            return TimeScheme.precursor_update(
+                self, step, C_hist, S_new, S_prev, beta, lam, dt)
+        out = []
+        for c, b_old, b_new, l in zip(C_hist[0], self._beta_old, beta, lam):
+            retention, old, new, _ = self._coefficients.linear_precursor(float(l))
+            out.append(retention*c + old*b_old*S_prev + new*b_new*S_new)
+        return out
 
 
 class ThetaMethod(TimeScheme):
@@ -553,14 +826,20 @@ class BDFStepController:
         return best, proposals[best]
 
 
-def make_time_scheme(time_scheme="backward-euler", time_weight=None):
+def make_time_scheme(time_scheme="backward-euler", time_weight=None, *, ftm_kwargs=None):
     """Resolve the ``time_scheme`` / ``time_weight`` arguments to an object."""
+    name = str(time_scheme).lower()
+    if ftm_kwargs is not None and name not in ("ftm", "exponential", "ftm2"):
+        raise ValueError("ftm_kwargs requires time_scheme='ftm' or 'ftm2'")
     if time_weight is not None and time_weight != 1.0:
         if time_scheme not in ("backward-euler", "theta"):
             raise ValueError("time_weight applies to the theta-method only; "
                              f"got time_scheme={time_scheme!r}")
         return ThetaMethod(time_weight)
-    name = str(time_scheme).lower()
+    if name in ("ftm", "exponential"):
+        return FrequencyTransform(**(ftm_kwargs or {}))
+    if name == "ftm2":
+        return ExponentialTheta(**(ftm_kwargs or {}))
     if name in ("backward-euler", "be"):
         return TimeScheme()
     if name == "bdf1":
@@ -570,4 +849,4 @@ def make_time_scheme(time_scheme="backward-euler", time_weight=None):
     if name in ("crank-nicolson", "cn"):
         return ThetaMethod(0.5)
     raise ValueError(f"unknown time_scheme {time_scheme!r} (backward-euler, "
-                     f"bdf2..bdf6, crank-nicolson)")
+                     f"bdf2..bdf6, ftm, ftm2, crank-nicolson)")
