@@ -15,6 +15,19 @@ diffusion prescription, face ordering, ADF definition and numerical reference
 orders. Evaluated states carry the contributing state IDs and weights. These
 identities must agree before any interpolation is meaningful.
 
+Serpent version compatibility is strict unless the application explicitly
+supplies `compatible_serpent_versions`, a tuple/list containing at least two
+distinct nonblank exact version strings. Mixed source versions must all be
+declared members. This persisted policy expresses an application assumption,
+not verified version equivalence or permission to mix nuclear-data routes.
+It does not waive geometry, scoring, nuclear-data or closure identity checks.
+A version label difference alone does not mandate another Monte Carlo run;
+input/data consistency and available evidence govern the application decision.
+Original native and state versions remain intact. Every evaluated state
+records contributor versions and the declared policy, and a mixed-version
+prediction has no single `serpent_version` value. Older library files without
+a policy retain strict comparison.
+
 `BranchLibrary` selects exact table states before interpolating. It uses
 explicit segments or triangles; it neither triangulates across categorical
 configurations automatically nor extrapolates outside supplied elements.
@@ -63,6 +76,17 @@ approximation; positive values do not prove equivalence or transport accuracy.
 The original matching reference prescription and its order/positivity checks
 must first pass at each training state. Frozen table-factor qualification does
 not qualify an interpolated state automatically.
+
+An ADF is tied to its spatial-reference closure: the transverse-leakage
+prescription, reflector mask, leakage boundary treatment and reference-current
+convention must accompany it and agree with the receiving calculation.
+Record these as `transverse_leakage_identity`, `reflector_mask_sha256`,
+`leakage_boundary` and `reference_current_convention`. `BranchLibrary` rejects
+elements with unequal declarations or a declaration missing at another
+vertex, including explicit null versus omission. If every vertex omits a key,
+legacy numerical behavior remains available; agreement by omission supplies
+no qualification evidence. These are metadata compatibility checks, not a
+verification of the actual mask, reference reconstruction or receiver closure.
 
 The NEM factory constructs a new solver and sparse factorization for each
 evaluated state. It never mutates a cached solver's XS. Geometry, physical
@@ -115,6 +139,16 @@ Withheld-state XS and factors are used only after prediction to construct the
 exact-state comparison. A prediction that consumed those tallies is not
 independent. Passing numerical fixture tests does not qualify a reactor
 interpolation domain or replace the required external transport calculations.
+
+Cases inspected while selecting a spatial closure, reflector mask or factor
+method belong to method development. Blind validation requires those choices
+and the interpolation domain to be frozen before inspecting the held-out
+transport results. Exact-state versus continuous-energy error measures the
+diffusion model, closure and factor-transfer accuracy at a supplied state;
+interpolation versus exact-state error measures the branch approximation
+within that frozen method. Small interpolation error can coexist with large
+exact-state model error. Report both and the total prediction error, retaining
+the same closure and mask with the factors throughout each comparison.
 
 ## Thermal-star assembly and returned-data provenance
 

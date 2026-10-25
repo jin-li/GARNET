@@ -185,8 +185,18 @@ class BranchLibrary:
     ``axes`` name numeric conditions. Transforms are ``identity`` (default)
     or ``sqrt`` (the default for fuel_temperature). Every other condition must match exactly, preventing mixing
     configurations, rod/thermal families and other fixed conditions.
+    ``compatible_serpent_versions`` optionally declares an application assumption
+    for mixing exact version strings; it does not establish equivalence.
     """
-    def __init__(self, states, *, axes=('fuel_temperature', 'moderator_density'), transforms=None, simplices=()):
+    def __init__(self, states, *, axes=('fuel_temperature', 'moderator_density'), transforms=None, simplices=(),
+                 compatible_serpent_versions=()):
+        if not isinstance(compatible_serpent_versions, (tuple, list)):
+            raise ValueError('compatible_serpent_versions must be a tuple or list')
+        versions = tuple(compatible_serpent_versions)
+        if versions and (len(versions) < 2 or any(not isinstance(v, str) or not v.strip() for v in versions)
+                         or len(set(versions)) != len(versions)):
+            raise ValueError('compatible_serpent_versions requires at least two distinct nonblank exact strings')
+        self.compatible_serpent_versions = versions
         states = tuple(states)
         if not states or any(type(s) is not BranchState for s in states):
             raise ValueError('nonempty original BranchState collection required; evaluated states cannot be table inputs')
@@ -239,6 +249,12 @@ class BranchLibrary:
                 raise ValueError('incompatible region, energy or exterior topology')
             if any((getattr(s,k) is None)!=(getattr(first,k) is None) for k in ('total','kappa_fission')):
                 raise ValueError('inconsistent optional XS channels')
+            closure_keys=('transverse_leakage_identity','reflector_mask_sha256',
+                          'leakage_boundary','reference_current_convention')
+            # These optional declarations belong to the ADF reference closure.
+            # Even an explicit null must not silently match an omitted identity.
+            if any((k in s.metadata) != (k in first.metadata) for k in closure_keys):
+                raise ValueError('incompatible spatial-reference closure identity declarations')
             keys=('diffusion','absorption_convention','scattering_order','fission_order',
                   'length_unit','energy_unit','temperature_unit','density_unit',
                   'adf_prescription','geometry_family','nuclear_data_family','scoring_identity',
@@ -246,13 +262,30 @@ class BranchLibrary:
                   'thermal_scattering_identity','energy_structure_identity',
                   'library_id','nuclear_data_id','nuclear_data_library',
                   'geometry_id','geometry_bounds_sha256','scoring_id','adf_solver_identity',
-                  'thermal_scattering_library','serpent_version')
+                  'thermal_scattering_library') + closure_keys
             if any(_plain(s.metadata.get(k)) != _plain(first.metadata.get(k)) for k in keys):
                 raise ValueError('incompatible XS units/conventions/ADF prescription')
+        versions = [s.metadata.get('serpent_version') for s in vertices]
+        if any(_plain(v) != _plain(versions[0]) for v in versions[1:]):
+            if not self.compatible_serpent_versions or any(
+                    not isinstance(v, str) or v not in self.compatible_serpent_versions for v in versions):
+                raise ValueError('incompatible Serpent versions; explicit compatibility policy required')
+
+    def _evaluation_metadata(self, vertices):
+        metadata = _plain(vertices[0].metadata)
+        versions = {s.state_id: _plain(s.metadata.get('serpent_version')) for s in vertices}
+        first_version = next(iter(versions.values()))
+        if any(v != first_version for v in versions.values()):
+            metadata.pop('serpent_version', None)
+        metadata.update(source_serpent_versions=versions,
+                        compatible_serpent_versions=list(self.compatible_serpent_versions))
+        return metadata
 
     def select(self, state_id):
         s=self.states[state_id]
-        return EvaluatedBranchState(**_arguments(s), contributing_ids=(s.state_id,), weights=(1.,))
+        data = _arguments(s)
+        data['metadata'] = self._evaluation_metadata([s])
+        return EvaluatedBranchState(**data, contributing_ids=(s.state_id,), weights=(1.,))
 
     def evaluate(self, conditions, *, configuration=None, family=None):
         conditions=dict(conditions)
@@ -290,7 +323,7 @@ class BranchLibrary:
             chi[norm>0]/=norm[norm>0,None]
             data.update(state_id='interpolated:'+','.join(ids),conditions=conditions,native=None,
                         qualification='interpolated-unvalidated',
-                        metadata={**_plain(vertices[0].metadata),'interpolation_domain':list(ids),
+                        metadata={**self._evaluation_metadata(vertices),'interpolation_domain':list(ids),
                                   'source_qualifications':{s.state_id:s.qualification for s in vertices}})
             return EvaluatedBranchState(**data,contributing_ids=ids,weights=tuple(weights),interpolated=True)
         raise ValueError('request outside explicit interpolation domain or fixed conditions mismatch')
@@ -324,7 +357,8 @@ class BranchLibrary:
 
     def save(self, path):
         """Portable JSON (no executable pickle payloads); arrays encoded as lists."""
-        payload={'schema':'garnet.branch-xs.v1','axes':self.axes,'transforms':dict(self.transforms),'simplices':self.simplices,'states':[]}
+        payload={'schema':'garnet.branch-xs.v1','axes':self.axes,'transforms':dict(self.transforms),
+                 'simplices':self.simplices,'compatible_serpent_versions':self.compatible_serpent_versions,'states':[]}
         for s in self.states.values():
             data=_plain(_arguments(s))
             if s.native is not None:
@@ -343,7 +377,8 @@ class BranchLibrary:
                 data['native']=NativeBranchState(**data['native'])
             data['exterior_mask']=np.asarray(data['exterior_mask'],dtype=bool)
             states.append(BranchState(**data))
-        return cls(states,axes=payload['axes'],transforms=payload['transforms'],simplices=payload['simplices'])
+        return cls(states,axes=payload['axes'],transforms=payload['transforms'],simplices=payload['simplices'],
+                   compatible_serpent_versions=payload.get('compatible_serpent_versions', ()))
 
 
 @dataclass(frozen=True)

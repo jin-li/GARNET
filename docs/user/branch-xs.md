@@ -17,6 +17,17 @@ regions, energy boundaries and material arrays. Face factors use
 `(region, emitted_group, source_group)`. Record the reaction convention,
 diffusion prescription, geometry, nuclear data and factor method in metadata.
 
+ADFs must travel with the same spatial-reference and receiving-solver closure
+and reflector mask used to derive them. Record `transverse_leakage_identity`,
+`reflector_mask_sha256`, `leakage_boundary` and
+`reference_current_convention` in state metadata, alongside the ADF method
+and solver identity. A declared difference, or a declaration on only one
+vertex, rejects an interpolation element. An explicit null also counts as a
+declaration. Matching omissions retain legacy numerical interpolation; they
+do not establish scientific qualification. The library compares declarations;
+it does not verify that a mask hash describes the receiving geometry or that
+the receiving solver implements the declared closure.
+
 Create segments or triangles explicitly. Use separate libraries/elements for
 ARO/ARI configurations (normally labelled `aro`/`ari`), different bank
 environments and different geometry or nuclear-data families. A five-point
@@ -52,6 +63,14 @@ available; importing XS alone does not create qualified ADFs.
 5. Report interpolation error, exact-state model error and total prediction
    error separately. Use `garnet.branch_validation` for consistent reactivity
    changes, coefficients, uncertainty screening and interval rod worth.
+
+Cases used to choose a leakage method, reflector mask or ADF prescription are
+method-development cases. Freeze those choices before blind validation, and
+keep the validation transport data out of prediction and method selection.
+Exact-state GARNET versus continuous-energy transport tests the model and
+closure; interpolated GARNET versus exact-state GARNET tests interpolation.
+Neither comparison substitutes for the other, and matching closure metadata
+does not demonstrate accuracy in either comparison.
 
 Temperature coefficients require an explicitly defined density path and
 thermal-scattering treatment. Fuel Doppler changes normally hold density and
@@ -122,8 +141,26 @@ python examples/branch_xs/thermal_star.py
 
 Keep half-step and combined transport checks outside the five training states.
 A successful import or exact-state reconstruction does not establish prediction
-accuracy. Different Serpent versions or ACE routes need a controlled equivalence
-assessment before they can share a qualified library.
+accuracy. Different ACE routes need a controlled equivalence assessment before
+they can share a qualified library.
+
+`BranchLibrary` compares Serpent versions strictly by default. To explicitly
+accept a version pairing, pass `compatible_serpent_versions=("2.2.0", "2.2.2")`
+using the exact strings stored in your states' `serpent_version` metadata.
+Only tuples/lists are accepted; a nonempty policy needs at least two distinct,
+nonblank strings. Mixed versions must all be declared and included in that
+policy. This records a user/application assumption, not code proof of version
+equivalence, and leaves nuclear-data, geometry, scoring and closure checks in
+force. A version difference alone does not automatically require another
+Monte Carlo run; assess the available input, data and method evidence.
+
+The policy survives library save/load; older files without it remain strict.
+Source metadata and native versions remain unchanged. Evaluated metadata
+records `source_serpent_versions` by contributor and
+`compatible_serpent_versions`; mixed-version evaluations omit the single
+`serpent_version` field rather than attributing the first vertex's version to
+the whole prediction. This policy does not qualify a library or waive an
+assessment of a changed nuclear-data route.
 
 ## Convergence and physical checks
 
