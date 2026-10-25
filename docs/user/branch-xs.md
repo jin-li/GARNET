@@ -188,3 +188,8 @@ recomputes the degree-specific weak/moment/profile diagnostics instead of
 trusting stored result diagnostics. Reconstructed profile extrema are numerical;
 they are not interval-certified bounds. These checks establish numerical
 acceptability, not transport accuracy or nuclear-data equivalence.
+
+The `build_thermal_star` constructor also accepts `compatible_serpent_versions`
+and forwards that policy to its `BranchLibrary`. This permits an explicitly
+accepted executable-version pair without waiving training roles, nuclear-data
+identity or the caller-supplied qualification policy.

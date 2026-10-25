@@ -30,7 +30,7 @@ class ThermalStarEvidence:
 
 def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_high,
                        *, path, roles=None, qualification_policy=None,
-                       diagnostic=False):
+                       diagnostic=False, compatible_serpent_versions=()):
     """Build four triangles covering a five-point transformed diamond.
 
     ``low/high`` refer to actual fuel or moderator *temperature*. Moderator
@@ -52,6 +52,8 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
     every state. ``diagnostic=True`` explicitly permits unqualified construction
     and labels every table entry unvalidated. Neither mode waives compatibility
     checks or makes interpolation qualified. Absolute XS are never adjusted.
+    ``compatible_serpent_versions`` forwards the explicit application policy to
+    BranchLibrary; source/native versions and all other identity checks remain.
     """
     if not isinstance(path, BenchmarkModeratorPath):
         raise TypeError('path must be BenchmarkModeratorPath')
@@ -127,7 +129,8 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
                  (c.state_id, mh.state_id, fl.state_id))
     library = BranchLibrary(converted, axes=('fuel_temperature', 'moderator_density'),
                             transforms={'fuel_temperature': 'sqrt', 'moderator_density': 'identity'},
-                            simplices=simplices)
+                            simplices=simplices,
+                            compatible_serpent_versions=compatible_serpent_versions)
     tf = [s.conditions['fuel_temperature'] for s in converted]
     rho = [s.conditions['moderator_density'] for s in converted]
     if not tf[1] < tf[0] < tf[2] or not temperatures[3] < temperatures[0] < temperatures[4]:

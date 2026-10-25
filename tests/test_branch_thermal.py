@@ -189,3 +189,34 @@ def test_diagnostic_persistence_and_boundary_selection(tmp_path):
                   conditions={'boron': 100.}, configuration='ARO', family='thermal')
         assert exact.contributing_ids == (original.state_id,)
         np.testing.assert_array_equal(exact.sigma_a, original.sigma_a)
+
+
+@pytest.mark.parametrize('diagnostic', [True, False])
+def test_explicit_version_policy_reaches_thermal_star_and_survives_roundtrip(tmp_path, diagnostic):
+    states, path = inputs()
+    policy = ('Serpent 2.2.0', 'Serpent 2.2.2')
+    states = [replace(s, metadata={**dict(s.metadata), 'serpent_version': policy[bool(i)]},
+                      native=NativeBranchState(dict(s.native.records),
+                                               metadata={'serpent_version': policy[bool(i)]}))
+              for i, s in enumerate(states)]
+    options = {'diagnostic': True} if diagnostic else {
+        'qualification_policy': lambda s: ThermalStarEvidence('manufactured-review', ('audit',))}
+    with pytest.raises(ValueError, match='incompatible Serpent versions'):
+        build(states, path, **options)
+    library = build(states, path, compatible_serpent_versions=policy, **options)
+    target = tmp_path / 'mixed-version-star.json'
+    library.save(target)
+    restored = BranchLibrary.load(target)
+    assert restored.compatible_serpent_versions == policy
+    result = restored.evaluate_temperatures(625., 560., path,
+                                            conditions={'boron': 100.}, configuration='ARO', family='thermal')
+    assert set(result.metadata['source_serpent_versions'].values()) == set(policy)
+    assert 'serpent_version' not in result.metadata
+    assert result.qualification == 'interpolated-unvalidated'
+    assert restored.states['center'].native.metadata['serpent_version'] == policy[0]
+    assert restored.states['mh'].native.metadata['serpent_version'] == policy[1]
+    # The application policy cannot authorize a change of nuclear-data identity.
+    states[2] = replace(states[2], metadata={**dict(states[2].metadata),
+                                           'nuclear_data_family': 'different-data'})
+    with pytest.raises(ValueError, match='incompatible'):
+        build(states, path, compatible_serpent_versions=policy, **options)

@@ -189,3 +189,8 @@ mean/interface/boundary calculations accompany fresh degree-specific solver
 diagnostics. Nonnegative numerical profiles and positive integrated fission
 production are necessary acceptance checks. This does not provide rigorous
 interval bounds or establish Monte Carlo source convergence.
+
+The `build_thermal_star` constructor also accepts `compatible_serpent_versions`
+and forwards that policy to its `BranchLibrary`. This permits an explicitly
+accepted executable-version pair without waiving training roles, nuclear-data
+identity or the caller-supplied qualification policy.
