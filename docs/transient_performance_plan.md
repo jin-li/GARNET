@@ -17,6 +17,15 @@ the configured convergence tolerance, or when an explicitly approximate method
 meets its documented power, temperature, and shape-error budget. Negative or
 neutral experiments remain documented so they are not repeated later.
 
+Two additional method assessments and separate development plans are available:
+[exponential transformation](exponential_transformation_plan.md) and
+[numerical scaling](numerical_scaling_plan.md). They recommend an opt-in FTM
+prototype and field-aware error-control diagnostics first; each proposed
+speedup needs a matched-error comparison against the existing methods.
+The [first exponential prototype study](../benchmark-results/exponential-prototype/README.md)
+now compares fixed/adaptive BE and adaptive BDF, with explicit thermal-source
+quadrature and feedback-cadence checks. It remains experimental.
+
 The current coupled profiles put 96--98% of transient time in the neutron
 solve. Thermal conduction, feedback bookkeeping, telemetry, and result
 transfers are already sub-percent. Consequently this plan targets the spatial

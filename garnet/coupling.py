@@ -388,6 +388,9 @@ class CoupledTransientResult:
     step_widths: list = field(default_factory=list)
     local_errors: list = field(default_factory=list)
     rejected_steps: int = 0
+    step_source_weights: list = field(default_factory=list)
+    step_frequencies: list = field(default_factory=list)
+    ftm_fallback_reasons: list = field(default_factory=list)
     phase_seconds: dict = field(default_factory=dict)
     counters: dict = field(default_factory=dict)
 
@@ -404,7 +407,8 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
                       precond_dtype=None,
                       thermal_rtol=1e-8, thermal_maxiter=20000,
                       thermal_check_every=4, thermal_precond_degree=0,
-                      thermal_diagnostics_every=0, profile=False, on_step=None):
+                      thermal_diagnostics_every=0, profile=False, on_step=None,
+                      power_quadrature="scheme"):
     """March the neutronics and the thermal solution together.
 
     Operator splitting, one exchange per step: the neutronics step is taken
@@ -447,20 +451,38 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
     on_step : optional read-only observer ``(t, flux, power, temperature)``
                  after an accepted neutron step and any due thermal exchange.
                  Device arrays are passed without copying or synchronizing.
+    power_quadrature : ``"scheme"`` uses FTM's exponential endpoint-source
+                 integral; other schemes retain their existing endpoint rule.
+                 ``"endpoint"`` forces the old rectangle rule for controlled
+                 quadrature comparisons. Thermal exchange cadence is unchanged.
     """
-    from .transient import TransientSolver
+    from .transient import TransientSolver, _step_schedule
 
     if on_step is not None and not callable(on_step):
         raise TypeError("on_step must be callable")
     xp = ctx.thermal_solver().xp
+    if power_quadrature not in ("scheme", "endpoint"):
+        raise ValueError("power_quadrature must be 'scheme' or 'endpoint'")
     profiler = _CoupledPhaseProfiler(xp, enabled=profile)
     adaptive_neutronics = ((transient_kwargs or {}).get("adaptive_bdf")
                            is not None)
-    dt = float(dt)
-    dt_thermal = float(dt if dt_thermal is None else dt_thermal)
-    if not np.isfinite(dt) or not np.isfinite(dt_thermal) or dt <= 0.0 or dt_thermal <= 0.0:
+    explicit_schedule = np.ndim(dt) != 0
+    if explicit_schedule:
+        if adaptive_neutronics:
+            raise ValueError("an explicit coupled schedule cannot use adaptive_bdf")
+        target_times, dt = _step_schedule(t_end, dt)
+        initial_width = float(dt[0])
+    else:
+        dt = initial_width = float(dt)
+    dt_thermal = float(initial_width if dt_thermal is None else dt_thermal)
+    if (not np.isfinite(initial_width) or not np.isfinite(dt_thermal)
+            or initial_width <= 0.0 or dt_thermal <= 0.0):
         raise ValueError("dt and dt_thermal must be finite and positive")
-    if not adaptive_neutronics:
+    if explicit_schedule:
+        for exchange in np.arange(dt_thermal, t_end, dt_thermal):
+            if not np.any(np.isclose(target_times, exchange, rtol=1e-12, atol=1e-14)):
+                raise ValueError("explicit neutron schedule must end at every thermal exchange")
+    elif not adaptive_neutronics:
         every = int(round(dt_thermal / dt))
         if every < 1 or not np.isclose(
                 every * dt, dt_thermal, rtol=1e-12,
@@ -512,6 +534,7 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
              "elapsed": 0.0, "last_t": 0.0, "hook": None,
              "min_integral": None}
     state["hook"] = ctx.feedback.hook(state["T"])
+    used_source_weights = []
     fuel = _fuel_mask(ctx)
     fuel_dev = xp.asarray(fuel)
 
@@ -562,7 +585,12 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
                     xp.minimum(state["min_integral"], integral))
                 # Accumulate power over the sub-steps so a coarser thermal step
                 # sees the mean source over its own interval, not a snapshot.
-                weighted_q = q * step_width
+                source_weight = (getattr(tr, "step_source_weight", step_width)
+                                 if power_quadrature == "scheme" else step_width)
+                if not np.isfinite(source_weight) or source_weight <= 0.0:
+                    raise RuntimeError("neutron source integral weight must be finite and positive")
+                used_source_weights.append(float(source_weight))
+                weighted_q = q * source_weight
                 state["accum"] = (weighted_q if state["accum"] is None
                                   else state["accum"] + weighted_q)
                 state["n"] += 1
@@ -718,6 +746,9 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
     profiler.counters["coupled_steady_reuses"] = int(
         initial_coupled_steady is not None)
     profiler.counters["neutron_inner_iterations"] = res.total_inner_iterations
+    profiler.counters["neutron_operator_rebuilds"] = res.operator_rebuilds
+    profiler.counters["neutron_ftm_fallbacks"] = sum(
+        bool(reason) for reason in res.ftm_fallback_reasons)
     profiler.counters["neutron_outer_iterations"] = sum(res.step_iterations)
     profiler.counters["neutron_rejected_outer_iterations"] = sum(
         res.rejected_step_iterations)
@@ -750,6 +781,9 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
         time_scheme=res.time_scheme, time_orders=list(res.time_orders),
         step_widths=list(res.step_widths), local_errors=list(res.local_errors),
         rejected_steps=res.rejected_steps,
+        step_source_weights=used_source_weights,
+        step_frequencies=list(res.step_frequencies),
+        ftm_fallback_reasons=list(res.ftm_fallback_reasons),
         phase_seconds=phase_seconds, counters=dict(profiler.counters))
 
 

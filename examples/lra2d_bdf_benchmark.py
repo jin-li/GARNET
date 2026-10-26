@@ -34,6 +34,10 @@ def main():
                     help="FV cells per 15 cm assembly edge")
     ap.add_argument("--dt", type=float, default=0.01)
     ap.add_argument("--order", type=int, default=5, choices=range(1, 7))
+    ap.add_argument("--time-scheme", choices=("bdf", "ftm"), default="bdf",
+                    help="FTM is experimental, fixed-width, with exponential adiabatic heating")
+    ap.add_argument("--ftm-frequency", type=float,
+                    help="prescribed FTM rate; omit to estimate from accepted neutron populations")
     ap.add_argument("--tol-step", type=float, default=2e-7)
     buckling = ap.add_mutually_exclusive_group()
     buckling.add_argument("--axial-buckling", "--literal-buckling",
@@ -77,6 +81,10 @@ def main():
     ap.add_argument("--cherezov-controls", action="store_true",
                     help="use the paper's RTOL, h0, feedback, and BDF5 controls")
     args = ap.parse_args()
+    if args.time_scheme == "ftm" and (args.adaptive_rtol is not None or args.cherezov_controls):
+        ap.error("FTM uses fixed widths; adaptive/paper controls require BDF")
+    if args.ftm_frequency is not None and args.time_scheme != "ftm":
+        ap.error("--ftm-frequency requires --time-scheme ftm")
 
     if args.cherezov_controls:
         args.dt = 1e-6
@@ -90,7 +98,7 @@ def main():
         args.automatic_order = True
         args.adaptive_rejection_strategy = "half"
 
-    def run(order, adaptive_rtol=None):
+    def run(order, adaptive_rtol=None, *, ftm=False):
         effective_rtol = (args.adaptive_rtol if adaptive_rtol is None
                           else adaptive_rtol)
         adaptive = (None if effective_rtol is None else {
@@ -109,6 +117,8 @@ def main():
             thermal_zones=args.thermal_zones,
             control_worth_scale=args.control_worth_scale,
             adaptive_bdf=adaptive,
+            time_scheme="ftm" if ftm else None,
+            ftm_kwargs={"frequency": args.ftm_frequency} if ftm else None,
         )
 
     def metrics(result):
@@ -138,12 +148,15 @@ def main():
                             / max(len(result.transient.step_widths), 1)),
             "order_counts": dict(sorted(Counter(
                 result.transient.time_orders).items())),
+            "time_scheme": result.transient.time_scheme,
+            "operator_rebuilds": result.transient.operator_rebuilds,
+            "ftm_fallbacks": sum(bool(reason) for reason in result.transient.ftm_fallback_reasons),
             "next_order_counts": dict(sorted(Counter(
                 result.transient.next_time_orders).items())),
             **result.metrics(),
         }
 
-    result = run(args.order)
+    result = run(args.order, ftm=args.time_scheme == "ftm")
     garnet_metrics = metrics(result)
     include_static_endpoints = (args.include_static_endpoints
                                 or args.cherezov_controls)
@@ -165,6 +178,7 @@ def main():
         "case": {
             "refine": args.refine, "dt_s": args.dt,
             "bdf_order": args.order, "coupling": result.coupling,
+            "time_scheme": result.transient.time_scheme,
             "axial_buckling": args.axial_buckling,
             "control_worth_scale": args.control_worth_scale,
             "adaptive_rtol": args.adaptive_rtol,
@@ -209,8 +223,11 @@ def main():
             "rejected_orders": result.transient.rejected_time_orders,
             "candidate_order_errors": result.transient.order_candidate_errors,
             "selected_next_orders": result.transient.next_time_orders,
+            "frequencies_per_s": result.transient.step_frequencies,
+            "source_weights_s": result.transient.step_source_weights,
+            "ftm_fallback_reasons": result.transient.ftm_fallback_reasons,
         }
-    if args.compare_backward_euler and args.order != 1:
+    if args.compare_backward_euler and (args.order != 1 or args.time_scheme == "ftm"):
         be_rtol = (args.adaptive_rtol if args.backward_euler_rtol is None
                    else args.backward_euler_rtol)
         backward_euler = run(1, adaptive_rtol=be_rtol)

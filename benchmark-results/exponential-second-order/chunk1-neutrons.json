@@ -1,0 +1,393 @@
+{
+  "case": "uniform-ramp",
+  "scope": "Neutrons and delayed neutrons only",
+  "reference": "Independent Radau; common-grid linear output interpolation",
+  "reference_refinement_error": 1.5451417922918154e-11,
+  "power_error_budget": 0.001,
+  "timing_claim": null,
+  "source_sha256": {
+    "garnet/_exponential.py": "e46dad3ba7e70ae5e5e9726e73506b17ad64d45bef95ddacac17275e61210df4",
+    "garnet/timescheme.py": "36ae5f4745b9efd0316017226ebaee021e95de6d07141dbb21f47513181dae29",
+    "garnet/transient.py": "e48929704175a293a801d79b9d157e07fed5bf4d3010c9c960488c4f3caa7726",
+    "examples/exponential_transient_benchmark.py": "ce4bf8dc662f149475bb6127991921bec807129130d2a79aef45d60792d162d3",
+    "tools/assess_exponential_second_order.py": "40b77439331d6ba2a9eec4872a6cd16fc33e1ef8322b50d6ac38324e3469ec42"
+  },
+  "records": [
+    {
+      "configuration": {
+        "name": "backward-euler-h0.02",
+        "scheme": "backward-euler",
+        "dt": 0.02
+      },
+      "max_relative_power_error": 0.0052920594764687134,
+      "max_endpoint_relative_power_error": 0.004454577546897487,
+      "accepted_steps": 50,
+      "rejected_steps": 0,
+      "neutron_block_solves": 50,
+      "fgmres_iterations": 140,
+      "pcg_iterations": 692,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "backward-euler-h0.01",
+        "scheme": "backward-euler",
+        "dt": 0.01
+      },
+      "max_relative_power_error": 0.002758899087714539,
+      "max_endpoint_relative_power_error": 0.0025310299553564786,
+      "accepted_steps": 100,
+      "rejected_steps": 0,
+      "neutron_block_solves": 100,
+      "fgmres_iterations": 255,
+      "pcg_iterations": 1180,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "backward-euler-h0.005",
+        "scheme": "backward-euler",
+        "dt": 0.005
+      },
+      "max_relative_power_error": 0.0014099841022569004,
+      "max_endpoint_relative_power_error": 0.0013544281858828278,
+      "accepted_steps": 200,
+      "rejected_steps": 0,
+      "neutron_block_solves": 200,
+      "fgmres_iterations": 491,
+      "pcg_iterations": 2232,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "backward-euler-h0.002",
+        "scheme": "backward-euler",
+        "dt": 0.002
+      },
+      "max_relative_power_error": 0.0005764536799883757,
+      "max_endpoint_relative_power_error": 0.0005672130762182093,
+      "accepted_steps": 500,
+      "rejected_steps": 0,
+      "neutron_block_solves": 500,
+      "fgmres_iterations": 1139,
+      "pcg_iterations": 4972,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "backward-euler-h0.001",
+        "scheme": "backward-euler",
+        "dt": 0.001
+      },
+      "max_relative_power_error": 0.0002904185332280873,
+      "max_endpoint_relative_power_error": 0.00028809204575896974,
+      "accepted_steps": 1000,
+      "rejected_steps": 0,
+      "neutron_block_solves": 1000,
+      "fgmres_iterations": 2160,
+      "pcg_iterations": 9157,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "crank-nicolson-h0.02",
+        "scheme": "crank-nicolson",
+        "dt": 0.02
+      },
+      "max_relative_power_error": 0.001837986515932588,
+      "max_endpoint_relative_power_error": 0.0008399037722709446,
+      "accepted_steps": 50,
+      "rejected_steps": 0,
+      "neutron_block_solves": 50,
+      "fgmres_iterations": 126,
+      "pcg_iterations": 572,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "crank-nicolson-h0.01",
+        "scheme": "crank-nicolson",
+        "dt": 0.01
+      },
+      "max_relative_power_error": 0.0005983144792969242,
+      "max_endpoint_relative_power_error": 0.00019537562100613304,
+      "accepted_steps": 100,
+      "rejected_steps": 0,
+      "neutron_block_solves": 100,
+      "fgmres_iterations": 243,
+      "pcg_iterations": 1096,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "crank-nicolson-h0.005",
+        "scheme": "crank-nicolson",
+        "dt": 0.005
+      },
+      "max_relative_power_error": 0.00017370433553565157,
+      "max_endpoint_relative_power_error": 4.8030833070034085e-05,
+      "accepted_steps": 200,
+      "rejected_steps": 0,
+      "neutron_block_solves": 200,
+      "fgmres_iterations": 463,
+      "pcg_iterations": 2023,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "crank-nicolson-h0.002",
+        "scheme": "crank-nicolson",
+        "dt": 0.002
+      },
+      "max_relative_power_error": 3.075863133128465e-05,
+      "max_endpoint_relative_power_error": 7.690102744928318e-06,
+      "accepted_steps": 500,
+      "rejected_steps": 0,
+      "neutron_block_solves": 500,
+      "fgmres_iterations": 1099,
+      "pcg_iterations": 4653,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "crank-nicolson-h0.001",
+        "scheme": "crank-nicolson",
+        "dt": 0.001
+      },
+      "max_relative_power_error": 7.962616324963534e-06,
+      "max_endpoint_relative_power_error": 1.9213054283095943e-06,
+      "accepted_steps": 1000,
+      "rejected_steps": 0,
+      "neutron_block_solves": 1000,
+      "fgmres_iterations": 2076,
+      "pcg_iterations": 8484,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm-h0.02",
+        "scheme": "ftm",
+        "dt": 0.02
+      },
+      "max_relative_power_error": 0.005905808475214491,
+      "max_endpoint_relative_power_error": 0.005237690775344195,
+      "accepted_steps": 50,
+      "rejected_steps": 0,
+      "neutron_block_solves": 50,
+      "fgmres_iterations": 143,
+      "pcg_iterations": 706,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm-h0.01",
+        "scheme": "ftm",
+        "dt": 0.01
+      },
+      "max_relative_power_error": 0.0031723577302695816,
+      "max_endpoint_relative_power_error": 0.00295443577515897,
+      "accepted_steps": 100,
+      "rejected_steps": 0,
+      "neutron_block_solves": 100,
+      "fgmres_iterations": 255,
+      "pcg_iterations": 1180,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm-h0.005",
+        "scheme": "ftm",
+        "dt": 0.005
+      },
+      "max_relative_power_error": 0.0016389951765056754,
+      "max_endpoint_relative_power_error": 0.0015840370938688952,
+      "accepted_steps": 200,
+      "rejected_steps": 0,
+      "neutron_block_solves": 200,
+      "fgmres_iterations": 488,
+      "pcg_iterations": 2201,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm-h0.002",
+        "scheme": "ftm",
+        "dt": 0.002
+      },
+      "max_relative_power_error": 0.000670259266813078,
+      "max_endpoint_relative_power_error": 0.0006606145519532092,
+      "accepted_steps": 500,
+      "rejected_steps": 0,
+      "neutron_block_solves": 500,
+      "fgmres_iterations": 1136,
+      "pcg_iterations": 4933,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm-h0.001",
+        "scheme": "ftm",
+        "dt": 0.001
+      },
+      "max_relative_power_error": 0.00033759384873177645,
+      "max_endpoint_relative_power_error": 0.00033511683755238497,
+      "accepted_steps": 1000,
+      "rejected_steps": 0,
+      "neutron_block_solves": 1000,
+      "fgmres_iterations": 2159,
+      "pcg_iterations": 9181,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm2-h0.02",
+        "scheme": "ftm2",
+        "dt": 0.02
+      },
+      "max_relative_power_error": 0.0018379867711129094,
+      "max_endpoint_relative_power_error": 0.0008399031766334053,
+      "accepted_steps": 50,
+      "rejected_steps": 0,
+      "neutron_block_solves": 50,
+      "fgmres_iterations": 126,
+      "pcg_iterations": 597,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm2-h0.01",
+        "scheme": "ftm2",
+        "dt": 0.01
+      },
+      "max_relative_power_error": 0.0005983144909522675,
+      "max_endpoint_relative_power_error": 0.00020338052385326932,
+      "accepted_steps": 100,
+      "rejected_steps": 0,
+      "neutron_block_solves": 100,
+      "fgmres_iterations": 244,
+      "pcg_iterations": 1159,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm2-h0.005",
+        "scheme": "ftm2",
+        "dt": 0.005
+      },
+      "max_relative_power_error": 0.00017370433606722635,
+      "max_endpoint_relative_power_error": 4.967556273816065e-05,
+      "accepted_steps": 200,
+      "rejected_steps": 0,
+      "neutron_block_solves": 200,
+      "fgmres_iterations": 461,
+      "pcg_iterations": 2084,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm2-h0.002",
+        "scheme": "ftm2",
+        "dt": 0.002
+      },
+      "max_relative_power_error": 3.075863130685974e-05,
+      "max_endpoint_relative_power_error": 7.955117585556337e-06,
+      "accepted_steps": 500,
+      "rejected_steps": 0,
+      "neutron_block_solves": 500,
+      "fgmres_iterations": 1102,
+      "pcg_iterations": 4729,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "ftm2-h0.001",
+        "scheme": "ftm2",
+        "dt": 0.001
+      },
+      "max_relative_power_error": 7.96261631075268e-06,
+      "max_endpoint_relative_power_error": 1.995078052097199e-06,
+      "accepted_steps": 1000,
+      "rejected_steps": 0,
+      "neutron_block_solves": 1000,
+      "fgmres_iterations": 2083,
+      "pcg_iterations": 8504,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "adaptive-bdf1-rtol0.0001",
+        "scheme": "bdf1",
+        "dt": 1e-05,
+        "adaptive": {
+          "rtol": 0.0001,
+          "automatic_order": false
+        }
+      },
+      "max_relative_power_error": 0.00038318069363230123,
+      "max_endpoint_relative_power_error": 0.000375764704191317,
+      "accepted_steps": 158,
+      "rejected_steps": 2,
+      "neutron_block_solves": 160,
+      "fgmres_iterations": 364,
+      "pcg_iterations": 1434,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "adaptive-bdf1-rtol1e-05",
+        "scheme": "bdf1",
+        "dt": 1e-05,
+        "adaptive": {
+          "rtol": 1e-05,
+          "automatic_order": false
+        }
+      },
+      "max_relative_power_error": 0.00012312276862602722,
+      "max_endpoint_relative_power_error": 0.00012235687458450606,
+      "accepted_steps": 472,
+      "rejected_steps": 4,
+      "neutron_block_solves": 476,
+      "fgmres_iterations": 993,
+      "pcg_iterations": 3572,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "adaptive-bdf5-rtol0.0001",
+        "scheme": "bdf5",
+        "dt": 1e-05,
+        "adaptive": {
+          "rtol": 0.0001,
+          "automatic_order": true
+        }
+      },
+      "max_relative_power_error": 0.0006783094965800984,
+      "max_endpoint_relative_power_error": 0.00014826125280142932,
+      "accepted_steps": 104,
+      "rejected_steps": 37,
+      "neutron_block_solves": 141,
+      "fgmres_iterations": 324,
+      "pcg_iterations": 1248,
+      "ftm_fallbacks": 0
+    },
+    {
+      "configuration": {
+        "name": "adaptive-bdf5-rtol1e-05",
+        "scheme": "bdf5",
+        "dt": 1e-05,
+        "adaptive": {
+          "rtol": 1e-05,
+          "automatic_order": true
+        }
+      },
+      "max_relative_power_error": 0.000313740103870197,
+      "max_endpoint_relative_power_error": 4.964479010105549e-06,
+      "accepted_steps": 84,
+      "rejected_steps": 12,
+      "neutron_block_solves": 96,
+      "fgmres_iterations": 212,
+      "pcg_iterations": 845,
+      "ftm_fallbacks": 0
+    }
+  ]
+}

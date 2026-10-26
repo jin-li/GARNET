@@ -1,0 +1,159 @@
+{
+  "scope": "Independent analytic probes; no GARNET solver or timing measurements",
+  "source_revision": "b496309290d15033234b9b737ad351d4e415d306",
+  "python": "3.14.4",
+  "available_packages": {
+    "numpy": false,
+    "scipy": false,
+    "cupy": false
+  },
+  "point_kinetics": {
+    "beta": 0.0065,
+    "decay_per_s": 0.08,
+    "generation_time_s": 0.0001,
+    "reactivity": 0.002,
+    "eigenvalues_per_s": [
+      0.03546455778928248,
+      -45.115464557789274
+    ],
+    "windows": [
+      {
+        "name": "prompt_jump_and_tail",
+        "start_s": 0.0,
+        "end_s": 10.0,
+        "rows": [
+          {
+            "width_s": 0.02,
+            "backward-euler": {
+              "steps": 500,
+              "max_endpoint_relative_population_error": 0.041999354697488944
+            },
+            "lagged-ftm": {
+              "steps": 500,
+              "max_endpoint_relative_population_error": 0.04199920888062059
+            }
+          },
+          {
+            "width_s": 0.01,
+            "backward-euler": {
+              "steps": 1000,
+              "max_endpoint_relative_population_error": 0.024223099245953783
+            },
+            "lagged-ftm": {
+              "steps": 1000,
+              "max_endpoint_relative_population_error": 0.025436427370196024
+            }
+          },
+          {
+            "width_s": 0.005,
+            "backward-euler": {
+              "steps": 2000,
+              "max_endpoint_relative_population_error": 0.013157083455339946
+            },
+            "lagged-ftm": {
+              "steps": 2000,
+              "max_endpoint_relative_population_error": 0.014991819487669256
+            }
+          },
+          {
+            "width_s": 0.001,
+            "backward-euler": {
+              "steps": 10000,
+              "max_endpoint_relative_population_error": 0.0028324180283822997
+            },
+            "lagged-ftm": {
+              "steps": 10000,
+              "max_endpoint_relative_population_error": 0.003514229544546499
+            }
+          }
+        ]
+      },
+      {
+        "name": "tail_with_exact_initial_state_and_previous_sample",
+        "start_s": 0.5,
+        "end_s": 10.0,
+        "rows": [
+          {
+            "width_s": 0.1,
+            "backward-euler": {
+              "steps": 95,
+              "max_endpoint_relative_population_error": 0.0005990196584635399
+            },
+            "lagged-ftm": {
+              "steps": 95,
+              "max_endpoint_relative_population_error": 2.877265092848802e-11
+            }
+          },
+          {
+            "width_s": 0.05,
+            "backward-euler": {
+              "steps": 190,
+              "max_endpoint_relative_population_error": 0.00029911034692187144
+            },
+            "lagged-ftm": {
+              "steps": 190,
+              "max_endpoint_relative_population_error": 1.0558220964185239e-11
+            }
+          },
+          {
+            "width_s": 0.02,
+            "backward-euler": {
+              "steps": 475,
+              "max_endpoint_relative_population_error": 0.00011954848670048257
+            },
+            "lagged-ftm": {
+              "steps": 475,
+              "max_endpoint_relative_population_error": 5.817679671338283e-12
+            }
+          }
+        ]
+      }
+    ],
+    "limitations": [
+      "One delayed family, fixed coefficients, no spatial shape change or feedback",
+      "Fixed widths and errors sampled at their own endpoints, no adaptive controller",
+      "Tail starts from exact state/history; does not include prompt-jump integration error",
+      "FTM includes exponential precursor integration; zero frequency is not BE precursors",
+      "No BDF or IQS comparison and no CPU/GPU speedup is measured"
+    ]
+  },
+  "raw_error_norm_unit_sensitivity": [
+    {
+      "precursor_unit_multiplier": 1.0,
+      "flux_relative_defect": 0.01,
+      "precursor_defect": 0.0,
+      "rtol": 0.001,
+      "combined_norm": 7.071067811865482,
+      "passes_norm_test": false
+    },
+    {
+      "precursor_unit_multiplier": 1000.0,
+      "flux_relative_defect": 0.01,
+      "precursor_defect": 0.0,
+      "rtol": 0.001,
+      "combined_norm": 0.00999999500000376,
+      "passes_norm_test": true
+    }
+  ],
+  "illustrative_cost_model": [
+    {
+      "neutronics_fraction": 0.97,
+      "attempt_count_reduction": 1,
+      "cost_per_attempt_multiplier": 1.2,
+      "hypothetical_total_speedup": 0.8375209380234506
+    },
+    {
+      "neutronics_fraction": 0.97,
+      "attempt_count_reduction": 2,
+      "cost_per_attempt_multiplier": 1.2,
+      "hypothetical_total_speedup": 1.6339869281045751
+    },
+    {
+      "neutronics_fraction": 0.97,
+      "attempt_count_reduction": 4,
+      "cost_per_attempt_multiplier": 1.2,
+      "hypothetical_total_speedup": 3.1152647975077885
+    }
+  ],
+  "self_checks": "passed"
+}

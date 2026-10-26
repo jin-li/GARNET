@@ -135,7 +135,7 @@ def test_explicit_step_schedule_validation_is_strict():
         solver.solve(t_end=0.1, dt=[0.04, 0.04])
     with pytest.raises(ValueError, match="finite and positive"):
         solver.solve(t_end=0.1, dt=[0.05, -0.05, 0.1])
-    with pytest.raises(NotImplementedError, match="BDF schemes only"):
+    with pytest.raises(NotImplementedError, match="BDF and FTM schemes only"):
         solver.solve(t_end=0.1, dt=[0.05, 0.05],
                      time_scheme="crank-nicolson")
 

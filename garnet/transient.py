@@ -53,7 +53,8 @@ from .multigroup import (EnergyGroupGaussSeidelPreconditioner,
 from .sn import SNTransportSolver
 from .sp3 import SP3GroupOperator
 from .spn import SDPNGroupOperator, _SPN_C
-from .timescheme import BDF, BDFStepController, make_time_scheme
+from .timescheme import (BDF, BDFStepController, ExponentialTheta,
+                         FrequencyTransform, make_time_scheme)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
 from .solver import (DiffusionEigenSolver, Fields, Result, SDP1EigenSolver,
                      SDPNEigenSolver, scatter_stack)
@@ -208,6 +209,14 @@ class TransientResult:
     rejected_time_orders: list = field(default_factory=list)
     rejected_step_iterations: list = field(default_factory=list)
     rejected_feedback_iterations: list = field(default_factory=list)
+    # Temporal quadrature weights for endpoint fission heat sources. BE/BDF
+    # retain endpoint rectangles; FTM integrates its exponential source model.
+    step_source_weights: list = field(default_factory=list)
+    step_frequencies: list = field(default_factory=list)
+    step_frequency_refinements: list = field(default_factory=list)
+    step_frequency_log_defects: list = field(default_factory=list)
+    ftm_fallback_reasons: list = field(default_factory=list)
+    operator_rebuilds: int = 0
 
     @property
     def flux_numpy(self) -> np.ndarray:
@@ -309,6 +318,10 @@ class TransientSolver:
         # Keeping it outside the numerical result avoids timing overhead unless
         # a coupled/benchmark driver explicitly opts in.
         self.phase_context = phase_context
+        # Current trial's heat-source integral weight, available to endpoint
+        # feedback callbacks and to on_step after acceptance. No state is
+        # committed by reading this scalar.
+        self.step_source_weight = 0.0
         self.kinetics = kinetics
         self.bc = bc
         self.active = active
@@ -437,6 +450,7 @@ class TransientSolver:
               multigroup_kwargs: dict | None = None,
               time_scheme: str = "backward-euler",
               time_weight: float | None = None,
+              ftm_kwargs: dict | None = None,
               bdf_restart_times=None,
               step_alignment_times=None,
               adaptive_bdf: dict | None = None,
@@ -520,11 +534,22 @@ class TransientSolver:
             CPU HP-MR gates found that it reduced outer iterations but raised
             total PCG work and wall time.
         time_scheme : ``"backward-euler"`` (default), ``"bdf2"`` through
-            ``"bdf6"``, or ``"crank-nicolson"``. BDF ramps from order one as
-            history becomes available. Orders above two are opt-in because
-            they are A(alpha)-stable rather than A-stable.
+            ``"bdf6"``, ``"ftm"`` (first order), ``"ftm2"`` (transformed
+            trapezoidal neutrons), or ``"crank-nicolson"``. BDF ramps from
+            order one as history becomes available. Orders above two are
+            opt-in because they are A(alpha)-stable rather than A-stable.
         time_weight : legacy theta-method weight; it cannot be combined with a
             named BDF scheme.
+        ftm_kwargs : experimental diffusion-only frequency-transform controls:
+            ``frequency=None`` estimates one shared rate from accepted neutron
+            populations; a finite prescribed rate enables verification and
+            zero-frequency controls. ``max_exponent=0.5`` bounds abs(omega*dt);
+            unsafe estimates use actual BE for that step. FTM accepts fixed or
+            explicit nonuniform schedules, but not ``adaptive_bdf``. Its heat
+            source weight is available as ``solver.step_source_weight`` during
+            feedback/on_step callbacks and in ``result.step_source_weights``.
+            FTM2 preserves ordinary endpoint heat quadrature and does not
+            transform the heat-transfer equation.
         bdf_restart_times : known material/control discontinuities, each at a
             step end. Flux and precursor history is discarded before that
             step, forcing BDF1 and then ramping again. Use this for abrupt drum
@@ -596,10 +621,16 @@ class TransientSolver:
         """
         xp, kin = self.xp, self.kinetics
         beta, lam = kin.beta, kin.decay
-        scheme = make_time_scheme(time_scheme, time_weight)
+        scheme = make_time_scheme(time_scheme, time_weight, ftm_kwargs=ftm_kwargs)
+        is_ftm = isinstance(scheme, FrequencyTransform)
         step_solver = str(step_solver).lower()
         if step_solver not in ("fixed-point", "monolithic"):
             raise ValueError("step_solver must be 'fixed-point' or 'monolithic'")
+        if is_ftm and scheme.frequency_iterations:
+            if step_solver != "monolithic":
+                raise ValueError("frequency refinement currently requires monolithic steps")
+            if self.feedback_iteration is not None:
+                raise ValueError("frequency refinement with implicit feedback is not yet supported")
         if step_solver == "monolithic" and not self.symmetric_operator:
             raise ValueError("monolithic group preconditioning currently needs "
                              "symmetric within-group diffusion operators")
@@ -708,9 +739,10 @@ class TransientSolver:
             n_steps = len(step_widths)
             dt_step = (float(step_widths[0]) if n_steps else float(dt))
         if np.ndim(dt) != 0 and not (
-                scheme.name == "backward-euler" or scheme.name.startswith("bdf")):
+                scheme.name in ("backward-euler", "ftm", "ftm2")
+                or scheme.name.startswith("bdf")):
             raise NotImplementedError(
-                "explicit nonuniform steps currently support BDF schemes only")
+                "explicit nonuniform steps currently support BDF and FTM schemes only")
         restart_steps = set()
         restart_times = np.empty(0)
         if bdf_restart_times is not None:
@@ -730,7 +762,10 @@ class TransientSolver:
                     if matches.size != 1:
                         raise ValueError(
                             f"BDF restart time {event:g} must coincide with a step end")
-                    restart_steps.add(int(matches[0]) + 1)
+                    # FTM's population samples belong to accepted endpoints:
+                    # discard them before leaving the event, as adaptive BDF
+                    # already does. Preserve the legacy fixed-BDF convention.
+                    restart_steps.add(int(matches[0]) + (2 if is_ftm else 1))
         alignment_times = np.empty(0)
         if step_alignment_times is not None:
             alignment_times = np.asarray(step_alignment_times, dtype=float)
@@ -866,6 +901,9 @@ class TransientSolver:
         beta, inv_vdt_base = kinetic_fields(fields, dt_step)
         a0 = scheme.a0(1)
         inv_vdt = [a0 * theta for theta in inv_vdt_base]
+        inv_vdt_rhs = ([scheme.history_factor(1) * theta for theta in inv_vdt_base]
+                       if is_ftm else inv_vdt)
+        population_mass = [dt_step * theta for theta in inv_vdt_base] if is_ftm else None
 
         phi = [steady.flux[g].copy() for g in range(G)]
         # On GPU the group loops below collapse into one kernel per row; `phi`
@@ -916,6 +954,18 @@ class TransientSolver:
         # its stack in place, so views would overwrite the BDF history.
         sch_phi = scheme
         sch_phi.start([p.copy() for p in phi])
+
+        def neutron_population():
+            # One host scalar transfer for FTM only. Constant cell volumes
+            # cancel from the logarithmic rate; cylindrical radial metrics
+            # remain necessary, just as for the physical power integral.
+            population = population_mass[0] * phi[0]
+            for g in range(1, G):
+                population = population + population_mass[g] * phi[g]
+            return total_power(population)
+
+        if is_ftm:
+            scheme.observe_population(neutron_population())
         C_hist = [C]
         S_prev = S
         # The recurrence consumes q precursor states, while its degree-q LTE
@@ -996,11 +1046,43 @@ class TransientSolver:
 
         ops, preconds, fallback_preconds, setup_fallbacks = \
             self._step_operators(fields, inv_vdt, G)
+        operator_rebuilds = 1
+        time_coefficient_key = getattr(scheme, "coefficient_key", None)
         workspaces = (pcg_workspaces(ops, phi)
                       if (step_solver == "fixed-point"
                           and reuse_krylov_workspaces and self._linsolve is pcg)
                       else None)
         src_w = getattr(ops[0], "rhs_weight", None)
+
+        def seed_exponential_derivative():
+            """Physical neutron RHS using accepted fields, including leakage.
+
+            Subtract the time shift from the existing spatial operators rather
+            than building another set. This also handles non-equilibrium
+            supplied precursors and geometric RHS weights at a restart.
+            """
+            if not isinstance(scheme, ExponentialTheta):
+                return
+            derivatives = []
+            for g in range(G):
+                rhs = fields.chi[g] * S
+                for i in range(kin.n_families):
+                    spectrum = (chi_d2[i, g] if chi_d2 is not None else
+                                kin.chi_delayed[g] if kin.chi_delayed is not None else
+                                fields.chi[g])
+                    rhs = rhs + spectrum * (float(lam[i])*C[i] - beta[i]*S)
+                for gf in range(G):
+                    scatter = fields.sigma_s[gf][g]
+                    if gf != g and scatter is not None:
+                        rhs = rhs + scatter * phi[gf]
+                loss = ops[g].apply(phi[g])
+                if src_w is not None:
+                    loss = loss / src_w
+                derivatives.append((rhs - loss + inv_vdt[g]*phi[g])
+                                   / population_mass[g])
+            scheme.seed_derivative(derivatives, beta)
+
+        seed_exponential_derivative()
         monolithic_block = None
         monolithic_precond = None
         monolithic_workspace = None
@@ -1035,6 +1117,25 @@ class TransientSolver:
         rejection_streak = 0
         next_adaptive_dt = dt_step
         restarted_events: set[float] = set()
+        source_weights: list[float] = []
+        frequencies: list[float] = []
+        frequency_refinements: list[int] = []
+        frequency_log_defects: list[float | None] = []
+        ftm_fallback_reasons: list[str] = []
+
+        def commit_time_diagnostics():
+            source_weights.append(self.step_source_weight)
+            if is_ftm:
+                frequencies.append(scheme.frequency)
+                frequency_refinements.append(scheme.frequency_refinements)
+                frequency_log_defects.append(scheme.frequency_log_defect)
+                ftm_fallback_reasons.append(scheme.fallback_reason)
+                population = neutron_population()
+                if not np.isfinite(population) or population <= 0.0:
+                    raise RuntimeError(
+                        "FTM produced a non-positive or non-finite neutron population; "
+                        "reduce the step width")
+                scheme.observe_population(population)
 
         n = 1
         while ((times[-1] < t_end - 1e-14 * max(1.0, t_end))
@@ -1048,6 +1149,8 @@ class TransientSolver:
                             and np.isclose(t_start, event, rtol=1e-12,
                                            atol=1e-14 * max(1.0, abs(event)))):
                         sch_phi.start([p.copy() for p in phi])
+                        if is_ftm:
+                            scheme.observe_population(neutron_population())
                         C_hist = [C]
                         S_prev = S
                         restarted_events.add(float(event))
@@ -1067,9 +1170,13 @@ class TransientSolver:
             dt_step = next_dt
             if not adaptive and n in restart_steps:
                 sch_phi.start([p.copy() for p in phi])
+                if is_ftm:
+                    scheme.observe_population(neutron_population())
+                seed_exponential_derivative()
                 C_hist = [C]
                 S_prev = S
             scheme.prepare_step(n, dt_step)
+            self.step_source_weight = scheme.source_integral_weight(dt_step)
             predicted_phi = (scheme.predict(
                 dt_step,
                 max_degree=(scheme.order_at(n)
@@ -1083,9 +1190,11 @@ class TransientSolver:
             mats, mmap, mix_m, mix_w = spec
             upd = self.xs_update_at(t) if self.xs_update_at is not None else None
             a0_n = scheme.a0(n)
-            order_changed = a0_n != a0
+            coefficient_key = getattr(scheme, "coefficient_key", None)
+            order_changed = a0_n != a0 or coefficient_key != time_coefficient_key
             if order_changed:
                 a0 = a0_n
+                time_coefficient_key = coefficient_key
             # Rebuild on identity change of anything the fields depend on --
             # including the update itself, so a driver whose state has not moved
             # can hand back the SAME closure and skip the rebuild. That matters:
@@ -1125,10 +1234,15 @@ class TransientSolver:
             # elimination even if the spatial material fields are unchanged.
             if fields_changed or dt_changed:
                 beta, inv_vdt_base = kinetic_fields(fields, dt_step)
+                if is_ftm:
+                    population_mass = [dt_step * theta for theta in inv_vdt_base]
             if fields_changed or order_changed or dt_changed:
                 inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                inv_vdt_rhs = ([scheme.history_factor(n) * theta
+                                for theta in inv_vdt_base] if is_ftm else inv_vdt)
                 (ops, preconds, fallback_preconds,
                  setup_count) = self._step_operators(fields, inv_vdt, G)
+                operator_rebuilds += 1
                 setup_fallbacks += setup_count
                 src_w = getattr(ops[0], "rhs_weight", None)
                 monolithic_block = None
@@ -1183,7 +1297,7 @@ class TransientSolver:
                                     monolithic_workspace.V,
                                     monolithic_workspace.Z))
                     fixed_rhs = monolithic_block.fixed_rhs(
-                        inv_vdt, phi_old, dsrc_g)
+                        inv_vdt_rhs, phi_old, dsrc_g)
                     phi_stack = (batch["phi"] if batch is not None
                                  else xp.stack(phi))
                     monolithic_precond.reset_stats()
@@ -1211,6 +1325,32 @@ class TransientSolver:
                     outer_total += outer_it
                     coupled_it += 1
 
+                    if (is_ftm and scheme.frequency_iterations
+                            and scheme.refine_frequency(neutron_population())):
+                        # Refit only provisional coefficients. Accepted flux,
+                        # precursor and population histories remain untouched.
+                        a0 = scheme.a0(n)
+                        time_coefficient_key = scheme.coefficient_key
+                        time_order_n = int(getattr(
+                            scheme, "order_at", lambda _n: scheme.order)(n))
+                        self.step_source_weight = scheme.source_integral_weight(dt_step)
+                        inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                        inv_vdt_rhs = [scheme.history_factor(n) * theta
+                                        for theta in inv_vdt_base]
+                        (ops, preconds, fallback_preconds,
+                         setup_count) = self._step_operators(fields, inv_vdt, G)
+                        operator_rebuilds += 1
+                        setup_fallbacks += setup_count
+                        src_w = getattr(ops[0], "rhs_weight", None)
+                        bcoef = scheme.precursor_bcoef(n, beta, lam, dt_step)
+                        bcoef_sum = sum(bcoef)
+                        w_fis = fission_weights()
+                        phi_old = scheme.carried(n)
+                        dsrc_g = delayed_source_by_group(n, dt_step)
+                        monolithic_block = None
+                        monolithic_precond = None
+                        continue
+
                     if self.feedback_iteration is None:
                         break
                     callback_phi = (batch["phi"] if batch is not None else phi)
@@ -1235,8 +1375,13 @@ class TransientSolver:
                         batch.update(self._batch_fields(fields, G, batch["fsrc"]))
                     beta, inv_vdt_base = kinetic_fields(fields, dt_step)
                     inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                    inv_vdt_rhs = ([scheme.history_factor(n) * theta
+                                    for theta in inv_vdt_base] if is_ftm else inv_vdt)
+                    if is_ftm:
+                        population_mass = [dt_step * theta for theta in inv_vdt_base]
                     (ops, preconds, fallback_preconds,
                      setup_count) = self._step_operators(fields, inv_vdt, G)
+                    operator_rebuilds += 1
                     setup_fallbacks += setup_count
                     src_w = getattr(ops[0], "rhs_weight", None)
                     bcoef = scheme.precursor_bcoef(n, beta, lam, dt_step)
@@ -1370,6 +1515,7 @@ class TransientSolver:
                 del C_hist[history_limit:]
                 S_prev = S
                 sch_phi.push([p.copy() for p in phi])
+                commit_time_diagnostics()
                 if adaptive and automatic_order:
                     scheme.select_order(next_order_n)
                 step_its.append(outer_total)
@@ -1399,7 +1545,7 @@ class TransientSolver:
                 fixed_total = 0.0
                 fixed_cell = None
                 for g in range(G):
-                    term = dsrc_g[g] + inv_vdt[g] * phi_old[g]
+                    term = dsrc_g[g] + inv_vdt_rhs[g] * phi_old[g]
                     if src_w is not None:
                         term = term * src_w
                     fixed_total += float(xp.sum(term))
@@ -1426,7 +1572,7 @@ class TransientSolver:
                 for _ in range(n_sub):
                     for g in range(G):
                         q = xp.asarray(
-                            inv_vdt[g] * phi_old[g] + w_fis[g] * S + dsrc_g[g],
+                            inv_vdt_rhs[g] * phi_old[g] + w_fis[g] * S + dsrc_g[g],
                             dtype=self.dtype)
                         if batch is not None:
                             # One kernel for the whole in-scatter row. The flux
@@ -1542,6 +1688,7 @@ class TransientSolver:
             del C_hist[history_limit:]
             S_prev = S
             sch_phi.push([p.copy() for p in phi])
+            commit_time_diagnostics()
 
             step_its.append(sweep)
             feedback_its.append(1)
@@ -1602,6 +1749,12 @@ class TransientSolver:
             rejected_time_orders=rejected_orders,
             rejected_step_iterations=rejected_step_its,
             rejected_feedback_iterations=rejected_feedback_its,
+            step_source_weights=source_weights,
+            step_frequencies=frequencies,
+            step_frequency_refinements=frequency_refinements,
+            step_frequency_log_defects=frequency_log_defects,
+            ftm_fallback_reasons=ftm_fallback_reasons,
+            operator_rebuilds=operator_rebuilds,
             solve_seconds=time.perf_counter() - t0,
             device=self.device,
         )
@@ -2209,6 +2362,8 @@ class TransientSNSolver:
         beta = [float(b) for b in kin.beta]
         lam = kin.decay
         scheme = make_time_scheme(time_scheme, time_weight)
+        if isinstance(scheme, FrequencyTransform):
+            raise NotImplementedError("FTM currently supports diffusion only, not S_N")
         if not scheme.is_bdf and any(b != 0.0 for b in beta):
             # The precursor substitution is of BDF form (see timescheme.py);
             # the theta-method carries F^n instead of past states and has no
