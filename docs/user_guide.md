@@ -611,13 +611,44 @@ Fixed and explicit nonuniform widths, `event_times`, named materials and
 progress callbacks work through the model API. `adaptive_bdf` is refused.
 Thermal coupling keeps its existing endpoint heat rule.
 
+Use `adaptive_ftm={"rtol": 1e-4, "min_dt": 1e-10, "max_dt": 0.01}` to
+enable physical-state full-step/two-half-step error control for `ftm2` or
+`ftm-bdf2`. The fine trajectory is committed once per macro endpoint, with
+rollback on rejection and exact event alignment. Each flux group and
+precursor family has its own volume/mask-aware defect; all trial solves are
+charged. This opt-in controller supports monolithic neutron/precursor
+integration only. Add `"output_rtol": 1e-4` to test the existing midpoint
+against the endpoint line in each physical field and in power, restricting
+macro widths for linear output without an extra spatial solve. This output
+tolerance is separate from the integration tolerance and does not certify
+accumulated error. See the [adaptive API details](transient_api.md),
+[fourth checkpoint](../benchmark-results/exponential-second-order/CHUNK4.md)
+and [output checkpoint](../benchmark-results/exponential-second-order/CHUNK5.md).
+
+`adaptive_ftm={"rtol": 1e-4, "output_rtol": 1e-4, "estimator": "history"}`
+selects an experimental quadratic physical-history state check. Smooth
+second-order attempts use two half-step solves; startup, events and unsafe
+histories retain step doubling. `"estimator": "history-audit"` records both
+defects while retaining reference decisions. The output check remains
+independent. See the [estimator checkpoint](../benchmark-results/exponential-second-order/CHUNK6.md)
+for physical error and solve-count comparisons; fewer solves do not establish
+a runtime speedup or a gain over adaptive BDF.
+
+The [TWIGL spatial assessment](../benchmark-results/exponential-second-order/CHUNK7.md)
+compares independently measured power, shape, region power, integrated power
+and final precursor errors. At the declared 0.1% temporal budget, tuned
+adaptive BDF uses less work than the tested transforms. Mesh refinement
+still changes the 40×40 thermal-group shape by about 1.10%, so these temporal
+results do not establish 0.1% spatial accuracy or earn a production speedup
+claim.
+
 The [damping checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
 records independent verification and 196 error/work configurations. Adaptive
 BDF remains the strongest tested comparator. The two-stage transformed
 SDIRK2 candidate remains a dense research driver because its extra stages
 did not earn a finite-volume implementation.
 
-`coupled_transient` supports the same adaptive controls through
+`coupled_transient` supports adaptive BDF controls through
 `transient_kwargs`. Thermal exchange times are exact non-restarting adaptive
 endpoints, and unequal neutron-step powers are averaged by elapsed time rather
 than step count. The coupled HP-MR gate shows why method speedups must be

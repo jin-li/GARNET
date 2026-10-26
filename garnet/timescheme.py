@@ -108,6 +108,59 @@ def _error_norm_sums(corrected, predicted, rtol, atol):
     return float(pair[0]), float(pair[1])
 
 
+def physical_state_errors(fine, coarse, previous, *, rtol, atol=0.0, weights=None):
+    """Per-field weighted RMS defects in physical flux/precursor variables.
+
+    Each field has its own scale, so large precursor concentrations cannot
+    hide a flux defect. The scale uses the accepted starting state and the
+    candidate fine state. Zero fields contribute zero only for zero defect.
+    ``weights`` includes active-cell masks and geometric volume factors.
+    No Richardson divisor is assumed for changing frequencies/BDF histories.
+    """
+    if not fine or len(fine) != len(coarse) or len(fine) != len(previous):
+        raise ValueError("physical error states must have matching nonempty fields")
+    xp = kernels.module_of(fine[0])
+    sums = []
+    for new, full, old in zip(fine, coarse, previous):
+        scale = atol + rtol * xp.maximum(xp.abs(old), xp.abs(new))
+        defect = xp.abs(new - full)
+        ratio = defect / xp.where(scale > 0, scale, 1.0)
+        ratio = xp.where(scale > 0, ratio, xp.where(defect == 0, 0.0, xp.inf))
+        if weights is None:
+            sums.append(xp.mean(ratio * ratio))
+        else:
+            ratio = xp.where(weights > 0, ratio, 0.0)
+            sums.append(xp.sum(weights * ratio * ratio) / xp.sum(weights))
+    errors = np.sqrt(asnumpy(xp.stack(sums)))
+    return np.where(np.isfinite(errors), errors, np.inf).tolist()
+
+
+def physical_history_prediction(previous, start, midpoint, *, half_width, previous_half_width):
+    """Quadratic physical-state extrapolation to the second-half endpoint.
+
+    Nodes relative to the macro start are ``(-d, 0, k)`` and the target is
+    ``2*k``, with actual accepted previous half width d and current k. The
+    weights are ``2*r**2/(1+r), -(1+2*r), 2*(1+2*r)/(1+r)``, r=k/d.
+    Difference form preserves constant fields. No exponential-frame history
+    or presumed relation to a Richardson error constant is used. The raw
+    prediction/correction difference is an O(k**3) resolution indicator on
+    smooth second-order trajectories, not a guaranteed local-error bound.
+    Callers must restart after events and guard ill-conditioned width ratios.
+    """
+    if not start or len(previous) != len(start) or len(midpoint) != len(start):
+        raise ValueError("physical history states must have matching nonempty fields")
+    k, d = float(half_width), float(previous_half_width)
+    if not np.isfinite(k) or not np.isfinite(d) or min(k, d) <= 0:
+        raise ValueError("physical history widths must be finite and positive")
+    ratio = k / d
+    if not 0.25 <= ratio <= 2.0:
+        raise ValueError("physical history width ratio must lie in [0.25, 2]")
+    forward = (3 * ratio + 1) / (ratio + 1)
+    backward = 2 * ratio**2 / (ratio + 1)
+    return [half + forward * (half - old) + backward * (prior - old)
+            for prior, old, half in zip(previous, start, midpoint)]
+
+
 class TimeScheme:
     """Base: backward Euler (BDF1). Stateless -- Psi is just the last solution."""
 

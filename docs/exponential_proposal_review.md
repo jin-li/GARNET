@@ -3,6 +3,12 @@
 Date: 2026-10-25. Follow-up to the
 [first prototype study](../benchmark-results/exponential-prototype/README.md).
 
+Subsequent implementation checkpoints are linked from the
+[current development plan](exponential_transformation_plan.md). The
+[26 October literature review](exponential_literature_review_2026-10-26.md)
+compares the supplied PARCS/SIMULATE PDFs and distinguishes scalar frequency
+transforms from the separate Krylov matrix-action feasibility track.
+
 The temporal transformation is appropriate for FVM. Its performance benefit
 remains a hypothesis. Most of the displayed algorithm is already the
 implemented exponential backward-Euler method. Separate group frequencies,

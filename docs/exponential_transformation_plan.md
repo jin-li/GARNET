@@ -1,13 +1,17 @@
 # Exponential transformation for diffusion transients: assessment and plan
 
 Assessment date: 2026-10-25. Source reviewed: `b496309290d15033234b9b737ad351d4e415d306`.
+Development/literature update: 2026-10-26, `572ef80` plus the current
+adaptive/output-aware FTM working tree. The historical assessment is retained below;
+the phase tables and next-work priorities reflect the new evidence.
 
 **Prototype follow-up:** the shared-frequency diffusion implementation is now
 available as `time_scheme="ftm"`. Per the requested priority, the first
 comparators are fixed/adaptive BE and adaptive BDF, including thermal coupling;
 IQS comparisons are deferred. See the
 [implementation, CPU measurements and remaining work](../benchmark-results/exponential-prototype/README.md).
-Adaptive FTM itself and diagonal-only operator updates are still future work.
+Neutron/precursor adaptive FTM is now available in the fourth checkpoint;
+diagonal-only operator updates and coupled thermal adaptation remain pending.
 The [proposal follow-up](exponential_proposal_review.md) identifies true
 second-order exponential theta, source-group precursor weights and optional
 frequency correction as separate experiments, and adds a CN/work comparison.
@@ -18,28 +22,58 @@ is outside the exponential-transformation scope.
 The [second checkpoint](../benchmark-results/exponential-second-order/CHUNK2.md)
 adds BE start-up and optional frequency refinement. A resolved rapid-growth
 case now demonstrates a temporal benefit from the transform at equal work;
-adaptive BDF still uses fewer tested solves. Stronger stiff damping is the
-next temporal development before expanding the spatial frequency model.
+adaptive BDF still uses fewer tested solves. That checkpoint motivated the
+subsequent damping experiment before expanding the spatial frequency model.
 The [third checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
 now tests a two-stage damped candidate independently and adds the one-solve
 `ftm-bdf2` recurrence to the FV engine. It transforms neutron and precursor
 histories together, with BE safeguards and explicit event restart. The
 196-configuration comparison retains adaptive BDF as the strongest tested
-comparator. Physical-state error control and a localized shape-changing case
-are next; diagonal-only updates and group/local frequencies remain pending.
+comparator. It left physical-state error control and a localized shape case
+as the next steps, completed below; group/local frequencies remain pending.
+The [fourth checkpoint](../benchmark-results/exponential-second-order/CHUNK4.md)
+adds opt-in `adaptive_ftm` with physical flux/precursor step doubling, complete
+history rollback, exact event alignment and a localized two-group matrix
+reference. Adaptive BDF still uses less tested work at matched output error.
+The [fifth checkpoint](../benchmark-results/exponential-second-order/CHUNK5.md)
+adds optional `output_rtol` midpoint/chord width control in each physical
+field and in power. It resolves the rapid-growth linear-output discrepancy
+at a declared physical budget, without extra solves per attempt.
+The [sixth checkpoint](../benchmark-results/exponential-second-order/CHUNK6.md)
+adds opt-in two-solve physical-history estimation and a same-trial audit
+against the retained step-doubling oracle. It reduces tested FTM solves at
+the 0.1% output/integral/precursor budget, while adaptive BDF remains cheaper.
+The [seventh checkpoint](../benchmark-results/exponential-second-order/CHUNK7.md)
+assesses TWIGL step/ramp on 20×20 and 40×40 meshes with independent temporal
+references, an 80×80 spatial check and stronger output-width BE/BDF controls.
+Adaptive BDF remains cheaper at the declared 0.1% temporal budget. Thermal
+flux shape differs by 1.10% between 40×40 and 80×80, so the 0.1% spatial-shape
+gate remains open. Retain the initial-state resolution diagnosis before
+larger transient claims. Setup reuse remains a separate cost gate. Tight
+exponential tails can make physical-history checking more restrictive;
+keep its audit mode available and hold local/group frequency expansion.
 
-**Recommendation: develop an opt-in frequency transformation method (FTM),
-starting with one frequency shared by all cells and groups.** It can reuse
+**Recommendation: continue the opt-in frequency transformation method (FTM),
+retaining shared-frequency controls while testing each extension.** It can reuse
 GARNET's matrix-free diffusion engines. Its main possible benefit is fewer
 spatial solves at a given temporal error. A speedup over the best existing
 adaptive BE/BDF or guarded IQS configuration remains unproven. Published
 SIMULATE results do not establish performance in this implementation.
 
+**Literature decision:** the [review of the five supplied PDFs](exponential_literature_review_2026-10-26.md)
+directly supports the transformed-theta neutron equation: PARCS v2.6 uses it
+with quadratic **physical-source** precursor integration. SIMULATE5-K's 2022
+paper instead describes transformed BE, source-group exponential precursor
+weights and a separate pseudo-static nodal leakage construction. These are
+different contracts, not one method to copy wholesale. Add a controlled
+PARCS precursor experiment and a separate, bounded KIOPS matrix-action study.
+Neither changes the current production default or the heat equation.
+
 The [scaling assessment](numerical_scaling_plan.md) is a separate workstream.
 Establish its error-norm diagnostics before adaptive comparisons; a change in
 the error metric must not be mistaken for an FTM improvement.
 
-## Existing capabilities and relevant history
+## Capabilities at the original assessment and relevant history
 
 | Implementation | Consequence |
 |---|---|
@@ -118,8 +152,10 @@ With a shared frequency, one scalar fission source remains sufficient. With
 a separate frequency for each **source group**, precursor production instead
 contains `sum_h beta_i H_i,h nuSigma_f,h phi_h/k0`. It generally cannot be
 represented by changing only destination-group `w_fis[g]`. Group-dependent
-FTM needs extra source contractions or generalized low-rank fission coupling;
-defer it until the shared-frequency study identifies a useful regime.
+FTM with these exponential precursor weights needs extra source contractions
+or generalized low-rank fission coupling. PARCS-style physical-source
+interpolation is a different alternative that retains a scalar endpoint
+source; compare its accuracy separately before expanding the frequency model.
 
 The initial approximation above is first order. A later variant can
 interpolate `psi` linearly and integrate precursors with stable `phi_1`/`phi_2`
@@ -186,21 +222,54 @@ Reasons a benefit may disappear:
 
 ## Separate development plan
 
-| Phase | Concrete work | Gate and deliverable |
+The E4 spatial comparison has now been assessed on TWIGL: temporal errors
+are independently resolved on each study mesh, while the declared spatial
+shape budget and performance-promotion gate remain unmet. Resolve the mesh
+error before claiming application-wide 0.1% accuracy. Shared setup reuse is
+a separate bounded cost task; do not broaden FTM frequency models on the
+present negative matched-work result. The two-solve history estimator remains
+opt-in, with the three-solve controller retained as its reference.
+K0 is a small independent feasibility
+gate; a full Krylov integrator is not a prerequisite for continuing FTM.
+Keep each experimental change separately switchable and compare resulting
+physical errors.
+
+| Phase / status | Concrete work | Gate and deliverable |
 |---|---|---|
-| E0: baseline | Record fixed/adaptive BE, automatic BDF and guarded IQS on homogeneous, TWIGL, LRA and HP-MR cases. Add per-field defect diagnostics from the scaling plan without changing decisions. | Reproducible accuracy/work/time baselines, including rejected attempts and rebuilds. |
-| E1: fixed-width prototype | Add opt-in `time_scheme="ftm"` in `timescheme.py`/`transient.py`. Supply time diagonal, physical history source, precursor history and source coefficient explicitly. Reuse fixed-point and monolithic engines. Start with one frozen global frequency per step. | Exact equilibrium and exponential eigenmode; convergence through prompt jumps; agreement between converged spatial solvers. No adaptive/default change. |
-| E2: frequency and caching | Estimate frequency from accepted neutron population `sum_cells V sum_g phi_g/v_g`, rather than cross-section-dependent fission power alone. Optionally reuse an existing adjoint; do not add an eigen solve solely for frequency. Use the actual previous accepted width, guarded log ratios, finite bounds, event resets and BE fallback. Separate diagonal updates from geometry, preserving workspace/graph contracts. | Frequency/guard/fallback telemetry; no stale operators/history; lower setup overhead; robust positive and negative maneuvers. |
-| E3: adaptive FTM | Extract shared scheduling/commit/rollback machinery from the BDF path. Add method-neutral adaptive controls while retaining `adaptive_bdf` compatibility. Validate error estimates with full-step/two-half-step physical flux and precursor comparisons first; seek a cheaper estimator only after validation. | Acceptance includes frequency error and all physical state blocks. Rejections restore frequency, flux, precursors and provisional thermal state. Events/exchanges remain exact endpoints. |
-| E4: matched-error CPU/GPU study | Use the matrix and criteria below. Count frequency correctors, failed attempts, inner iterations, contractions, rebuilds, transfers and setup. | A useful end-to-end advantage over the best applicable existing full-diffusion method. |
-| E5: selective extensions | Only after E4: test regional/cell frequencies, then source-group frequencies or linear transformed-source precursor interpolation. Finally evaluate FTM in IQS correctors/fallbacks. | Each extension earns its own accuracy/cost result. Speedups over IQS are measured, not multiplied from independent studies. |
+| E0: TWIGL temporal baseline added; spatial resolution pending | Homogeneous/ramp/event comparisons cover BE, CN and adaptive BDF. TWIGL step/ramp now has independent physical-generator temporal references and output-width BE/BDF controls on two meshes; its thermal shape still needs refinement for a 0.1% spatial claim. LRA and HP-MR remain later applications. Keep original BDF decisions reproducible and report per-field defects separately. IQS remains deferred. | Same spatial/control path, converged temporal reference, power/shape/energy/precursor errors and all accepted/rejected work. |
+| E1: implemented | Retain `ftm`, transformed-theta `ftm2` and damped `ftm-bdf2`, with their distinct precursor formulas and zero-frequency controls. | Existing equilibrium, mixed-mode, second-order, material/spectrum/geometry and damping verification remains green. |
+| E2: frequency implemented; caching pending | Accepted active-volume neutron populations, actual previous widths, bounded log rates, event resets, BE safeguards and optional correction are implemented. Next separate time-diagonal updates from geometric stencil/preconditioner setup. Test fitting inside existing spatial iterations only as a separate cost experiment. | No stale fields, face couplings or workspaces after dt/frequency/material changes; charge all correction/setup work. Do not add an eigen solve solely for a frequency. |
+| E3: neutron adaptation implemented | `adaptive_ftm` uses physical full/two-half-step defects per flux group and precursor family, and restores state, production, frequency and recurrence histories. Exact event/alignment endpoints and all-trial counters are verified. External feedback/thermal state is explicitly excluded for now. | Accepted-half-step replay, independent kinetics/Radau and localized matrix-exponential references. Keep three-solve control as the oracle for a cheaper estimator. Linear-solve-failure retry remains to be designed. |
+| E3b: output restriction and history estimator implemented | Optional `output_rtol` tests physical flux/precursor and scalar-power midpoint/chord defects. The opt-in history estimator uses two half solves and actual-width quadratic physical prediction, retaining step doubling for startup/events/unsafe histories and charging discarded BE-fallback work. Same-trial audits, independent references and state-driven rejection/replay checks calibrate it. | Keep endpoint, interpolated power/shape and power-integral errors separate. Matched-budget work improves over the three-solve FTM controller, while adaptive BDF remains cheaper. Tight tails can over-resolve physical curvature; local tolerance and empirical audits are not global guarantees. Validate larger spatial output histories and two-sided power jumps separately. |
+| E4: TWIGL assessed; spatial and promotion gates unmet | The 116-configuration TWIGL study compares physical power/field/shape/region/integral/final-precursor errors, tuned BE/BDF output caps, same-mesh zero-frequency controls and estimator audits. BDF wins the tested 0.1% temporal work budget; 40×40-to-80×80 thermal shape differs by 1.10%. Resolve spatial error and measure shared setup reuse before repeated CPU/GPU timings. Strong feedback still needs its own provisional-state controller. | Retain the best acceptable BE/BDF comparator. Keep spatial and temporal errors separate. Count every constituent/rejected solve, Krylov work and rebuild; timing promotion additionally needs setup/transfer accounting and the contract below. |
+| E5a: PARCS precursor control | Independently integrate quadratic physical production on unequal widths, initially sharing a frequency. Compare with linear transformed production and transformed BDF precursors at identical neutron formulas, meshes and frequency samples. | Stable small/large-lambda moments, startup, events, mapped beta and non-equilibrium families; demonstrate physical error/work benefit before retaining a new API option. |
+| E5b: conditional frequency extensions | Test a small regional/cell frequency model on a shape-changing case before full node/group rates. Distinguish PARCS physical-source interpolation, which preserves scalar endpoint fission coupling, from SIMULATE source-group exponential weights, which need family/source-group contractions. | Correct endpoint equations, old derivatives/history in the current frame, admissible spatial solves and a measured benefit over shared frequency. Different precursor families cannot simply inherit unrelated group frames. |
+| E6: later composition | Only after the relevant error/cost gates, consider FTM in IQS correctors/fallbacks or a thermal-coupled controller. | Explicit rollback of every coupled state and independent heat accuracy. Speedups over IQS are measured, not multiplied from separate studies. |
 
-E1 is a moderate change, likely several focused development days. E2–E4
-are the substantial work: roughly another one to several weeks depending on
-feedback regressions and access to production GPUs. Local group-frequency
-support is a separate, more intrusive extension. These are planning estimates.
+## Separate matrix-exponential-action feasibility track
 
-Implementation requirements:
+KIOPS evaluates matrix phi-function actions; it does not accelerate the scalar
+`phi1`/`phi2` coefficients in `_exponential.py`. PARCS's BiCGSTAB is instead a
+linear-system solver, a role already served by GARNET PCG/FGMRES. The
+[literature review](exponential_literature_review_2026-10-26.md) gives the
+equations, source distinctions, memory estimate and paper-specific caveats.
+
+| Gate | Bounded work | Acceptance / stop condition |
+|---|---|---|
+| K0: physical generator oracle | Construct the full active neutron/precursor `J=M^-1*A` on tiny problems, retaining leakage, mapped kinetics, delayed spectra, `k0` and geometry weights. Compare generator actions with independent assembled matrices and existing physical RHS calculations. | Equilibrium, complete/mixed modes, stiff shutdown, six families and the localized two-group case. The current time-shifted, precursor-eliminated `MultigroupStepOperator` is not `J`. Use dense `expm` and sparse `expm_multiply` as references; the latter is a Taylor-action algorithm, not KIOPS. |
+| K1: corrected polynomial action | Validate conventional Arnoldi, then KIOPS-style augmented phi combinations and length-two incomplete orthogonalization. Follow the supplied 2021 corrigendum. Sweep action tolerance, scaling, basis limits and internal substeps; test several requested output times. | Independently measured physical block errors, singular/critical and growing/nonnormal cases, masks and unit/normalization invariance. Include complete basis memory and reduction counts. Do not import negative-semidefinite guarantees into the general reactor operator. |
+| K2: small time-integrator comparison | Start with frozen linear segments; then a genuinely second-order smooth prescribed-time formulation, such as a midpoint exponential, or a correctly derived nonautonomous EPI method. Add remainder/feedback treatment only with its own derivation and error tests. | Separate action, temporal, spatial and output errors; retain event alignment and physical rejection/rollback. Inner KIOPS adaptivity is not an outer transient error controller. Stop expansion if action work/memory is already uncompetitive with adaptive BDF. |
+| K3: rational action, conditional | If polynomial spaces/internal substeps grow excessively under mesh/velocity refinement, prototype shifted-inverse actions with reusable monolithic neutron/precursor solves and controlled inner accuracy. Avoid production full-matrix LU. | Count every shifted solve and its inner Krylov work, rebuilds and nested basis memory. An approximate preconditioner is not the exact inverse action, and arbitrary left preconditioning changes the exponential. |
+| K4: CPU/GPU retention | Compare the best action-based candidate with the best acceptable full-diffusion comparator on two resolved target cases. Reuse backend kernels selectively and measure memory/synchronization. | Same observable-error and timing contract as E4. No speedup claim from a one-cell problem, fewer macro steps or another domain's timings. |
+
+The scalar-frequency and matrix-action tracks may be assessed independently.
+Do not broaden either into a production default without its own evidence.
+The circuit paper's rational Krylov/LU results and the atmosphere paper's
+longer stable steps motivate experiments; neither establishes reactor/GPU
+efficiency. No additional production time integrator is introduced by this
+literature update.
+
+## FTM implementation requirements
 
 - `TimeScheme.a0()` is one scalar used for time shift and history weighting.
   Avoid encoding everything through it: zero `1 + omega*h` would make an

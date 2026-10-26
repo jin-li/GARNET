@@ -1,0 +1,219 @@
+{
+  "study": "2D/1D MOC feasibility: existing S_N allocation inventory",
+  "environment": {
+    "python": "3.14.4",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "cupy_importable": false
+  },
+  "git_head": "572ef8088e27e09628d989e7f71f1963acdb7b96",
+  "source_sha256": {
+    "garnet/sn.py": "9310d5c5e23bbc9dcbf9c927710c3be73b659457d884a2644ccce578916e02e9",
+    "garnet/tri_sn.py": "368f60ecbf06be8852dff693c6b330ae925ca4e9d4acc1084a175b832e1d022b",
+    "garnet/kernels.py": "b03fbca41481d6a3f97d93794c732532124552098b131714ce285bf74e3cd579",
+    "garnet/materials.py": "12ba4b6da5fee7166c3756e2ff3df64060913738c940b6944b1aea5ad34e5e12",
+    "garnet/benchmarks/hpmr.py": "6d5c373f8299bb5dc34807a3598fb5146d3d67f576172b1a91ed5c9aaa22b316",
+    "tools/assess_moc_feasibility.py": "5885721841b9d827b8451c8499ead20c4616fcc919d007729102dea4ab15379e"
+  },
+  "limitations": [
+    "No MOC implementation or GPU timing is measured.",
+    "S_N level counts use the current 2D/3D quadrature APIs; equal n_polar values do not imply matching polar quadrature nodes.",
+    "Payload counts cover level tables, sweep buffers, masks, active indices, weights and cached per-group sweep tables only.",
+    "Excluded: cross sections, sources, DSA/CMFD matrices and workspaces, host setup arrays, CUDA graphs and allocator overhead.",
+    "Each listed logical array counts independently; tiny NumPy weight aliases can differ from CUDA allocation ownership.",
+    "Eleven-group numbers extrapolate table layout from two-group placeholder data; they are not an eleven-group physics solve."
+  ],
+  "cases": [
+    {
+      "refine": 2,
+      "nz": 1,
+      "scheme": "step",
+      "shape": [
+        39,
+        39,
+        2
+      ],
+      "allocated_cells": 3042,
+      "active_cells": 1320,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 64,
+      "level_width_min": 64,
+      "level_width_median": 336.0,
+      "level_width_max": 448,
+      "angular_flux_bytes_one_group": 389376,
+      "cpu_unfused_shared_payload_bytes": 2604930,
+      "fused_cuda_shared_payload_estimate_bytes": 2215554,
+      "group_table_bytes_per_group": 168960,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 2553474,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 4074114,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    },
+    {
+      "refine": 2,
+      "nz": 1,
+      "scheme": "scb",
+      "shape": [
+        39,
+        39,
+        2
+      ],
+      "allocated_cells": 3042,
+      "active_cells": 1320,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 64,
+      "level_width_min": 64,
+      "level_width_median": 336.0,
+      "level_width_max": 448,
+      "angular_flux_bytes_one_group": 506880,
+      "cpu_unfused_shared_payload_bytes": 7578162,
+      "fused_cuda_shared_payload_estimate_bytes": 5888562,
+      "group_table_bytes_per_group": 1520640,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 8929842,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 22615602,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    },
+    {
+      "refine": 2,
+      "nz": 10,
+      "scheme": "step",
+      "shape": [
+        39,
+        39,
+        2,
+        10
+      ],
+      "allocated_cells": 30420,
+      "active_cells": 13200,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 73,
+      "level_width_min": 64,
+      "level_width_median": 3200.0,
+      "level_width_max": 4272,
+      "angular_flux_bytes_one_group": 3893760,
+      "cpu_unfused_shared_payload_bytes": 34493844,
+      "fused_cuda_shared_payload_estimate_bytes": 30600084,
+      "group_table_bytes_per_group": 1689600,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 33979284,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 49185684,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    },
+    {
+      "refine": 2,
+      "nz": 10,
+      "scheme": "scb",
+      "shape": [
+        39,
+        39,
+        2,
+        10
+      ],
+      "allocated_cells": 30420,
+      "active_cells": 13200,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 73,
+      "level_width_min": 64,
+      "level_width_median": 3200.0,
+      "level_width_max": 4272,
+      "angular_flux_bytes_one_group": 5068800,
+      "cpu_unfused_shared_payload_bytes": 101122164,
+      "fused_cuda_shared_payload_estimate_bytes": 84226164,
+      "group_table_bytes_per_group": 15206400,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 114638964,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 251496564,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    },
+    {
+      "refine": 2,
+      "nz": 20,
+      "scheme": "step",
+      "shape": [
+        39,
+        39,
+        2,
+        20
+      ],
+      "allocated_cells": 60840,
+      "active_cells": 26400,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 83,
+      "level_width_min": 64,
+      "level_width_median": 6064.0,
+      "level_width_max": 8256,
+      "angular_flux_bytes_one_group": 7787520,
+      "cpu_unfused_shared_payload_bytes": 68987304,
+      "fused_cuda_shared_payload_estimate_bytes": 61199784,
+      "group_table_bytes_per_group": 3379200,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 67958184,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 98370984,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    },
+    {
+      "refine": 2,
+      "nz": 20,
+      "scheme": "scb",
+      "shape": [
+        39,
+        39,
+        2,
+        20
+      ],
+      "allocated_cells": 60840,
+      "active_cells": 26400,
+      "groups": 2,
+      "ordinates": 16,
+      "sequential_levels": 83,
+      "level_width_min": 64,
+      "level_width_median": 6064.0,
+      "level_width_max": 8256,
+      "angular_flux_bytes_one_group": 10137600,
+      "cpu_unfused_shared_payload_bytes": 202243944,
+      "fused_cuda_shared_payload_estimate_bytes": 168451944,
+      "group_table_bytes_per_group": 30412800,
+      "fused_cuda_sweep_payload_estimate_bytes_two_groups": 229277544,
+      "fused_cuda_sweep_payload_estimate_bytes_eleven_groups": 502992744,
+      "cpu_fixed_source_sweep_finite_and_positive": true
+    }
+  ],
+  "amdahl_scenarios": [
+    {
+      "baseline_sweep_fraction": 0.8,
+      "sweep_speedup": 3,
+      "extra_axial_and_coupling_fraction": 0.05,
+      "new_to_old_outer_iteration_ratio": 1,
+      "end_to_end_speedup": 1.9354838709677422
+    },
+    {
+      "baseline_sweep_fraction": 0.9,
+      "sweep_speedup": 5,
+      "extra_axial_and_coupling_fraction": 0.05,
+      "new_to_old_outer_iteration_ratio": 1,
+      "end_to_end_speedup": 3.0303030303030307
+    },
+    {
+      "baseline_sweep_fraction": 0.9,
+      "sweep_speedup": 5,
+      "extra_axial_and_coupling_fraction": 0.05,
+      "new_to_old_outer_iteration_ratio": 2,
+      "end_to_end_speedup": 1.5151515151515154
+    },
+    {
+      "baseline_sweep_fraction": 0.5,
+      "sweep_speedup": 5,
+      "extra_axial_and_coupling_fraction": 0.05,
+      "new_to_old_outer_iteration_ratio": 1,
+      "end_to_end_speedup": 1.5384615384615383
+    },
+    {
+      "baseline_sweep_fraction": 0.9,
+      "sweep_speedup": 10,
+      "extra_axial_and_coupling_fraction": 0.05,
+      "new_to_old_outer_iteration_ratio": 1,
+      "end_to_end_speedup": 4.166666666666667
+    }
+  ]
+}

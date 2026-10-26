@@ -6,6 +6,78 @@ evidence to the core features exposed in the [README](../README.md). Test
 assertions are the executable acceptance criteria; benchmark reports retain
 the mesh, time step, physics data, and hardware behind their results.
 
+## Physical-state adaptive exponential check
+
+The [seventh checkpoint](../benchmark-results/exponential-second-order/CHUNK7.md)
+assesses TWIGL step/ramp on 20×20 and 40×40 meshes, with independent sparse
+physical-generator references and a finer spatial check. **118 targeted
+checks pass**; the later 12-case independent-reference check overlaps.
+The 116-configuration comparison retains output-width-tuned adaptive BDF as
+the cheaper tested method at the common 0.1% temporal power/shape/region/
+integral/final-precursor budget. A 40×40-to-80×80 thermal-shape difference
+of **1.10%** exposes a separate unresolved spatial budget. The
+[QA record](qa/garnet-exponential-twigl-2026-10-26.json) links the references,
+mesh diagnosis, tests and combined work selections. This assessment does
+not pass spatial-accuracy or performance-promotion conditions; full-suite
+and GPU records below remain earlier evidence.
+
+The [sixth checkpoint](../benchmark-results/exponential-second-order/CHUNK6.md)
+adds an opt-in two-solve physical-history estimator and a reference audit
+mode. **363 distinct CPU checks pass** across a 361-case regression and two
+smooth-insertion stress cases; a separate 101-case focused batch overlaps.
+At the 0.1% power/integral/precursor budget, tested history configurations
+use **31.5–33.1% fewer solves** than full/fine FTM, while adaptive BDF still
+uses less work. Audits cover 20,410 paired output-aware trials and 5,482
+state-only/smooth-insertion trials, including 13 failed reference state
+checks that the history estimate also flags. Tight exponential tails can
+make this physical predictor more restrictive. The default stays step
+doubling, output control remains independent, and no runtime speedup is
+claimed. The [QA record](qa/garnet-exponential-estimator-2026-10-26.json)
+links the work/error studies, tests and isolated archive validation.
+
+The [fifth checkpoint](../benchmark-results/exponential-second-order/CHUNK5.md)
+adds optional physical midpoint/chord width control for linear output.
+**314 regression checks pass**, and an updated **58-case focused batch**
+passes with four additional output-aware physical-reference configurations;
+the batches overlap. The rapid-rise FTM2 common-grid power error falls from
+**2.20658% to 0.006738%** at unchanged state tolerance, and its power-integral
+error falls from **0.910182% to 0.004572%**. The 160-run comparison still
+finds adaptive BDF cheaper at matched power/integral/precursor accuracy.
+Verification covers constant-power spectral redistribution, localized
+multigroup output, six families and output-driven rollback on three
+geometries. The [QA record](qa/garnet-exponential-output-2026-10-26.json)
+links the tests, benchmark and isolated source-archive check. Full-suite,
+slow-study and GPU results below remain the preceding checkpoint's records.
+
+On 26 October 2026, **259 targeted checks passed**, including 33 new adaptive
+FTM cases. The default CPU run recorded **801 passed, 12 skipped, 10 slow
+cases excluded**, with one example subprocess import failure because this
+checkout was not installed. All four example checks passed on retest with
+the absolute checkout path in `PYTHONPATH`; no example code changed. Across
+the run and retest, all **802 distinct executable CPU checks pass**. The
+original full-run failure remains in the evidence rather than being hidden.
+
+The new `adaptive_ftm` controller compares physical full/two-half-step flux
+and precursor fields, commits the fine state once per macro endpoint, and
+restores all temporal history on rejection. Verification includes exact
+accepted-half-step replay on three geometries, six-family Radau references,
+and a localized two-group/two-family diffusion matrix exponential. The
+masked-grid checks also led to explicit inactive-state/derivative masking
+for FTM population histories.
+
+The [fourth checkpoint](../benchmark-results/exponential-second-order/CHUNK4.md)
+records 80 accuracy/work configurations. Adaptive BDF remains the cheapest
+tested method at matched output accuracy. Long exponential steps expose a
+separate linear-output-interpolation limit; neither a speedup nor a coupled
+thermal accuracy claim is made. GPU execution was not repeated.
+
+The refreshed source archive was installed into an isolated temporary
+directory and passed an adaptive cylindrical event/rejection/callback check.
+Evidence: [focused tests](../benchmark-results/exponential-second-order/chunk4-verification.xml),
+[original full CPU run](../benchmark-results/exponential-second-order/chunk4-cpu.xml),
+[example retest](../benchmark-results/exponential-second-order/chunk4-examples-verification.xml),
+and [environment, source fingerprints and archive check](qa/garnet-exponential-adaptive-2026-10-26.json).
+
 ## Exponential damping check
 
 On 26 October 2026 the default CPU suite passed: **777 passed, 0 failed,

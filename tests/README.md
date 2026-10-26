@@ -26,6 +26,11 @@ without a checkout).
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
 | `test_transient_model_api.py` | shared Cartesian/r-z/triangular histories, event schedules, accepted-step callbacks, initial-state compatibility and cylindrical coupling |
 | `test_exponential_damping.py` | damped transformed BDF2, independent kinetics/stiff-mode references, six precursor families, unequal widths, event/fallback guards and coupled API regression |
+| `test_exponential_adaptive.py` | physical-state FTM error control, complete trial rollback, volume/mask norms, events, six-family Radau and localized multigroup matrix-exponential references |
+| `test_exponential_output.py` | physical midpoint/chord width control, rapid-growth power/integral refinement, constant-power spectral redistribution, changing-fission power output and accepted-half-step replay on three geometries |
+| `test_exponential_estimator.py` | unequal-width physical-history prediction, unchanged audit trajectories, two-solve work, event/rejection replay, guarded alignment and discarded BE-fallback work |
+| `test_exponential_estimator_ramp.py` | state-driven history rejection on a smooth insertion, same-trial oracle failures, independent Radau error and accepted-half-step replay |
+| `test_exponential_twigl.py` | independent spatial generator vs kernel actions, augmented-exponential state/integral reference, ramp-corner continuity, conservative mesh restriction and all physical gates for six transient methods |
 | `test_linalg_krylov.py` | GMRES/BiCGStab options: match CG on SPD systems through every solver entry point; solve a convection-dominated non-symmetric system where CG provably diverges; the non-symmetric divergence-form cylindrical stencil (`symmetric_operator=False`) equals the SPD-weighted one |
 | `test_femffusion_io.py` | .xsec/XML readers vs the files' exact contents |
 | `test_conduction.py` | conduction vs the exact sinked-slab `cosh` solution (2nd order, Dirichlet and Robin, Cartesian and tri-prism); the discrete energy balance as an exact identity |

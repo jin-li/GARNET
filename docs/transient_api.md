@@ -76,9 +76,122 @@ transformed BDF2 recurrence. Both refuse `adaptive_bdf`; see the
 [damping checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
 for safeguards, precursor differences and the measured limits.
 
+For neutron/precursor adaptation, use the separate opt-in controller:
+
+```python
+transformed = core.transient(
+    t_end=0.1, dt=0.005, time_scheme="ftm-bdf2", device="cpu",
+    adaptive_ftm={"rtol": 1e-4, "output_rtol": 1e-4,
+                  "min_dt": 1e-10, "max_dt": 0.01},
+    materials_at=lambda t: {"fuel": poisoned} if t > 0.035 else {},
+    event_times=[0.035],
+)
+```
+
+`adaptive_ftm` supports `ftm2` and `ftm-bdf2`; omitting the scheme selects
+`ftm-bdf2`, and omitting the spatial solver selects `monolithic`. It compares
+a full step with two half steps in physical flux and precursor fields, then
+commits the two-half-step state once per macro endpoint. Rejections restore
+the physical state, frequency samples and recurrence histories. Callbacks
+and reported times include only committed macro endpoints. For FTM events,
+the endpoint belongs to the preceding segment: use `t > event` to change the
+material in the interval leaving that endpoint, as in the example above.
+
+Each group/family has a separate active-volume weighted RMS error; the
+maximum controls acceptance. Scaling uses
+`atol + rtol * max(abs(start), abs(fine))`, with scalar `atol=0` by default.
+The raw full/fine difference has no Richardson divisor. The width controller
+defaults to `max_factor=1.2` and `rejection_strategy="error"`; other width
+controls match `adaptive_bdf`, excluding automatic order selection.
+`min_dt` and `max_dt` bound macro widths; internal half widths are half that.
+Existing adaptive BDF retains its original error norm and defaults.
+
+`local_error_blocks` and `rejected_error_blocks` list flux-group errors then
+precursor-family errors. `ftm_trial_diagnostics` and
+`rejected_ftm_trial_diagnostics` retain each full/half trial's width, order,
+frequency, fallback and correction counts. An early invalid-population retry
+can stop after the first half. Solve/iteration counters include discarded
+full steps, both halves, refinements and rejected attempts. `time_orders`
+uses the minimum active trial order; `step_frequencies`, `step_frequency_log_defects`
+and `ftm_fallback_reasons` describe the final half, while
+`step_frequency_refinements` totals every trial of an accepted attempt,
+including any discarded work when an estimator fallback replays the attempt.
+BE startup counts internal accepted half steps.
+
+Set `output_rtol` to additionally restrict widths for linear output. The
+controller compares the physical first-half-step state with the average of
+the starting and final states. Each group and precursor family has a separate
+active-volume weighted RMS chord defect, scaled by
+`output_atol + output_rtol * abs(midpoint)`. A separate scalar check applies
+the same scale to midpoint relative power, including changing fission
+coefficients. `output_atol` defaults to zero and requires `output_rtol`;
+it is an absolute floor in each field's units and in P/P0 for power.
+Initially zero fields follow the same zero-scale rules as the state defect.
+This check uses the existing first half step and adds no spatial solve.
+The state and output checks each propose a width; the smaller proposal wins.
+The chord defect uses square-root scaling because it is O(h²).
+
+With this option, `local_errors` and `rejected_errors` contain the maximum
+of state and output defects. `local_error_blocks` and `rejected_error_blocks`
+retain the full/fine physical state defects. `output_error_blocks` and
+`rejected_output_error_blocks` contain the chord defects in flux-group,
+precursor-family, then scalar-power order. Output arrays stay empty when
+the option is omitted or `output_rtol=None`. Macro times, callbacks and the
+linear `power_at` formula keep their existing meaning.
+
+An experimental `adaptive_ftm['estimator']` selects the state check:
+
+| Value | State check and solve cost |
+|---|---|
+| `"step-doubling"` (default) | Full step versus two half steps; three endpoint solves before frequency refinements. |
+| `"history"` | Quadratic physical-history prediction versus the two-half-step endpoint; normally two endpoint solves. Uses step doubling when history is unavailable or unsafe. |
+| `"history-audit"` | Records both estimates on the same eligible trials, retaining step-doubling decisions and its three-solve trajectory. |
+
+The history prediction uses the previous accepted midpoint, the macro start
+and the current midpoint, with their actual widths. It stores physical flux
+and precursor fields, so a changed frequency does not mix exponential frames.
+The raw prediction/correction defect uses the same per-field norm and has
+no Richardson divisor or universal error constant. It can be more restrictive
+on a nearly exact exponential tail because it still sees physical curvature.
+`output_rtol` remains an independent midpoint/chord check in all modes.
+
+Startup, explicit events, BE safeguards and half-width ratios outside
+`[0.25, 2]` use step doubling. If a provisional half step unexpectedly enters
+a BE safeguard, the controller rolls back and replays that macro attempt
+with step doubling. Its discarded half solves and frequency refinements
+remain charged, so an attempt can exceed three solves. Error order uses
+the replayed trajectory; work diagnostics retain all discarded trials.
+
+`ftm_estimator_diagnostics` and `rejected_ftm_estimator_diagnostics` contain
+`method`, `reason` and `history_error_blocks` for each macro attempt in the
+two opt-in modes; default-mode lists are empty. A `None` history defect means
+there was insufficient safe second-order history. In `"history"` mode,
+`local_error_blocks` contains the selected history or fallback full/fine
+defects; in audit mode it always contains the full/fine reference defects.
+Trials, callbacks, rollback and accepted two-half-step states keep their
+existing meaning. The [estimator checkpoint](../benchmark-results/exponential-second-order/CHUNK6.md)
+records same-trial calibration and matched physical error/work comparisons.
+
+The [TWIGL assessment](../benchmark-results/exponential-second-order/CHUNK7.md)
+also checks spatial fields and region powers. Its ramp shows that a smaller
+`adaptive_bdf['max_dt']` can satisfy the linear-output budget with less work
+than tightening `rtol` at a larger cap. Select output resolution independently
+of state tolerance for every scheme, and keep mesh error separate from
+temporal error. This study does not establish an FTM performance promotion.
+
+This controller currently excludes implicit feedback, external error state
+and thermal coupling. Local midpoint checks do not certify every interior
+point or accumulated integration error. Keep physical output budgets separate
+from either local tolerance. A jump in the recorded power itself needs
+two-sided event output, which is not implemented by this continuous chord.
+The [adaptive checkpoint](../benchmark-results/exponential-second-order/CHUNK4.md)
+records the original rapid-growth interpolation limit, and the
+[output checkpoint](../benchmark-results/exponential-second-order/CHUNK5.md)
+records its resolution and the remaining cost comparison.
+
 Constructor settings such as `dtype` belong in `solver_kwargs`. Common
 `precond_degree`, `precond_dtype`, and `linear_solver` controls are also direct
-arguments. `tol_step`, `time_scheme`, `adaptive_bdf`, `linsolve_kwargs`, and
+arguments. `tol_step`, `time_scheme`, `adaptive_bdf`, `adaptive_ftm`, `linsolve_kwargs`, and
 `multigroup_kwargs` go to the time integrator. Mixed preconditioning is still
 opt-in and is not supported by monolithic steps.
 

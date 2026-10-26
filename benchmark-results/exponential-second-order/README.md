@@ -9,6 +9,17 @@ optional BE start-up and bounded frequency refinement, with rapid-growth
 and shutdown comparisons. The measurements below retain the first checkpoint.
 The [damping checkpoint](CHUNK3.md) adds transformed BDF2, a two-stage research
 candidate and a four-case comparison; neither changes the heat equation.
+The [adaptive checkpoint](CHUNK4.md) adds physical-state error control and
+rollback for FTM2/transformed BDF2, with a localized multigroup reference.
+The [output checkpoint](CHUNK5.md) adds optional midpoint/chord width control,
+resolving the rapid-growth linear-interpolation discrepancy while retaining
+the existing physical-state controller and adaptive BDF comparator.
+The [estimator checkpoint](CHUNK6.md) adds an opt-in two-solve physical-history
+check, reference audit mode and explicit startup/event/fallback safeguards.
+The [TWIGL checkpoint](CHUNK7.md) assesses spatial time integration against
+independent physical references and tuned BE/BDF controls. It identifies
+an unresolved thermal-shape mesh error and retains BDF as the cheaper
+tested comparator at the declared 0.1% temporal budget.
 
 ## Implemented method
 

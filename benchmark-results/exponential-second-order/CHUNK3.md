@@ -164,6 +164,10 @@ these comparisons. Local/group frequencies, inner-iteration fitting and GPU
 performance remain separate gates. Heat-transfer integration remains outside
 this exponential-transform workstream.
 
+Follow-up: the [fourth checkpoint](CHUNK4.md) implements the physical-state
+controller, checks a localized multigroup shape change and records the
+remaining output-interpolation and work limitations.
+
 ```bash
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python tools/assess_exponential_damping.py
 python -m pytest tests/verification/test_exponential_damping.py -q

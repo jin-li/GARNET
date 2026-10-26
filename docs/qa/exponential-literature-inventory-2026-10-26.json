@@ -1,0 +1,155 @@
+{
+  "date": "2026-10-26",
+  "source_directory": "~/Downloads/for_GARNET",
+  "source_revision": "572ef8088e27e09628d989e7f71f1963acdb7b96 plus physical-state adaptive FTM working tree",
+  "scope": "Literature relevance, method comparison and revised development gates; no new Krylov integrator or runtime experiment",
+  "pdf_count": 5,
+  "total_pdf_pages": 162,
+  "extraction": "PyMuPDF text extraction to /tmp/garnet-paper-review; selected equation pages rendered for visual inspection",
+  "visually_checked_equation_pages": {
+    "PARCS manual": [
+      8
+    ],
+    "SIMULATE5-K": [
+      4
+    ]
+  },
+  "important_version_note": "KIOPS supplied PDF includes 2021 corrigendum on PDF pages 21-23; use corrected Eqs. (18)/(19) and Algorithm 1 line 13. PARCS source is the 2004 v2.6 draft, not a claim about current code.",
+  "documents": [
+    {
+      "filename": "Exploring Exponential Integrators krylov subspace.pdf",
+      "local_path": "/home/poncetma/Downloads/for_GARNET/Exploring Exponential Integrators krylov subspace.pdf",
+      "title": "Exploring the Exponential Integrators with Krylov Subspace Algorithms for Nonlinear Circuit Simulation",
+      "authors": "Wang, Zhuang and Cheng",
+      "year": 2017,
+      "pdf_pages": 6,
+      "sha256": "bb16d47382438fe9d9d4b5db3b6d4bec51b750f6dd616315764756e600fb85e6",
+      "principal_reviewed_pdf_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "primary_links": [
+        "https://cseweb.ucsd.edu/~hazhuang/papers/iccad17_zhuang.pdf"
+      ]
+    },
+    {
+      "filename": "KIOPS.pdf",
+      "local_path": "/home/poncetma/Downloads/for_GARNET/KIOPS.pdf",
+      "title": "KIOPS: A fast adaptive Krylov subspace solver for exponential integrators; includes 2021 corrigendum",
+      "authors": "Gaudreault, Rainwater and Tokman",
+      "year": 2018,
+      "pdf_pages": 23,
+      "sha256": "ea571bbadd8c4e6d6ff6104b855841e3231293331abed64e2cac24c71ea80108",
+      "principal_reviewed_pdf_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "primary_links": [
+        "https://doi.org/10.1016/j.jcp.2018.06.026",
+        "https://doi.org/10.1016/j.jcp.2021.110443",
+        "https://arxiv.org/abs/1804.05126",
+        "https://gitlab.com/stephane.gaudreault/kiops"
+      ]
+    },
+    {
+      "filename": "Nuclear_reactor_code_for_core_nerutronic.pdf",
+      "local_path": "/home/poncetma/Downloads/for_GARNET/Nuclear_reactor_code_for_core_nerutronic.pdf",
+      "title": "PARCS v2.6 U.S. NRC Core Neutronics Simulator Theory Manual, November 2004 draft",
+      "authors": "Downar, Lee, Xu, Kozlowski and Staudenmier",
+      "year": 2004,
+      "pdf_pages": 107,
+      "sha256": "0b898bd7249721774ac3a1e021c277ffc66d7204d16209d5563690365bc9e98f",
+      "principal_reviewed_pdf_pages": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104
+      ],
+      "primary_links": []
+    },
+    {
+      "filename": "On_the_use_of_exponential_time_integration_methods_in_atmospheric_models.pdf",
+      "local_path": "/home/poncetma/Downloads/for_GARNET/On_the_use_of_exponential_time_integration_methods_in_atmospheric_models.pdf",
+      "title": "On the use of exponential time integration methods in atmospheric models",
+      "authors": "Clancy and Pudykiewicz",
+      "year": 2013,
+      "pdf_pages": 16,
+      "sha256": "69c6d9e3b1beed606d4f1a647261d919dab6961522426c733278158c60726d11",
+      "principal_reviewed_pdf_pages": [
+        1,
+        2,
+        3,
+        4,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "primary_links": [
+        "https://doi.org/10.3402/tellusa.v65i0.20898",
+        "https://www.tandfonline.com/doi/full/10.3402/tellusa.v65i0.20898"
+      ]
+    },
+    {
+      "filename": "S5K_Physor2022.pdf",
+      "local_path": "/home/poncetma/Downloads/for_GARNET/S5K_Physor2022.pdf",
+      "title": "Development and Benchmarking of Transient Nodal Code SIMULATE5-K Neutron Kinetics Solver",
+      "authors": "Bahadir",
+      "year": 2022,
+      "pdf_pages": 10,
+      "sha256": "f423915e3e0d0b74aa8c69b1fb653e4cc0d8590036fcda2877750305a80005e4",
+      "principal_reviewed_pdf_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "primary_links": [
+        "https://doi.org/10.13182/PHYSOR22-37639"
+      ]
+    }
+  ]
+}

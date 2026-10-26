@@ -458,6 +458,8 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
     """
     from .transient import TransientSolver, _step_schedule
 
+    if (transient_kwargs or {}).get("adaptive_ftm") is not None:
+        raise ValueError("adaptive_ftm currently supports neutron/precursor integration only")
     if on_step is not None and not callable(on_step):
         raise TypeError("on_step must be callable")
     xp = ctx.thermal_solver().xp

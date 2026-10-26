@@ -105,11 +105,14 @@ def material_map(values, shape, count):
 
 
 def transient_schedule(t_end, dt, event_times, options):
-    """Split fixed steps at physical events, or hand them to adaptive BDF."""
+    """Split fixed steps at physical events, or hand them to a controller."""
     options = dict(options)
     if options.get("adaptive_bdf") is not None:
         options.setdefault("step_solver", "monolithic")
         options.setdefault("time_scheme", "bdf1")
+    if options.get("adaptive_ftm") is not None:
+        options.setdefault("step_solver", "monolithic")
+        options.setdefault("time_scheme", "ftm-bdf2")
     if event_times is None:
         return dt, options
     events = np.asarray(event_times, dtype=float)
@@ -128,7 +131,7 @@ def transient_schedule(t_end, dt, event_times, options):
     if not scheme.is_bdf:
         raise NotImplementedError("event_times requires a BDF time scheme")
     options["bdf_restart_times"] = events
-    if options.get("adaptive_bdf") is not None:
+    if any(options.get(key) is not None for key in ("adaptive_bdf", "adaptive_ftm")):
         return dt, options
     widths = np.asarray(dt, dtype=float)
     if widths.ndim == 0:

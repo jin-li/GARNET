@@ -477,12 +477,12 @@ class _CoupledModel:
         ``materials_at(t)`` returns a partial name/index mapping or an ordered
         material list. ``state_at(t)`` selects cached models on the same grid;
         ``at(t)`` is the raw two/four-array escape hatch. Supply one callback.
-        ``event_times`` splits fixed steps or aligns adaptive BDF at control
+        ``event_times`` splits fixed steps or aligns adaptive steps at control
         events and restarts its history. ``on_step(t, flux, power)`` runs after
         each accepted step; flux remains on the selected device.
 
-        Time controls (time_scheme, adaptive_bdf, tolerances) go directly here.
-        Adaptive BDF selects monolithic stepping unless explicitly overridden.
+        Time controls (time_scheme, adaptive_bdf, adaptive_ftm, tolerances) go here.
+        Adaptive controllers select monolithic stepping unless overridden.
         Additional constructor settings belong in ``solver_kwargs``. A public
         ``initial_steady`` is checked against the actual t=0 model before reuse.
         """

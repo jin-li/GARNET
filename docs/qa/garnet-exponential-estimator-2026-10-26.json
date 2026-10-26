@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-26",
+  "source_revision_before_changes": "572ef8088e27e09628d989e7f71f1963acdb7b96",
+  "starting_state": "Existing uncommitted adaptive/output-aware FTM and literature/MOC work preserved. This checkpoint adds physical-history state estimation and audits.",
+  "environment": {
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "9.0.2",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "device": "cpu",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "verification": {
+    "regression": {
+      "tests": 361,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 361,
+      "seconds": 164.219,
+      "record": "benchmark-results/exponential-second-order/chunk6-regression.xml"
+    },
+    "focused": {
+      "tests": 101,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 101,
+      "seconds": 44.74,
+      "record": "benchmark-results/exponential-second-order/chunk6-estimator-verification.xml"
+    },
+    "smooth_ramp": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 2,
+      "seconds": 1.323,
+      "record": "benchmark-results/exponential-second-order/chunk6-ramp-verification.xml"
+    }
+  },
+  "distinct_passing_cpu_checks": 363,
+  "verification_overlap": "101 focused checks are included in the 361-case regression. Two additional smooth-insertion checks bring the distinct total to 363.",
+  "regression_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=/home/poncetma/code/GARNET python3 -m pytest tests/verification/test_exponential_coefficients.py tests/verification/test_exponential_theta.py tests/verification/test_exponential_transient.py tests/verification/test_exponential_damping.py tests/verification/test_exponential_adaptive.py tests/verification/test_exponential_output.py tests/verification/test_exponential_estimator.py tests/verification/test_timescheme.py tests/verification/test_transient_point_kinetics.py tests/verification/test_transient_per_material.py tests/verification/test_transient_model_api.py tests/verification/test_multigroup_step.py tests/verification/test_coupling.py tests/verification/test_examples_current.py -q --junitxml=benchmark-results/exponential-second-order/chunk6-regression.xml",
+  "ramp_verification_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest tests/verification/test_exponential_estimator_ramp.py -q --junitxml=benchmark-results/exponential-second-order/chunk6-ramp-verification.xml",
+  "benchmark_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_estimator",
+  "state_audit_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_state_audit",
+  "benchmark_record": "benchmark-results/exponential-second-order/chunk6-estimator.json",
+  "state_audit_record": "benchmark-results/exponential-second-order/chunk6-state-audit.json",
+  "benchmark_executions": 240,
+  "distinct_mode_configurations": 200,
+  "unchanged_output_aware_reference_records_matching_chunk5": 80,
+  "all_repeated_bdf_controls_identical": true,
+  "output_aware_audit": {
+    "configurations": 60,
+    "paired_trials": 20410,
+    "history_pass_oracle_fail": 0,
+    "oracle_pass_history_fail": 3361
+  },
+  "state_only_audit": {
+    "configurations": 24,
+    "paired_trials": 5380,
+    "oracle_failed_state_checks": 4,
+    "history_pass_oracle_fail": 0,
+    "all_archived_counts_and_endpoint_errors_match": true
+  },
+  "smooth_ramp_verification": [
+    {
+      "scheme": "ftm2",
+      "rtol": 1e-05,
+      "output_rtol": null,
+      "reactivity": "0.001*(1+tanh((t-0.03)/0.001))",
+      "paired_trials": 50,
+      "oracle_failed_state_checks": 5,
+      "history_pass_oracle_fail": 0,
+      "cheap_history_rejections": 5,
+      "accepted_steps": 52,
+      "rejected_steps": 5,
+      "max_endpoint_relative_power_error": 1.296887274837566e-05,
+      "final_relative_precursor_error": 1.0237050873662668e-08,
+      "replay_max_relative_power_difference": 1.0436096431476471e-14,
+      "replay_max_relative_precursor_difference": 0.0,
+      "implicit_solves": 116,
+      "recorded_trial_solves": 116,
+      "callbacks": 52
+    },
+    {
+      "scheme": "ftm-bdf2",
+      "rtol": 1e-05,
+      "output_rtol": null,
+      "reactivity": "0.001*(1+tanh((t-0.03)/0.001))",
+      "paired_trials": 52,
+      "oracle_failed_state_checks": 4,
+      "history_pass_oracle_fail": 0,
+      "cheap_history_rejections": 4,
+      "accepted_steps": 52,
+      "rejected_steps": 4,
+      "max_endpoint_relative_power_error": 4.921206448416093e-05,
+      "final_relative_precursor_error": 2.6840245027637266e-06,
+      "replay_max_relative_power_difference": 1.509903313490213e-14,
+      "replay_max_relative_precursor_difference": 1.4432899320127035e-14,
+      "implicit_solves": 116,
+      "recorded_trial_solves": 116,
+      "callbacks": 52
+    }
+  ],
+  "benchmark_source_fingerprints_verified": true,
+  "source_sha256": {
+    "garnet/transient.py": "ab7adf50ab67646cb46d7e0eedd73d5dcd6b99fb85695d677457a9d092d19268",
+    "garnet/timescheme.py": "fcd9db69be189290d6aed506e82be71f4424eff94fe3bade2b6dc42868b90621",
+    "garnet/model.py": "9efa3bb844615e0209fdcbed494be7c1f7a33c5e875e634723c5ed151fcd6e48",
+    "garnet/_model_support.py": "806454a9944cc49bd8d16ded2eda76dfcd7d52636a12391019c7fb70e0ec30f5",
+    "garnet/coupling.py": "2369db2789152bffd7655c72c3e535b969468cd62fa26c6f33f21cfffe3dbbac",
+    "garnet/_exponential.py": "33822bdb773604db32690ecebbe6ac353058bbf89b0d289535cfa854f8f2533c",
+    "tools/assess_exponential_adaptive.py": "fd335a973f108896ae5830f2b11301ea2e458686db503e2ad9db0af9098db55f",
+    "tools/assess_exponential_estimator.py": "113093b54c40a73e6757790c169d2b2d8897e422f5ea49e048a0c9ea9e58d75d",
+    "tools/assess_exponential_state_audit.py": "aa5978676c3b2766ba528dfd54f09003a01ef66d32c812266ee2efd182181a1d",
+    "tests/verification/test_exponential_estimator.py": "e5e60e04ba9dd510fbbf674f6ba01dfa37a2ccce083b5db835a609a1bad627e3",
+    "tests/verification/test_exponential_estimator_ramp.py": "8e0d455aa327e0ed08dc0ee08b490385dedeea215443ae721ed260f63e7c1fd6",
+    "tests/verification/test_exponential_adaptive.py": "32a34ab8bd3cfeb4f02833c9657899bc12ecd7096c3ebd17f1e61cc5382dac0d",
+    "tests/verification/test_exponential_output.py": "2fac5d3ca1d3c14a72caad9b553795e1cf5aa75cac53e5fff7a9cf5c69a329f3"
+  },
+  "archive_sha256": "d7e3d580dc941258efb695789600521766b88eb5c41e4be6d6e2cf34d2f58ab9",
+  "archive_members_matching_current_source": 63,
+  "archive_install": "python3 -m pip install --no-index --no-deps --no-cache-dir --no-build-isolation --target <temporary-directory>/installed dist/garnet-src.zip",
+  "archive_smoke": {
+    "module": "/tmp/garnet-chunk6-archive-9wt5sta6/installed/garnet/__init__.py",
+    "scheme": "ftm-bdf2",
+    "accepted_steps": 34,
+    "rejected_steps": 3,
+    "history_steps": 29,
+    "implicit_solves": 82,
+    "final_power": 1.3092904260451235,
+    "event_hit": true,
+    "accepted_half_step_replay": true,
+    "audit_reference_identical": true,
+    "callbacks": 34
+  },
+  "full_repository_suite_repeated": false,
+  "gpu_execution": false,
+  "limitations": [
+    "Physical prediction is an empirical resolution indicator, not a guaranteed full/fine error surrogate.",
+    "Physical polynomial curvature can over-restrict nearly exact exponential tails at tight local tolerances.",
+    "About one-third fewer tested FTM solves at matched 0.1% physical budgets does not establish a runtime speedup; adaptive BDF remains cheaper.",
+    "Resolved spatial applications, setup reuse, coupled thermal adaptation and GPU timing remain separate gates."
+  ]
+}
