@@ -141,6 +141,10 @@ python3 -m pytest tests/verification/test_exponential_theta.py -q
 
 ## Next small chunk
 
+Completed in the [damping checkpoint](CHUNK3.md): an independent two-stage
+gate and the one-solve transformed BDF2 alternative. The remaining work below
+is retained as the record of this checkpoint's priorities.
+
 Prototype a second-order transformed step with stiff damping on independent
 scalar kinetics before adding it to the FV engine. Compare its stage-solve
 cost with FTM2 and adaptive BDF. Per-group frequencies and a localized

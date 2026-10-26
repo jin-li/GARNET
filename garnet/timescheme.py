@@ -54,6 +54,8 @@ multiplier: 1+omega*dt versus exp(omega*dt). The diffusion engine consumes
 Its precursors and source quadrature integrate the frozen exponential model.
 The second-order ``ftm2`` variant carries the physical neutron derivative and
 integrates linear transformed precursor production, with no heat transform.
+``ftm-bdf2`` instead uses a damped BDF2 recurrence in a fresh exponential frame
+for both neutrons and precursors, with BDF1 startup and endpoint heat weights.
 """
 
 from __future__ import annotations
@@ -64,7 +66,8 @@ import numpy as np
 
 from . import kernels
 from .backend import asnumpy
-from ._exponential import ExponentialStep, ExponentialThetaStep, population_frequency
+from ._exponential import (ExponentialBDF2Step, ExponentialStep,
+                           ExponentialThetaStep, population_frequency)
 
 
 def _lin(xs, coeffs):
@@ -739,6 +742,90 @@ class BDF2(BDF):
         super().__init__(2)
 
 
+class ExponentialBDF2(FrequencyTransform):
+    """Experimental damped frequency transform for neutrons and precursors.
+
+    BDF2 differentiates all state fields in one frozen frame per step. The
+    physical time diagonal is a0/h + omega; history j is multiplied by
+    exp(omega * age_j). Changing width or frequency therefore never reuses
+    transformed values from a different frame. Precursors follow this same
+    rational recurrence, not the analytic source convolution of ``ftm2``.
+
+    Native startup/restarts use BDF1. Unsafe frequency, history exponent or
+    width-ratio growth uses actual BE. Fixed and explicit nonuniform stepping
+    are supported; this class deliberately is not an adaptive BDF controller.
+    Constant-step BDF2 damps stiff modes, but arbitrary-step positivity and
+    stability of the history-fitted frequency do not follow from that fact.
+    """
+
+    name = "ftm-bdf2"
+    order = 2
+    max_order = 2
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._history_u = []
+        self._previous_width = None
+
+    def start(self, u0):
+        result = super().start(u0)
+        self._history_u = [list(u0)]
+        self._previous_width = None
+        return result
+
+    def _prepare_coefficients(self, width):
+        previous = self._previous_width if len(self._history_u) > 1 else None
+        if previous is not None and not self.fallback_reason:
+            if width / previous > 1.0 + np.sqrt(2.0):
+                self.fallback_reason = "step-ratio-bound"
+            elif abs(self.frequency * (width + previous)) > 2.0 * self.max_exponent:
+                self.fallback_reason = "history-frequency-bound"
+        if self.fallback_reason:
+            self.frequency, previous = 0.0, None
+        self._coefficients = ExponentialBDF2Step(width, self.frequency, previous)
+
+    def prepare_step(self, step, dt):
+        super().prepare_step(step, dt)
+        self._prepare_coefficients(float(dt))
+
+    def refine_frequency(self, population):
+        changed = super().refine_frequency(population)
+        if changed:
+            self._prepare_coefficients(self._coefficients.width)
+        return changed
+
+    def order_at(self, step):
+        return len(self._coefficients.coefficients) - 1
+
+    def history_factor(self, step):
+        return 1.0  # carried() already contains each BDF/exponential weight.
+
+    def carried(self, step):
+        return _lin(self._history_u, self._coefficients.history_weights)
+
+    def _history(self, C_hist):
+        return _lin(C_hist[:len(self._coefficients.history_weights)],
+                    self._coefficients.history_weights)
+
+    def precursor_bcoef(self, step, beta, lam, dt):
+        return TimeScheme.precursor_bcoef(self, step, beta, lam, dt)
+
+    def precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt):
+        return TimeScheme.precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt)
+
+    def precursor_update(self, step, C_hist, S_new, S_prev, beta, lam, dt):
+        return TimeScheme.precursor_update(self, step, C_hist, S_new, S_prev, beta, lam, dt)
+
+    def push(self, u_new):
+        super().push(u_new)
+        self._history_u.insert(0, list(u_new))
+        del self._history_u[2:]
+        self._previous_width = self._coefficients.width
+
+    def source_integral_weight(self, dt):
+        return float(dt)  # Keep the existing endpoint thermal exchange rule.
+
+
 class BDFStepController:
     """Bounded predictor--corrector step-width controller.
 
@@ -829,8 +916,8 @@ class BDFStepController:
 def make_time_scheme(time_scheme="backward-euler", time_weight=None, *, ftm_kwargs=None):
     """Resolve the ``time_scheme`` / ``time_weight`` arguments to an object."""
     name = str(time_scheme).lower()
-    if ftm_kwargs is not None and name not in ("ftm", "exponential", "ftm2"):
-        raise ValueError("ftm_kwargs requires time_scheme='ftm' or 'ftm2'")
+    if ftm_kwargs is not None and name not in ("ftm", "exponential", "ftm2", "ftm-bdf2"):
+        raise ValueError("ftm_kwargs requires time_scheme='ftm', 'ftm2' or 'ftm-bdf2'")
     if time_weight is not None and time_weight != 1.0:
         if time_scheme not in ("backward-euler", "theta"):
             raise ValueError("time_weight applies to the theta-method only; "
@@ -840,6 +927,8 @@ def make_time_scheme(time_scheme="backward-euler", time_weight=None, *, ftm_kwar
         return FrequencyTransform(**(ftm_kwargs or {}))
     if name == "ftm2":
         return ExponentialTheta(**(ftm_kwargs or {}))
+    if name == "ftm-bdf2":
+        return ExponentialBDF2(**(ftm_kwargs or {}))
     if name in ("backward-euler", "be"):
         return TimeScheme()
     if name == "bdf1":
@@ -849,4 +938,4 @@ def make_time_scheme(time_scheme="backward-euler", time_weight=None, *, ftm_kwar
     if name in ("crank-nicolson", "cn"):
         return ThetaMethod(0.5)
     raise ValueError(f"unknown time_scheme {time_scheme!r} (backward-euler, "
-                     f"bdf2..bdf6, ftm, ftm2, crank-nicolson)")
+                     f"bdf2..bdf6, ftm, ftm2, ftm-bdf2, crank-nicolson)")

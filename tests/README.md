@@ -25,6 +25,7 @@ without a checkout).
 | `test_unstructured_mesh.py` | unstructured FV ≡ structured FV on the same mesh |
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
 | `test_transient_model_api.py` | shared Cartesian/r-z/triangular histories, event schedules, accepted-step callbacks, initial-state compatibility and cylindrical coupling |
+| `test_exponential_damping.py` | damped transformed BDF2, independent kinetics/stiff-mode references, six precursor families, unequal widths, event/fallback guards and coupled API regression |
 | `test_linalg_krylov.py` | GMRES/BiCGStab options: match CG on SPD systems through every solver entry point; solve a convection-dominated non-symmetric system where CG provably diverges; the non-symmetric divergence-form cylindrical stencil (`symmetric_operator=False`) equals the SPD-weighted one |
 | `test_femffusion_io.py` | .xsec/XML readers vs the files' exact contents |
 | `test_conduction.py` | conduction vs the exact sinked-slab `cosh` solution (2nd order, Dirichlet and Robin, Cartesian and tri-prism); the discrete energy balance as an exact identity |

@@ -591,6 +591,32 @@ repetitions. Iteration convergence is separate from time accuracy. See the
 [prompt-event checkpoint](../benchmark-results/exponential-second-order/CHUNK2.md)
 for controls, shared-mesh comparisons and remaining stability work.
 
+An alternative second-order transform is available as `time_scheme="ftm-bdf2"`:
+
+```python
+damped = core.transient(
+    t_end=0.1, dt=0.001, time_scheme="ftm-bdf2", step_solver="monolithic",
+)
+print(damped.time_orders, damped.ftm_fallback_reasons)
+```
+
+It applies BDF2 to neutrons and precursors in the current step's exponential
+frame, with one endpoint solve per step before any frequency refinements.
+This supplies stiff-mode damping; it does not guarantee positivity or resolve
+sharp events at coarse widths. Its precursor update is a rational BDF
+recurrence, distinct from FTM2's analytic production integral. Zero frequency
+reproduces ordinary BDF2. Startup and event restarts use BDF1; unsafe frequency,
+history exponent or width-ratio growth uses actual BE and reports the cause.
+Fixed and explicit nonuniform widths, `event_times`, named materials and
+progress callbacks work through the model API. `adaptive_bdf` is refused.
+Thermal coupling keeps its existing endpoint heat rule.
+
+The [damping checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
+records independent verification and 196 error/work configurations. Adaptive
+BDF remains the strongest tested comparator. The two-stage transformed
+SDIRK2 candidate remains a dense research driver because its extra stages
+did not earn a finite-volume implementation.
+
 `coupled_transient` supports the same adaptive controls through
 `transient_kwargs`. Thermal exchange times are exact non-restarting adaptive
 endpoints, and unequal neutron-step powers are averaged by elapsed time rather

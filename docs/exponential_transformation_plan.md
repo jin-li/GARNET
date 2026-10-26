@@ -20,6 +20,13 @@ adds BE start-up and optional frequency refinement. A resolved rapid-growth
 case now demonstrates a temporal benefit from the transform at equal work;
 adaptive BDF still uses fewer tested solves. Stronger stiff damping is the
 next temporal development before expanding the spatial frequency model.
+The [third checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
+now tests a two-stage damped candidate independently and adds the one-solve
+`ftm-bdf2` recurrence to the FV engine. It transforms neutron and precursor
+histories together, with BE safeguards and explicit event restart. The
+196-configuration comparison retains adaptive BDF as the strongest tested
+comparator. Physical-state error control and a localized shape-changing case
+are next; diagonal-only updates and group/local frequencies remain pending.
 
 **Recommendation: develop an opt-in frequency transformation method (FTM),
 starting with one frequency shared by all cells and groups.** It can reuse

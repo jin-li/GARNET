@@ -66,9 +66,15 @@ Supplying `adaptive_bdf` selects monolithic stepping unless `step_solver` was
 explicitly supplied. If the time scheme is omitted, it uses adaptive BDF1
 (backward Euler). Existing low-level `bdf_restart_times` and
 `step_alignment_times` are still available. Use `event_times` or
-`bdf_restart_times`, not both. Nonuniform/event schedules currently require BDF.
+`bdf_restart_times`, not both. Nonuniform/event schedules require BDF or FTM.
 Controller tolerances govern a local defect estimate; assess time convergence
 for the observable and transient of interest.
+
+Experimental `time_scheme="ftm2"` and `"ftm-bdf2"` also use this interface
+with fixed or explicit widths. The latter supplies a damped, full-state
+transformed BDF2 recurrence. Both refuse `adaptive_bdf`; see the
+[damping checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
+for safeguards, precursor differences and the measured limits.
 
 Constructor settings such as `dtype` belong in `solver_kwargs`. Common
 `precond_degree`, `precond_dtype`, and `linear_solver` controls are also direct

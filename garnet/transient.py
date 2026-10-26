@@ -535,7 +535,8 @@ class TransientSolver:
             total PCG work and wall time.
         time_scheme : ``"backward-euler"`` (default), ``"bdf2"`` through
             ``"bdf6"``, ``"ftm"`` (first order), ``"ftm2"`` (transformed
-            trapezoidal neutrons), or ``"crank-nicolson"``. BDF ramps from
+            trapezoidal neutrons), ``"ftm-bdf2"`` (transformed BDF2 for
+            neutrons and precursors), or ``"crank-nicolson"``. BDF ramps from
             order one as history becomes available. Orders above two are
             opt-in because they are A(alpha)-stable rather than A-stable.
         time_weight : legacy theta-method weight; it cannot be combined with a
@@ -549,7 +550,10 @@ class TransientSolver:
             source weight is available as ``solver.step_source_weight`` during
             feedback/on_step callbacks and in ``result.step_source_weights``.
             FTM2 preserves ordinary endpoint heat quadrature and does not
-            transform the heat-transfer equation.
+            transform the heat-transfer equation. FTM-BDF2 also uses endpoint
+            heat weights; its precursor update is a rational recurrence.
+            It starts at order one and guards both historical exponents and
+            abrupt width growth, reporting actual-BE fallbacks in the result.
         bdf_restart_times : known material/control discontinuities, each at a
             step end. Flux and precursor history is discarded before that
             step, forcing BDF1 and then ramping again. Use this for abrupt drum
@@ -739,7 +743,7 @@ class TransientSolver:
             n_steps = len(step_widths)
             dt_step = (float(step_widths[0]) if n_steps else float(dt))
         if np.ndim(dt) != 0 and not (
-                scheme.name in ("backward-euler", "ftm", "ftm2")
+                scheme.name == "backward-euler" or is_ftm
                 or scheme.name.startswith("bdf")):
             raise NotImplementedError(
                 "explicit nonuniform steps currently support BDF and FTM schemes only")

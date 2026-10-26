@@ -7,6 +7,8 @@ The heat-transfer equation is outside the exponential-transformation scope.
 Follow-up: [prompt-event and SIMULATE-inspired development](CHUNK2.md) adds
 optional BE start-up and bounded frequency refinement, with rapid-growth
 and shutdown comparisons. The measurements below retain the first checkpoint.
+The [damping checkpoint](CHUNK3.md) adds transformed BDF2, a two-stage research
+candidate and a four-case comparison; neither changes the heat equation.
 
 ## Implemented method
 

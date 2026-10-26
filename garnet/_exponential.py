@@ -1,15 +1,17 @@
 """Scalar coefficients for the experimental diffusion frequency transform.
 
 This module intentionally has no array/backend dependencies. A shared frozen
-frequency applies to all neutron groups during one step. The second-order
-method integrates delayed-neutron production at both endpoints. Spatial
-operators still act on physical fluxes; heat transfer is not transformed.
+frequency applies to all neutron groups during one step. The trapezoidal
+variant integrates production at both endpoints; transformed BDF applies one
+recurrence to neutrons and precursors. Spatial operators still act on physical
+fluxes; heat transfer is not transformed.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+from typing import ClassVar
 
 
 def phi1(z: float) -> float:
@@ -130,3 +132,105 @@ class ExponentialThetaStep(ExponentialStep):
         removed = (1.0 - decay * new_weight if abs(z) < 0.5 else
                    (wh + lh * phi1(z)) / (-z))
         return math.exp(-lh), old_weight, new_weight, removed
+
+
+@dataclass(frozen=True)
+class ExponentialSDIRK2Step:
+    """Research coefficients for a damped, two-stage transformed kinetic step.
+
+    Apply Alexander's SDIRK2 method to ``z = exp(-omega*(t-t_n))*y``,
+    transforming neutrons AND precursors. Both physical stage equations are
+    ``(diagonal_rate*I - A(t_stage))*y_stage = history/stage_width``.
+    A diagonal mass matrix can replace I with the same history weighting.
+
+    The underlying method is second order and L-stable, but does not guarantee
+    positive states for arbitrarily large steps. Each macro step costs two
+    implicit stage solves. Precursors use the same rational stage equations;
+    this is distinct from FTM2's analytic production convolution. These scalar
+    coefficients are not yet wired into TransientSolver or thermal coupling.
+
+    R. Alexander (1977), SIAM J. Numer. Anal. 14, 1006--1021,
+    doi:10.1137/0714068. See tools/assess_exponential_damping.py for the
+    independent kinetics gate before a finite-volume implementation.
+    """
+
+    width: float
+    frequency: float
+    gamma: ClassVar[float] = 1.0 - 1.0 / math.sqrt(2.0)
+
+    def __post_init__(self):
+        # Reuse only the finite-width/frequency guard, not BE's coefficients.
+        ExponentialStep(self.width, self.frequency)
+
+    @property
+    def stage_width(self):
+        return self.gamma * self.width
+
+    @property
+    def diagonal_rate(self):
+        return 1.0 / self.stage_width + self.frequency
+
+    def stage_fraction(self, stage):
+        if stage not in (1, 2):
+            raise ValueError("SDIRK2 stage must be 1 or 2")
+        return self.gamma if stage == 1 else 1.0
+
+    def history(self, stage, initial, first_stage=None):
+        """Physical stage history for a scalar or an array, without mutation."""
+        fraction = self.stage_fraction(stage)
+        if stage == 1:
+            return math.exp(self.frequency * self.width * fraction) * initial
+        if first_stage is None:
+            raise ValueError("SDIRK2 stage 2 needs the first-stage state")
+        a = (1.0 - self.gamma) / self.gamma
+        return ((1.0 - a) * math.exp(self.frequency * self.width) * initial
+                + a * math.exp(self.frequency * self.width * (1.0 - self.gamma))
+                * first_stage)
+
+
+@dataclass(frozen=True)
+class ExponentialBDF2Step(ExponentialStep):
+    """Variable-width BDF2 in one frozen exponential frame for the full state.
+
+    Each physical history value gets its own exp(omega * age) factor. This
+    avoids carrying a value in yesterday's frame when frequency changes.
+    Precursors obey the same transformed recurrence as neutrons, rather than
+    FTM2's analytic production convolution. One endpoint solve is sufficient.
+    With no previous width this is transformed BDF1 for consistent startup.
+    """
+
+    previous_width: float | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if (self.previous_width is not None and
+                (not math.isfinite(self.previous_width) or self.previous_width <= 0)):
+            raise ValueError("previous BDF width must be finite and positive")
+
+    @property
+    def coefficients(self):
+        if self.previous_width is None:
+            return (1.0, -1.0)
+        ratio = self.width / self.previous_width
+        return ((1.0 + 2.0 * ratio) / (1.0 + ratio),
+                -(1.0 + ratio), ratio * ratio / (1.0 + ratio))
+
+    @property
+    def diagonal_factor(self):
+        return self.coefficients[0] + self.frequency * self.width
+
+    @property
+    def history_weights(self):
+        values = [-self.coefficients[1] * math.exp(self.frequency * self.width)]
+        if self.previous_width is not None:
+            values.append(-self.coefficients[2] * math.exp(
+                self.frequency * (self.width + self.previous_width)))
+        return tuple(values)
+
+    def history(self, initial, older=None):
+        weights = self.history_weights
+        if len(weights) == 1:
+            return weights[0] * initial
+        if older is None:
+            raise ValueError("BDF2 needs the previous two accepted states")
+        return weights[0] * initial + weights[1] * older

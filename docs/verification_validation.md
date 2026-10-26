@@ -6,6 +6,38 @@ evidence to the core features exposed in the [README](../README.md). Test
 assertions are the executable acceptance criteria; benchmark reports retain
 the mesh, time step, physics data, and hardware behind their results.
 
+## Exponential damping check
+
+On 26 October 2026 the default CPU suite passed: **777 passed, 0 failed,
+7 skipped, 13 slow cases excluded**, in 687.55 s. All **43 new method checks**
+also passed in a final focused run. A later source edit only extends a
+docstring; the executable AST is unchanged. GPU execution and the excluded
+slow studies were not repeated.
+
+The experimental `ftm-bdf2` recurrence transforms neutrons and precursors in
+the current step's frame, using one endpoint solve before any requested
+frequency refinement. The [damping checkpoint](../benchmark-results/exponential-second-order/CHUNK3.md)
+records its derivation, guards and 196 error/work configurations. Adaptive
+BDF remains the strongest tested comparator; no runtime speedup or positivity
+guarantee is inferred from stiff damping.
+
+The [new tests](../tests/verification/test_exponential_damping.py) compare
+Cartesian/r-z/triangular solves with an independent matrix recurrence, check
+second-order refinement and six-family non-equilibrium precursors against
+Radau, and verify distinct delayed spectra against a matrix exponential.
+They also cover mapped material kinetics, BE fallbacks, frequency-corrector
+accounting, event continuity, a stiff shutdown mode and unchanged thermal
+exchanges/progress callbacks. The two-stage SDIRK2 candidate stays a dense
+research driver because its extra stages did not earn an FV implementation.
+
+The refreshed Colab source archive was installed in isolation. It ran an
+r-z transient with an event restart, reproduced ordinary BDF2 at zero
+frequency, and integrated a power-density field to 2 MW.
+
+Evidence: [full pytest record](qa/garnet-exponential-cpu-2026-10-26.xml),
+[new verification record](../benchmark-results/exponential-second-order/chunk3-verification.xml),
+and [environment, source fingerprints and archive checks](qa/garnet-exponential-damping-2026-10-26.json).
+
 ## Transient API and cylindrical check
 
 The transient API follow-up on 23 October 2026 passed the default CPU suite:
