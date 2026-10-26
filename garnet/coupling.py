@@ -404,7 +404,7 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
                       precond_dtype=None,
                       thermal_rtol=1e-8, thermal_maxiter=20000,
                       thermal_check_every=4, thermal_precond_degree=0,
-                      thermal_diagnostics_every=0, profile=False):
+                      thermal_diagnostics_every=0, profile=False, on_step=None):
     """March the neutronics and the thermal solution together.
 
     Operator splitting, one exchange per step: the neutronics step is taken
@@ -444,9 +444,14 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
     profile : collect phase times without intermediate GPU synchronization,
                  plus step/iteration/rebuild/transfer counters. GPU phases use
                  CUDA events and emit NVTX ranges.
+    on_step : optional read-only observer ``(t, flux, power, temperature)``
+                 after an accepted neutron step and any due thermal exchange.
+                 Device arrays are passed without copying or synchronizing.
     """
     from .transient import TransientSolver
 
+    if on_step is not None and not callable(on_step):
+        raise TypeError("on_step must be callable")
     xp = ctx.thermal_solver().xp
     profiler = _CoupledPhaseProfiler(xp, enabled=profile)
     adaptive_neutronics = ((transient_kwargs or {}).get("adaptive_bdf")
@@ -532,7 +537,7 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
     initial_mean = float(steady_T[fuel].mean())
     state["cached_peak"], state["cached_mean"] = initial_peak, initial_mean
 
-    def on_step(t, phi, power_ratio):
+    def advance_step(t, phi, power_ratio):
         profiler.pause_neutronics()
         try:
             step_width = float(t) - state["last_t"]
@@ -620,6 +625,8 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
             # step merely to rediscover the same values.
             state["peak"].append(state["cached_peak"])
             state["mean"].append(state["cached_mean"])
+            if on_step is not None:
+                on_step(float(t), phi, power_ratio, state["T"])
         finally:
             profiler.resume_neutronics()
 
@@ -634,7 +641,7 @@ def coupled_transient(ctx: CouplingContext, t_end, dt, *, problem_at=None,
         device=ctx.device, dtype=ctx.dtype,
         precond_degree=precond_degree,
         precond_dtype=precond_dtype,
-        xs_update_at=xs_update_at, on_step=on_step,
+        xs_update_at=xs_update_at, on_step=advance_step,
         phase_context=(profiler.region if profile else None))
 
     # Whole-core rebalance instead of Anderson, measured on the 11-group HP-MR

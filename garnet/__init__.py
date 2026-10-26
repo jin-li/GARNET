@@ -16,7 +16,8 @@ from .hex import HexDiffusionEigenSolver, HexGrid, offset_to_axial
 from .materials import Kinetics, Material, ONE_GROUP_DEMO, PWR_TWO_GROUP
 from .mesh import (Mesh, MeshResult, UnstructuredDiffusionSolver, assemble_mesh,
                   assemble_mesh_3d, read_gmsh)
-from .model import (FeedbackSpec, HexLattice, MaterialSummary, MeshModel, Model, ModelResult,
+from .model import (CylindricalModel, FeedbackSpec, HexLattice, MaterialSummary,
+                   MeshModel, Model, ModelResult,
                    ReactorResult, TransientModelResult, TriReactor, hex_disk,
                    hex_ring)
 from .noise import (NoiseResult, NoiseSolver, NoiseSource,
@@ -67,6 +68,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Model",
+    "CylindricalModel",
     "MeshModel",
     "HexLattice",
     "TriReactor",

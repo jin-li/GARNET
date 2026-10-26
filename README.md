@@ -29,7 +29,9 @@ The core solvers support:
   Early iterations use looser accuracy targets, which tighten as the calculation
   converges. Working memory is reused too.
 
-See the [GPU profiling and measurements](docs/gpu_kernel_optimization_plan.md) for timings and hardware-dependent trade-offs. Users without access to GPU hardware can test drive the [Google Colab notebooks](https://github.com/poncetma/GARNET/tree/main/notebooks). 
+See the [GPU profiling and measurements](docs/gpu_kernel_optimization_plan.md)
+for timings and hardware-dependent trade-offs. Users without access to GPU
+hardware can test drive the [Google Colab notebooks](https://github.com/poncetma/GARNET/tree/main/notebooks).
 
 ## Install
 
@@ -61,14 +63,16 @@ print(result.k_eff)
 flux = result.flux        # NumPy array: (groups, nx, ny, nz)
 ```
 
-Use `Model` for Cartesian geometry, `HexLattice.build()` → `TriReactor` for
-hexagonal or prismatic cores, and `MeshModel` for an existing unstructured
-mesh. The [user guide](docs/user_guide.md) walks through materials, geometry,
+Use `Model` for Cartesian geometry, `CylindricalModel` for r-z,
+`HexLattice.build()` → `TriReactor` for hexagonal or prismatic cores, and
+`MeshModel` for an existing unstructured mesh. The
+[user guide](docs/user_guide.md) walks through materials, geometry,
 SPH data, moving control drums, and coupled calculations.
 
 ## Documentation
 
 - [User guide](docs/user_guide.md), [model API reference](docs/model_api.md), and [API audit](docs/api_audit.md).
+- [Transient and r-z workflows](docs/transient_api.md): timed controls, adaptive BDF, progress callbacks, and reusable results.
 - [Thermal coupling](docs/coupling.md): conduction, feedback, energy balance,
   and preCICE integration.
 - [Finite-volume theory report](docs/report.html): discretization and solver
@@ -102,6 +106,7 @@ To run the tests:
 python -m pip install -e '.[test]'
 python -m pytest tests                 # regular suite; excludes slow cases
 python -m pytest tests -o addopts=     # include the expensive full-core cases
+python -m pytest tests/legacy --run-legacy  # preserved pre-API tests
 ```
 
 Optional tests require CUDA, preCICE, or external reference files. See the

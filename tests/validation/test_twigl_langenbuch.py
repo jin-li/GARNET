@@ -8,7 +8,7 @@ coarse meshes and check against them.
 import numpy as np
 import pytest
 
-from garnet import TransientSolver
+from garnet import Model
 from garnet.benchmarks import build_langenbuch, build_twigl
 from garnet.benchmarks.langenbuch import PEAK_REFERENCE
 from garnet.benchmarks.twigl import K_REFERENCE, P_REFERENCE
@@ -18,9 +18,9 @@ def test_twigl_step_and_ramp():
     results = {}
     for pert in ("step", "ramp"):
         prob = build_twigl(perturbation=pert, cells_per_8cm=1)
-        solver = TransientSolver(prob.grid, prob.problem_at, prob.kinetics,
-                                 bc=prob.bc, device="cpu")
-        res = solver.solve(t_end=0.5, dt=2e-3)
+        materials, mmap = prob.problem_at(0.0)
+        core = Model.from_grid(prob.grid, materials, mmap, bc=prob.bc, kinetics=prob.kinetics)
+        res = core.transient(t_end=0.5, dt=2e-3, at=prob.problem_at, device="cpu")
         results[pert] = res
         assert abs(res.k0 - K_REFERENCE) < 5e-3, res.k0
         assert res.power[-1] == pytest.approx(res.power[-2], rel=0.05)  # settled
@@ -54,9 +54,9 @@ def test_langenbuch_rod_maps():
 def test_langenbuch_transient_shape():
     # Coarse mesh, big steps: just verify the classic rise-then-fall shape.
     prob = build_langenbuch()
-    solver = TransientSolver(prob.grid, prob.problem_at, prob.kinetics,
-                             bc=prob.bc, device="cpu")
-    res = solver.solve(t_end=60.0, dt=0.25)
+    materials, mmap = prob.problem_at(0.0)
+    core = Model.from_grid(prob.grid, materials, mmap, bc=prob.bc, kinetics=prob.kinetics)
+    res = core.transient(t_end=60.0, dt=0.25, at=prob.problem_at, device="cpu")
     p = res.power
     t_ref, p_ref = PEAK_REFERENCE
     t_peak = res.times[np.argmax(p)]

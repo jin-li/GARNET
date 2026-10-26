@@ -1,6 +1,7 @@
 # Test suite layout
 
-Two kinds of evidence, two directories:
+The default suite contains verification and validation. Preserved low-level
+tests under `legacy/` are inactive unless `--run-legacy` is supplied.
 
 ## `verification/` — is the *mathematics* solved correctly?
 
@@ -23,6 +24,7 @@ without a checkout).
 | `test_tri_prisms.py` | tri-z extrusion: slab limit, order, extruded-2D = 3D |
 | `test_unstructured_mesh.py` | unstructured FV ≡ structured FV on the same mesh |
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
+| `test_transient_model_api.py` | shared Cartesian/r-z/triangular histories, event schedules, accepted-step callbacks, initial-state compatibility and cylindrical coupling |
 | `test_linalg_krylov.py` | GMRES/BiCGStab options: match CG on SPD systems through every solver entry point; solve a convection-dominated non-symmetric system where CG provably diverges; the non-symmetric divergence-form cylindrical stencil (`symmetric_operator=False`) equals the SPD-weighted one |
 | `test_femffusion_io.py` | .xsec/XML readers vs the files' exact contents |
 | `test_conduction.py` | conduction vs the exact sinked-slab `cosh` solution (2nd order, Dirichlet and Robin, Cartesian and tri-prism); the discrete energy balance as an exact identity |
@@ -53,3 +55,26 @@ builders + reference constants* (importable library code);
 `examples/` holds runnable demo scripts (`speed_benchmark.py` is the
 CPU-vs-GPU performance harness, not a physics benchmark); `dev-refs/` holds
 third-party reference inputs used to derive data, never imported.
+
+## API migration and preserved tests
+
+The cylindrical, transient point-kinetics, per-material kinetics, triangular
+kinetics-theory, TWIGL/LMW and ANL-7416 modules use model methods wherever the
+calculation fits the diffusion API. Specialized low-level engine tests remain
+active. All original test functions and assertions are retained.
+
+Their pre-migration versions are stored byte-for-byte under
+`legacy/verification/` and `legacy/validation/` (62 parameterized cases).
+These are a reproducible comparison with the earlier entry points, not a
+second default copy of each test:
+
+```bash
+python -m pytest tests                         # current API and engine checks
+python -m pytest tests/legacy --run-legacy      # preserved low-level checks
+python -m pytest tests --run-legacy             # both sets
+```
+
+The usual `slow` marker still applies. `-o addopts=` includes slow cases;
+`--run-legacy` controls archived collection independently. See the
+[transient guide](../docs/transient_api.md#test-migration-and-evidence) and
+[V&V report](../docs/verification_validation.md#transient-api-and-cylindrical-check).

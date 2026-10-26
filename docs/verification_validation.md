@@ -6,6 +6,40 @@ evidence to the core features exposed in the [README](../README.md). Test
 assertions are the executable acceptance criteria; benchmark reports retain
 the mesh, time step, physics data, and hardware behind their results.
 
+## Transient API and cylindrical check
+
+The transient API follow-up on 23 October 2026 passed the default CPU suite:
+**666 passed, 0 failed, 7 skipped, 13 slow cases excluded**, in 714.27 s.
+The final focused run passed **105 cases**, including three additional
+parameterized guards for public steady-state reuse with untracked spatial
+cross-section hooks. The full-suite snapshot predates that guard; the final
+focused run covers both changed Python files. The optional-dependency and
+hardware skips are the same as in the earlier CPU record below.
+
+The [transient workflow checks](../tests/verification/test_transient_model_api.py)
+exercise common Cartesian/cylindrical/triangular reports, named material and
+cached-state controls, event alignment, adaptive-step rejection, accepted-step
+callbacks, and time-zero compatibility. Cylindrical checks include exact
+annular volumes, full-core power integration, and full/quasi-static thermal
+coupling. See the [transient API guide](transient_api.md) and
+[r-z example](../examples/cylindrical_transient.py).
+
+Six existing modules now exercise the public API where it expresses the same
+physics calculation. All **58 test functions and 149 assertions** were
+preserved. Their original files are retained byte-for-byte in
+[`tests/legacy/`](../tests/legacy/), inactive by default; all **62 legacy cases
+passed** separately in 168.81 s with `--run-legacy`.
+
+The refreshed Colab source archive was installed in isolation and ran the r-z
+example with fixed and adaptive BDF, including off-grid event times and a
+power density integrating to 2 MW. CUDA execution and slow studies were not
+repeated. These checks establish API and numerical regression coverage; the
+demonstration cross sections are not a validated reactor design.
+
+Evidence: [full pytest record](qa/garnet-transient-cpu-2026-10-23.xml),
+[preserved legacy record](qa/garnet-transient-legacy-2026-10-23.xml), and
+[environment, source fingerprints, focused results and archive checks](qa/garnet-transient-api-2026-10-23.json).
+
 ## Diffusion API check
 
 The diffusion API audit on 23 October 2026 added 44 workflow cases. The full

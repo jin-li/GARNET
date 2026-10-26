@@ -37,7 +37,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from ._model_support import (box_range, checked_kinetics, checked_materials,
-                             replace_materials, solver_options)
+                             material_map as checked_map, replace_materials,
+                             solver_options, transient_schedule)
+from .backend import asnumpy
 from .grid import Grid
 from .hexraster import hex_site_xy, rasterize_hex_sites
 from .materials import Kinetics, Material
@@ -150,7 +152,8 @@ class ReactorResult:
                  solve_seconds, device, method, flux, materials, cell_material,
                  cell_volume=1.0, active=None, geometry_line="", boundary_line="",
                  adjoint=False, absorption_correction=0.0,
-                 mix_material=None, mix_weight=None):
+                 mix_material=None, mix_weight=None, grid=None,
+                 boundary_conditions=None):
         self.k_eff = float(k_eff)
         self.reactivity_pcm = (1.0 - 1.0 / self.k_eff) * 1e5
         self.converged = bool(converged)
@@ -160,6 +163,9 @@ class ReactorResult:
         self.device = device
         self.method = method
         self.adjoint = adjoint
+        self.grid = grid
+        self.boundary_conditions = boundary_conditions
+        self._external_xs = False
         self.flux = flux                          # (G, *shape) numpy
         self.n_groups = flux.shape[0]
         # Keep postprocessing tied to the solved state when the builder or its
@@ -186,10 +192,17 @@ class ReactorResult:
         self.absorbed_fraction = absorb / loss if loss > 0 else float("nan")
         self.leakage_fraction = 1.0 - self.absorbed_fraction
         thermal = flat[-1][act]
-        self.peaking = float(thermal.max() / thermal.mean()) if thermal.size else float("nan")
+        self.peaking = (float(thermal.max() / np.average(
+            thermal, weights=self.cell_volumes.reshape(-1)[act]))
+            if thermal.size else float("nan"))
         self._material_stats = rows
         self.material_summary = tuple(MaterialSummary(name, volf, fisf)
                                       for name, volf, _fis, fisf in rows)
+
+    @property
+    def flux_numpy(self):
+        """Host scalar flux; also available as ``flux`` on public results."""
+        return self.flux
 
     def power_density(self, total_power):
         """Return a NumPy power-density field in W/cm³ at the given domain power.
@@ -274,8 +287,9 @@ class ModelResult(ReactorResult):
             inner_iterations=result.inner_iterations,
             solve_seconds=result.solve_seconds, device=result.device, method=method,
             flux=result.flux_numpy, materials=materials,
-            cell_material=material_map, cell_volume=model.grid.cell_volume, adjoint=adjoint,
+            cell_material=material_map, cell_volume=model.grid.cell_volumes, adjoint=adjoint,
             mix_material=mix, mix_weight=weight,
+            grid=model.grid, boundary_conditions=(normalize_bc(model._full_bc()), None),
             geometry_line=model._geometry_line(), boundary_line=model._boundary_line())
 
 
@@ -283,17 +297,17 @@ _SPARK = " ▁▂▃▄▅▆▇█"
 
 
 class TransientModelResult:
-    """The outcome of :meth:`Model.transient`: the initial steady state plus the
-    power history.
+    """Common neutron-transient report for Cartesian, cylindrical and tri grids.
 
     Every transient begins from a steady-state solve, so that solution is kept
-    here as :attr:`steady` (a :class:`ModelResult`) and its eigenvalue as
+    here as :attr:`steady` (a :class:`ReactorResult`) and its eigenvalue as
     :attr:`k0`; the perturbation drives the power away from ``P(0) = 1``. The
     time and power arrays (:attr:`times`, :attr:`power`) are plain NumPy.
     """
 
     def __init__(self, model, tres, kinetics, *, steady_problem=None):
         self.model = model
+        self.reactor = model
         self.raw = tres
         self.kinetics = kinetics
         self.k0 = float(tres.k0)
@@ -303,11 +317,52 @@ class TransientModelResult:
         self.solve_seconds = tres.solve_seconds
         self.total_inner_iterations = tres.total_inner_iterations
         self.flux = tres.flux_numpy                    # final scalar flux
-        self.steady = ModelResult(model, tres.steady, "diffusion", problem=steady_problem)
+        self.steady = model._wrap_result(tres.steady, problem=steady_problem)
         ip = int(np.argmax(self.power))
         self.peak_power, self.peak_time = float(self.power[ip]), float(self.times[ip])
         self.final_power, self.final_time = float(self.power[-1]), float(self.times[-1])
         self.dt = float(self.times[1] - self.times[0]) if self.times.size > 1 else 0.0
+
+    def __getattr__(self, name):
+        # Preserve solver telemetry, including fields added by later engines.
+        raw = self.__dict__.get("raw")
+        if raw is None:
+            raise AttributeError(name)
+        return getattr(raw, name)
+
+    def __dir__(self):
+        return sorted(set(super().__dir__()) | set(dir(self.raw)))
+
+    @property
+    def flux_numpy(self):
+        return self.flux
+
+    @property
+    def precursors_numpy(self):
+        """Copy final spatial precursor fields to NumPy when requested."""
+        return asnumpy(self.raw.precursors)
+
+    @property
+    def step_widths(self):
+        """Accepted widths in seconds, for fixed and adaptive schedules alike."""
+        return np.diff(self.times)
+
+    @property
+    def n_steps(self):
+        return self.times.size - 1
+
+    def power_at(self, times):
+        """Linearly sample recorded P/P0 inside the solved time span.
+
+        This interpolates the saved history; it is not a higher-order dense
+        output formula. Extrapolation and nonfinite sample times are rejected.
+        """
+        values = np.asarray(times, dtype=float)
+        if (not np.all(np.isfinite(values)) or np.any(values < self.times[0]) or
+                np.any(values > self.times[-1])):
+            raise ValueError("sample times must lie inside the recorded time span")
+        sampled = np.interp(values, self.times, self.power)
+        return float(sampled) if values.ndim == 0 else sampled
 
     def _sparkline(self, width=48):
         p = self.power
@@ -333,7 +388,7 @@ class TransientModelResult:
             f"  initial steady state : k0 = {self.k0:.6f}  "
             f"(fission source normalised by k0; unperturbed -> P/P0 stays 1)",
             f"  time span            : 0 -> {self.final_time:g} s, "
-            f"{self.times.size - 1} recorded intervals, {self.solve_seconds:.2f} s on {self.device}",
+            f"{self.n_steps} steps ({self.time_scheme}), {self.solve_seconds:.2f} s on {self.device}",
             "",
             "  power P/P0:",
             f"    peak      : {self.peak_power:.4f} at t = {self.peak_time:g} s",
@@ -358,6 +413,114 @@ class TransientModelResult:
 # ---------------------------------------------------------------------------
 class _CoupledModel:
     """Common thermal-coupling API for Cartesian and triangular models."""
+
+    def _transient_problem(self, materials_at=None, state_at=None, at=None):
+        callbacks = (materials_at, state_at, at)
+        if sum(callback is not None for callback in callbacks) > 1:
+            raise ValueError("use only one of materials_at, state_at or at/problem_at")
+        if any(callback is not None and not callable(callback) for callback in callbacks):
+            raise TypeError("transient callbacks must be callable")
+        if at is not None:
+            return at
+        if state_at is not None:
+            return lambda t: self._state_problem(state_at(t))
+        geometry = self._coupling_geometry()
+        base, cache = self.materials, {}
+
+        def problem_at(t):
+            mats = (base if materials_at is None else
+                    replace_materials(base, materials_at(t), context="materials_at"))
+            key = tuple(id(m) for m in mats)
+            if key not in cache:
+                cache.clear()
+                cache[key] = mats
+            return (cache[key], geometry["material_map"],
+                    geometry.get("mix_material"), geometry.get("mix_weight"))
+
+        return problem_at
+
+    def _initial_steady(self, result, problem, *, external_xs=False):
+        """Validate public eigenpairs against the actual time-zero problem."""
+        if not isinstance(result, ReactorResult):
+            return result  # Low-level results retain their existing caller-owned contract.
+        if result._external_xs or external_xs:
+            raise ValueError("initial_steady has untracked cross-section updates; "
+                             "solve a model with the explicit time-zero materials")
+        if result.adjoint or result.method != "diffusion" or not result.converged:
+            raise ValueError("initial_steady must be a converged forward diffusion result")
+        geometry = self._coupling_geometry()
+        boundary = (normalize_bc(geometry["bc"]), geometry.get("mask_bc"))
+        if result.grid != self.grid or result.boundary_conditions != boundary:
+            raise ValueError("initial_steady has incompatible grid or boundary conditions")
+        mats, mmap, mix, weight = problem
+        mats = [mats] if isinstance(mats, Material) else list(mats)
+        mmap = np.zeros(self.grid.shape, dtype=np.int64) if mmap is None else mmap
+        keys = ("diffusion", "sigma_a", "nu_sigma_f", "sigma_s", "chi", "total")
+        same_materials = len(mats) == len(result._materials) and all(
+            all(np.array_equal(getattr(a, key), getattr(b, key)) for key in keys)
+            for a, b in zip(mats, result._materials))
+        active = geometry.get("active")
+        active = np.ones(self.grid.shape, bool) if active is None else active
+        if (not same_materials or not np.array_equal(mmap, result._material_map) or
+                not np.array_equal(mix, result._mix_material) or
+                not np.array_equal(weight, result._mix_weight) or
+                not np.array_equal(active, result._active)):
+            raise ValueError("initial_steady does not match the time-zero materials or maps")
+        return result.raw
+
+    def transient(self, t_end, dt, kinetics=None, materials_at=None, at=None,
+                  device="auto", *, state_at=None, event_times=None, on_step=None,
+                  precond_degree=0, precond_dtype=None, linear_solver="cg",
+                  solver_kwargs=None, **solve_kwargs) -> TransientModelResult:
+        """Solve diffusion kinetics from a time-zero critical equilibrium.
+
+        ``materials_at(t)`` returns a partial name/index mapping or an ordered
+        material list. ``state_at(t)`` selects cached models on the same grid;
+        ``at(t)`` is the raw two/four-array escape hatch. Supply one callback.
+        ``event_times`` splits fixed steps or aligns adaptive BDF at control
+        events and restarts its history. ``on_step(t, flux, power)`` runs after
+        each accepted step; flux remains on the selected device.
+
+        Time controls (time_scheme, adaptive_bdf, tolerances) go directly here.
+        Adaptive BDF selects monolithic stepping unless explicitly overridden.
+        Additional constructor settings belong in ``solver_kwargs``. A public
+        ``initial_steady`` is checked against the actual t=0 model before reuse.
+        """
+        from .tri import TriGroupOperator
+
+        checked_materials(self.materials)
+        kin = self.kinetics if kinetics is None else kinetics
+        if kin is None:
+            raise ValueError("no kinetics: call set_kinetics() or pass kinetics=")
+        checked_kinetics(kin, self.n_groups, material_count=len(self.materials))
+        problem_at = self._transient_problem(materials_at, state_at, at)
+        geometry = self._coupling_geometry()
+        eig_solver = geometry.pop("solver_cls", TriDiffusionEigenSolver)
+        init = dict(geometry, device=device, eig_solver=eig_solver,
+                    precond_degree=precond_degree, precond_dtype=precond_dtype,
+                    linear_solver=linear_solver)
+        init.pop("material_map")
+        init.pop("grid")
+        if isinstance(self.grid, TriGrid):
+            init["group_operator"] = TriGroupOperator
+        options = dict(solver_kwargs or {})
+        if on_step is not None:
+            if "on_step" in options:
+                raise ValueError("on_step was supplied both directly and in solver_kwargs")
+            options["on_step"] = on_step
+        if options.get("on_step") is not None and not callable(options["on_step"]):
+            raise TypeError("on_step must be callable")
+        solver = TransientSolver(self.grid, problem_at, kin, **solver_options(init, options))
+        initial_problem = solver._unpack(problem_at(0.0))
+        if solve_kwargs.get("initial_steady") is not None:
+            solve_kwargs["initial_steady"] = self._initial_steady(
+                solve_kwargs["initial_steady"], initial_problem,
+                external_xs=options.get("xs_update_at") is not None)
+        dt, solve_kwargs = transient_schedule(t_end, dt, event_times, solve_kwargs)
+        result = solver.solve(t_end=t_end, dt=dt, **solve_kwargs)
+        out = TransientModelResult(self, result, kin, steady_problem=initial_problem)
+        out.steady._external_xs = options.get("xs_update_at") is not None
+        return out
 
     def _ordered_thermal_materials(self, spec):
         from .thermal import ThermalMaterial
@@ -483,25 +646,30 @@ class _CoupledModel:
         return CoupledSolver(ctx).solve(**solve_kwargs)
 
     def coupled_transient(self, t_end, dt, *, device="auto", problem_at=None,
-                          state_at=None, **kwargs):
-        """Run the GPU-resident coupled transient through the public model API."""
+                          state_at=None, materials_at=None, on_step=None, **kwargs):
+        """Run a coupled diffusion/conduction transient.
+
+        Named ``materials_at`` and cached ``state_at`` follow neutron kinetics.
+        ``on_step(t, flux, power, temperature)`` observes accepted neutron steps,
+        after any due thermal exchange. Arrays stay on their current device and
+        must be treated as read-only; copy them to retain a history.
+        """
         from .coupling import coupled_transient
 
         if self.kinetics is None:
             raise ValueError("no kinetics: call set_kinetics() first")
-        if problem_at is not None and state_at is not None:
-            raise ValueError("use problem_at or state_at, not both")
-        if state_at is not None:
-            def problem_at(t):
-                state = state_at(t)
-                return self._state_problem(state)
+        if any(callback is not None for callback in (materials_at, state_at, problem_at)):
+            problem_at = self._transient_problem(materials_at, state_at, problem_at)
+        if kwargs.get("transient_kwargs") is not None:
+            _, kwargs["transient_kwargs"] = transient_schedule(
+                t_end, dt, None, kwargs["transient_kwargs"])
         ctx = self.coupling_context(device=device)
         return coupled_transient(ctx, t_end=t_end, dt=dt,
-                                 problem_at=problem_at, **kwargs)
+                                 problem_at=problem_at, on_step=on_step, **kwargs)
 
     def quasistatic_transient(self, t_end, dt, *, shape_dt=2.0,
                               device="auto", problem_at=None, state_at=None,
-                              **kwargs):
+                              materials_at=None, **kwargs):
         """Run an improved quasi-static coupled transient.
 
         The adjoint-weighted population amplitude and precursors advance every
@@ -519,12 +687,8 @@ class _CoupledModel:
 
         if self.kinetics is None:
             raise ValueError("no kinetics: call set_kinetics() first")
-        if problem_at is not None and state_at is not None:
-            raise ValueError("use problem_at or state_at, not both")
-        if state_at is not None:
-            def problem_at(t):
-                state = state_at(t)
-                return self._state_problem(state)
+        if any(callback is not None for callback in (materials_at, state_at, problem_at)):
+            problem_at = self._transient_problem(materials_at, state_at, problem_at)
         ctx = self.coupling_context(device=device)
         return quasistatic_coupled_transient(
             ctx, t_end=t_end, dt=dt, shape_dt=shape_dt,
@@ -568,6 +732,36 @@ class Model(_CoupledModel):
         self.grid = Grid(shape=self._shape, size=self._size3)
         self._centers = [(np.arange(n) + 0.5) * (L / n)
                          for n, L in zip(self._shape, self._size3)]
+
+    @classmethod
+    def from_grid(cls, grid, materials, material_map=None, *, bc="vacuum", kinetics=None):
+        """Wrap an existing structured problem without repainting its regions.
+
+        Cylindrical grids return a :class:`CylindricalModel`. Cartesian grids
+        retain all three supplied axes, including their physical thickness.
+        Maps and material ordering are copied; the grid is immutable and shared.
+        """
+        if not isinstance(grid, Grid):
+            raise TypeError("from_grid needs a Grid; use TriReactor for triangular grids")
+        if grid.geometry == "cylindrical":
+            out = CylindricalModel(radius=grid.size[0], height=grid.size[2],
+                                   cells=(grid.shape[0], grid.shape[2]))
+            faces = normalize_bc(bc)
+            out._bc = [faces[0], faces[2]]
+        else:
+            if cls is CylindricalModel:
+                raise ValueError("CylindricalModel.from_grid needs cylindrical geometry")
+            out = cls(size=grid.size, cells=grid.shape)
+            out._bc = list(normalize_bc(bc))
+        out.grid = grid
+        out._materials = checked_materials([materials] if isinstance(materials, Material) else materials)
+        out._map = checked_map(material_map, grid.shape, len(out._materials))
+        if kinetics is not None:
+            out.set_kinetics(kinetics)
+        return out
+
+    def _wrap_result(self, result, method="diffusion", adjoint=False, *, problem=None):
+        return ModelResult(self, result, method, adjoint=adjoint, problem=problem)
 
     def _index(self, material):
         checked_materials([material], groups=self.n_groups)
@@ -717,7 +911,9 @@ class Model(_CoupledModel):
             kw["material_map"] = self._map
         solver = _STRUCTURED[method](grid, material, **solver_options(kw, solver_kwargs))
         res = solver.solve(tol_k=tol_k, tol_source=tol_source, adjoint=adjoint, **solve_kw)
-        return ModelResult(self, res, method, adjoint=adjoint)
+        out = self._wrap_result(res, method, adjoint=adjoint)
+        out._external_xs = (solver_kwargs or {}).get("xs_update") is not None
+        return out
 
     steady = run
 
@@ -746,67 +942,83 @@ class Model(_CoupledModel):
         self._kinetics = kinetics
         return self
 
-    def transient(self, t_end: float, dt: float, kinetics=None, materials_at=None,
-                  at=None, device: str = "auto", *, state_at=None,
-                  solver_kwargs=None, **solve_kw) -> TransientModelResult:
-        """Run a time-dependent solve, starting from this model's steady state.
 
-        A steady eigenvalue solve is always performed first; its eigenvalue k0
-        normalises the fission source (the standard critical adjustment), so the
-        t=0 state is an exact equilibrium -- an unperturbed run stays at P/P0 = 1
-        and the power moves only in response to the perturbation. k0 and the full
-        initial solution are returned on the result (``.k0``, ``.steady``).
 
-        kinetics     : :class:`~garnet.Kinetics`, or set it earlier with
-                       :meth:`set_kinetics`.
-        materials_at : optional ``t -> list[Material]`` in index order or a
-                       partial ``{name_or_index: Material}`` mapping -- how the cross
-                       sections evolve (a rod ramp, a temperature feedback...).
-                       Return the *same* Material objects while nothing changes so
-                       operators are only rebuilt when they must be. Omit for an
-                       unperturbed run (which must stay at P/P0 = 1).
-        at           : advanced escape hatch -- a full ``t -> (materials,
-                       material_map)`` callback (lets the geometry move too).
-        state_at     : alternatively, return cached Model frames with the same
-                       grid and boundaries; only material assignments change.
-        solver_kwargs: constructor controls such as precond_degree, dtype,
-                       linear_solver or on_step; other keywords go to solve().
-        """
+# ---------------------------------------------------------------------------
+# Cylindrical r-z model
+# ---------------------------------------------------------------------------
+class CylindricalModel(Model):
+    """A full body of revolution painted in radial/axial centimetres.
+
+    ``cells=(nr, nz)``; the internal grid/flux shape remains ``(nr, 1, nz)``.
+    Powers and inventories use full annular volumes, independent of a dummy
+    Cartesian thickness. The symmetry axis at r=0 has zero boundary area.
+    """
+
+    def __init__(self, radius, height, cells):
+        if len(cells) != 2:
+            raise ValueError("cylindrical cells must be (nr, nz)")
+        super().__init__(size=(radius, 1.0, height), cells=(cells[0], 1, cells[1]))
+        self.radius, self.height = float(radius), float(height)
+        self.ndim = 2
+        self.size = (self.radius, self.height)
+        self.cells = (self._shape[0], self._shape[2])
+        self.grid = Grid(self._shape, self._size3, geometry="cylindrical")
+        self._bc = [("reflective", "vacuum"), "vacuum"]
+
+    @property
+    def radial_centers(self):
+        return self.grid.cell_centers(0)
+
+    @property
+    def axial_centers(self):
+        return self.grid.cell_centers(2)
+
+    def add_box(self, material, *, r=None, z=None) -> "CylindricalModel":
+        """Paint an annular axial region using cell-centre r/z ranges in cm."""
         if not self._materials:
-            raise ValueError("empty model: call fill() first")
-        kin = kinetics if kinetics is not None else self._kinetics
-        if kin is None:
-            raise ValueError("no kinetics: use set_kinetics(...) or transient(kinetics=...)")
-        checked_materials(self.materials)
-        checked_kinetics(kin, self.n_groups, material_count=len(self.materials))
-        if sum(callback is not None for callback in (at, state_at, materials_at)) > 1:
-            raise ValueError("use only one of materials_at, state_at or at")
+            raise ValueError("call fill() first")
+        mask = np.ones(self._shape, dtype=bool)
+        for axis, name, bounds in ((0, "r", r), (2, "z", z)):
+            if bounds is not None:
+                lo, hi = box_range(bounds, name)
+                shape = [1, 1, 1]
+                shape[axis] = self._shape[axis]
+                mask &= ((self._centers[axis] >= lo) &
+                         (self._centers[axis] <= hi)).reshape(shape)
+        if not np.any(mask):
+            raise ValueError("region selects no cell centres; check r/z bounds and resolution")
+        self._map[mask] = self._index(material)
+        return self
 
-        grid = self.grid
-        if at is not None:
-            problem_at = at
-        elif state_at is not None:
-            def problem_at(t):
-                return self._state_problem(state_at(t))
-        else:
-            base, mp, cache = list(self._materials), self._map, {}
+    add_region = add_box
 
-            def problem_at(t):
-                mats = (replace_materials(base, materials_at(t), context="materials_at")
-                        if materials_at is not None else base)
-                key = tuple(id(m) for m in mats)
-                if key not in cache:               # keep only the latest so operators
-                    cache.clear()                  # are rebuilt exactly when materials change
-                    cache[key] = list(mats)
-                return cache[key], mp
+    def set_boundary(self, spec=None, *, r=None, z=None) -> "CylindricalModel":
+        """Set the outer radial and axial boundaries; the axis is natural.
 
-        if isinstance(solve_kw.get("initial_steady"), ReactorResult):
-            solve_kw["initial_steady"] = solve_kw["initial_steady"].raw
-        solver = TransientSolver(grid, problem_at, kin, **solver_options(
-            dict(bc=self._full_bc(), device=device), solver_kwargs))
-        initial_problem = solver._unpack(problem_at(0.0))
-        tres = solver.solve(t_end=t_end, dt=dt, **solve_kw)
-        return TransientModelResult(self, tres, kin, steady_problem=initial_problem)
+        ``r="vacuum"`` sets the cylinder wall. ``z=("reflective", "vacuum")``
+        sets the bottom/top faces separately. A radial pair is accepted for
+        compatibility with existing grids; its r=0 entry has zero area.
+        """
+        boundary = list(self._bc)
+        for index, value in ((0, r if r is not None else spec),
+                             (1, z if z is not None else spec)):
+            if value is not None:
+                boundary[index] = (("reflective", value)
+                                   if index == 0 and np.ndim(value) == 0 else value)
+        normalize_bc((boundary[0], "reflective", boundary[1]))
+        self._bc = boundary
+        return self
+
+    def _full_bc(self):
+        return self._bc[0], "reflective", self._bc[1]
+
+    def _geometry_line(self):
+        return (f"r=0..{self.radius:g} cm, z=0..{self.height:g} cm, "
+                f"{self.cells[0]} x {self.cells[1]} annular cells [r-z]")
+
+    def _boundary_line(self):
+        return f"r: {self._bc[0]} | z: {self._bc[1]} | r=0 natural axis"
 
 
 # ---------------------------------------------------------------------------
@@ -1058,6 +1270,30 @@ class TriReactor(_CoupledModel):
         z = f" | z faces: {z_spec}" if self.is_3d else ""
         return f"core edge: {self.mask_bc}{z}"
 
+    def _geometry_line(self):
+        return self._geometry
+
+    def _wrap_result(self, result, method="diffusion", adjoint=False, *, problem=None):
+        materials, mmap, mix, weight = (
+            (self.materials, self.material_map, self.mix_material, self.mix_weight)
+            if problem is None else problem)
+        if isinstance(materials, Material):
+            materials = [materials]
+        if mmap is None:
+            mmap = np.zeros(self.grid.shape, dtype=np.int64)
+        out = ReactorResult(
+            k_eff=result.k_eff, converged=result.converged,
+            outer_iterations=result.outer_iterations, inner_iterations=result.inner_iterations,
+            solve_seconds=result.solve_seconds, device=result.device, method=method,
+            flux=result.flux_numpy, materials=materials, cell_material=mmap,
+            cell_volume=self.grid.cell_volume, active=self.active, adjoint=adjoint,
+            geometry_line=self._geometry, boundary_line=self._boundary_line(),
+            mix_material=mix, mix_weight=weight, grid=self.grid,
+            boundary_conditions=(normalize_bc(self.bc), self.mask_bc))
+        out.reactor = self
+        out.raw = result
+        return out
+
     def _coupling_geometry(self):
         return dict(grid=self.grid, material_map=self.material_map,
                     active=self.active, mask_bc=self.mask_bc, bc=self.bc,
@@ -1123,68 +1359,11 @@ class TriReactor(_CoupledModel):
         solver = _TRI[method](self.grid, self.materials, self.material_map, **init)
         res = solver.solve(tol_k=tol_k, tol_source=tol_source,
                            adjoint=adjoint, **solve_kwargs)
-        out = ReactorResult(
-            k_eff=res.k_eff, converged=res.converged,
-            outer_iterations=res.outer_iterations,
-            inner_iterations=res.inner_iterations,
-            solve_seconds=res.solve_seconds, device=res.device, method=method,
-            flux=res.flux_numpy, materials=self.materials,
-            cell_material=self.material_map, cell_volume=self.grid.cell_volume,
-            active=self.active, adjoint=adjoint,
-            geometry_line=self._geometry, boundary_line=self._boundary_line(),
-            mix_material=self.mix_material, mix_weight=self.mix_weight)
-        out.reactor = self
-        out.raw = res
+        out = self._wrap_result(res, method, adjoint=adjoint)
+        out._external_xs = (solver_kwargs or {}).get("xs_update") is not None
         return out
 
     run = steady
-
-    def transient(self, t_end, dt, *, kinetics=None, materials_at=None,
-                  state_at=None, device="auto", precond_degree=0,
-                  precond_dtype=None, linear_solver="cg", solver_kwargs=None,
-                  **solve_kwargs):
-        """Run neutron kinetics, optionally changing materials or full states.
-
-        ``materials_at(t)`` returns materials in index order or a partial
-        name/index mapping. ``state_at(t)`` may instead return a cached
-        :class:`TriReactor` preserving the grid, boundaries and active cells.
-        ``solver_kwargs`` forwards constructor controls; other keywords go to
-        the time integrator. ``initial_steady`` accepts a public steady result.
-        """
-        from .tri import TriGroupOperator
-
-        kin = self.kinetics if kinetics is None else kinetics
-        if kin is None:
-            raise ValueError("no kinetics: call set_kinetics() or pass kinetics=")
-        checked_kinetics(kin, self.n_groups, material_count=len(self.materials))
-        if materials_at is not None and state_at is not None:
-            raise ValueError("use materials_at or state_at, not both")
-        cache = {}
-
-        def problem_at(t):
-            if state_at is not None:
-                return self._state_problem(state_at(t))
-            mats = (self.materials if materials_at is None else
-                    replace_materials(self.materials, materials_at(t), context="materials_at"))
-            key = tuple(id(m) for m in mats)
-            if key not in cache:
-                cache.clear()
-                cache[key] = mats
-            return (cache[key], self.material_map,
-                    self.mix_material, self.mix_weight)
-
-        init = solver_options(dict(bc=self.bc, active=self.active,
-            mask_bc=self.mask_bc, mix_material=self.mix_material,
-            mix_weight=self.mix_weight, group_operator=TriGroupOperator,
-            eig_solver=TriDiffusionEigenSolver, precond_degree=precond_degree,
-            precond_dtype=precond_dtype, linear_solver=linear_solver,
-            device=device), solver_kwargs)
-        if isinstance(solve_kwargs.get("initial_steady"), ReactorResult):
-            solve_kwargs["initial_steady"] = solve_kwargs["initial_steady"].raw
-        solver = TransientSolver(self.grid, problem_at, kin, **init)
-        result = solver.solve(t_end=t_end, dt=dt, **solve_kwargs)
-        result.reactor = self
-        return result
 
 
 

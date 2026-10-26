@@ -18,9 +18,8 @@ physics *value*, only a relation that must hold whatever the cross sections are.
 import numpy as np
 import pytest
 
-from garnet import TransientSolver, TriDiffusionEigenSolver
+from garnet import TriReactor
 from garnet.benchmarks.hpmr import HPMR_KINETICS, build_hpmr2d
-from garnet.tri import TriGroupOperator
 
 REFINE = 2
 BETA = float(HPMR_KINETICS.beta.sum())
@@ -28,32 +27,19 @@ LAM = float(HPMR_KINETICS.decay[0])
 
 
 def _problem(angle):
-    return build_hpmr2d(refine=REFINE, drum_angle_deg=float(angle),
-                        absorber="polar")
+    p = build_hpmr2d(refine=REFINE, drum_angle_deg=float(angle), absorber="polar")
+    return TriReactor(p.grid, p.materials, p.material_map, bc=p.bc, active=p.active,
+                      mask_bc=p.mask_bc, mix_material=p.mix_material,
+                      mix_weight=p.mix_weight, kinetics=HPMR_KINETICS)
 
 
 def _k(p):
-    return TriDiffusionEigenSolver(
-        p.grid, p.materials, p.material_map, bc=p.bc, active=p.active,
-        mask_bc=p.mask_bc, mix_material=p.mix_material,
-        mix_weight=p.mix_weight, device="cpu").solve(tol_k=1e-10,
-                                                     tol_source=1e-9).k_eff
-
-
-def _solver(p, problem_at=None):
-    return TransientSolver(
-        p.grid, problem_at or (lambda t: (p.materials, p.material_map)),
-        HPMR_KINETICS, bc=p.bc, active=p.active, mask_bc=p.mask_bc,
-        mix_material=p.mix_material, mix_weight=p.mix_weight,
-        group_operator=TriGroupOperator, eig_solver=TriDiffusionEigenSolver,
-        device="cpu")
+    return p.steady(device="cpu", tol_k=1e-10, tol_source=1e-9).k_eff
 
 
 def _step(p_from, p_to, t_switch):
     """Materials fixed, blend jumps -- i.e. the drum rotates instantaneously."""
-    a = (p_from.materials, p_from.material_map, p_from.mix_material, p_from.mix_weight)
-    b = (p_to.materials, p_to.material_map, p_to.mix_material, p_to.mix_weight)
-    return lambda t: (b if t >= t_switch else a)
+    return lambda t: p_to if t >= t_switch else p_from
 
 
 def _insertion(angle_from=90.0, angle_to=94.0):
@@ -66,7 +52,7 @@ def test_unperturbed_transient_is_exactly_stationary():
     """The sharpest invariant available: an unperturbed core started from its
     own steady state must remain stationary to backend round-off."""
     p = _problem(90.0)
-    r = _solver(p).solve(t_end=2.0, dt=0.05)
+    r = p.transient(t_end=2.0, dt=0.05, device="cpu")
     atol = 5 * np.finfo(r.power.dtype).eps
     np.testing.assert_allclose(r.power, np.ones_like(r.power), rtol=0, atol=atol)
 
@@ -75,7 +61,7 @@ def test_prompt_jump_matches_theory():
     p0, p1, rho = _insertion()
     assert rho > 0, "the test insertion should be positive"
     dt = 0.02
-    r = _solver(p0, _step(p0, p1, 0.5 * dt)).solve(t_end=1.0, dt=dt)
+    r = p0.transient(state_at=_step(p0, p1, 0.5 * dt), device="cpu", t_end=1.0, dt=dt)
     # Far enough past the step for the prompt transient to be over (the prompt
     # lifetime is microseconds) but early enough that delayed growth has not
     # yet moved the power appreciably.
@@ -88,7 +74,7 @@ def test_prompt_jump_matches_theory():
 def test_asymptotic_period_matches_the_inhour_equation():
     p0, p1, rho = _insertion()
     t_end = 30.0
-    r = _solver(p0, _step(p0, p1, 0.01)).solve(t_end=t_end, dt=0.02)
+    r = p0.transient(state_at=_step(p0, p1, 0.01), device="cpu", t_end=t_end, dt=0.02)
     late = r.times > 0.6 * t_end
     period = 1.0 / np.polyfit(r.times[late], np.log(r.power[late]), 1)[0]
     theory = (BETA - rho / 1e5) / (LAM * rho / 1e5)
@@ -101,7 +87,7 @@ def test_a_negative_insertion_drops_the_power():
     p0, p1, rho = _insertion(90.0, 86.0)
     assert rho < 0
     dt = 0.02
-    r = _solver(p0, _step(p0, p1, 0.5 * dt)).solve(t_end=1.0, dt=dt)
+    r = p0.transient(state_at=_step(p0, p1, 0.5 * dt), device="cpu", t_end=1.0, dt=dt)
     jump = float(r.power[int(np.argmin(np.abs(r.times - 0.2)))])
     theory = BETA / (BETA - rho / 1e5)
     assert jump < 1.0
@@ -113,7 +99,7 @@ def test_the_answer_is_converged_in_time():
     p0, p1, _ = _insertion()
     ends = []
     for dt in (0.1, 0.05, 0.02):
-        r = _solver(p0, _step(p0, p1, 0.5 * dt)).solve(t_end=5.0, dt=dt)
+        r = p0.transient(state_at=_step(p0, p1, 0.5 * dt), device="cpu", t_end=5.0, dt=dt)
         ends.append(float(r.power[-1]))
     assert abs(ends[-1] - ends[0]) / ends[-1] < 2e-3, ends
 

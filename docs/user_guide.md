@@ -12,12 +12,17 @@ builder reference and a validated TWIGL example, see
 [model_api.md](model_api.md). For coupling internals and external thermal-code
 integration, see [coupling.md](coupling.md).
 
+The [transient and r-z guide](transient_api.md) covers event schedules,
+adaptive BDF, progress callbacks, shared transient results, and full cylindrical
+models with physical annular volumes.
+
 ## Main capabilities
 
 | Capability | Public entry point | Current scope |
 |---|---|---|
 | Hexagonal/prismatic full-core models | `HexLattice.build()` → `TriReactor` | 2-D triangular and extruded 3-D triangular-prism grids |
 | Cartesian models | `Model` | 1-D, 2-D, or 3-D structured grids |
+| Cylindrical r-z models | `CylindricalModel` | Full body of revolution with annular cell volumes |
 | General meshes | `MeshModel` | Gmsh or assembled 2-D/3-D finite-volume meshes |
 | Criticality | `steady()` / `run()` | Diffusion; SP1/3/5/7 and SDP1/2/3 on the tri-grid |
 | Importance | `steady(adjoint=True)` | Adjoint k-eigenvalue calculation |
@@ -43,6 +48,7 @@ intended for SPH-corrected coupled transients.
 |---|---|---|
 | Hexagonal assembly lattice or microreactor | `HexLattice` | The design maps naturally to hex sites and triangular cells |
 | Rectangular benchmark or Cartesian core | `Model` | Regions can be painted as axis-aligned boxes |
+| Cylindrical reactor | `CylindricalModel` | Regions are specified by radius and axial height |
 | Existing CAD-derived/Gmsh mesh | `MeshModel` | An unstructured diffusion calculation is required |
 | Custom discretization or research method | Solver classes | You need direct access to operators, arrays, or an experimental method |
 
@@ -603,6 +609,13 @@ All frames must preserve grid dimensions, physical size, boundaries, active
 cells and material count. The base reactor owns the thermal configuration; a
 state supplies the time-dependent material and volume-mix arrays.
 
+For timed controls, `event_times=[...]` on neutron `transient` splits fixed
+BDF schedules or aligns adaptive BDF and restarts history at the listed times.
+All model grids return `TransientModelResult`, including `power_at(times)`,
+accepted `step_widths`, `precursors_numpy`, and the initial public `steady`
+report. Solver telemetry is forwarded from `raw`; final device fields are
+available there. See the [transient guide](transient_api.md) for details.
+
 ## Cartesian and unstructured alternatives
 
 For a rectangular model, paint boxes with `Model`:
@@ -692,6 +705,7 @@ validation in `tests/verification/` and `tests/validation/`.
 | `examples/hpmr_sph_reference_families.py` | SPH generation and reference-method comparison |
 | `examples/twigl_benchmark.py` | Validated static and transient Cartesian workflow |
 | `examples/diffusion_workflow.py` | Named Cartesian material edits, power, kinetics and thermal feedback |
+| `examples/cylindrical_transient.py` | Full r-z geometry, timed controls and fixed/adaptive BDF |
 | `examples/unstructured_mesh.py` | Gmsh/finite-volume `MeshModel` workflow |
 
 ## Public API at a glance
@@ -725,12 +739,23 @@ Model(size, cells)
   .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
   .quasistatic_transient(...)
 
+CylindricalModel(radius, height, cells=(nr, nz))
+  .fill(...) / .add_region(material, r=..., z=...) / .set_boundary(r=..., z=...)
+  .steady(...) / .transient(...) / .with_materials(...)
+  .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
+  .quasistatic_transient(...)
+
+Model.from_grid(grid, materials, material_map, bc=..., kinetics=...)
+
 MeshModel(mesh)
   .fill(...) / .assign(...) / .add_box(...) / .set_boundary(...)
   .steady(...) / .run(...) / .with_materials(list_or_mapping)
 
 ReactorResult
   .power_density(total_power=...) / .cell_volumes / .material_summary / .raw
+
+TransientModelResult
+  .steady / .times / .power / .power_at(times) / .step_widths / .raw
 ```
 
 When the public objects do not expose a research-specific option,

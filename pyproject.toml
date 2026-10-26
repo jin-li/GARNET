@@ -16,7 +16,7 @@ dependencies = ["numpy>=1.24", "scipy>=1.10"]
 [project.optional-dependencies]
 cuda12 = ["cupy-cuda12x"]
 cuda11 = ["cupy-cuda11x"]
-test = ["pytest"]
+test = ["pytest>=7"]
 # External multiphysics coupling (examples/precice). Optional: the internal
 # CoupledSolver never touches preCICE. NOTE pyprecice is source-only on PyPI
 # and links against the system libprecice; install both from conda-forge if
@@ -34,5 +34,6 @@ include = ["garnet*"]
 [tool.pytest.ini_options]
 markers = [
     "slow: expensive full-core solves (deselected by default; run with -m slow)",
+    "legacy: preserved low-level tests collected with --run-legacy",
 ]
 addopts = "-m 'not slow'"
