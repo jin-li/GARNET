@@ -193,3 +193,57 @@ The `build_thermal_star` constructor also accepts `compatible_serpent_versions`
 and forwards that policy to its `BranchLibrary`. This permits an explicitly
 accepted executable-version pair without waiving training roles, nuclear-data
 identity or the caller-supplied qualification policy.
+
+## Experimental geometry-aware rod interpolation
+
+`garnet.branch_rod.evaluate_rod_occupancy` offers a separate experimental
+alternative to uniform segment weights. Use an explicit one-dimensional
+`BranchLibrary` with an identity-transformed rod coordinate. It retains every
+public library domain, fixed-condition, version and closure compatibility guard.
+An exact anchor is returned with its original arrays, native records and
+qualification; the geometry callback is not invoked for that anchor.
+
+```python
+from garnet.branch_rod import evaluate_rod_occupancy
+
+# Application-specific geometry; return exactly one fraction per region.
+# Coordinate units must match the library and this geometry implementation.
+def occupancy(conditions, region_ids):
+    position_cm = conditions["rod_insertion_cm"]
+    return {region: geometry.absorber_fraction(region, position_cm)
+            for region in region_ids}
+
+prediction = evaluate_rod_occupancy(
+    rod_library, {"rod_insertion_cm": 100.,
+                  "configuration": "bank-a", "family": "rod"},
+    occupancy=occupancy, geometry_id="bank-a-physical-regions-v1",
+)
+```
+
+The example assumes caller-provided `geometry` and `rod_library`; it is not a
+PRATIC geometry prescription. The provider receives immutable conditions and
+ordered region IDs. It must return a mapping with exactly those IDs and finite
+real scalar fractions in `[0, 1]`. Booleans, arrays and missing/extra keys are
+rejected. Target occupancy must lie between the two endpoint occupancies in
+each region, including regions with equal endpoint occupancies. No clipping or
+extrapolation is performed. A region whose endpoint occupancies differ uses
+its local occupancy fraction to interpolate every XS channel and the logarithm
+of each face factor. A region with unchanged occupancy keeps the global rod
+coordinate weight; unchanged occupancy does not imply unchanged XS in a
+coupled core. Exterior face factors remain exactly unity.
+
+Inspect `prediction.metadata["rod_occupancy"]` for the geometry identity,
+source roles and IDs, endpoint/target occupancies and local right weights.
+`prediction.weights` retains the original global segment weights as lineage;
+it is not the per-region interpolation weight. Original source roles and native data
+are unchanged; interpolated metadata has `role="prediction"`. Interpolated results carry no native record and are labelled
+`experimental-rod-occupancy-unvalidated`. They cannot be inserted as original
+library states. The method does not establish transport reaction-rate
+conservation, full-range rod qualification or differential rod-worth accuracy.
+
+The geometry callback is not stored by `BranchLibrary.save`; its JSON format
+is unchanged. Preserve the callback source/version or hash, physical geometry,
+region mapping, coordinate units, library snapshot and resulting metadata with
+each study. A named geometry identity is a caller declaration, not an
+independent verification of geometry correctness. Freeze the mapping and
+interpolation method before withholding transport states for qualification.
