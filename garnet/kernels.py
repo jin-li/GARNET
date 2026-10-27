@@ -177,6 +177,25 @@ def stencil7_apply(xp, phi, diag, wx, wy, wz, row_scale, out=None):
     return out
 
 
+def stencil7_adf_apply(xp, phi, diag, wx, wy, wz, wx_hi, wy_hi, wz_hi, out=None):
+    """Fused Cartesian stencil with one coefficient per side of each face."""
+    key = ("stencil7_adf",)
+    if key not in _kernels:
+        import cupy
+        src = _STENCIL7_SRC.replace("wx[i]      * phi[i + yz]", "wx_hi[i]      * phi[i + yz]")
+        src = src.replace("wy[wyb + j * nz]", "wy_hi[wyb + j * nz]")
+        src = src.replace("wz[wzb + k]", "wz_hi[wzb + k]")
+        params = ("raw T phi, raw T diag, raw T wx, raw T wy, raw T wz, "
+                  "raw T wx_hi, raw T wy_hi, raw T wz_hi, int32 nx, int32 ny, int32 nz")
+        _kernels[key] = cupy.ElementwiseKernel(params, "T out", src, "garnet_stencil7_adf")
+    if out is None:
+        out = xp.empty_like(phi)
+    nx, ny, nz = phi.shape
+    _kernels[key](phi, diag, wx, wy, wz, wx_hi, wy_hi, wz_hi,
+                  np.int32(nx), np.int32(ny), np.int32(nz), out)
+    return out
+
+
 # --------------------------------------------------------------------------
 # Triangular stencil
 # --------------------------------------------------------------------------
