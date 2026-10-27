@@ -1,0 +1,2858 @@
+{
+  "date": "2026-10-26",
+  "scope": "Physical-state adaptive neutron/precursor FTM; no thermal transform or GPU timing",
+  "environment": {
+    "python": "3.14.4",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3"
+  },
+  "reference": "Independent physical two-mode kinetics eigendecomposition",
+  "initial_dt_s": 0.01,
+  "maximum_dt_s": 0.02,
+  "minimum_dt_s": 1e-11,
+  "ftm_error_norm": "Maximum per-field active-volume weighted RMS of physical full/fine defects, scaled by atol + rtol*max(abs(start),abs(fine)); no Richardson divisor",
+  "bdf_error_norm": "Unchanged legacy concatenated predictor/corrector ratio of norms; equal rtol does not imply matched physical accuracy",
+  "error_sampling": "Maximum of own endpoints and common 8001-point linear interpolation grid; final precursor error also gated",
+  "budget_filter": "Power and final precursor errors within budget; nonnegative power; no wrong-direction macro increments",
+  "work_comparison": "Every FV endpoint solve, including discarded full steps and rejected full/half attempts; no runtime speedup claim",
+  "source_sha256": {
+    "garnet/timescheme.py": "9d6c6fd7fea95bb9c1df7ed6ea498d0a41b8114511fdd5857975d3c7c3a864d6",
+    "garnet/transient.py": "2d3207c297372bc3f7b152b28a2b88f4d5c2fb77fcc8bb887bde009ef6f553d6",
+    "garnet/_model_support.py": "806454a9944cc49bd8d16ded2eda76dfcd7d52636a12391019c7fb70e0ec30f5",
+    "garnet/_exponential.py": "33822bdb773604db32690ecebbe6ac353058bbf89b0d289535cfa854f8f2533c",
+    "tools/assess_exponential_adaptive.py": "a012b391521ceabf67f90f9886b07e680459b130f28dc00bd5cde490bf030b5e",
+    "tools/assess_exponential_damping.py": "b282d0a12d069bf4fcae2f964eecfea8c5f930efa161c0a259a6cb29e2ed3fb0"
+  },
+  "cases": {
+    "prompt-rise": {
+      "reactivity": 0.002,
+      "duration_s": 1.0,
+      "event_s": 0.0,
+      "records": [
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 71,
+          "rejected_steps": 4,
+          "implicit_solves": 225,
+          "krylov_iterations": 225,
+          "fgmres_iterations": 225,
+          "operator_rebuilds": 226,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8541839055036246,
+          "maximum_accepted_error_by_block": [
+            0.8541839055036246,
+            0.0004891399190974224
+          ],
+          "max_endpoint_relative_power_error": 0.0008501675456167312,
+          "max_common_grid_relative_power_error": 0.0008483145841436945,
+          "max_relative_power_error": 0.0008501675456167312,
+          "final_relative_precursor_error": 2.0978360931733775e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00021922818032281622,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 89,
+          "rejected_steps": 6,
+          "implicit_solves": 285,
+          "krylov_iterations": 285,
+          "fgmres_iterations": 285,
+          "operator_rebuilds": 286,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5439513958717304,
+          "maximum_accepted_error_by_block": [
+            0.5439513958717304,
+            0.0012933396411421753
+          ],
+          "max_endpoint_relative_power_error": 5.4378865200654936e-05,
+          "max_common_grid_relative_power_error": 0.00038483724696647403,
+          "max_relative_power_error": 0.00038483724696647403,
+          "final_relative_precursor_error": 2.433709089810776e-08,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.6158705147357873e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 121,
+          "rejected_steps": 7,
+          "implicit_solves": 384,
+          "krylov_iterations": 384,
+          "fgmres_iterations": 384,
+          "operator_rebuilds": 385,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7386148536621275,
+          "maximum_accepted_error_by_block": [
+            0.7386148536621275,
+            0.001570084502908228
+          ],
+          "max_endpoint_relative_power_error": 1.4099878996587378e-05,
+          "max_common_grid_relative_power_error": 9.234803023749905e-05,
+          "max_relative_power_error": 9.234803023749905e-05,
+          "final_relative_precursor_error": 1.5458054392070153e-08,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.980940283396141e-06,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 187,
+          "rejected_steps": 9,
+          "implicit_solves": 588,
+          "krylov_iterations": 588,
+          "fgmres_iterations": 588,
+          "operator_rebuilds": 589,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5023918076896697,
+          "maximum_accepted_error_by_block": [
+            0.5023918076896697,
+            0.0017424616048650659
+          ],
+          "max_endpoint_relative_power_error": 3.40631936035507e-06,
+          "max_common_grid_relative_power_error": 1.9734021566630844e-05,
+          "max_relative_power_error": 1.9734021566630844e-05,
+          "final_relative_precursor_error": 7.1826256053952875e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.5224034318255912e-07,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 321,
+          "rejected_steps": 10,
+          "implicit_solves": 993,
+          "krylov_iterations": 993,
+          "fgmres_iterations": 993,
+          "operator_rebuilds": 994,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6686171660777206,
+          "maximum_accepted_error_by_block": [
+            0.6686171660777206,
+            0.001844246840351886
+          ],
+          "max_endpoint_relative_power_error": 7.631768208504752e-07,
+          "max_common_grid_relative_power_error": 4.192171116246257e-06,
+          "max_relative_power_error": 4.192171116246257e-06,
+          "final_relative_precursor_error": 1.7520715989149949e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.8536497082228348e-08,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 59,
+          "rejected_steps": 1,
+          "implicit_solves": 180,
+          "krylov_iterations": 180,
+          "fgmres_iterations": 180,
+          "operator_rebuilds": 181,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9424661453452009,
+          "maximum_accepted_error_by_block": [
+            0.9424661453452009,
+            0.005551788958213029
+          ],
+          "max_endpoint_relative_power_error": 0.0005821458702088833,
+          "max_common_grid_relative_power_error": 0.0007214973903797439,
+          "max_relative_power_error": 0.0007214973903797439,
+          "final_relative_precursor_error": 3.1174588003057835e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0010835399681569102,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 72,
+          "rejected_steps": 2,
+          "implicit_solves": 222,
+          "krylov_iterations": 222,
+          "fgmres_iterations": 222,
+          "operator_rebuilds": 223,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6919931215834073,
+          "maximum_accepted_error_by_block": [
+            0.6919931215834073,
+            0.018852818719975937
+          ],
+          "max_endpoint_relative_power_error": 0.0001830672952920498,
+          "max_common_grid_relative_power_error": 0.0002562402077014303,
+          "max_relative_power_error": 0.0002562402077014303,
+          "final_relative_precursor_error": 1.0335224005730836e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00034120568333129153,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 102,
+          "rejected_steps": 3,
+          "implicit_solves": 315,
+          "krylov_iterations": 315,
+          "fgmres_iterations": 315,
+          "operator_rebuilds": 316,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5181597927052773,
+          "maximum_accepted_error_by_block": [
+            0.5181597927052773,
+            0.029841977453899687
+          ],
+          "max_endpoint_relative_power_error": 4.392753661397464e-05,
+          "max_common_grid_relative_power_error": 6.522562439070789e-05,
+          "max_relative_power_error": 6.522562439070789e-05,
+          "final_relative_precursor_error": 2.811072496000655e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0002,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 171,
+          "rejected_steps": 3,
+          "implicit_solves": 522,
+          "krylov_iterations": 522,
+          "fgmres_iterations": 522,
+          "operator_rebuilds": 523,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8320402164737282,
+          "maximum_accepted_error_by_block": [
+            0.8320402164737282,
+            0.03586996235588103
+          ],
+          "max_endpoint_relative_power_error": 9.86476172504247e-06,
+          "max_common_grid_relative_power_error": 1.5110732168754915e-05,
+          "max_relative_power_error": 1.5110732168754915e-05,
+          "final_relative_precursor_error": 6.756802012342078e-07,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.016290366495814e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 322,
+          "rejected_steps": 4,
+          "implicit_solves": 978,
+          "krylov_iterations": 978,
+          "fgmres_iterations": 978,
+          "operator_rebuilds": 979,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6423942042671246,
+          "maximum_accepted_error_by_block": [
+            0.6423942042671246,
+            0.039147979615831344
+          ],
+          "max_endpoint_relative_power_error": 2.1763393878160286e-06,
+          "max_common_grid_relative_power_error": 3.227634741365115e-06,
+          "max_relative_power_error": 3.227634741365115e-06,
+          "final_relative_precursor_error": 1.5399614450295473e-07,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.214606808017396e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.001
+          },
+          "accepted_steps": 59,
+          "rejected_steps": 1,
+          "implicit_solves": 180,
+          "krylov_iterations": 180,
+          "fgmres_iterations": 180,
+          "operator_rebuilds": 137,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9588162753605506,
+          "maximum_accepted_error_by_block": [
+            0.9588162753605506,
+            0.002679261529166366
+          ],
+          "max_endpoint_relative_power_error": 0.0004989443216237843,
+          "max_common_grid_relative_power_error": 0.0008287586766073662,
+          "max_relative_power_error": 0.0008287586766073662,
+          "final_relative_precursor_error": 3.4230487333530846e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00047208335550597,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 70,
+          "rejected_steps": 2,
+          "implicit_solves": 216,
+          "krylov_iterations": 216,
+          "fgmres_iterations": 216,
+          "operator_rebuilds": 177,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6945859740615059,
+          "maximum_accepted_error_by_block": [
+            0.6945859740615059,
+            0.0018892239898833096
+          ],
+          "max_endpoint_relative_power_error": 0.00016720267071779205,
+          "max_common_grid_relative_power_error": 0.00037610033578461266,
+          "max_relative_power_error": 0.00037610033578461266,
+          "final_relative_precursor_error": 1.415778827507097e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0007176084214899997,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 98,
+          "rejected_steps": 3,
+          "implicit_solves": 303,
+          "krylov_iterations": 303,
+          "fgmres_iterations": 303,
+          "operator_rebuilds": 268,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5241796030108103,
+          "maximum_accepted_error_by_block": [
+            0.5241796030108103,
+            0.0017130764922569798
+          ],
+          "max_endpoint_relative_power_error": 4.0044813932826884e-05,
+          "max_common_grid_relative_power_error": 0.00011550915770641712,
+          "max_relative_power_error": 0.00011550915770641712,
+          "final_relative_precursor_error": 1.1847340886106394e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0002,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 161,
+          "rejected_steps": 3,
+          "implicit_solves": 492,
+          "krylov_iterations": 492,
+          "fgmres_iterations": 492,
+          "operator_rebuilds": 461,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8318288589771311,
+          "maximum_accepted_error_by_block": [
+            0.8318288589771311,
+            0.0022429905695034447
+          ],
+          "max_endpoint_relative_power_error": 8.968544935594736e-06,
+          "max_common_grid_relative_power_error": 2.794921413640239e-05,
+          "max_relative_power_error": 2.794921413640239e-05,
+          "final_relative_precursor_error": 1.0614686907217674e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.017181685413841e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 299,
+          "rejected_steps": 4,
+          "implicit_solves": 909,
+          "krylov_iterations": 909,
+          "fgmres_iterations": 909,
+          "operator_rebuilds": 881,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6425120078863124,
+          "maximum_accepted_error_by_block": [
+            0.6425120078863124,
+            0.0018959362226545855
+          ],
+          "max_endpoint_relative_power_error": 1.973224457163525e-06,
+          "max_common_grid_relative_power_error": 6.270453661194608e-06,
+          "max_relative_power_error": 6.270453661194608e-06,
+          "final_relative_precursor_error": 9.508696052762389e-10,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.2146850850968364e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001
+          },
+          "accepted_steps": 65,
+          "rejected_steps": 11,
+          "implicit_solves": 76,
+          "krylov_iterations": 76,
+          "fgmres_iterations": 76,
+          "operator_rebuilds": 44,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8670219280161614,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 0.00048148341960385643,
+          "max_common_grid_relative_power_error": 0.0012605366580459298,
+          "max_relative_power_error": 0.0012605366580459298,
+          "final_relative_precursor_error": 8.942210954598906e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.90625e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 72,
+          "rejected_steps": 12,
+          "implicit_solves": 84,
+          "krylov_iterations": 84,
+          "fgmres_iterations": 84,
+          "operator_rebuilds": 55,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9456107273907075,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 6.281733495061559e-05,
+          "max_common_grid_relative_power_error": 0.0009451338897523698,
+          "max_relative_power_error": 0.0009451338897523698,
+          "final_relative_precursor_error": 3.42423200905273e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4.866131432351227e-06,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 89,
+          "rejected_steps": 18,
+          "implicit_solves": 107,
+          "krylov_iterations": 107,
+          "fgmres_iterations": 107,
+          "operator_rebuilds": 95,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8056405741875039,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 5.601901535534637e-06,
+          "max_common_grid_relative_power_error": 0.0006807305253867524,
+          "max_relative_power_error": 0.0006807305253867524,
+          "final_relative_precursor_error": 5.601902106633361e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 5.440002671906329e-07,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 112,
+          "rejected_steps": 25,
+          "implicit_solves": 137,
+          "krylov_iterations": 137,
+          "fgmres_iterations": 137,
+          "operator_rebuilds": 118,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7008793251495447,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 8.87731758436594e-07,
+          "max_common_grid_relative_power_error": 0.00025670340554151405,
+          "max_relative_power_error": 0.00025670340554151405,
+          "final_relative_precursor_error": 2.6572266609292683e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.814697265625e-08,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 139,
+          "rejected_steps": 24,
+          "implicit_solves": 163,
+          "krylov_iterations": 163,
+          "fgmres_iterations": 163,
+          "operator_rebuilds": 150,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9710422806667965,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 5.442209727313241e-08,
+          "max_common_grid_relative_power_error": 0.00018421123478962187,
+          "max_relative_power_error": 0.00018421123478962187,
+          "final_relative_precursor_error": 2.105337904012572e-09,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4.76837158203125e-09,
+          "maximum_accepted_width_s": 0.020000000000000018
+        }
+      ],
+      "fewest_tested_solves_at_budget": {
+        "0.01": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 71,
+            "rejected_steps": 4,
+            "implicit_solves": 225,
+            "krylov_iterations": 225,
+            "fgmres_iterations": 225,
+            "operator_rebuilds": 226,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8541839055036246,
+            "maximum_accepted_error_by_block": [
+              0.8541839055036246,
+              0.0004891399190974224
+            ],
+            "max_endpoint_relative_power_error": 0.0008501675456167312,
+            "max_common_grid_relative_power_error": 0.0008483145841436945,
+            "max_relative_power_error": 0.0008501675456167312,
+            "final_relative_precursor_error": 2.0978360931733775e-06,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00021922818032281622,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 59,
+            "rejected_steps": 1,
+            "implicit_solves": 180,
+            "krylov_iterations": 180,
+            "fgmres_iterations": 180,
+            "operator_rebuilds": 181,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9424661453452009,
+            "maximum_accepted_error_by_block": [
+              0.9424661453452009,
+              0.005551788958213029
+            ],
+            "max_endpoint_relative_power_error": 0.0005821458702088833,
+            "max_common_grid_relative_power_error": 0.0007214973903797439,
+            "max_relative_power_error": 0.0007214973903797439,
+            "final_relative_precursor_error": 3.1174588003057835e-05,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.0010835399681569102,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.001
+            },
+            "accepted_steps": 59,
+            "rejected_steps": 1,
+            "implicit_solves": 180,
+            "krylov_iterations": 180,
+            "fgmres_iterations": 180,
+            "operator_rebuilds": 137,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9588162753605506,
+            "maximum_accepted_error_by_block": [
+              0.9588162753605506,
+              0.002679261529166366
+            ],
+            "max_endpoint_relative_power_error": 0.0004989443216237843,
+            "max_common_grid_relative_power_error": 0.0008287586766073662,
+            "max_relative_power_error": 0.0008287586766073662,
+            "final_relative_precursor_error": 3.4230487333530846e-09,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00047208335550597,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 0.001
+            },
+            "accepted_steps": 65,
+            "rejected_steps": 11,
+            "implicit_solves": 76,
+            "krylov_iterations": 76,
+            "fgmres_iterations": 76,
+            "operator_rebuilds": 44,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8670219280161614,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 0.00048148341960385643,
+            "max_common_grid_relative_power_error": 0.0012605366580459298,
+            "max_relative_power_error": 0.0012605366580459298,
+            "final_relative_precursor_error": 8.942210954598906e-06,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 3.90625e-05,
+            "maximum_accepted_width_s": 0.020000000000000018
+          }
+        },
+        "0.001": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 71,
+            "rejected_steps": 4,
+            "implicit_solves": 225,
+            "krylov_iterations": 225,
+            "fgmres_iterations": 225,
+            "operator_rebuilds": 226,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8541839055036246,
+            "maximum_accepted_error_by_block": [
+              0.8541839055036246,
+              0.0004891399190974224
+            ],
+            "max_endpoint_relative_power_error": 0.0008501675456167312,
+            "max_common_grid_relative_power_error": 0.0008483145841436945,
+            "max_relative_power_error": 0.0008501675456167312,
+            "final_relative_precursor_error": 2.0978360931733775e-06,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00021922818032281622,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 59,
+            "rejected_steps": 1,
+            "implicit_solves": 180,
+            "krylov_iterations": 180,
+            "fgmres_iterations": 180,
+            "operator_rebuilds": 181,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9424661453452009,
+            "maximum_accepted_error_by_block": [
+              0.9424661453452009,
+              0.005551788958213029
+            ],
+            "max_endpoint_relative_power_error": 0.0005821458702088833,
+            "max_common_grid_relative_power_error": 0.0007214973903797439,
+            "max_relative_power_error": 0.0007214973903797439,
+            "final_relative_precursor_error": 3.1174588003057835e-05,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.0010835399681569102,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.001
+            },
+            "accepted_steps": 59,
+            "rejected_steps": 1,
+            "implicit_solves": 180,
+            "krylov_iterations": 180,
+            "fgmres_iterations": 180,
+            "operator_rebuilds": 137,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9588162753605506,
+            "maximum_accepted_error_by_block": [
+              0.9588162753605506,
+              0.002679261529166366
+            ],
+            "max_endpoint_relative_power_error": 0.0004989443216237843,
+            "max_common_grid_relative_power_error": 0.0008287586766073662,
+            "max_relative_power_error": 0.0008287586766073662,
+            "final_relative_precursor_error": 3.4230487333530846e-09,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00047208335550597,
+            "maximum_accepted_width_s": 0.020000000000000018
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 72,
+            "rejected_steps": 12,
+            "implicit_solves": 84,
+            "krylov_iterations": 84,
+            "fgmres_iterations": 84,
+            "operator_rebuilds": 55,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9456107273907075,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 6.281733495061559e-05,
+            "max_common_grid_relative_power_error": 0.0009451338897523698,
+            "max_relative_power_error": 0.0009451338897523698,
+            "final_relative_precursor_error": 3.42423200905273e-09,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 4.866131432351227e-06,
+            "maximum_accepted_width_s": 0.020000000000000018
+          }
+        }
+      }
+    },
+    "superprompt-rise": {
+      "reactivity": 0.01,
+      "duration_s": 0.5,
+      "event_s": 0.0,
+      "records": [
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 55,
+          "rejected_steps": 5,
+          "implicit_solves": 180,
+          "krylov_iterations": 180,
+          "fgmres_iterations": 180,
+          "operator_rebuilds": 181,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8351351717269713,
+          "maximum_accepted_error_by_block": [
+            0.8351351717269713,
+            0.024045316636582825
+          ],
+          "max_endpoint_relative_power_error": 0.0008349269005477611,
+          "max_common_grid_relative_power_error": 0.028729257178404133,
+          "max_relative_power_error": 0.028729257178404133,
+          "final_relative_precursor_error": 0.0006716968435502846,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4.3092946739397795e-05,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 80,
+          "rejected_steps": 7,
+          "implicit_solves": 261,
+          "krylov_iterations": 261,
+          "fgmres_iterations": 261,
+          "operator_rebuilds": 262,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5431281518740527,
+          "maximum_accepted_error_by_block": [
+            0.5431281518740527,
+            0.10991115977352295
+          ],
+          "max_endpoint_relative_power_error": 0.00031998044957992633,
+          "max_common_grid_relative_power_error": 0.027740695460777065,
+          "max_relative_power_error": 0.027740695460777065,
+          "final_relative_precursor_error": 0.0003193239831627004,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.228022095864181e-06,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 127,
+          "rejected_steps": 8,
+          "implicit_solves": 405,
+          "krylov_iterations": 405,
+          "fgmres_iterations": 405,
+          "operator_rebuilds": 406,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7384710596529259,
+          "maximum_accepted_error_by_block": [
+            0.7384710596529259,
+            0.21239689559730188
+          ],
+          "max_endpoint_relative_power_error": 8.545010185501134e-05,
+          "max_common_grid_relative_power_error": 0.02740575917095467,
+          "max_relative_power_error": 0.02740575917095467,
+          "final_relative_precursor_error": 8.508902303128174e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.961290257960505e-07,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 226,
+          "rejected_steps": 10,
+          "implicit_solves": 708,
+          "krylov_iterations": 708,
+          "fgmres_iterations": 708,
+          "operator_rebuilds": 709,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.50237223726943,
+          "maximum_accepted_error_by_block": [
+            0.50237223726943,
+            0.30347220229501687
+          ],
+          "max_endpoint_relative_power_error": 2.054977907905986e-05,
+          "max_common_grid_relative_power_error": 0.02732911716155484,
+          "max_relative_power_error": 0.02732911716155484,
+          "final_relative_precursor_error": 2.0353160204100718e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.044684279974827e-08,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 431,
+          "rejected_steps": 11,
+          "implicit_solves": 1326,
+          "krylov_iterations": 1326,
+          "fgmres_iterations": 1326,
+          "operator_rebuilds": 1327,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6686161173170483,
+          "maximum_accepted_error_by_block": [
+            0.6686161173170483,
+            0.37672878792693487
+          ],
+          "max_endpoint_relative_power_error": 4.627820228364499e-06,
+          "max_common_grid_relative_power_error": 0.022065801150819464,
+          "max_relative_power_error": 0.022065801150819464,
+          "final_relative_precursor_error": 4.552701601268083e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.7072948672937e-09,
+          "maximum_accepted_width_s": 0.01799459178647206
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 56,
+          "rejected_steps": 2,
+          "implicit_solves": 174,
+          "krylov_iterations": 174,
+          "fgmres_iterations": 174,
+          "operator_rebuilds": 175,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.4875696297705028,
+          "maximum_accepted_error_by_block": [
+            0.4875696297705028,
+            0.4874484505909133
+          ],
+          "max_endpoint_relative_power_error": 0.0008367006369358609,
+          "max_common_grid_relative_power_error": 0.027152259630938813,
+          "max_relative_power_error": 0.027152259630938813,
+          "final_relative_precursor_error": 0.00026758134051030336,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.001,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 107,
+          "rejected_steps": 2,
+          "implicit_solves": 327,
+          "krylov_iterations": 327,
+          "fgmres_iterations": 327,
+          "operator_rebuilds": 328,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7993032388244589,
+          "maximum_accepted_error_by_block": [
+            0.7993032388244589,
+            0.5008948594231621
+          ],
+          "max_endpoint_relative_power_error": 0.0002049375725816649,
+          "max_common_grid_relative_power_error": 0.027250438977869607,
+          "max_relative_power_error": 0.027250438977869607,
+          "final_relative_precursor_error": 0.00011070577277094706,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0003579265548811434,
+          "maximum_accepted_width_s": 0.020000000000000018
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 223,
+          "rejected_steps": 3,
+          "implicit_solves": 678,
+          "krylov_iterations": 678,
+          "fgmres_iterations": 678,
+          "operator_rebuilds": 679,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6478628905333935,
+          "maximum_accepted_error_by_block": [
+            0.6478628905333935,
+            0.5171862860266183
+          ],
+          "max_endpoint_relative_power_error": 4.534579346238132e-05,
+          "max_common_grid_relative_power_error": 0.01437656750340155,
+          "max_relative_power_error": 0.01437656750340155,
+          "final_relative_precursor_error": 3.1953562173558936e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00011249734278222939,
+          "maximum_accepted_width_s": 0.014556234259768541
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 471,
+          "rejected_steps": 4,
+          "implicit_solves": 1425,
+          "krylov_iterations": 1425,
+          "fgmres_iterations": 1425,
+          "operator_rebuilds": 1426,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6412392637453657,
+          "maximum_accepted_error_by_block": [
+            0.6412392637453657,
+            0.532406809507386
+          ],
+          "max_endpoint_relative_power_error": 1.0056891429632842e-05,
+          "max_common_grid_relative_power_error": 0.003468282078096907,
+          "max_relative_power_error": 0.003468282078096907,
+          "final_relative_precursor_error": 7.5258016326573696e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.55148357790468e-05,
+          "maximum_accepted_width_s": 0.007164653734824777
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 1005,
+          "rejected_steps": 5,
+          "implicit_solves": 3030,
+          "krylov_iterations": 3030,
+          "fgmres_iterations": 3030,
+          "operator_rebuilds": 3031,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5551178253967574,
+          "maximum_accepted_error_by_block": [
+            0.5551178253967574,
+            0.5375984232421229
+          ],
+          "max_endpoint_relative_power_error": 2.189300655652815e-06,
+          "max_common_grid_relative_power_error": 0.000822758609007268,
+          "max_relative_power_error": 0.000822758609007268,
+          "final_relative_precursor_error": 1.697233840469714e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.000000000000001e-06,
+          "maximum_accepted_width_s": 0.003491836410126292
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.001
+          },
+          "accepted_steps": 75,
+          "rejected_steps": 2,
+          "implicit_solves": 231,
+          "krylov_iterations": 231,
+          "fgmres_iterations": 231,
+          "operator_rebuilds": 232,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5314654901554005,
+          "maximum_accepted_error_by_block": [
+            0.5314654901554005,
+            0.511533640921265
+          ],
+          "max_endpoint_relative_power_error": 0.025958166757234613,
+          "max_common_grid_relative_power_error": 0.02941689335572728,
+          "max_relative_power_error": 0.02941689335572728,
+          "final_relative_precursor_error": 0.025936817355933117,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.001,
+          "maximum_accepted_width_s": 0.007444880800709763
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 156,
+          "rejected_steps": 2,
+          "implicit_solves": 474,
+          "krylov_iterations": 474,
+          "fgmres_iterations": 474,
+          "operator_rebuilds": 475,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8057471475023344,
+          "maximum_accepted_error_by_block": [
+            0.8057471475023344,
+            0.5115476103884767
+          ],
+          "max_endpoint_relative_power_error": 0.005785653079672937,
+          "max_common_grid_relative_power_error": 0.006539959503485848,
+          "max_relative_power_error": 0.006539959503485848,
+          "final_relative_precursor_error": 0.005780894644926482,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00035649243680178515,
+          "maximum_accepted_width_s": 0.0034517364890953584
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 330,
+          "rejected_steps": 3,
+          "implicit_solves": 999,
+          "krylov_iterations": 999,
+          "fgmres_iterations": 999,
+          "operator_rebuilds": 1000,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6441687515464966,
+          "maximum_accepted_error_by_block": [
+            0.6441687515464966,
+            0.5115704662919555
+          ],
+          "max_endpoint_relative_power_error": 0.001264464227756612,
+          "max_common_grid_relative_power_error": 0.001434425542182538,
+          "max_relative_power_error": 0.001434425542182538,
+          "final_relative_precursor_error": 0.0012634242636302417,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00011236741398817671,
+          "maximum_accepted_width_s": 0.0015999345427002987
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 702,
+          "rejected_steps": 4,
+          "implicit_solves": 2118,
+          "krylov_iterations": 2118,
+          "fgmres_iterations": 2118,
+          "operator_rebuilds": 2119,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.640660616625104,
+          "maximum_accepted_error_by_block": [
+            0.640660616625104,
+            0.5115734950688898
+          ],
+          "max_endpoint_relative_power_error": 0.00027455525855835106,
+          "max_common_grid_relative_power_error": 0.00031138266333319287,
+          "max_relative_power_error": 0.00031138266333319287,
+          "final_relative_precursor_error": 0.0002743294493492421,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.550195046416365e-05,
+          "maximum_accepted_width_s": 0.000742006631598513
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 1503,
+          "rejected_steps": 5,
+          "implicit_solves": 4524,
+          "krylov_iterations": 4524,
+          "fgmres_iterations": 4524,
+          "operator_rebuilds": 4525,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.567624091166022,
+          "maximum_accepted_error_by_block": [
+            0.567624091166022,
+            0.5115775764310183
+          ],
+          "max_endpoint_relative_power_error": 5.937193073735081e-05,
+          "max_common_grid_relative_power_error": 6.727170197851073e-05,
+          "max_relative_power_error": 6.727170197851073e-05,
+          "final_relative_precursor_error": 5.932309999390206e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.000000000000001e-06,
+          "maximum_accepted_width_s": 0.00034426210417198844
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001
+          },
+          "accepted_steps": 51,
+          "rejected_steps": 11,
+          "implicit_solves": 62,
+          "krylov_iterations": 62,
+          "fgmres_iterations": 62,
+          "operator_rebuilds": 63,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9193351615728439,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 0.002428440641955021,
+          "max_common_grid_relative_power_error": 0.02020758497858277,
+          "max_relative_power_error": 0.02020758497858277,
+          "final_relative_precursor_error": 0.0024264433674603403,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 9.733281899826878e-06,
+          "maximum_accepted_width_s": 0.01586177994360846
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 78,
+          "rejected_steps": 15,
+          "implicit_solves": 93,
+          "krylov_iterations": 93,
+          "fgmres_iterations": 93,
+          "operator_rebuilds": 94,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9936930502988315,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 0.00036268646614456834,
+          "max_common_grid_relative_power_error": 0.00687663896931312,
+          "max_relative_power_error": 0.00687663896931312,
+          "final_relative_precursor_error": 0.0003623881743526347,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.0880147777982785e-06,
+          "maximum_accepted_width_s": 0.009153509950239336
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 114,
+          "rejected_steps": 21,
+          "implicit_solves": 135,
+          "krylov_iterations": 135,
+          "fgmres_iterations": 135,
+          "operator_rebuilds": 136,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5853606590004553,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 4.780288582151293e-05,
+          "max_common_grid_relative_power_error": 0.0033292537828046864,
+          "max_relative_power_error": 0.0033292537828046864,
+          "final_relative_precursor_error": 4.776357028690725e-05,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.62939453125e-08,
+          "maximum_accepted_width_s": 0.006168313313091756
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 161,
+          "rejected_steps": 22,
+          "implicit_solves": 183,
+          "krylov_iterations": 183,
+          "fgmres_iterations": 183,
+          "operator_rebuilds": 184,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6294229215977949,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 6.453233982295359e-06,
+          "max_common_grid_relative_power_error": 0.00208249823300366,
+          "max_relative_power_error": 0.00208249823300366,
+          "final_relative_precursor_error": 6.447926460317888e-06,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 9.5367431640625e-09,
+          "maximum_accepted_width_s": 0.004498524277139239
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 235,
+          "rejected_steps": 26,
+          "implicit_solves": 261,
+          "krylov_iterations": 261,
+          "fgmres_iterations": 261,
+          "operator_rebuilds": 262,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8130619501576923,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 9.468353530106555e-07,
+          "max_common_grid_relative_power_error": 0.0009660666480102442,
+          "max_relative_power_error": 0.0009660666480102442,
+          "final_relative_precursor_error": 9.46056589956612e-07,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.0751608683318112e-09,
+          "maximum_accepted_width_s": 0.0028203830073735715
+        }
+      ],
+      "fewest_tested_solves_at_budget": {
+        "0.01": {
+          "ftm2-lagged": null,
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 1e-06
+            },
+            "accepted_steps": 471,
+            "rejected_steps": 4,
+            "implicit_solves": 1425,
+            "krylov_iterations": 1425,
+            "fgmres_iterations": 1425,
+            "operator_rebuilds": 1426,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.6412392637453657,
+            "maximum_accepted_error_by_block": [
+              0.6412392637453657,
+              0.532406809507386
+            ],
+            "max_endpoint_relative_power_error": 1.0056891429632842e-05,
+            "max_common_grid_relative_power_error": 0.003468282078096907,
+            "max_relative_power_error": 0.003468282078096907,
+            "final_relative_precursor_error": 7.5258016326573696e-06,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 3.55148357790468e-05,
+            "maximum_accepted_width_s": 0.007164653734824777
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 156,
+            "rejected_steps": 2,
+            "implicit_solves": 474,
+            "krylov_iterations": 474,
+            "fgmres_iterations": 474,
+            "operator_rebuilds": 475,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8057471475023344,
+            "maximum_accepted_error_by_block": [
+              0.8057471475023344,
+              0.5115476103884767
+            ],
+            "max_endpoint_relative_power_error": 0.005785653079672937,
+            "max_common_grid_relative_power_error": 0.006539959503485848,
+            "max_relative_power_error": 0.006539959503485848,
+            "final_relative_precursor_error": 0.005780894644926482,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00035649243680178515,
+            "maximum_accepted_width_s": 0.0034517364890953584
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 78,
+            "rejected_steps": 15,
+            "implicit_solves": 93,
+            "krylov_iterations": 93,
+            "fgmres_iterations": 93,
+            "operator_rebuilds": 94,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9936930502988315,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 0.00036268646614456834,
+            "max_common_grid_relative_power_error": 0.00687663896931312,
+            "max_relative_power_error": 0.00687663896931312,
+            "final_relative_precursor_error": 0.0003623881743526347,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 1.0880147777982785e-06,
+            "maximum_accepted_width_s": 0.009153509950239336
+          }
+        },
+        "0.001": {
+          "ftm2-lagged": null,
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 1e-07
+            },
+            "accepted_steps": 1005,
+            "rejected_steps": 5,
+            "implicit_solves": 3030,
+            "krylov_iterations": 3030,
+            "fgmres_iterations": 3030,
+            "operator_rebuilds": 3031,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.5551178253967574,
+            "maximum_accepted_error_by_block": [
+              0.5551178253967574,
+              0.5375984232421229
+            ],
+            "max_endpoint_relative_power_error": 2.189300655652815e-06,
+            "max_common_grid_relative_power_error": 0.000822758609007268,
+            "max_relative_power_error": 0.000822758609007268,
+            "final_relative_precursor_error": 1.697233840469714e-06,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 8.000000000000001e-06,
+            "maximum_accepted_width_s": 0.003491836410126292
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 1e-06
+            },
+            "accepted_steps": 702,
+            "rejected_steps": 4,
+            "implicit_solves": 2118,
+            "krylov_iterations": 2118,
+            "fgmres_iterations": 2118,
+            "operator_rebuilds": 2119,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.640660616625104,
+            "maximum_accepted_error_by_block": [
+              0.640660616625104,
+              0.5115734950688898
+            ],
+            "max_endpoint_relative_power_error": 0.00027455525855835106,
+            "max_common_grid_relative_power_error": 0.00031138266333319287,
+            "max_relative_power_error": 0.00031138266333319287,
+            "final_relative_precursor_error": 0.0002743294493492421,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 3.550195046416365e-05,
+            "maximum_accepted_width_s": 0.000742006631598513
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 1e-07
+            },
+            "accepted_steps": 235,
+            "rejected_steps": 26,
+            "implicit_solves": 261,
+            "krylov_iterations": 261,
+            "fgmres_iterations": 261,
+            "operator_rebuilds": 262,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8130619501576923,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 9.468353530106555e-07,
+            "max_common_grid_relative_power_error": 0.0009660666480102442,
+            "max_relative_power_error": 0.0009660666480102442,
+            "final_relative_precursor_error": 9.46056589956612e-07,
+            "minimum_power": 1.0,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 1.0751608683318112e-09,
+            "maximum_accepted_width_s": 0.0028203830073735715
+          }
+        }
+      }
+    },
+    "shutdown": {
+      "reactivity": -0.05,
+      "duration_s": 0.2,
+      "event_s": 0.0,
+      "records": [
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 52,
+          "rejected_steps": 6,
+          "implicit_solves": 174,
+          "krylov_iterations": 174,
+          "fgmres_iterations": 174,
+          "operator_rebuilds": 175,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.8244158193329553,
+          "maximum_accepted_error_by_block": [
+            0.8244158193329553,
+            7.325964821312967e-05
+          ],
+          "max_endpoint_relative_power_error": 0.0008256010767733191,
+          "max_common_grid_relative_power_error": 0.010795704652178717,
+          "max_relative_power_error": 0.010795704652178717,
+          "final_relative_precursor_error": 2.8148597164268097e-07,
+          "minimum_power": 0.11346993207366014,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.53373484752696e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 80,
+          "rejected_steps": 9,
+          "implicit_solves": 267,
+          "krylov_iterations": 267,
+          "fgmres_iterations": 267,
+          "operator_rebuilds": 268,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.5762102869445943,
+          "maximum_accepted_error_by_block": [
+            0.5762102869445943,
+            0.00023012815936967988
+          ],
+          "max_endpoint_relative_power_error": 0.00010279612222663381,
+          "max_common_grid_relative_power_error": 0.005483820418904939,
+          "max_relative_power_error": 0.005483820418904939,
+          "final_relative_precursor_error": 5.7087870652949846e-08,
+          "minimum_power": 0.11346990661122988,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 6.452982376021516e-07,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 126,
+          "rejected_steps": 10,
+          "implicit_solves": 408,
+          "krylov_iterations": 408,
+          "fgmres_iterations": 408,
+          "operator_rebuilds": 409,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.7383870213715226,
+          "maximum_accepted_error_by_block": [
+            0.7383870213715226,
+            0.0004635164951724838
+          ],
+          "max_endpoint_relative_power_error": 2.3940526631571757e-05,
+          "max_common_grid_relative_power_error": 0.0019703582230505834,
+          "max_relative_power_error": 0.0019703582230505834,
+          "final_relative_precursor_error": 1.4523958258294556e-08,
+          "minimum_power": 0.11346990178150723,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.92189051286679e-08,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 219,
+          "rejected_steps": 12,
+          "implicit_solves": 693,
+          "krylov_iterations": 693,
+          "fgmres_iterations": 693,
+          "operator_rebuilds": 694,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.672888201366253,
+          "maximum_accepted_error_by_block": [
+            0.672888201366253,
+            0.0007549026031905212
+          ],
+          "max_endpoint_relative_power_error": 4.8961975949168846e-06,
+          "max_common_grid_relative_power_error": 0.0006029414811115075,
+          "max_relative_power_error": 0.0006029414811115075,
+          "final_relative_precursor_error": 3.280950844342101e-09,
+          "minimum_power": 0.11346990050576398,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 6.089225240480307e-09,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 405,
+          "rejected_steps": 13,
+          "implicit_solves": 1254,
+          "krylov_iterations": 1254,
+          "fgmres_iterations": 1254,
+          "operator_rebuilds": 1255,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6851264402329806,
+          "maximum_accepted_error_by_block": [
+            0.6851264402329806,
+            0.0012568511063949044
+          ],
+          "max_endpoint_relative_power_error": 1.070858074658787e-06,
+          "max_common_grid_relative_power_error": 0.0001836787420268493,
+          "max_relative_power_error": 0.0001836787420268493,
+          "final_relative_precursor_error": 7.50803419435897e-10,
+          "minimum_power": 0.11346990021866868,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.414584424866598e-10,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 41,
+          "rejected_steps": 3,
+          "implicit_solves": 132,
+          "krylov_iterations": 132,
+          "fgmres_iterations": 132,
+          "operator_rebuilds": 133,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.7556878123835985,
+          "maximum_accepted_error_by_block": [
+            0.7556878123835985,
+            0.46986364682195714
+          ],
+          "max_endpoint_relative_power_error": 0.0030538791389764786,
+          "max_common_grid_relative_power_error": 0.007554614744747834,
+          "max_relative_power_error": 0.007554614744747834,
+          "final_relative_precursor_error": 0.0030538128169617096,
+          "minimum_power": 0.11381641596884194,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0001310846684270004,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 69,
+          "rejected_steps": 4,
+          "implicit_solves": 219,
+          "krylov_iterations": 219,
+          "fgmres_iterations": 219,
+          "operator_rebuilds": 220,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6866147308972335,
+          "maximum_accepted_error_by_block": [
+            0.6866147308972335,
+            0.5269503571220838
+          ],
+          "max_endpoint_relative_power_error": 0.0008112593827540593,
+          "max_common_grid_relative_power_error": 0.002113466231459693,
+          "max_relative_power_error": 0.002113466231459693,
+          "final_relative_precursor_error": 0.0008112539368860805,
+          "minimum_power": 0.11356195303667635,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4e-05,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 127,
+          "rejected_steps": 5,
+          "implicit_solves": 396,
+          "krylov_iterations": 396,
+          "fgmres_iterations": 396,
+          "operator_rebuilds": 397,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6042840860229097,
+          "maximum_accepted_error_by_block": [
+            0.6042840860229097,
+            0.5608453902417225
+          ],
+          "max_endpoint_relative_power_error": 0.00019200341485858807,
+          "max_common_grid_relative_power_error": 0.0004999961684657439,
+          "max_relative_power_error": 0.0004999961684657439,
+          "final_relative_precursor_error": 0.0001920029704127746,
+          "minimum_power": 0.11349168669135283,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.000000000000001e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 247,
+          "rejected_steps": 5,
+          "implicit_solves": 756,
+          "krylov_iterations": 756,
+          "fgmres_iterations": 756,
+          "operator_rebuilds": 757,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6453196411371209,
+          "maximum_accepted_error_by_block": [
+            0.6453196411371209,
+            0.5490059935053484
+          ],
+          "max_endpoint_relative_power_error": 4.337225744199813e-05,
+          "max_common_grid_relative_power_error": 0.00011314033152376446,
+          "max_relative_power_error": 0.00011314033152376446,
+          "final_relative_precursor_error": 4.3372222277682226e-05,
+          "minimum_power": 0.11347482157520523,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.9554136275486925e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 505,
+          "rejected_steps": 6,
+          "implicit_solves": 1533,
+          "krylov_iterations": 1533,
+          "fgmres_iterations": 1533,
+          "operator_rebuilds": 1534,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6408608257402193,
+          "maximum_accepted_error_by_block": [
+            0.6408608257402193,
+            0.555947595888173
+          ],
+          "max_endpoint_relative_power_error": 9.551435896426597e-06,
+          "max_common_grid_relative_power_error": 2.46321617112244e-05,
+          "max_relative_power_error": 2.46321617112244e-05,
+          "final_relative_precursor_error": 9.551429792420407e-06,
+          "minimum_power": 0.11347098393325981,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.249638630889016e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.001
+          },
+          "accepted_steps": 45,
+          "rejected_steps": 3,
+          "implicit_solves": 144,
+          "krylov_iterations": 144,
+          "fgmres_iterations": 144,
+          "operator_rebuilds": 143,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7541485663177382,
+          "maximum_accepted_error_by_block": [
+            0.7541485663177382,
+            0.00016178798352310783
+          ],
+          "max_endpoint_relative_power_error": 0.0027555396876765004,
+          "max_common_grid_relative_power_error": 0.0033434416500233155,
+          "max_relative_power_error": 0.0033434416500233155,
+          "final_relative_precursor_error": 1.2704135521346416e-09,
+          "minimum_power": 0.11346989998932121,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00013101057062844834,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 78,
+          "rejected_steps": 4,
+          "implicit_solves": 246,
+          "krylov_iterations": 246,
+          "fgmres_iterations": 246,
+          "operator_rebuilds": 245,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6386953442948595,
+          "maximum_accepted_error_by_block": [
+            0.6386953442948595,
+            0.00013702161456745463
+          ],
+          "max_endpoint_relative_power_error": 0.0006513656320494832,
+          "max_common_grid_relative_power_error": 0.0007954749347742762,
+          "max_relative_power_error": 0.0007954749347742762,
+          "final_relative_precursor_error": 1.2023236850566832e-09,
+          "minimum_power": 0.11346989999704753,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4e-05,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 148,
+          "rejected_steps": 5,
+          "implicit_solves": 459,
+          "krylov_iterations": 459,
+          "fgmres_iterations": 459,
+          "operator_rebuilds": 458,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5493867549432906,
+          "maximum_accepted_error_by_block": [
+            0.5493867549432906,
+            9.734289064319689e-05
+          ],
+          "max_endpoint_relative_power_error": 0.00014628153981854908,
+          "max_common_grid_relative_power_error": 0.00017057504504736087,
+          "max_relative_power_error": 0.00017057504504736087,
+          "final_relative_precursor_error": 1.1424505785839756e-09,
+          "minimum_power": 0.11346990000384093,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.000000000000001e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 293,
+          "rejected_steps": 5,
+          "implicit_solves": 894,
+          "krylov_iterations": 894,
+          "fgmres_iterations": 894,
+          "operator_rebuilds": 893,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6452699987136157,
+          "maximum_accepted_error_by_block": [
+            0.6452699987136157,
+            0.00028329816147836277
+          ],
+          "max_endpoint_relative_power_error": 3.192028166798533e-05,
+          "max_common_grid_relative_power_error": 3.121270622519212e-05,
+          "max_relative_power_error": 3.192028166798533e-05,
+          "final_relative_precursor_error": 1.0596881150348736e-09,
+          "minimum_power": 0.11346990001323225,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 3.9553635261090855e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 606,
+          "rejected_steps": 6,
+          "implicit_solves": 1836,
+          "krylov_iterations": 1836,
+          "fgmres_iterations": 1836,
+          "operator_rebuilds": 1835,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6408529024781728,
+          "maximum_accepted_error_by_block": [
+            0.6408529024781728,
+            0.002833262101898779
+          ],
+          "max_endpoint_relative_power_error": 6.9353668502580845e-06,
+          "max_common_grid_relative_power_error": 7.600350704572989e-06,
+          "max_relative_power_error": 7.600350704572989e-06,
+          "final_relative_precursor_error": 1.0455792898156346e-09,
+          "minimum_power": 0.11346990001483302,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.2496336784274345e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001
+          },
+          "accepted_steps": 192,
+          "rejected_steps": 103,
+          "implicit_solves": 295,
+          "krylov_iterations": 295,
+          "fgmres_iterations": 295,
+          "operator_rebuilds": 290,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9858082553701697,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 0.006059080446757736,
+          "max_common_grid_relative_power_error": 0.0061070051861051855,
+          "max_relative_power_error": 0.0061070051861051855,
+          "final_relative_precursor_error": 7.688887938339661e-06,
+          "minimum_power": 0.11347077259084618,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.1760865348467452e-06,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 73,
+          "rejected_steps": 21,
+          "implicit_solves": 94,
+          "krylov_iterations": 94,
+          "fgmres_iterations": 94,
+          "operator_rebuilds": 89,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7958061211895391,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 6.467311511348939e-05,
+          "max_common_grid_relative_power_error": 0.004189024528310936,
+          "max_relative_power_error": 0.004189024528310936,
+          "final_relative_precursor_error": 7.091889762778081e-06,
+          "minimum_power": 0.11347070484949305,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.52587890625e-07,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 93,
+          "rejected_steps": 21,
+          "implicit_solves": 114,
+          "krylov_iterations": 114,
+          "fgmres_iterations": 114,
+          "operator_rebuilds": 114,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8139356031726139,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 3.7954096474557275e-06,
+          "max_common_grid_relative_power_error": 0.0024624356832907424,
+          "max_relative_power_error": 0.0024624356832907424,
+          "final_relative_precursor_error": 3.7098867973206495e-06,
+          "minimum_power": 0.11347032109401088,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.9073486328125e-08,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 130,
+          "rejected_steps": 24,
+          "implicit_solves": 154,
+          "krylov_iterations": 154,
+          "fgmres_iterations": 154,
+          "operator_rebuilds": 151,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8117754634491351,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 5.829922307132307e-07,
+          "max_common_grid_relative_power_error": 0.0010799738062887698,
+          "max_relative_power_error": 0.0010799738062887698,
+          "final_relative_precursor_error": 5.294004234990268e-09,
+          "minimum_power": 0.11346989953273304,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.1503217910253036e-09,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 181,
+          "rejected_steps": 28,
+          "implicit_solves": 209,
+          "krylov_iterations": 209,
+          "fgmres_iterations": 209,
+          "operator_rebuilds": 208,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9834737051988803,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 1.0037037423415995e-07,
+          "max_common_grid_relative_power_error": 0.0004520093521129809,
+          "max_relative_power_error": 0.0004520093521129809,
+          "final_relative_precursor_error": 2.8844968635866053e-09,
+          "minimum_power": 0.1134698998061822,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.4041330465518106e-10,
+          "maximum_accepted_width_s": 0.020000000000000004
+        }
+      ],
+      "fewest_tested_solves_at_budget": {
+        "0.01": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 80,
+            "rejected_steps": 9,
+            "implicit_solves": 267,
+            "krylov_iterations": 267,
+            "fgmres_iterations": 267,
+            "operator_rebuilds": 268,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.5762102869445943,
+            "maximum_accepted_error_by_block": [
+              0.5762102869445943,
+              0.00023012815936967988
+            ],
+            "max_endpoint_relative_power_error": 0.00010279612222663381,
+            "max_common_grid_relative_power_error": 0.005483820418904939,
+            "max_relative_power_error": 0.005483820418904939,
+            "final_relative_precursor_error": 5.7087870652949846e-08,
+            "minimum_power": 0.11346990661122988,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 6.452982376021516e-07,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 41,
+            "rejected_steps": 3,
+            "implicit_solves": 132,
+            "krylov_iterations": 132,
+            "fgmres_iterations": 132,
+            "operator_rebuilds": 133,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.7556878123835985,
+            "maximum_accepted_error_by_block": [
+              0.7556878123835985,
+              0.46986364682195714
+            ],
+            "max_endpoint_relative_power_error": 0.0030538791389764786,
+            "max_common_grid_relative_power_error": 0.007554614744747834,
+            "max_relative_power_error": 0.007554614744747834,
+            "final_relative_precursor_error": 0.0030538128169617096,
+            "minimum_power": 0.11381641596884194,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.0001310846684270004,
+            "maximum_accepted_width_s": 0.020000000000000004
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.001
+            },
+            "accepted_steps": 45,
+            "rejected_steps": 3,
+            "implicit_solves": 144,
+            "krylov_iterations": 144,
+            "fgmres_iterations": 144,
+            "operator_rebuilds": 143,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.7541485663177382,
+            "maximum_accepted_error_by_block": [
+              0.7541485663177382,
+              0.00016178798352310783
+            ],
+            "max_endpoint_relative_power_error": 0.0027555396876765004,
+            "max_common_grid_relative_power_error": 0.0033434416500233155,
+            "max_relative_power_error": 0.0033434416500233155,
+            "final_relative_precursor_error": 1.2704135521346416e-09,
+            "minimum_power": 0.11346989998932121,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00013101057062844834,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 73,
+            "rejected_steps": 21,
+            "implicit_solves": 94,
+            "krylov_iterations": 94,
+            "fgmres_iterations": 94,
+            "operator_rebuilds": 89,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.7958061211895391,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 6.467311511348939e-05,
+            "max_common_grid_relative_power_error": 0.004189024528310936,
+            "max_relative_power_error": 0.004189024528310936,
+            "final_relative_precursor_error": 7.091889762778081e-06,
+            "minimum_power": 0.11347070484949305,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 1.52587890625e-07,
+            "maximum_accepted_width_s": 0.020000000000000004
+          }
+        },
+        "0.001": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 1e-06
+            },
+            "accepted_steps": 219,
+            "rejected_steps": 12,
+            "implicit_solves": 693,
+            "krylov_iterations": 693,
+            "fgmres_iterations": 693,
+            "operator_rebuilds": 694,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.672888201366253,
+            "maximum_accepted_error_by_block": [
+              0.672888201366253,
+              0.0007549026031905212
+            ],
+            "max_endpoint_relative_power_error": 4.8961975949168846e-06,
+            "max_common_grid_relative_power_error": 0.0006029414811115075,
+            "max_relative_power_error": 0.0006029414811115075,
+            "final_relative_precursor_error": 3.280950844342101e-09,
+            "minimum_power": 0.11346990050576398,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 6.089225240480307e-09,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 1e-05
+            },
+            "accepted_steps": 127,
+            "rejected_steps": 5,
+            "implicit_solves": 396,
+            "krylov_iterations": 396,
+            "fgmres_iterations": 396,
+            "operator_rebuilds": 397,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.6042840860229097,
+            "maximum_accepted_error_by_block": [
+              0.6042840860229097,
+              0.5608453902417225
+            ],
+            "max_endpoint_relative_power_error": 0.00019200341485858807,
+            "max_common_grid_relative_power_error": 0.0004999961684657439,
+            "max_relative_power_error": 0.0004999961684657439,
+            "final_relative_precursor_error": 0.0001920029704127746,
+            "minimum_power": 0.11349168669135283,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 8.000000000000001e-06,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 78,
+            "rejected_steps": 4,
+            "implicit_solves": 246,
+            "krylov_iterations": 246,
+            "fgmres_iterations": 246,
+            "operator_rebuilds": 245,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.6386953442948595,
+            "maximum_accepted_error_by_block": [
+              0.6386953442948595,
+              0.00013702161456745463
+            ],
+            "max_endpoint_relative_power_error": 0.0006513656320494832,
+            "max_common_grid_relative_power_error": 0.0007954749347742762,
+            "max_relative_power_error": 0.0007954749347742762,
+            "final_relative_precursor_error": 1.2023236850566832e-09,
+            "minimum_power": 0.11346989999704753,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 4e-05,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 1e-07
+            },
+            "accepted_steps": 181,
+            "rejected_steps": 28,
+            "implicit_solves": 209,
+            "krylov_iterations": 209,
+            "fgmres_iterations": 209,
+            "operator_rebuilds": 208,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9834737051988803,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 1.0037037423415995e-07,
+            "max_common_grid_relative_power_error": 0.0004520093521129809,
+            "max_relative_power_error": 0.0004520093521129809,
+            "final_relative_precursor_error": 2.8844968635866053e-09,
+            "minimum_power": 0.1134698998061822,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 2.4041330465518106e-10,
+            "maximum_accepted_width_s": 0.020000000000000004
+          }
+        }
+      }
+    },
+    "interior-shutdown": {
+      "reactivity": -0.05,
+      "duration_s": 0.25,
+      "event_s": 0.05,
+      "records": [
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 58,
+          "rejected_steps": 7,
+          "implicit_solves": 195,
+          "krylov_iterations": 183,
+          "fgmres_iterations": 183,
+          "operator_rebuilds": 191,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.7201781155825491,
+          "maximum_accepted_error_by_block": [
+            0.7201781155825491,
+            7.209130365028795e-05
+          ],
+          "max_endpoint_relative_power_error": 0.0005161249600218465,
+          "max_common_grid_relative_power_error": 0.010543193438775855,
+          "max_relative_power_error": 0.010543193438775855,
+          "final_relative_precursor_error": 2.1575863096146009e-07,
+          "minimum_power": 0.11346992461558536,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 6.239251400044776e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 84,
+          "rejected_steps": 9,
+          "implicit_solves": 279,
+          "krylov_iterations": 267,
+          "fgmres_iterations": 267,
+          "operator_rebuilds": 275,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.67499873258825,
+          "maximum_accepted_error_by_block": [
+            0.67499873258825,
+            0.00021312135739932973
+          ],
+          "max_endpoint_relative_power_error": 0.0001105672181020978,
+          "max_common_grid_relative_power_error": 0.005294203224121885,
+          "max_relative_power_error": 0.005294203224121885,
+          "final_relative_precursor_error": 5.8705537542280695e-08,
+          "minimum_power": 0.1134699067947865,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 7.46226949135953e-07,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 129,
+          "rejected_steps": 10,
+          "implicit_solves": 417,
+          "krylov_iterations": 405,
+          "fgmres_iterations": 405,
+          "operator_rebuilds": 413,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.918011622964343,
+          "maximum_accepted_error_by_block": [
+            0.918011622964343,
+            0.0004178829720167311
+          ],
+          "max_endpoint_relative_power_error": 2.507726414702205e-05,
+          "max_common_grid_relative_power_error": 0.0018508701975812336,
+          "max_relative_power_error": 0.0018508701975812336,
+          "final_relative_precursor_error": 1.4742427945080294e-08,
+          "minimum_power": 0.11346990180629664,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 9.159515585582811e-08,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 222,
+          "rejected_steps": 12,
+          "implicit_solves": 702,
+          "krylov_iterations": 690,
+          "fgmres_iterations": 690,
+          "operator_rebuilds": 698,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.9915092814606243,
+          "maximum_accepted_error_by_block": [
+            0.9915092814606243,
+            0.0010748229796494742
+          ],
+          "max_endpoint_relative_power_error": 4.963571912819376e-06,
+          "max_common_grid_relative_power_error": 0.0007472466698239533,
+          "max_relative_power_error": 0.0007472466698239533,
+          "final_relative_precursor_error": 3.433288986443017e-09,
+          "minimum_power": 0.11346990052305002,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 6.981080026557951e-09,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 408,
+          "rejected_steps": 13,
+          "implicit_solves": 1263,
+          "krylov_iterations": 1251,
+          "fgmres_iterations": 1251,
+          "operator_rebuilds": 1259,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.9200680618993243,
+          "maximum_accepted_error_by_block": [
+            0.9200680618993243,
+            0.001928087858061062
+          ],
+          "max_endpoint_relative_power_error": 1.0812497057699488e-06,
+          "max_common_grid_relative_power_error": 0.00023808467361696728,
+          "max_relative_power_error": 0.00023808467361696728,
+          "final_relative_precursor_error": 7.816940428284624e-10,
+          "minimum_power": 0.11346990022217374,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 8.572651755134331e-10,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.001
+          },
+          "accepted_steps": 45,
+          "rejected_steps": 3,
+          "implicit_solves": 144,
+          "krylov_iterations": 132,
+          "fgmres_iterations": 132,
+          "operator_rebuilds": 144,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.8747880662729555,
+          "maximum_accepted_error_by_block": [
+            0.8747880662729555,
+            0.4699023452017666
+          ],
+          "max_endpoint_relative_power_error": 0.003047445625938394,
+          "max_common_grid_relative_power_error": 0.007560410299886522,
+          "max_relative_power_error": 0.007560410299886522,
+          "final_relative_precursor_error": 0.003047381016121342,
+          "minimum_power": 0.11381568615304309,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.00013158184833109848,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 73,
+          "rejected_steps": 4,
+          "implicit_solves": 231,
+          "krylov_iterations": 219,
+          "fgmres_iterations": 219,
+          "operator_rebuilds": 231,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6856501100183009,
+          "maximum_accepted_error_by_block": [
+            0.6856501100183009,
+            0.5270487866589413
+          ],
+          "max_endpoint_relative_power_error": 0.0008110298312939968,
+          "max_common_grid_relative_power_error": 0.0021087903561625154,
+          "max_relative_power_error": 0.0021087903561625154,
+          "final_relative_precursor_error": 0.0008110244181795956,
+          "minimum_power": 0.1135619269932117,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4.0063622268216026e-05,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 130,
+          "rejected_steps": 5,
+          "implicit_solves": 405,
+          "krylov_iterations": 393,
+          "fgmres_iterations": 393,
+          "operator_rebuilds": 405,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.6459624713102129,
+          "maximum_accepted_error_by_block": [
+            0.6459624713102129,
+            0.541684499110324
+          ],
+          "max_endpoint_relative_power_error": 0.00019234411628810122,
+          "max_common_grid_relative_power_error": 0.0005053126134970665,
+          "max_relative_power_error": 0.0005053126134970665,
+          "final_relative_precursor_error": 0.00019234360009501295,
+          "minimum_power": 0.11349172534256897,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.2545339206651573e-05,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 252,
+          "rejected_steps": 6,
+          "implicit_solves": 774,
+          "krylov_iterations": 762,
+          "fgmres_iterations": 762,
+          "operator_rebuilds": 774,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.5622305217103045,
+          "maximum_accepted_error_by_block": [
+            0.5612154669008644,
+            0.5622305217103045
+          ],
+          "max_endpoint_relative_power_error": 4.3354704474474204e-05,
+          "max_common_grid_relative_power_error": 0.00011245203634269174,
+          "max_relative_power_error": 0.00011245203634269174,
+          "final_relative_precursor_error": 4.3354655756555616e-05,
+          "minimum_power": 0.11347481958193391,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.611200000002256e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-lagged",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 509,
+          "rejected_steps": 6,
+          "implicit_solves": 1545,
+          "krylov_iterations": 1533,
+          "fgmres_iterations": 1533,
+          "operator_rebuilds": 1545,
+          "fallback_trial_steps": 1,
+          "maximum_accepted_local_error": 0.64175445331216,
+          "maximum_accepted_error_by_block": [
+            0.64175445331216,
+            0.5559475292768117
+          ],
+          "max_endpoint_relative_power_error": 9.551434345445031e-06,
+          "max_common_grid_relative_power_error": 2.485546723862697e-05,
+          "max_relative_power_error": 2.485546723862697e-05,
+          "final_relative_precursor_error": 9.551428239662485e-06,
+          "minimum_power": 0.11347098393308348,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.2496390103880484e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.001
+          },
+          "accepted_steps": 49,
+          "rejected_steps": 3,
+          "implicit_solves": 156,
+          "krylov_iterations": 144,
+          "fgmres_iterations": 144,
+          "operator_rebuilds": 154,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8708919941289037,
+          "maximum_accepted_error_by_block": [
+            0.8708919941289037,
+            0.00018683274004816785
+          ],
+          "max_endpoint_relative_power_error": 0.002726399679355951,
+          "max_common_grid_relative_power_error": 0.003390931728872948,
+          "max_relative_power_error": 0.003390931728872948,
+          "final_relative_precursor_error": 1.2659955306304482e-09,
+          "minimum_power": 0.1134698999898228,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 0.0001314923022526157,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 82,
+          "rejected_steps": 4,
+          "implicit_solves": 258,
+          "krylov_iterations": 246,
+          "fgmres_iterations": 246,
+          "operator_rebuilds": 256,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6793267133311076,
+          "maximum_accepted_error_by_block": [
+            0.6793267133311076,
+            0.00014573838375425252
+          ],
+          "max_endpoint_relative_power_error": 0.000650290843958512,
+          "max_common_grid_relative_power_error": 0.0007850235089135182,
+          "max_relative_power_error": 0.0007850235089135182,
+          "final_relative_precursor_error": 1.2022058903937705e-09,
+          "minimum_power": 0.11346989999706084,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 4.0058002731657716e-05,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 151,
+          "rejected_steps": 5,
+          "implicit_solves": 468,
+          "krylov_iterations": 456,
+          "fgmres_iterations": 456,
+          "operator_rebuilds": 466,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6459063756594218,
+          "maximum_accepted_error_by_block": [
+            0.6459063756594218,
+            0.0001385691049084522
+          ],
+          "max_endpoint_relative_power_error": 0.00014555998433241069,
+          "max_common_grid_relative_power_error": 0.0001771822746097218,
+          "max_relative_power_error": 0.0001771822746097218,
+          "final_relative_precursor_error": 1.1380775211122796e-09,
+          "minimum_power": 0.11346990000433728,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.2544830469786439e-05,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 298,
+          "rejected_steps": 6,
+          "implicit_solves": 912,
+          "krylov_iterations": 900,
+          "fgmres_iterations": 900,
+          "operator_rebuilds": 910,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.5584028119216168,
+          "maximum_accepted_error_by_block": [
+            0.5584028119216168,
+            0.00028324540437477634
+          ],
+          "max_endpoint_relative_power_error": 3.199582907353893e-05,
+          "max_common_grid_relative_power_error": 3.453608940895414e-05,
+          "max_relative_power_error": 3.453608940895414e-05,
+          "final_relative_precursor_error": 1.066956856199397e-09,
+          "minimum_power": 0.1134699000124074,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.611200000002256e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "ftm-bdf2-zero",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 610,
+          "rejected_steps": 6,
+          "implicit_solves": 1848,
+          "krylov_iterations": 1836,
+          "fgmres_iterations": 1836,
+          "operator_rebuilds": 1846,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.6417382763856949,
+          "maximum_accepted_error_by_block": [
+            0.6417382763856949,
+            0.002833260533743784
+          ],
+          "max_endpoint_relative_power_error": 6.935344027292345e-06,
+          "max_common_grid_relative_power_error": 7.60072368488629e-06,
+          "max_relative_power_error": 7.60072368488629e-06,
+          "final_relative_precursor_error": 1.0456084886811823e-09,
+          "minimum_power": 0.1134699000148299,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.2496340456649713e-06,
+          "maximum_accepted_width_s": 0.01999999999999999
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001
+          },
+          "accepted_steps": 195,
+          "rejected_steps": 104,
+          "implicit_solves": 299,
+          "krylov_iterations": 296,
+          "fgmres_iterations": 296,
+          "operator_rebuilds": 292,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9858082553701697,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 0.006059080446757514,
+          "max_common_grid_relative_power_error": 0.006103394550682539,
+          "max_relative_power_error": 0.006103394550682539,
+          "final_relative_precursor_error": 7.688887938339661e-06,
+          "minimum_power": 0.11347077259084618,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.1760865348482983e-06,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001
+          },
+          "accepted_steps": 76,
+          "rejected_steps": 22,
+          "implicit_solves": 98,
+          "krylov_iterations": 95,
+          "fgmres_iterations": 95,
+          "operator_rebuilds": 91,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.7958061211895391,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 6.46731151110469e-05,
+          "max_common_grid_relative_power_error": 0.0041907146692001795,
+          "max_relative_power_error": 0.0041907146692001795,
+          "final_relative_precursor_error": 7.091889762778081e-06,
+          "minimum_power": 0.11347070484949305,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.5258789062833067e-07,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-05
+          },
+          "accepted_steps": 96,
+          "rejected_steps": 22,
+          "implicit_solves": 118,
+          "krylov_iterations": 115,
+          "fgmres_iterations": 115,
+          "operator_rebuilds": 116,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8139356031726139,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 3.7954096474557275e-06,
+          "max_common_grid_relative_power_error": 0.002457760087555494,
+          "max_relative_power_error": 0.002457760087555494,
+          "final_relative_precursor_error": 3.7098867973206495e-06,
+          "minimum_power": 0.11347032109401088,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 1.9073486325071887e-08,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-06
+          },
+          "accepted_steps": 133,
+          "rejected_steps": 25,
+          "implicit_solves": 158,
+          "krylov_iterations": 155,
+          "fgmres_iterations": 155,
+          "operator_rebuilds": 153,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.8117754634491351,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 5.829922322675429e-07,
+          "max_common_grid_relative_power_error": 0.001080663126572734,
+          "max_relative_power_error": 0.001080663126572734,
+          "final_relative_precursor_error": 5.294004234990268e-09,
+          "minimum_power": 0.11346989953273309,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.15032178868535e-09,
+          "maximum_accepted_width_s": 0.020000000000000004
+        },
+        {
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 1e-07
+          },
+          "accepted_steps": 184,
+          "rejected_steps": 29,
+          "implicit_solves": 213,
+          "krylov_iterations": 210,
+          "fgmres_iterations": 210,
+          "operator_rebuilds": 210,
+          "fallback_trial_steps": 0,
+          "maximum_accepted_local_error": 0.9834737051988803,
+          "maximum_accepted_error_by_block": null,
+          "max_endpoint_relative_power_error": 1.0037037534438298e-07,
+          "max_common_grid_relative_power_error": 0.00045021174511439277,
+          "max_relative_power_error": 0.00045021174511439277,
+          "final_relative_precursor_error": 2.8844966415420004e-09,
+          "minimum_power": 0.11346989980618216,
+          "wrong_direction_increments": 0,
+          "minimum_accepted_width_s": 2.4041330731749966e-10,
+          "maximum_accepted_width_s": 0.020000000000000004
+        }
+      ],
+      "fewest_tested_solves_at_budget": {
+        "0.01": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 84,
+            "rejected_steps": 9,
+            "implicit_solves": 279,
+            "krylov_iterations": 267,
+            "fgmres_iterations": 267,
+            "operator_rebuilds": 275,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.67499873258825,
+            "maximum_accepted_error_by_block": [
+              0.67499873258825,
+              0.00021312135739932973
+            ],
+            "max_endpoint_relative_power_error": 0.0001105672181020978,
+            "max_common_grid_relative_power_error": 0.005294203224121885,
+            "max_relative_power_error": 0.005294203224121885,
+            "final_relative_precursor_error": 5.8705537542280695e-08,
+            "minimum_power": 0.1134699067947865,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 7.46226949135953e-07,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 0.001
+            },
+            "accepted_steps": 45,
+            "rejected_steps": 3,
+            "implicit_solves": 144,
+            "krylov_iterations": 132,
+            "fgmres_iterations": 132,
+            "operator_rebuilds": 144,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.8747880662729555,
+            "maximum_accepted_error_by_block": [
+              0.8747880662729555,
+              0.4699023452017666
+            ],
+            "max_endpoint_relative_power_error": 0.003047445625938394,
+            "max_common_grid_relative_power_error": 0.007560410299886522,
+            "max_relative_power_error": 0.007560410299886522,
+            "final_relative_precursor_error": 0.003047381016121342,
+            "minimum_power": 0.11381568615304309,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.00013158184833109848,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.001
+            },
+            "accepted_steps": 49,
+            "rejected_steps": 3,
+            "implicit_solves": 156,
+            "krylov_iterations": 144,
+            "fgmres_iterations": 144,
+            "operator_rebuilds": 154,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.8708919941289037,
+            "maximum_accepted_error_by_block": [
+              0.8708919941289037,
+              0.00018683274004816785
+            ],
+            "max_endpoint_relative_power_error": 0.002726399679355951,
+            "max_common_grid_relative_power_error": 0.003390931728872948,
+            "max_relative_power_error": 0.003390931728872948,
+            "final_relative_precursor_error": 1.2659955306304482e-09,
+            "minimum_power": 0.1134698999898228,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 0.0001314923022526157,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 76,
+            "rejected_steps": 22,
+            "implicit_solves": 98,
+            "krylov_iterations": 95,
+            "fgmres_iterations": 95,
+            "operator_rebuilds": 91,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.7958061211895391,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 6.46731151110469e-05,
+            "max_common_grid_relative_power_error": 0.0041907146692001795,
+            "max_relative_power_error": 0.0041907146692001795,
+            "final_relative_precursor_error": 7.091889762778081e-06,
+            "minimum_power": 0.11347070484949305,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 1.5258789062833067e-07,
+            "maximum_accepted_width_s": 0.020000000000000004
+          }
+        },
+        "0.001": {
+          "ftm2-lagged": {
+            "configuration": {
+              "method": "ftm2-lagged",
+              "rtol": 1e-06
+            },
+            "accepted_steps": 222,
+            "rejected_steps": 12,
+            "implicit_solves": 702,
+            "krylov_iterations": 690,
+            "fgmres_iterations": 690,
+            "operator_rebuilds": 698,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.9915092814606243,
+            "maximum_accepted_error_by_block": [
+              0.9915092814606243,
+              0.0010748229796494742
+            ],
+            "max_endpoint_relative_power_error": 4.963571912819376e-06,
+            "max_common_grid_relative_power_error": 0.0007472466698239533,
+            "max_relative_power_error": 0.0007472466698239533,
+            "final_relative_precursor_error": 3.433288986443017e-09,
+            "minimum_power": 0.11346990052305002,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 6.981080026557951e-09,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-lagged": {
+            "configuration": {
+              "method": "ftm-bdf2-lagged",
+              "rtol": 1e-05
+            },
+            "accepted_steps": 130,
+            "rejected_steps": 5,
+            "implicit_solves": 405,
+            "krylov_iterations": 393,
+            "fgmres_iterations": 393,
+            "operator_rebuilds": 405,
+            "fallback_trial_steps": 1,
+            "maximum_accepted_local_error": 0.6459624713102129,
+            "maximum_accepted_error_by_block": [
+              0.6459624713102129,
+              0.541684499110324
+            ],
+            "max_endpoint_relative_power_error": 0.00019234411628810122,
+            "max_common_grid_relative_power_error": 0.0005053126134970665,
+            "max_relative_power_error": 0.0005053126134970665,
+            "final_relative_precursor_error": 0.00019234360009501295,
+            "minimum_power": 0.11349172534256897,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 1.2545339206651573e-05,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "ftm-bdf2-zero": {
+            "configuration": {
+              "method": "ftm-bdf2-zero",
+              "rtol": 0.0001
+            },
+            "accepted_steps": 82,
+            "rejected_steps": 4,
+            "implicit_solves": 258,
+            "krylov_iterations": 246,
+            "fgmres_iterations": 246,
+            "operator_rebuilds": 256,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.6793267133311076,
+            "maximum_accepted_error_by_block": [
+              0.6793267133311076,
+              0.00014573838375425252
+            ],
+            "max_endpoint_relative_power_error": 0.000650290843958512,
+            "max_common_grid_relative_power_error": 0.0007850235089135182,
+            "max_relative_power_error": 0.0007850235089135182,
+            "final_relative_precursor_error": 1.2022058903937705e-09,
+            "minimum_power": 0.11346989999706084,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 4.0058002731657716e-05,
+            "maximum_accepted_width_s": 0.01999999999999999
+          },
+          "adaptive-bdf": {
+            "configuration": {
+              "method": "adaptive-bdf",
+              "rtol": 1e-07
+            },
+            "accepted_steps": 184,
+            "rejected_steps": 29,
+            "implicit_solves": 213,
+            "krylov_iterations": 210,
+            "fgmres_iterations": 210,
+            "operator_rebuilds": 210,
+            "fallback_trial_steps": 0,
+            "maximum_accepted_local_error": 0.9834737051988803,
+            "maximum_accepted_error_by_block": null,
+            "max_endpoint_relative_power_error": 1.0037037534438298e-07,
+            "max_common_grid_relative_power_error": 0.00045021174511439277,
+            "max_relative_power_error": 0.00045021174511439277,
+            "final_relative_precursor_error": 2.8844966415420004e-09,
+            "minimum_power": 0.11346989980618216,
+            "wrong_direction_increments": 0,
+            "minimum_accepted_width_s": 2.4041330731749966e-10,
+            "maximum_accepted_width_s": 0.020000000000000004
+          }
+        }
+      }
+    }
+  }
+}

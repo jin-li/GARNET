@@ -1,0 +1,13 @@
+{
+  "module": "/tmp/garnet-chunk6-archive-9wt5sta6/installed/garnet/__init__.py",
+  "scheme": "ftm-bdf2",
+  "accepted_steps": 34,
+  "rejected_steps": 3,
+  "history_steps": 29,
+  "implicit_solves": 82,
+  "final_power": 1.3092904260451235,
+  "event_hit": true,
+  "accepted_half_step_replay": true,
+  "audit_reference_identical": true,
+  "callbacks": 34
+}

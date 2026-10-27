@@ -1,0 +1,374 @@
+{
+  "date": "2026-10-26",
+  "source_revision_before_changes": "572ef8088e27e09628d989e7f71f1963acdb7b96",
+  "scope": "TWIGL temporal/spatial error-work gate assessment; promotion conditions unmet",
+  "environment": {
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "9.0.2",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "device": "cpu",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "verification": {
+    "regression": {
+      "tests": 118,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 118,
+      "seconds": 103.683,
+      "record": "benchmark-results/exponential-second-order/chunk7-regression.xml"
+    },
+    "focused_reference": {
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 12,
+      "seconds": 27.271,
+      "record": "benchmark-results/exponential-second-order/chunk7-twigl-verification.xml"
+    }
+  },
+  "distinct_passing_cpu_checks": 118,
+  "verification_overlap": "12 focused checks overlap the 118-case regression; the focused rerun includes the added independent augmented-exponential integral assertion.",
+  "regression_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=/home/poncetma/code/GARNET python3 -m pytest tests/verification/test_exponential_twigl.py tests/verification/test_exponential_adaptive.py tests/verification/test_exponential_estimator.py tests/verification/test_exponential_output.py tests/verification/test_exponential_estimator_ramp.py tests/validation/test_twigl_langenbuch.py -q --junitxml=benchmark-results/exponential-second-order/chunk7-regression.xml",
+  "focused_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest tests/verification/test_exponential_twigl.py -q --junitxml=benchmark-results/exponential-second-order/chunk7-twigl-verification.xml",
+  "reproduction_commands": [
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_twigl",
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_twigl_widths",
+    "python3 -m tools.summarize_exponential_twigl",
+    "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_twigl_resolution"
+  ],
+  "configurations": {
+    "primary_configurations": 72,
+    "shared_mesh_controls": 16,
+    "spatial_audit_controls": 8,
+    "width_configurations": 20
+  },
+  "total_recorded_fv_configurations": 116,
+  "all_source_and_input_fingerprints_verified": true,
+  "maximum_study_temporal_reference_relative_rms_difference": 3.2652766708411537e-09,
+  "maximum_fine_spatial_reference_temporal_relative_rms_difference": 3.2385027057300794e-09,
+  "spatial_shape_budget": 0.001,
+  "spatial_shape_gate_met": false,
+  "performance_promotion_earned": false,
+  "gate_result": "Temporal errors measured independently on each mesh; tuned BDF uses less tested work than every qualifying FTM configuration. Spatial mesh error remains above the declared shape budget, so neither spatial-accuracy nor timing/performance promotion is earned.",
+  "best_tested_work_at_0_1_percent_budget": {
+    "step-2": {
+      "bdf_fewest_solves": 109,
+      "bdf_solve_configuration": {
+        "method": "adaptive-bdf",
+        "rtol": 0.0001,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": false,
+        "max_dt": 0.02
+      },
+      "ftm_fewest_solves": 171,
+      "ftm_solve_configuration": {
+        "method": "ftm2",
+        "rtol": null,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": true
+      },
+      "bdf_fewest_group_pcg": 37221,
+      "ftm_fewest_group_pcg": 54704
+    },
+    "ramp-2": {
+      "bdf_fewest_solves": 92,
+      "bdf_solve_configuration": {
+        "method": "adaptive-bdf",
+        "rtol": 0.001,
+        "max_dt": 0.01
+      },
+      "ftm_fewest_solves": 180,
+      "ftm_solve_configuration": {
+        "method": "ftm2-history",
+        "rtol": 0.001,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": false,
+        "max_dt": 0.02
+      },
+      "bdf_fewest_group_pcg": 41310,
+      "ftm_fewest_group_pcg": 65936
+    },
+    "step-4": {
+      "bdf_fewest_solves": 138,
+      "bdf_solve_configuration": {
+        "method": "adaptive-bdf",
+        "rtol": 1e-05,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": false,
+        "max_dt": 0.02
+      },
+      "ftm_fewest_solves": 171,
+      "ftm_solve_configuration": {
+        "method": "ftm2",
+        "rtol": null,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": true
+      },
+      "bdf_fewest_group_pcg": 85431,
+      "ftm_fewest_group_pcg": 111578
+    },
+    "ramp-4": {
+      "bdf_fewest_solves": 92,
+      "bdf_solve_configuration": {
+        "method": "adaptive-bdf",
+        "rtol": 0.001,
+        "max_dt": 0.01
+      },
+      "ftm_fewest_solves": 178,
+      "ftm_solve_configuration": {
+        "method": "ftm-bdf2-history",
+        "rtol": 0.001,
+        "estimator": null,
+        "frequency": null,
+        "fixed_widths": false,
+        "max_dt": 0.02
+      },
+      "bdf_fewest_group_pcg": 84233,
+      "ftm_fewest_group_pcg": 134614
+    }
+  },
+  "spatial_audits": {
+    "paired_trials": 807,
+    "oracle_failed_state_checks": 0,
+    "history_pass_oracle_fail": 0,
+    "oracle_pass_history_fail": 0
+  },
+  "spatial_audit_limitation": "No eligible reference state failures occurred in these eight spatial audits; agreement does not establish rejection-failure detection.",
+  "spatial_comparisons": {
+    "step": {
+      "fine_refinement": 8,
+      "k0": 0.9131761325321186,
+      "reference_power": {
+        "0.1": 2.06135870570101,
+        "0.5": 2.13123001547766
+      },
+      "temporal_refinement_rms_by_field": [
+        3.2385027057300794e-09,
+        4.2259129589187215e-10,
+        6.06679127617534e-11
+      ],
+      "comparisons": [
+        {
+          "coarse_shape": [
+            20,
+            20
+          ],
+          "fine_shape": [
+            80,
+            80
+          ],
+          "maximum_relative_power_difference": 0.0007546730314647032,
+          "maximum_relative_shape_rms_difference_by_group": [
+            0.004530673334615002,
+            0.0350344863866949
+          ],
+          "final_relative_precursor_rms_difference": 0.018500464536976884,
+          "final_relative_precursor_inventory_difference": 1.0928955358480152e-05,
+          "relative_power_integral_difference": 0.0001396815997991574,
+          "k0_difference": -0.00017521179060664416
+        },
+        {
+          "coarse_shape": [
+            40,
+            40
+          ],
+          "fine_shape": [
+            80,
+            80
+          ],
+          "maximum_relative_power_difference": 0.0004326539249065453,
+          "maximum_relative_shape_rms_difference_by_group": [
+            0.00106920591898386,
+            0.011028875469639349
+          ],
+          "final_relative_precursor_rms_difference": 0.006409262008657062,
+          "final_relative_precursor_inventory_difference": 1.898573687286742e-05,
+          "relative_power_integral_difference": 0.0002441846457532648,
+          "k0_difference": -7.564674979365638e-05
+        }
+      ]
+    },
+    "ramp": {
+      "fine_refinement": 8,
+      "k0": 0.9131761325321186,
+      "reference_power": {
+        "0.1": 1.308491933798905,
+        "0.5": 2.1097646579431513
+      },
+      "temporal_refinement_rms_by_field": [
+        3.0657857099096782e-09,
+        1.545588489102913e-09,
+        3.7223206712413986e-12
+      ],
+      "comparisons": [
+        {
+          "coarse_shape": [
+            20,
+            20
+          ],
+          "fine_shape": [
+            80,
+            80
+          ],
+          "maximum_relative_power_difference": 0.00019103364498984643,
+          "maximum_relative_shape_rms_difference_by_group": [
+            0.004487294674735844,
+            0.0350344863866949
+          ],
+          "final_relative_precursor_rms_difference": 0.018504100610697027,
+          "final_relative_precursor_inventory_difference": 4.9792556309213865e-06,
+          "relative_power_integral_difference": 7.155949841952669e-05,
+          "k0_difference": -0.00017521179060664416
+        },
+        {
+          "coarse_shape": [
+            40,
+            40
+          ],
+          "fine_shape": [
+            80,
+            80
+          ],
+          "maximum_relative_power_difference": 0.0002708279633740762,
+          "maximum_relative_shape_rms_difference_by_group": [
+            0.0010616763922295454,
+            0.011028875469639349
+          ],
+          "final_relative_precursor_rms_difference": 0.006409826248576084,
+          "final_relative_precursor_inventory_difference": 1.445808523925507e-05,
+          "relative_power_integral_difference": 0.00021119313835160636,
+          "k0_difference": -7.564674979365638e-05
+        }
+      ]
+    }
+  },
+  "initial_state_resolution": [
+    {
+      "shape": [
+        20,
+        20
+      ],
+      "k0": 0.913000920741512,
+      "diagnostic_steady_seconds": 0.023395099999106606,
+      "relative_rms_difference_to_320_by_field": [
+        0.0047575798889400445,
+        0.038782191651249624,
+        0.020468567383173656
+      ],
+      "relative_rms_difference_to_next_mesh_by_field": [
+        0.00339567632382496,
+        0.024918776146831988,
+        0.013214140095909046
+      ]
+    },
+    {
+      "shape": [
+        40,
+        40
+      ],
+      "k0": 0.9131004857823249,
+      "diagnostic_steady_seconds": 0.05452989900004468,
+      "relative_rms_difference_to_320_by_field": [
+        0.0014056042067423227,
+        0.015115877336495227,
+        0.008786699023959893
+      ],
+      "relative_rms_difference_to_next_mesh_by_field": [
+        0.0010494555445756182,
+        0.011028875469639312,
+        0.006411664915621034
+      ]
+    },
+    {
+      "shape": [
+        80,
+        80
+      ],
+      "k0": 0.9131761325321186,
+      "diagnostic_steady_seconds": 0.1725559959995735,
+      "relative_rms_difference_to_320_by_field": [
+        0.00036027690282235803,
+        0.004209594970929425,
+        0.0025508410070601245
+      ],
+      "relative_rms_difference_to_next_mesh_by_field": [
+        0.0002868666597091513,
+        0.003336964670962541,
+        0.002021903748573237
+      ]
+    },
+    {
+      "shape": [
+        160,
+        160
+      ],
+      "k0": 0.9132007982315019,
+      "diagnostic_steady_seconds": 1.0281847799997195,
+      "relative_rms_difference_to_320_by_field": [
+        7.364888788646129e-05,
+        0.0008799030846408345,
+        0.0005398088433623357
+      ],
+      "relative_rms_difference_to_next_mesh_by_field": [
+        7.364888788646129e-05,
+        0.0008799030846408345,
+        0.0005398088433623357
+      ]
+    },
+    {
+      "shape": [
+        320,
+        320
+      ],
+      "k0": 0.913207405121163,
+      "diagnostic_steady_seconds": 11.648716480000076,
+      "relative_rms_difference_to_320_by_field": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "resolution_limitation": "160x160 first meets a 0.1% difference to 320x320 for initial fields only; transient and continuum convergence are not established.",
+  "precursor_scope": "Final physical field and inventory only; no unsaved precursor-trajectory guarantee.",
+  "timing_limitation": "Single-run diagnostic seconds only; some studies ran concurrently. No median/interleaved CPU or synchronized GPU speedup claim.",
+  "production_package_unchanged_from_checkpoint6": true,
+  "archive_rebuilt": false,
+  "archive_members_matching_current_source": 63,
+  "archive_sha256": "d7e3d580dc941258efb695789600521766b88eb5c41e4be6d6e2cf34d2f58ab9",
+  "full_repository_suite_repeated": false,
+  "gpu_execution": false,
+  "source_sha256": {
+    "garnet/transient.py": "ab7adf50ab67646cb46d7e0eedd73d5dcd6b99fb85695d677457a9d092d19268",
+    "garnet/timescheme.py": "fcd9db69be189290d6aed506e82be71f4424eff94fe3bade2b6dc42868b90621",
+    "garnet/model.py": "9efa3bb844615e0209fdcbed494be7c1f7a33c5e875e634723c5ed151fcd6e48",
+    "garnet/_model_support.py": "806454a9944cc49bd8d16ded2eda76dfcd7d52636a12391019c7fb70e0ec30f5",
+    "garnet/coupling.py": "2369db2789152bffd7655c72c3e535b969468cd62fa26c6f33f21cfffe3dbbac",
+    "garnet/_exponential.py": "33822bdb773604db32690ecebbe6ac353058bbf89b0d289535cfa854f8f2533c",
+    "garnet/benchmarks/twigl.py": "50e2e17924ee77895b0b3f095e348c185aebef70bb312a30f283fa1b71d429e3",
+    "garnet/stencil.py": "c4c4b586bcf3b0965d07dfd9241667951f963cb94d060fd51ba7b0951e92a06f",
+    "garnet/solver.py": "dad445d5dcfbe558b54eb97b9fb02a49a4c5cc2de504d6a3466a1a5065fc18d1",
+    "tools/assess_exponential_twigl.py": "c0f99261dd81b42f60dc301945755c1fdbf017ed838b5c97cb4f7a5e75876233",
+    "tools/assess_exponential_twigl_widths.py": "9dab255e753bfc66881e026bd3619bf730b24c10b0ff48214b23952df5b6e510",
+    "tools/assess_exponential_twigl_resolution.py": "a568d9a69e65073129cd318ac8f0cedd8c058dda624263c6143b3ce738f35684",
+    "tools/summarize_exponential_twigl.py": "4d8a9e5aa0482343cd0d22e9d545247019b2012b5491257fae114d5d3bda7717",
+    "tests/verification/test_exponential_twigl.py": "9487177aab52fdae9efcd596d1321f5e4c2594ee8ae5fa55ee6d55666646821b"
+  },
+  "evidence_sha256": {
+    "benchmark-results/exponential-second-order/chunk7-twigl.json": "967d069d3c95232d197abbe50ca3c4eff1b8e8bbf3578988997ca895782279ad",
+    "benchmark-results/exponential-second-order/chunk7-twigl-widths.json": "4cc37dfa37bb2f9843a3d8a79af7a669c97e00f212d69f3389e21e678d1b593b",
+    "benchmark-results/exponential-second-order/chunk7-summary.json": "c08a53f60d80031be9854a361338a66f567c075955140620eb20ab3a64b4f232",
+    "benchmark-results/exponential-second-order/chunk7-initial-resolution.json": "97113999452e8fcf7461005388ac126c515e1f4b7d2be291fa8fe77c708ea49a"
+  }
+}

@@ -19,7 +19,7 @@ cuda12 = ["cupy-cuda12x"]
 cuda12-ctk = ["cupy-cuda12x[ctk]>=14"]
 cuda11 = ["cupy-cuda11x"]
 rocm = ["cupy-rocm-7-0==14.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'"]
-test = ["pytest"]
+test = ["pytest>=7"]
 docs = ["sphinx>=8.1,<9", "myst-parser>=4,<5"]
 # External multiphysics coupling (examples/precice). Optional: the internal
 # CoupledSolver never touches preCICE. NOTE pyprecice is source-only on PyPI
@@ -49,5 +49,6 @@ include = ["garnet*"]
 testpaths = ["tests"]
 markers = [
     "slow: expensive full-core solves (deselected by default; run with -m slow)",
+    "legacy: preserved low-level tests collected with --run-legacy",
 ]
 addopts = "-m 'not slow'"

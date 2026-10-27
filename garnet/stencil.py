@@ -11,7 +11,7 @@ CSR SpMV, and it keeps the entire operator on-device. On the GPU backend those
 six multiply-adds (13 kernel launches, 7 temporaries) collapse into a single
 hand-written CUDA kernel; see :mod:`garnet.kernels` and `apply` below.
 
-The resulting operator is symmetric positive definite as long as removal is
+Without discontinuity factors, the resulting operator is symmetric positive definite as long as removal is
 positive somewhere (zero-flux BC) which is what lets us use CG. On
 cylindrical grids the SPD property comes from volume-weighting the equations;
 ``symmetric=False`` opts out of that and builds the natural divergence form
@@ -28,6 +28,7 @@ import math
 
 import numpy as np
 
+from .adf import _real_positive_factors
 from .backend import asnumpy
 
 BC_ZERO_FLUX = "zero-flux"
@@ -156,6 +157,11 @@ class GroupOperator:
                 (r_face/r_{i+1}), so the matrix is non-symmetric and must be
                 paired with linear_solver="gmres" or "bicgstab", not CG.
                 Ignored on Cartesian grids (already symmetric either way).
+    adf       : optional three pairs (low-side, high-side) of positive,
+                finite interior-face factor arrays for this energy group.
+                Shape is grid.shape with the corresponding axis reduced by one.
+                Factors are heterogeneous / homogeneous face flux. Cartesian
+                only; external and active-mask boundaries are unaffected.
     """
 
     #: apply() accepts out=, so block operators can write straight into a row
@@ -163,11 +169,12 @@ class GroupOperator:
     supports_out = True
 
     def __init__(self, xp, grid, D, removal, bc=BC_ZERO_FLUX, active=None,
-                 mask_bc=BC_VACUUM, symmetric=True):
+                 mask_bc=BC_VACUUM, symmetric=True, adf=None):
         bc = normalize_bc(bc)
         self.xp = xp
         self.shape = grid.shape
         dx, dy, dz = grid.spacing
+        self.spacing = grid.spacing
 
         # Cylindrical (r-z) grids: every term of the per-unit-volume Cartesian
         # stencil is scaled by its radial metric factor -- cell terms (removal,
@@ -178,6 +185,7 @@ class GroupOperator:
         # the matching source-side weight is exposed as self.rhs_weight. On a
         # Cartesian grid all factors are 1 and the stencil is unchanged.
         met = getattr(grid, "cylindrical_metrics", lambda: None)()
+        self._cartesian = met is None
         if met is None:
             cw = fwx = 1.0
             bwx_lo = bwx_hi = 1.0
@@ -201,6 +209,42 @@ class GroupOperator:
         self.wy = cw * face(D[:, :-1, :], D[:, 1:, :], dy)
         self.wz = cw * face(D[:, :, :-1], D[:, :, 1:], dz)
 
+        # Each pair contains the factors on the low- and high-coordinate side
+        # of every interior face. The two directed coefficients multiply the
+        # corresponding cell flux in the single conservative face current.
+        self._adf = adf is not None
+        self._high_weights = None
+        if adf is not None:
+            if met is not None:
+                raise ValueError("ADF is currently supported on Cartesian grids only")
+            if len(adf) != 3 or any(len(pair) != 2 for pair in adf):
+                raise ValueError("adf must contain three (low, high) face-array pairs")
+            directed = []
+            for axis, (pair, weight) in enumerate(zip(adf, (self.wx, self.wy, self.wz))):
+                factors = [_real_positive_factors(xp, a) for a in pair]
+                if any(a.shape != weight.shape for a in factors):
+                    raise ValueError(f"adf axis {axis} factors must have shape {weight.shape}")
+                lo, hi = factors
+                # Only the ratio matters. Normalize before narrowing the dtype
+                # or forming resistances, so an arbitrary common factor scale
+                # cannot overflow the denominator and erase face coupling.
+                scale = xp.maximum(lo, hi)
+                factor_dtype = np.result_type(D.dtype, np.float32)
+                lo = _real_positive_factors(xp, lo / scale, dtype=factor_dtype)
+                hi = _real_positive_factors(xp, hi / scale, dtype=factor_dtype)
+                slices_lo = [slice(None)] * 3
+                slices_hi = [slice(None)] * 3
+                slices_lo[axis], slices_hi[axis] = slice(None, -1), slice(1, None)
+                dl, dh = D[tuple(slices_lo)], D[tuple(slices_hi)]
+                spacing = (dx, dy, dz)[axis]
+                denom = 0.5 * spacing**2 * (lo / dl + hi / dh)
+                weights = (lo / denom, hi / denom)
+                if any(not bool(xp.all(xp.isfinite(w) & (w > 0))) for w in weights):
+                    raise ValueError("ADF face coefficients must be finite and positive in the operator dtype")
+                directed.append(weights)
+            (self.wx, wx_hi), (self.wy, wy_hi), (self.wz, wz_hi) = directed
+            self._high_weights = (wx_hi, wy_hi, wz_hi)
+
         # Non-rectangular cores: an "active" mask marks in-domain cells. Faces
         # touching an inactive (excised) cell carry no diffusion; the active
         # cell instead sees the core-surface boundary law mask_bc on that face.
@@ -212,14 +256,19 @@ class GroupOperator:
             self.wx = xp.where(act[:-1, :, :] & act[1:, :, :], self.wx, 0.0)
             self.wy = xp.where(act[:, :-1, :] & act[:, 1:, :], self.wy, 0.0)
             self.wz = xp.where(act[:, :, :-1] & act[:, :, 1:], self.wz, 0.0)
+            if self._adf:
+                self._high_weights = tuple(xp.where(mask, w, 0.0) for mask, w in zip(
+                    (act[:-1] & act[1:], act[:, :-1] & act[:, 1:],
+                     act[:, :, :-1] & act[:, :, 1:]), self._high_weights))
 
         # Diagonal: removal + sum of face couplings incident on each cell.
         diag = removal * cw
-        diag[1:, :, :] += self.wx
+        wx_hi, wy_hi, wz_hi = (self._high_weights if self._adf else (self.wx, self.wy, self.wz))
+        diag[1:, :, :] += wx_hi
         diag[:-1, :, :] += self.wx
-        diag[:, 1:, :] += self.wy
+        diag[:, 1:, :] += wy_hi
         diag[:, :-1, :] += self.wy
-        diag[:, :, 1:] += self.wz
+        diag[:, :, 1:] += wz_hi
         diag[:, :, :-1] += self.wz
 
         # Outer box-boundary Robin terms (only where the boundary cell is
@@ -274,6 +323,7 @@ class GroupOperator:
         self.diag = diag
         self.inv_diag = 1.0 / diag  # Jacobi preconditioner
         self._fused = {}            # dtype -> fused-kernel argument buffers
+        self._adf_fused = {}
         self._op_dtype = None       # promoted dtype of the stencil arrays
 
     # -- fused GPU path ----------------------------------------------------
@@ -324,23 +374,48 @@ class GroupOperator:
 
     def apply(self, phi, out=None):
         """Return A phi (allocating the output array unless ``out`` is given)."""
+        return self._apply(phi, out, transpose=False)
+
+    def apply_transpose(self, phi, out=None):
+        """Return the algebraic transpose on Cartesian grids."""
+        if not self._cartesian:
+            raise ValueError("transpose is currently supported on Cartesian grids only")
+        return self._apply(phi, out, transpose=True)
+
+    def _apply(self, phi, out, transpose):
         from . import kernels
 
         if (kernels.use_fused(self.xp, "stencil") and phi.flags.c_contiguous
                 and self._fusable(phi.dtype)):
             diag, wx, wy, wz, rs = self._fused_arrays(phi.dtype)
+            if self._adf:
+                hi = self._adf_fused.get(phi.dtype)
+                if hi is None:
+                    hi = tuple(self.xp.ascontiguousarray(a, dtype=phi.dtype) if a.size
+                               else self.xp.zeros(1, dtype=phi.dtype)
+                               for a in self._high_weights)
+                    self._adf_fused[phi.dtype] = hi
+                low = (wx, wy, wz)
+                if transpose:
+                    low, hi = hi, low
+                return kernels.stencil7_adf_apply(self.xp, phi, diag, *low, *hi, out=out)
             return kernels.stencil7_apply(self.xp, phi, diag, wx, wy, wz, rs,
                                           out=out)
         if out is None:
             out = self._stencil_diag * phi
         else:
             self.xp.multiply(self._stencil_diag, phi, out=out)
-        out[1:, :, :] -= self.wx * phi[:-1, :, :]
-        out[:-1, :, :] -= self.wx * phi[1:, :, :]
-        out[:, 1:, :] -= self.wy * phi[:, :-1, :]
-        out[:, :-1, :] -= self.wy * phi[:, 1:, :]
-        out[:, :, 1:] -= self.wz * phi[:, :, :-1]
-        out[:, :, :-1] -= self.wz * phi[:, :, 1:]
+        wx_hi, wy_hi, wz_hi = (self._high_weights if self._adf else (self.wx, self.wy, self.wz))
+        low = (self.wx, self.wy, self.wz)
+        high = (wx_hi, wy_hi, wz_hi)
+        if transpose:
+            low, high = high, low
+        out[1:, :, :] -= low[0] * phi[:-1, :, :]
+        out[:-1, :, :] -= high[0] * phi[1:, :, :]
+        out[:, 1:, :] -= low[1] * phi[:, :-1, :]
+        out[:, :-1, :] -= high[1] * phi[:, 1:, :]
+        out[:, :, 1:] -= low[2] * phi[:, :, :-1]
+        out[:, :, :-1] -= high[2] * phi[:, :, 1:]
         if self.row_scale is not None:
             out *= self.row_scale
         return out
@@ -365,11 +440,12 @@ class GroupOperator:
 
         add(idx, idx, self._stencil_diag)
         add(idx[1:, :, :], idx[:-1, :, :], -asnumpy(self.wx))
-        add(idx[:-1, :, :], idx[1:, :, :], -asnumpy(self.wx))
+        wx_hi, wy_hi, wz_hi = (self._high_weights if self._adf else (self.wx, self.wy, self.wz))
+        add(idx[:-1, :, :], idx[1:, :, :], -asnumpy(wx_hi))
         add(idx[:, 1:, :], idx[:, :-1, :], -asnumpy(self.wy))
-        add(idx[:, :-1, :], idx[:, 1:, :], -asnumpy(self.wy))
+        add(idx[:, :-1, :], idx[:, 1:, :], -asnumpy(wy_hi))
         add(idx[:, :, 1:], idx[:, :, :-1], -asnumpy(self.wz))
-        add(idx[:, :, :-1], idx[:, :, 1:], -asnumpy(self.wz))
+        add(idx[:, :, :-1], idx[:, :, 1:], -asnumpy(wz_hi))
         matrix = sp.csr_matrix(
             (np.concatenate(values),
              (np.concatenate(rows), np.concatenate(cols))),
@@ -379,3 +455,24 @@ class GroupOperator:
                 asnumpy(self.row_scale), shape).reshape(-1)
             matrix = sp.diags(scale) @ matrix
         return matrix.tocsr()
+
+    def face_currents(self, phi):
+        """Return interior current densities oriented in positive x, y, z.
+
+        Each array has the corresponding interior-face shape. Masked faces
+        are zero: external and active-to-inactive boundary currents are not
+        included. The result uses exactly the coefficients of ``apply``.
+        Cartesian grids only; multiply by face area to obtain integrated current.
+        """
+        if not self._cartesian:
+            raise ValueError("face_currents currently supports Cartesian grids only")
+        if phi.shape != self.shape:
+            raise ValueError(f"flux shape {phi.shape} != grid shape {self.shape}")
+        high = self._high_weights if self._adf else (self.wx, self.wy, self.wz)
+        result = []
+        for axis, (low_weight, high_weight) in enumerate(zip((self.wx, self.wy, self.wz), high)):
+            lo, hi = [slice(None)] * 3, [slice(None)] * 3
+            lo[axis], hi[axis] = slice(None, -1), slice(1, None)
+            result.append(self.spacing[axis] * (
+                low_weight * phi[tuple(lo)] - high_weight * phi[tuple(hi)]))
+        return tuple(result)

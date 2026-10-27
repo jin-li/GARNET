@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-26",
+  "source_revision_before_changes": "572ef8088e27e09628d989e7f71f1963acdb7b96",
+  "starting_state": "Existing uncommitted adaptive FTM and literature/MOC work preserved; this checkpoint adds output-aware width restriction.",
+  "environment": {
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "9.0.2",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "device": "cpu",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "regression_verification": {
+    "tests": 314,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 314,
+    "seconds": 129.533,
+    "record": "benchmark-results/exponential-second-order/chunk5-regression.xml"
+  },
+  "focused_verification": {
+    "tests": 58,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 58,
+    "seconds": 24.861,
+    "record": "benchmark-results/exponential-second-order/chunk5-output-verification.xml"
+  },
+  "verification_overlap": "Focused batch overlaps the regression batch. Four guarded six-family/localized reference configurations were added after the regression run; all 58 focused cases passed on the updated tests.",
+  "regression_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=/home/poncetma/code/GARNET python3 -m pytest tests/verification/test_exponential_coefficients.py tests/verification/test_exponential_theta.py tests/verification/test_exponential_transient.py tests/verification/test_exponential_damping.py tests/verification/test_exponential_adaptive.py tests/verification/test_exponential_output.py tests/verification/test_timescheme.py tests/verification/test_transient_point_kinetics.py tests/verification/test_transient_per_material.py tests/verification/test_transient_model_api.py tests/verification/test_multigroup_step.py tests/verification/test_coupling.py tests/verification/test_examples_current.py -q --junitxml=benchmark-results/exponential-second-order/chunk5-regression.xml",
+  "focused_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m pytest tests/verification/test_exponential_adaptive.py tests/verification/test_exponential_output.py -q --junitxml=benchmark-results/exponential-second-order/chunk5-output-verification.xml",
+  "benchmark_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m tools.assess_exponential_output",
+  "benchmark_record": "benchmark-results/exponential-second-order/chunk5-output.json",
+  "benchmark_executions": 160,
+  "distinct_benchmark_configurations": 140,
+  "repeated_bdf_controls": 20,
+  "all_repeated_bdf_controls_identical": true,
+  "unchanged_state_only_configurations_matching_chunk4": 80,
+  "benchmark_source_fingerprints_verified": true,
+  "source_sha256": {
+    "garnet/transient.py": "cd9c9b296a9c200816fb8259c9e305a8fd6cba680432041cda07fc395d24ffcb",
+    "garnet/timescheme.py": "9d6c6fd7fea95bb9c1df7ed6ea498d0a41b8114511fdd5857975d3c7c3a864d6",
+    "garnet/model.py": "9efa3bb844615e0209fdcbed494be7c1f7a33c5e875e634723c5ed151fcd6e48",
+    "garnet/_model_support.py": "806454a9944cc49bd8d16ded2eda76dfcd7d52636a12391019c7fb70e0ec30f5",
+    "garnet/coupling.py": "2369db2789152bffd7655c72c3e535b969468cd62fa26c6f33f21cfffe3dbbac",
+    "garnet/_exponential.py": "33822bdb773604db32690ecebbe6ac353058bbf89b0d289535cfa854f8f2533c",
+    "tests/verification/test_exponential_adaptive.py": "271006c2128366330bd40d44c988a211b131a5139988823667c01d49ccb8af09",
+    "tests/verification/test_exponential_output.py": "2fac5d3ca1d3c14a72caad9b553795e1cf5aa75cac53e5fff7a9cf5c69a329f3",
+    "tools/assess_exponential_adaptive.py": "571df120533ac1434584a32904266df5d70057afc91981e9557e0ebe26c5a75a",
+    "tools/assess_exponential_output.py": "86ea7d3c880e26938590db3e21ac32eaab337c7e4306ab126753c0f29235312b",
+    "tools/assess_exponential_damping.py": "b282d0a12d069bf4fcae2f964eecfea8c5f930efa161c0a259a6cb29e2ed3fb0"
+  },
+  "archive_sha256": "f4f693472265a3bb3d20afb30bf85ca90511be8eb1976af783eda32ee516c9ab",
+  "archive_members_matching_current_source": 63,
+  "archive_install": "python3 -m pip install --no-index --no-deps --no-cache-dir --no-build-isolation --target <temporary-directory>/installed dist/garnet-src.zip",
+  "archive_smoke": {
+    "module": "/tmp/garnet-chunk5-archive-hu4z5ajo/installed/garnet/__init__.py",
+    "scheme": "ftm-bdf2",
+    "accepted_steps": 80,
+    "rejected_steps": 2,
+    "output_driven_rejections": 2,
+    "final_power": 1.3092409920855554,
+    "event_hit": true,
+    "callbacks": 80,
+    "implicit_solves": 246,
+    "maximum_output_error": 0.9104990801063526
+  },
+  "full_repository_suite_repeated": false,
+  "gpu_execution": false,
+  "limitations": [
+    "Midpoint checks are local resolution indicators, not a global interior-error certificate.",
+    "Continuous chords do not supply two-sided output for jumps in recorded power.",
+    "Three-solve state estimator retained; adaptive BDF uses less tested work at the matched 0.1% budget.",
+    "Thermal adaptation, larger spatial applications, setup reuse and GPU timing remain separate gates."
+  ]
+}

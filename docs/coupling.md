@@ -329,9 +329,11 @@ CG's stopping decision.
 
 `coupled_transient` uses `TransientSolver.on_step` as the exchange seam. Flux,
 precursors, cross sections, temperature and accumulated power remain on the
-solve device; the temperature advances every `dt_thermal`, which must be an
-integer multiple of the neutron step `dt`. A final partial thermal window is
-advanced with its actual width.
+solve device; temperature advances every `dt_thermal`. For fixed scalar
+neutron widths this must be an integer multiple of `dt`. Adaptive BDF lands
+exactly on thermal exchanges. Explicit nonuniform neutron schedules are also
+accepted when every exchange is already a schedule endpoint. A final partial
+thermal window advances with its actual width.
 
 The production-oriented coupled defaults differ deliberately from the
 verification defaults of the individual solvers:
@@ -358,10 +360,21 @@ r = coupled_transient(
 )
 ```
 
-The coupled driver currently requires a constant neutron `dt` so thermal
-exchange windows stay deterministic. Nonuniform BDF schedules are available
-on `TransientSolver`; adaptive coupled rollback must restore both neutron and
-thermal state and is a later phase.
+The experimental diffusion FTM can be selected with
+`transient_kwargs={"time_scheme": "ftm", "step_solver": "monolithic"}`.
+By default `power_quadrature="scheme"` integrates its assumed exponential
+endpoint heat source over each neutron step before averaging over the thermal
+window. BE/BDF keep the existing endpoint-source rule. Select
+`power_quadrature="endpoint"` to isolate the quadrature effect in an FTM study.
+Results expose the actual `step_source_weights` and `step_frequencies`.
+
+The conduction window remains backward Euler and feedback is held fixed
+between exchanges. Better neutron or source integration cannot by itself
+remove that splitting error; refine `dt_thermal` independently. The
+{download}`prototype comparison <../benchmark-results/exponential-prototype/README.md>`
+includes slow/fast feedback and two exchange cadences. The separate LRA driver
+also supports FTM with fully implicit adiabatic heating, integrating heat
+increments rather than applying an exponential transform to absolute temperature.
 
 Degree-1 Neumann-PCG and spaced residual checks reduce global synchronization
 in the repeated neutron solves. The thermal tolerance is set by the accuracy

@@ -1,5 +1,17 @@
 # Changes
 
+## Unreleased: upstream integration (28 October 2026)
+
+- Merge upstream through `44dc990`: shared diffusion transient API and
+  cylindrical model, experimental exponential integration and Cartesian ADFs.
+- Preserve fork fixed-source convergence, mesh/NEM, branch XS, kinetics and
+  optional GPU environments. Route every adjoint fixed-source operation and
+  residual through the matching transposed Cartesian ADF operator.
+- Verify the combined three-group forward/adjoint solver against an independent
+  dense pencil; retain the legacy transient tests as an opt-in suite.
+- Extend the user and methodology manuals with the new APIs and their limits.
+  Upstream Cartesian ADF tests do not qualify PRATIC whole-face NEM factors.
+
 ## Unreleased: static branch cross sections
 
 - Import returned Serpent data with explicit universe mapping and honest

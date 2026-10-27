@@ -25,6 +25,8 @@ The categories below distinguish established package pathways from specialized r
 | SP1/3/5/7 and SDP1/2/3 | Structured and triangular moment blocks; mesh interfaces where provided | Implemented steady and selected transient pathways; not interchangeable with a native anisotropic-scattering importer |
 | SN and hybrid SN / diffusion | Cartesian and triangular transport regions | Angular/spatial convergence and interface tests required; specialized controls differ from diffusion |
 | Thermal and coupled transients | Supported structured/triangular operators; CPU/GPU | Conduction, prescribed sink, reduced feedback; no fluid dynamics or moving mesh |
+| Cartesian two-point ADF | Low-level steady scalar Cartesian diffusion; CPU checks | Experimental directed face weights and transpose; separate from mesh/NEM factors, real-GPU evidence outstanding |
+| Frequency transforms | Diffusion `ftm`, `ftm2`, `ftm-bdf2`; adaptive neutron-only FTM | Experimental; local state/output defects and safeguards, no demonstrated promotion over tuned adaptive BDF |
 | IQS | Diffusion shape/amplitude coupling | Guarded approximation with correction/fallback telemetry; compare against full spatial transients |
 | Noise | Linear diffusion/SPN frequency response | Small perturbations about a static reference; restricted kinetics contracts |
 | Native Serpent moment pathway | Explicit coupled full-matrix operators; CPU and opt-in hybrid GPU solve | Research interface; estimator/transport consistency is not inferred; GPU runs only CSR/Arnoldi work on device |

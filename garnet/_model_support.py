@@ -87,3 +87,66 @@ def box_range(value, axis):
     if bounds.shape != (2,) or not np.all(np.isfinite(bounds)) or bounds[0] > bounds[1]:
         raise ValueError(f"{axis} range must be a finite (lower, upper) pair with lower <= upper")
     return bounds
+
+
+def material_map(values, shape, count):
+    """Copy a host material map, rejecting fractional and invalid indices."""
+    if values is None:
+        if count != 1:
+            raise ValueError("material_map is required with multiple materials")
+        return np.zeros(shape, dtype=np.int64)
+    values = np.asarray(values)
+    if values.shape != tuple(shape):
+        raise ValueError(f"material_map shape {values.shape} != grid shape {tuple(shape)}")
+    if (not np.all(np.isfinite(values)) or np.any(values != np.floor(values)) or
+            np.any(values < 0) or np.any(values >= count)):
+        raise ValueError("material_map must contain integer indices in the material list")
+    return values.astype(np.int64, copy=True)
+
+
+def transient_schedule(t_end, dt, event_times, options):
+    """Split fixed steps at physical events, or hand them to a controller."""
+    options = dict(options)
+    if options.get("adaptive_bdf") is not None:
+        options.setdefault("step_solver", "monolithic")
+        options.setdefault("time_scheme", "bdf1")
+    if options.get("adaptive_ftm") is not None:
+        options.setdefault("step_solver", "monolithic")
+        options.setdefault("time_scheme", "ftm-bdf2")
+    if event_times is None:
+        return dt, options
+    events = np.asarray(event_times, dtype=float)
+    if (events.ndim != 1 or not np.all(np.isfinite(events)) or
+            not np.isfinite(t_end) or np.any(events <= 0) or np.any(events >= t_end)):
+        raise ValueError("event_times must be finite times strictly inside (0, t_end)")
+    if options.get("bdf_restart_times") is not None:
+        raise ValueError("use event_times or bdf_restart_times, not both")
+    events = np.unique(events)
+    if not events.size:
+        return dt, options
+    from .timescheme import make_time_scheme
+
+    scheme = make_time_scheme(options.get("time_scheme", "backward-euler"),
+                              options.get("time_weight"))
+    if not scheme.is_bdf:
+        raise NotImplementedError("event_times requires a BDF time scheme")
+    options["bdf_restart_times"] = events
+    if any(options.get(key) is not None for key in ("adaptive_bdf", "adaptive_ftm")):
+        return dt, options
+    widths = np.asarray(dt, dtype=float)
+    if widths.ndim == 0:
+        if not np.isfinite(widths) or widths <= 0:
+            raise ValueError("dt must be finite and positive")
+        endpoints = np.arange(1, int(np.floor(t_end / float(widths))) + 1) * float(widths)
+        endpoints = np.r_[endpoints[endpoints < t_end], t_end]
+    else:
+        if (widths.ndim != 1 or not np.all(np.isfinite(widths)) or np.any(widths <= 0)
+                or not np.isclose(widths.sum(), t_end, rtol=1e-12, atol=1e-14)):
+            raise ValueError("dt widths must be finite and positive and sum to t_end")
+        endpoints = np.cumsum(widths)
+        endpoints[-1] = t_end
+    # Retain each exact event rather than two endpoints separated by roundoff.
+    for event in events:
+        endpoints = endpoints[~np.isclose(endpoints, event, rtol=1e-12, atol=1e-14)]
+    endpoints = np.sort(np.r_[endpoints, events])
+    return np.diff(np.r_[0.0, endpoints]), options

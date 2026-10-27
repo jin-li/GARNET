@@ -55,7 +55,8 @@ def power_density(flux, materials, material_map=None, *, total_power=None,
                    integrates to exactly this over the cell volumes. Omitted,
                    the raw kappa_Sigma_f . phi edit is returned, which carries
                    the flux's own arbitrary normalization.
-    cell_volume  : scalar cm^3 (uniform grids). Only the *product* with
+    cell_volume  : scalar or per-cell cm^3 (including annuli on r-z grids).
+                   Only the *product* with
                    volume_weight matters, and only up to a constant when
                    total_power is given.
     volume_weight: optional per-cell relative volume factor, shape grid.shape --
@@ -98,9 +99,15 @@ def power_density(flux, materials, material_map=None, *, total_power=None,
     if total_power is None:
         return dens
 
-    vol = float(cell_volume)
+    vol = np.asarray(asnumpy(cell_volume), dtype=float)
     if volume_weight is not None:
         vol = vol * asnumpy(volume_weight)
+    try:
+        vol = np.broadcast_to(vol, dens.shape)
+    except ValueError as exc:
+        raise ValueError("cell volumes must broadcast to the flux cell shape") from exc
+    if not np.all(np.isfinite(vol)) or np.any(vol <= 0.0):
+        raise ValueError("cell volumes must be finite and positive")
     integral = float(np.sum(dens * vol))
     if integral <= 0.0:
         raise ValueError("no fission power in the flux: cannot normalize to "

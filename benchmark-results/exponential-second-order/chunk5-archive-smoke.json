@@ -1,0 +1,12 @@
+{
+  "module": "/tmp/garnet-chunk5-archive-hu4z5ajo/installed/garnet/__init__.py",
+  "scheme": "ftm-bdf2",
+  "accepted_steps": 80,
+  "rejected_steps": 2,
+  "output_driven_rejections": 2,
+  "final_power": 1.3092409920855554,
+  "event_hit": true,
+  "callbacks": 80,
+  "implicit_solves": 246,
+  "maximum_output_error": 0.9104990801063526
+}

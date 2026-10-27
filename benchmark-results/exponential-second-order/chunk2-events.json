@@ -1,0 +1,3067 @@
+{
+  "scope": "Neutrons and delayed neutrons only; no heat solve",
+  "mesh": {
+    "cells_per_side": 4,
+    "graded_initial_dt_s": 1e-05,
+    "graded_growth_factor": 1.1,
+    "graded_mesh_is_adaptive": false
+  },
+  "error_sampling": "Maximum of own endpoints and common-grid linear output interpolation",
+  "timing_claim": null,
+  "source_sha256": {
+    "garnet/_exponential.py": "e46dad3ba7e70ae5e5e9726e73506b17ad64d45bef95ddacac17275e61210df4",
+    "garnet/timescheme.py": "56da8e260716ac7b96f53e1115cb868583f7f1c89e45396f61a55236f28c49eb",
+    "garnet/transient.py": "3f621cf7383ad788e5c6be18271000e1ba7d0a519ed25d02414555f244379c03",
+    "tools/assess_exponential_events.py": "2af189c1122e0e0fbfe1e8649a653a083bc707b866bed96d224fb7d487832e90"
+  },
+  "cases": {
+    "prompt-rise": {
+      "reactivity": 0.002,
+      "duration_s": 1.0,
+      "beta": 0.0065,
+      "decay_per_s": 0.08,
+      "generation_time_s": 0.00015151515151515152,
+      "initial_power": 1.0,
+      "final_reference_power": 1.4929644156454582,
+      "reference": "Closed-form two-mode point kinetics, exactly matching the uniform FV problem",
+      "records": [
+        {
+          "configuration": {
+            "name": "BE-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0018800072794303846,
+          "max_common_grid_relative_power_error": 0.0018960578625909497,
+          "max_relative_power_error": 0.0018960578625909497,
+          "accepted_steps": 1000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1000,
+          "fgmres_iterations": 2170,
+          "pcg_iterations": 9480,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h0.00025",
+            "scheme": "backward-euler",
+            "dt": 0.00025
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0004747227584784852,
+          "max_common_grid_relative_power_error": 0.00047573574665760177,
+          "max_relative_power_error": 0.00047573574665760177,
+          "accepted_steps": 4000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 4000,
+          "fgmres_iterations": 7604,
+          "pcg_iterations": 31293,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h5e-05",
+            "scheme": "backward-euler",
+            "dt": 5e-05
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 9.519819452519229e-05,
+          "max_common_grid_relative_power_error": 9.523859573057347e-05,
+          "max_relative_power_error": 9.523859573057347e-05,
+          "accepted_steps": 20000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 20000,
+          "fgmres_iterations": 28711,
+          "pcg_iterations": 102948,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.01",
+            "scheme": "crank-nicolson",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05092278146925644,
+          "max_common_grid_relative_power_error": 0.05092278146925644,
+          "max_relative_power_error": 0.05092278146925644,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 244,
+          "pcg_iterations": 1139,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05092278095566083,
+          "max_common_grid_relative_power_error": 0.05092278095566083,
+          "max_relative_power_error": 0.05092278095566083,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 246,
+          "pcg_iterations": 1203,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.01",
+            "scheme": "backward-euler",
+            "dt": 0.01,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.003980523406512559,
+          "max_common_grid_relative_power_error": 0.004166359737182268,
+          "max_relative_power_error": 0.004166359737182268,
+          "accepted_steps": 163,
+          "rejected_steps": 0,
+          "neutron_block_solves": 163,
+          "fgmres_iterations": 367,
+          "pcg_iterations": 1652,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00010537756388595554,
+          "max_common_grid_relative_power_error": 0.00012528335824224524,
+          "max_relative_power_error": 0.00012528335824224524,
+          "accepted_steps": 163,
+          "rejected_steps": 0,
+          "neutron_block_solves": 163,
+          "fgmres_iterations": 475,
+          "pcg_iterations": 1938,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00012466080672091095,
+          "max_common_grid_relative_power_error": 0.00012267966316881207,
+          "max_relative_power_error": 0.00012466080672091095,
+          "accepted_steps": 163,
+          "rejected_steps": 0,
+          "neutron_block_solves": 163,
+          "fgmres_iterations": 428,
+          "pcg_iterations": 1891,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00012155282963943748,
+          "max_common_grid_relative_power_error": 0.00011957129253969967,
+          "max_relative_power_error": 0.00012155282963943748,
+          "accepted_steps": 163,
+          "rejected_steps": 0,
+          "neutron_block_solves": 244,
+          "fgmres_iterations": 550,
+          "pcg_iterations": 2509,
+          "frequency_refinements": 81,
+          "maximum_final_frequency_log_defect": 9.264791623991599e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.01",
+            "scheme": "ftm",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.004462754404620517,
+          "max_common_grid_relative_power_error": 0.004649352479221491,
+          "max_relative_power_error": 0.004649352479221491,
+          "accepted_steps": 163,
+          "rejected_steps": 0,
+          "neutron_block_solves": 253,
+          "fgmres_iterations": 531,
+          "pcg_iterations": 2418,
+          "frequency_refinements": 90,
+          "maximum_final_frequency_log_defect": 9.824682202878854e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.005",
+            "scheme": "crank-nicolson",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.02884528453466173,
+          "max_common_grid_relative_power_error": 0.02884528453466173,
+          "max_relative_power_error": 0.02884528453466173,
+          "accepted_steps": 200,
+          "rejected_steps": 0,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 465,
+          "pcg_iterations": 2093,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.028845284496045287,
+          "max_common_grid_relative_power_error": 0.028845284496045287,
+          "max_relative_power_error": 0.028845284496045287,
+          "accepted_steps": 200,
+          "rejected_steps": 0,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 464,
+          "pcg_iterations": 2145,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.005",
+            "scheme": "backward-euler",
+            "dt": 0.005,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.003915975000182703,
+          "max_common_grid_relative_power_error": 0.004067036706169702,
+          "max_relative_power_error": 0.004067036706169702,
+          "accepted_steps": 256,
+          "rejected_steps": 0,
+          "neutron_block_solves": 256,
+          "fgmres_iterations": 588,
+          "pcg_iterations": 2687,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 7.665697194814136e-05,
+          "max_common_grid_relative_power_error": 0.00012528335824224524,
+          "max_relative_power_error": 0.00012528335824224524,
+          "accepted_steps": 256,
+          "rejected_steps": 0,
+          "neutron_block_solves": 256,
+          "fgmres_iterations": 715,
+          "pcg_iterations": 2933,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00010214627795401832,
+          "max_common_grid_relative_power_error": 9.877202634778204e-05,
+          "max_relative_power_error": 0.00010214627795401832,
+          "accepted_steps": 256,
+          "rejected_steps": 0,
+          "neutron_block_solves": 256,
+          "fgmres_iterations": 706,
+          "pcg_iterations": 3176,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 9.920891813153254e-05,
+          "max_common_grid_relative_power_error": 0.00010129918060752807,
+          "max_relative_power_error": 0.00010129918060752807,
+          "accepted_steps": 256,
+          "rejected_steps": 0,
+          "neutron_block_solves": 355,
+          "fgmres_iterations": 843,
+          "pcg_iterations": 3844,
+          "frequency_refinements": 99,
+          "maximum_final_frequency_log_defect": 9.264791623991599e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.005",
+            "scheme": "ftm",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.004417987842672333,
+          "max_common_grid_relative_power_error": 0.004584963335028669,
+          "max_relative_power_error": 0.004584963335028669,
+          "accepted_steps": 256,
+          "rejected_steps": 0,
+          "neutron_block_solves": 361,
+          "fgmres_iterations": 765,
+          "pcg_iterations": 3647,
+          "frequency_refinements": 105,
+          "maximum_final_frequency_log_defect": 9.68714149282692e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.002",
+            "scheme": "crank-nicolson",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.012491784742566514,
+          "max_common_grid_relative_power_error": 0.012491784742566514,
+          "max_relative_power_error": 0.012491784742566514,
+          "accepted_steps": 500,
+          "rejected_steps": 0,
+          "neutron_block_solves": 500,
+          "fgmres_iterations": 1107,
+          "pcg_iterations": 4852,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.01249178474151591,
+          "max_common_grid_relative_power_error": 0.01249178474151591,
+          "max_relative_power_error": 0.01249178474151591,
+          "accepted_steps": 500,
+          "rejected_steps": 0,
+          "neutron_block_solves": 500,
+          "fgmres_iterations": 1105,
+          "pcg_iterations": 4866,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.002",
+            "scheme": "backward-euler",
+            "dt": 0.002,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.002633739761765508,
+          "max_common_grid_relative_power_error": 0.0026756612733207508,
+          "max_relative_power_error": 0.0026756612733207508,
+          "accepted_steps": 546,
+          "rejected_steps": 0,
+          "neutron_block_solves": 546,
+          "fgmres_iterations": 1215,
+          "pcg_iterations": 5484,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 2.3849898917793766e-05,
+          "max_common_grid_relative_power_error": 7.143717850621734e-05,
+          "max_relative_power_error": 7.143717850621734e-05,
+          "accepted_steps": 546,
+          "rejected_steps": 0,
+          "neutron_block_solves": 546,
+          "fgmres_iterations": 1585,
+          "pcg_iterations": 6265,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 3.811499103290039e-05,
+          "max_common_grid_relative_power_error": 6.06235592846005e-05,
+          "max_relative_power_error": 6.06235592846005e-05,
+          "accepted_steps": 546,
+          "rejected_steps": 0,
+          "neutron_block_solves": 546,
+          "fgmres_iterations": 1576,
+          "pcg_iterations": 6847,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 3.719765941068154e-05,
+          "max_common_grid_relative_power_error": 6.111837611733062e-05,
+          "max_relative_power_error": 6.111837611733062e-05,
+          "accepted_steps": 546,
+          "rejected_steps": 0,
+          "neutron_block_solves": 693,
+          "fgmres_iterations": 1720,
+          "pcg_iterations": 7408,
+          "frequency_refinements": 147,
+          "maximum_final_frequency_log_defect": 9.881419216203752e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.002",
+            "scheme": "ftm",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0031280107437191562,
+          "max_common_grid_relative_power_error": 0.0031722394100148765,
+          "max_relative_power_error": 0.0031722394100148765,
+          "accepted_steps": 546,
+          "rejected_steps": 0,
+          "neutron_block_solves": 697,
+          "fgmres_iterations": 1425,
+          "pcg_iterations": 6567,
+          "frequency_refinements": 151,
+          "maximum_final_frequency_log_defect": 9.68714149282692e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.001",
+            "scheme": "crank-nicolson",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.006418999115312296,
+          "max_common_grid_relative_power_error": 0.006418999115312296,
+          "max_relative_power_error": 0.006418999115312296,
+          "accepted_steps": 1000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1000,
+          "fgmres_iterations": 2104,
+          "pcg_iterations": 9028,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.006418999115268886,
+          "max_common_grid_relative_power_error": 0.006418999115268886,
+          "max_relative_power_error": 0.006418999115268886,
+          "accepted_steps": 1000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1000,
+          "fgmres_iterations": 2091,
+          "pcg_iterations": 8961,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0015816231344125686,
+          "max_common_grid_relative_power_error": 0.0015947040707545712,
+          "max_relative_power_error": 0.0015947040707545712,
+          "accepted_steps": 1039,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1039,
+          "fgmres_iterations": 2238,
+          "pcg_iterations": 9981,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 7.492311812518082e-06,
+          "max_common_grid_relative_power_error": 2.834832078746352e-05,
+          "max_relative_power_error": 2.834832078746352e-05,
+          "accepted_steps": 1039,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1039,
+          "fgmres_iterations": 2388,
+          "pcg_iterations": 10315,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 1.3217783620955714e-05,
+          "max_common_grid_relative_power_error": 2.5773352422042706e-05,
+          "max_relative_power_error": 2.5773352422042706e-05,
+          "accepted_steps": 1039,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1039,
+          "fgmres_iterations": 2264,
+          "pcg_iterations": 10234,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 1.3008429295080504e-05,
+          "max_common_grid_relative_power_error": 2.5847280907154158e-05,
+          "max_relative_power_error": 2.5847280907154158e-05,
+          "accepted_steps": 1039,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1250,
+          "fgmres_iterations": 2494,
+          "pcg_iterations": 11916,
+          "frequency_refinements": 211,
+          "maximum_final_frequency_log_defect": 9.814914552972453e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.001",
+            "scheme": "ftm",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0019338529473292843,
+          "max_common_grid_relative_power_error": 0.001947703812897883,
+          "max_relative_power_error": 0.001947703812897883,
+          "accepted_steps": 1039,
+          "rejected_steps": 0,
+          "neutron_block_solves": 1253,
+          "fgmres_iterations": 2445,
+          "pcg_iterations": 10824,
+          "frequency_refinements": 214,
+          "maximum_final_frequency_log_defect": 9.779048144096248e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-BE-startup-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.015652187971844533,
+          "max_common_grid_relative_power_error": 0.016532603787376754,
+          "max_relative_power_error": 0.016532603787376754,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 247,
+          "pcg_iterations": 1145,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol0.0001",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0010828614712999896,
+          "max_common_grid_relative_power_error": 0.0010906361155075261,
+          "max_relative_power_error": 0.0010906361155075261,
+          "accepted_steps": 189,
+          "rejected_steps": 1,
+          "neutron_block_solves": 190,
+          "fgmres_iterations": 438,
+          "pcg_iterations": 2058,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-05",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0003465457626818935,
+          "max_common_grid_relative_power_error": 0.0003473223834145056,
+          "max_relative_power_error": 0.0003473223834145056,
+          "accepted_steps": 504,
+          "rejected_steps": 4,
+          "neutron_block_solves": 508,
+          "fgmres_iterations": 999,
+          "pcg_iterations": 3534,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-06",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00011002366058210367,
+          "max_common_grid_relative_power_error": 0.00011009971366426896,
+          "max_relative_power_error": 0.00011009971366426896,
+          "accepted_steps": 1503,
+          "rejected_steps": 8,
+          "neutron_block_solves": 1511,
+          "fgmres_iterations": 2508,
+          "pcg_iterations": 8654,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol0.0001",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 6.218991750417402e-05,
+          "max_common_grid_relative_power_error": 0.0009330129988525115,
+          "max_relative_power_error": 0.0009330129988525115,
+          "accepted_steps": 72,
+          "rejected_steps": 2,
+          "neutron_block_solves": 74,
+          "fgmres_iterations": 183,
+          "pcg_iterations": 896,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-05",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 5.596134844187972e-06,
+          "max_common_grid_relative_power_error": 0.0007226092139320794,
+          "max_relative_power_error": 0.0007226092139320794,
+          "accepted_steps": 89,
+          "rejected_steps": 8,
+          "neutron_block_solves": 97,
+          "fgmres_iterations": 220,
+          "pcg_iterations": 1023,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-06",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 8.914768431234066e-07,
+          "max_common_grid_relative_power_error": 0.00025666100585997054,
+          "max_relative_power_error": 0.00025666100585997054,
+          "accepted_steps": 112,
+          "rejected_steps": 15,
+          "neutron_block_solves": 127,
+          "fgmres_iterations": 272,
+          "pcg_iterations": 1125,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-07",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-07,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 5.456179597018718e-08,
+          "max_common_grid_relative_power_error": 0.00018421837810334019,
+          "max_relative_power_error": 0.00018421837810334019,
+          "accepted_steps": 139,
+          "rejected_steps": 14,
+          "neutron_block_solves": 153,
+          "fgmres_iterations": 333,
+          "pcg_iterations": 1485,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        }
+      ]
+    },
+    "superprompt-rise": {
+      "reactivity": 0.01,
+      "duration_s": 0.5,
+      "beta": 0.0065,
+      "decay_per_s": 0.08,
+      "generation_time_s": 0.00015151515151515152,
+      "initial_power": 1.0,
+      "final_reference_power": 315130.881317105,
+      "reference": "Closed-form two-mode point kinetics, exactly matching the uniform FV problem",
+      "records": [
+        {
+          "configuration": {
+            "name": "BE-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.147102236590418,
+          "max_common_grid_relative_power_error": 0.147102236590418,
+          "max_relative_power_error": 0.147102236590418,
+          "accepted_steps": 500,
+          "rejected_steps": 0,
+          "neutron_block_solves": 500,
+          "fgmres_iterations": 1088,
+          "pcg_iterations": 4820,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h0.00025",
+            "scheme": "backward-euler",
+            "dt": 0.00025
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.034489858531024487,
+          "max_common_grid_relative_power_error": 0.034489858531024487,
+          "max_relative_power_error": 0.034489858531024487,
+          "accepted_steps": 2000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 2000,
+          "fgmres_iterations": 3815,
+          "pcg_iterations": 16156,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h5e-05",
+            "scheme": "backward-euler",
+            "dt": 5e-05
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.006783538901884656,
+          "max_common_grid_relative_power_error": 0.006783538901884656,
+          "max_relative_power_error": 0.006783538901884656,
+          "accepted_steps": 10000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 10000,
+          "fgmres_iterations": 14366,
+          "pcg_iterations": 51867,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.01",
+            "scheme": "crank-nicolson",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.21197682795722061,
+          "max_common_grid_relative_power_error": 0.21197682795722061,
+          "max_relative_power_error": 0.21197682795722061,
+          "accepted_steps": 50,
+          "rejected_steps": 0,
+          "neutron_block_solves": 50,
+          "fgmres_iterations": 119,
+          "pcg_iterations": 462,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.21197682518944538,
+          "max_common_grid_relative_power_error": 0.21197682518944538,
+          "max_relative_power_error": 0.21197682518944538,
+          "accepted_steps": 50,
+          "rejected_steps": 0,
+          "neutron_block_solves": 50,
+          "fgmres_iterations": 119,
+          "pcg_iterations": 476,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.01",
+            "scheme": "backward-euler",
+            "dt": 0.01,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 3.1314661350271225,
+          "max_common_grid_relative_power_error": 3.1314661350271225,
+          "max_relative_power_error": 3.1314661350271225,
+          "accepted_steps": 113,
+          "rejected_steps": 0,
+          "neutron_block_solves": 113,
+          "fgmres_iterations": 246,
+          "pcg_iterations": 1076,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.04601534298716614,
+          "max_common_grid_relative_power_error": 0.052461562713387755,
+          "max_relative_power_error": 0.052461562713387755,
+          "accepted_steps": 113,
+          "rejected_steps": 0,
+          "neutron_block_solves": 113,
+          "fgmres_iterations": 264,
+          "pcg_iterations": 1110,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0010896069332726466,
+          "max_common_grid_relative_power_error": 0.008022425357579133,
+          "max_relative_power_error": 0.008022425357579133,
+          "accepted_steps": 113,
+          "rejected_steps": 0,
+          "neutron_block_solves": 113,
+          "fgmres_iterations": 280,
+          "pcg_iterations": 1181,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0010352251198819662,
+          "max_common_grid_relative_power_error": 0.007969867879606962,
+          "max_relative_power_error": 0.007969867879606962,
+          "accepted_steps": 113,
+          "rejected_steps": 0,
+          "neutron_block_solves": 235,
+          "fgmres_iterations": 480,
+          "pcg_iterations": 2374,
+          "frequency_refinements": 122,
+          "maximum_final_frequency_log_defect": 9.128239494415879e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.01",
+            "scheme": "ftm",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.034022409812933696,
+          "max_common_grid_relative_power_error": 0.034022409812933696,
+          "max_relative_power_error": 0.034022409812933696,
+          "accepted_steps": 113,
+          "rejected_steps": 0,
+          "neutron_block_solves": 239,
+          "fgmres_iterations": 468,
+          "pcg_iterations": 2412,
+          "frequency_refinements": 126,
+          "maximum_final_frequency_log_defect": 9.593727635603956e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.005",
+            "scheme": "crank-nicolson",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.12942571871249797,
+          "max_common_grid_relative_power_error": 0.12942571871249797,
+          "max_relative_power_error": 0.12942571871249797,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 232,
+          "pcg_iterations": 1055,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.12942571851559515,
+          "max_common_grid_relative_power_error": 0.12942571851559515,
+          "max_relative_power_error": 0.12942571851559515,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 231,
+          "pcg_iterations": 1083,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.005",
+            "scheme": "backward-euler",
+            "dt": 0.005,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.9981811265649576,
+          "max_common_grid_relative_power_error": 0.9981811265649576,
+          "max_relative_power_error": 0.9981811265649576,
+          "accepted_steps": 156,
+          "rejected_steps": 0,
+          "neutron_block_solves": 156,
+          "fgmres_iterations": 344,
+          "pcg_iterations": 1518,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.012244401415866024,
+          "max_common_grid_relative_power_error": 0.013889922677433164,
+          "max_relative_power_error": 0.013889922677433164,
+          "accepted_steps": 156,
+          "rejected_steps": 0,
+          "neutron_block_solves": 156,
+          "fgmres_iterations": 362,
+          "pcg_iterations": 1540,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.000656034085275703,
+          "max_common_grid_relative_power_error": 0.0025151944382264535,
+          "max_relative_power_error": 0.0025151944382264535,
+          "accepted_steps": 156,
+          "rejected_steps": 0,
+          "neutron_block_solves": 156,
+          "fgmres_iterations": 408,
+          "pcg_iterations": 1777,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0006214241452557889,
+          "max_common_grid_relative_power_error": 0.0024845575135021836,
+          "max_relative_power_error": 0.0024845575135021836,
+          "accepted_steps": 156,
+          "rejected_steps": 0,
+          "neutron_block_solves": 298,
+          "fgmres_iterations": 619,
+          "pcg_iterations": 3079,
+          "frequency_refinements": 142,
+          "maximum_final_frequency_log_defect": 9.675222343652478e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.005",
+            "scheme": "ftm",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.027720531805744075,
+          "max_common_grid_relative_power_error": 0.02772052922789825,
+          "max_relative_power_error": 0.027720531805744075,
+          "accepted_steps": 156,
+          "rejected_steps": 0,
+          "neutron_block_solves": 304,
+          "fgmres_iterations": 602,
+          "pcg_iterations": 3188,
+          "frequency_refinements": 148,
+          "maximum_final_frequency_log_defect": 9.579136058235349e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.002",
+            "scheme": "crank-nicolson",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05949810893233565,
+          "max_common_grid_relative_power_error": 0.05949810893233565,
+          "max_relative_power_error": 0.05949810893233565,
+          "accepted_steps": 250,
+          "rejected_steps": 0,
+          "neutron_block_solves": 250,
+          "fgmres_iterations": 552,
+          "pcg_iterations": 2439,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05949810892681606,
+          "max_common_grid_relative_power_error": 0.05949810892681606,
+          "max_relative_power_error": 0.05949810892681606,
+          "accepted_steps": 250,
+          "rejected_steps": 0,
+          "neutron_block_solves": 250,
+          "fgmres_iterations": 551,
+          "pcg_iterations": 2451,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.002",
+            "scheme": "backward-euler",
+            "dt": 0.002,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.31360291486235203,
+          "max_common_grid_relative_power_error": 0.31360291486235203,
+          "max_relative_power_error": 0.31360291486235203,
+          "accepted_steps": 296,
+          "rejected_steps": 0,
+          "neutron_block_solves": 296,
+          "fgmres_iterations": 648,
+          "pcg_iterations": 2871,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0020353728389590486,
+          "max_common_grid_relative_power_error": 0.002299703655384011,
+          "max_relative_power_error": 0.002299703655384011,
+          "accepted_steps": 296,
+          "rejected_steps": 0,
+          "neutron_block_solves": 296,
+          "fgmres_iterations": 657,
+          "pcg_iterations": 2846,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0002254142963262762,
+          "max_common_grid_relative_power_error": 0.0005743480745266094,
+          "max_relative_power_error": 0.0005743480745266094,
+          "accepted_steps": 296,
+          "rejected_steps": 0,
+          "neutron_block_solves": 296,
+          "fgmres_iterations": 829,
+          "pcg_iterations": 3463,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00021537548911765292,
+          "max_common_grid_relative_power_error": 0.0005653391497093541,
+          "max_relative_power_error": 0.0005653391497093541,
+          "accepted_steps": 296,
+          "rejected_steps": 0,
+          "neutron_block_solves": 494,
+          "fgmres_iterations": 1048,
+          "pcg_iterations": 4811,
+          "frequency_refinements": 198,
+          "maximum_final_frequency_log_defect": 9.68600261131769e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.002",
+            "scheme": "ftm",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.01663862115338166,
+          "max_common_grid_relative_power_error": 0.016638620651962532,
+          "max_relative_power_error": 0.01663862115338166,
+          "accepted_steps": 296,
+          "rejected_steps": 0,
+          "neutron_block_solves": 501,
+          "fgmres_iterations": 939,
+          "pcg_iterations": 4760,
+          "frequency_refinements": 205,
+          "maximum_final_frequency_log_defect": 9.710033110224004e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.001",
+            "scheme": "crank-nicolson",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03129321622146142,
+          "max_common_grid_relative_power_error": 0.03129321622146142,
+          "max_relative_power_error": 0.03129321622146142,
+          "accepted_steps": 500,
+          "rejected_steps": 0,
+          "neutron_block_solves": 500,
+          "fgmres_iterations": 1053,
+          "pcg_iterations": 4607,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03129321622112746,
+          "max_common_grid_relative_power_error": 0.03129321622112746,
+          "max_relative_power_error": 0.03129321622112746,
+          "accepted_steps": 500,
+          "rejected_steps": 0,
+          "neutron_block_solves": 500,
+          "fgmres_iterations": 1056,
+          "pcg_iterations": 4640,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.14539606241099023,
+          "max_common_grid_relative_power_error": 0.14539606241099023,
+          "max_relative_power_error": 0.14539606241099023,
+          "accepted_steps": 539,
+          "rejected_steps": 0,
+          "neutron_block_solves": 539,
+          "fgmres_iterations": 1148,
+          "pcg_iterations": 5065,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.000516133093775295,
+          "max_common_grid_relative_power_error": 0.0005830989146140553,
+          "max_relative_power_error": 0.0005830989146140553,
+          "accepted_steps": 539,
+          "rejected_steps": 0,
+          "neutron_block_solves": 539,
+          "fgmres_iterations": 1133,
+          "pcg_iterations": 4900,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 8.23340356594926e-05,
+          "max_common_grid_relative_power_error": 0.00017987622987414298,
+          "max_relative_power_error": 0.00017987622987414298,
+          "accepted_steps": 539,
+          "rejected_steps": 0,
+          "neutron_block_solves": 539,
+          "fgmres_iterations": 1190,
+          "pcg_iterations": 5143,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 7.963459412141383e-05,
+          "max_common_grid_relative_power_error": 0.00017725581673389001,
+          "max_relative_power_error": 0.00017725581673389001,
+          "accepted_steps": 539,
+          "rejected_steps": 0,
+          "neutron_block_solves": 821,
+          "fgmres_iterations": 1502,
+          "pcg_iterations": 7530,
+          "frequency_refinements": 282,
+          "maximum_final_frequency_log_defect": 9.95793362150721e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.001",
+            "scheme": "ftm",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.00987813217520428,
+          "max_common_grid_relative_power_error": 0.00987813187522979,
+          "max_relative_power_error": 0.00987813217520428,
+          "accepted_steps": 539,
+          "rejected_steps": 0,
+          "neutron_block_solves": 822,
+          "fgmres_iterations": 1460,
+          "pcg_iterations": 7033,
+          "frequency_refinements": 283,
+          "maximum_final_frequency_log_defect": 9.94363654669428e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-BE-startup-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.11121637664343509,
+          "max_common_grid_relative_power_error": 0.11756426621570748,
+          "max_relative_power_error": 0.11756426621570748,
+          "accepted_steps": 50,
+          "rejected_steps": 0,
+          "neutron_block_solves": 50,
+          "fgmres_iterations": 124,
+          "pcg_iterations": 588,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol0.0001",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.04634841269180301,
+          "max_common_grid_relative_power_error": 0.04634841269180301,
+          "max_relative_power_error": 0.04634841269180301,
+          "accepted_steps": 1514,
+          "rejected_steps": 3,
+          "neutron_block_solves": 1517,
+          "fgmres_iterations": 2985,
+          "pcg_iterations": 12831,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-05",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.014380140579239864,
+          "max_common_grid_relative_power_error": 0.014380140579239864,
+          "max_relative_power_error": 0.014380140579239864,
+          "accepted_steps": 4777,
+          "rejected_steps": 7,
+          "neutron_block_solves": 4784,
+          "fgmres_iterations": 7798,
+          "pcg_iterations": 30653,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-06",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0045204017445725775,
+          "max_common_grid_relative_power_error": 0.0045204017445725775,
+          "max_relative_power_error": 0.0045204017445725775,
+          "accepted_steps": 15095,
+          "rejected_steps": 10,
+          "neutron_block_solves": 15105,
+          "fgmres_iterations": 21803,
+          "pcg_iterations": 70105,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol0.0001",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0003689107228712629,
+          "max_common_grid_relative_power_error": 0.008216586905075873,
+          "max_relative_power_error": 0.008216586905075873,
+          "accepted_steps": 82,
+          "rejected_steps": 8,
+          "neutron_block_solves": 90,
+          "fgmres_iterations": 196,
+          "pcg_iterations": 889,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-05",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 4.783243526773617e-05,
+          "max_common_grid_relative_power_error": 0.0033296187418743184,
+          "max_relative_power_error": 0.0033296187418743184,
+          "accepted_steps": 114,
+          "rejected_steps": 11,
+          "neutron_block_solves": 125,
+          "fgmres_iterations": 266,
+          "pcg_iterations": 1084,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-06",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 6.458795906771897e-06,
+          "max_common_grid_relative_power_error": 0.002103395880728387,
+          "max_relative_power_error": 0.002103395880728387,
+          "accepted_steps": 161,
+          "rejected_steps": 12,
+          "neutron_block_solves": 173,
+          "fgmres_iterations": 369,
+          "pcg_iterations": 1633,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-07",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-07,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 9.46981486560361e-07,
+          "max_common_grid_relative_power_error": 0.0009658161738783644,
+          "max_relative_power_error": 0.0009658161738783644,
+          "accepted_steps": 235,
+          "rejected_steps": 16,
+          "neutron_block_solves": 251,
+          "fgmres_iterations": 530,
+          "pcg_iterations": 2287,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 1.0,
+          "wrong_direction_increments": 0
+        }
+      ]
+    },
+    "shutdown": {
+      "reactivity": -0.05,
+      "duration_s": 0.2,
+      "beta": 0.0065,
+      "decay_per_s": 0.08,
+      "generation_time_s": 0.00015151515151515152,
+      "initial_power": 1.0,
+      "final_reference_power": 0.11346990013347556,
+      "reference": "Closed-form two-mode point kinetics, exactly matching the uniform FV problem",
+      "records": [
+        {
+          "configuration": {
+            "name": "BE-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.17995556499137133,
+          "max_common_grid_relative_power_error": 0.1879496579036104,
+          "max_relative_power_error": 0.1879496579036104,
+          "accepted_steps": 200,
+          "rejected_steps": 0,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 422,
+          "pcg_iterations": 1861,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346995700067035,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h0.00025",
+            "scheme": "backward-euler",
+            "dt": 0.00025
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.04685927520228783,
+          "max_common_grid_relative_power_error": 0.04737937377529078,
+          "max_relative_power_error": 0.04737937377529078,
+          "accepted_steps": 800,
+          "rejected_steps": 0,
+          "neutron_block_solves": 800,
+          "fgmres_iterations": 1507,
+          "pcg_iterations": 6350,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991435077056,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-h5e-05",
+            "scheme": "backward-euler",
+            "dt": 5e-05
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.009482466212258123,
+          "max_common_grid_relative_power_error": 0.009504294821296888,
+          "max_relative_power_error": 0.009504294821296888,
+          "accepted_steps": 4000,
+          "rejected_steps": 0,
+          "neutron_block_solves": 4000,
+          "fgmres_iterations": 5735,
+          "pcg_iterations": 20624,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346990297702317,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.01",
+            "scheme": "crank-nicolson",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 2.1115096414581833,
+          "max_common_grid_relative_power_error": 2.3737743119325816,
+          "max_relative_power_error": 2.3737743119325816,
+          "accepted_steps": 20,
+          "rejected_steps": 0,
+          "neutron_block_solves": 20,
+          "fgmres_iterations": 45,
+          "pcg_iterations": 171,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.021731304609063806,
+          "wrong_direction_increments": 4
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 2.1115096245880562,
+          "max_common_grid_relative_power_error": 2.3737743005584138,
+          "max_relative_power_error": 2.3737743005584138,
+          "accepted_steps": 20,
+          "rejected_steps": 0,
+          "neutron_block_solves": 20,
+          "fgmres_iterations": 45,
+          "pcg_iterations": 201,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 2,
+          "minimum_power": 0.11237224376244459,
+          "wrong_direction_increments": 2
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.01",
+            "scheme": "backward-euler",
+            "dt": 0.01,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05980050928675884,
+          "max_common_grid_relative_power_error": 0.06255567472976664,
+          "max_relative_power_error": 0.06255567472976664,
+          "accepted_steps": 83,
+          "rejected_steps": 0,
+          "neutron_block_solves": 83,
+          "fgmres_iterations": 156,
+          "pcg_iterations": 638,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347031255586063,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.002111770836391358,
+          "max_common_grid_relative_power_error": 0.0020908668083001736,
+          "max_relative_power_error": 0.002111770836391358,
+          "accepted_steps": 83,
+          "rejected_steps": 0,
+          "neutron_block_solves": 83,
+          "fgmres_iterations": 215,
+          "pcg_iterations": 818,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346990013153409,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0007182646030911011,
+          "max_common_grid_relative_power_error": 0.0029663774862218606,
+          "max_relative_power_error": 0.0029663774862218606,
+          "accepted_steps": 83,
+          "rejected_steps": 0,
+          "neutron_block_solves": 83,
+          "fgmres_iterations": 194,
+          "pcg_iterations": 746,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991443976283,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0008717253833099292,
+          "max_common_grid_relative_power_error": 0.0028592022034947817,
+          "max_relative_power_error": 0.0028592022034947817,
+          "accepted_steps": 83,
+          "rejected_steps": 0,
+          "neutron_block_solves": 166,
+          "fgmres_iterations": 301,
+          "pcg_iterations": 1278,
+          "frequency_refinements": 83,
+          "maximum_final_frequency_log_defect": 6.825708391484226e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991162559339,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.01",
+            "scheme": "ftm",
+            "dt": 0.01,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03058873240536908,
+          "max_common_grid_relative_power_error": 0.03320101090958105,
+          "max_relative_power_error": 0.03320101090958105,
+          "accepted_steps": 83,
+          "rejected_steps": 0,
+          "neutron_block_solves": 176,
+          "fgmres_iterations": 290,
+          "pcg_iterations": 1341,
+          "frequency_refinements": 93,
+          "maximum_final_frequency_log_defect": 8.805395552016464e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347042084979392,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.005",
+            "scheme": "crank-nicolson",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 1.2723221744097883,
+          "max_common_grid_relative_power_error": 1.316970640625836,
+          "max_relative_power_error": 1.316970640625836,
+          "accepted_steps": 40,
+          "rejected_steps": 0,
+          "neutron_block_solves": 40,
+          "fgmres_iterations": 87,
+          "pcg_iterations": 307,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11348998634410416,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 1.2723221731574572,
+          "max_common_grid_relative_power_error": 1.520174798205149,
+          "max_relative_power_error": 1.520174798205149,
+          "accepted_steps": 40,
+          "rejected_steps": 0,
+          "neutron_block_solves": 40,
+          "fgmres_iterations": 88,
+          "pcg_iterations": 320,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 2,
+          "minimum_power": 0.11349023792523548,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.005",
+            "scheme": "backward-euler",
+            "dt": 0.005,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05980050928675884,
+          "max_common_grid_relative_power_error": 0.06255567472976664,
+          "max_relative_power_error": 0.06255567472976664,
+          "accepted_steps": 96,
+          "rejected_steps": 0,
+          "neutron_block_solves": 96,
+          "fgmres_iterations": 185,
+          "pcg_iterations": 768,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347014601141095,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.002111770836391358,
+          "max_common_grid_relative_power_error": 0.0020908668083001736,
+          "max_relative_power_error": 0.002111770836391358,
+          "accepted_steps": 96,
+          "rejected_steps": 0,
+          "neutron_block_solves": 96,
+          "fgmres_iterations": 255,
+          "pcg_iterations": 980,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346990012792021,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0007182646030911011,
+          "max_common_grid_relative_power_error": 0.0029663774862218606,
+          "max_relative_power_error": 0.0029663774862218606,
+          "accepted_steps": 96,
+          "rejected_steps": 0,
+          "neutron_block_solves": 96,
+          "fgmres_iterations": 233,
+          "pcg_iterations": 906,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991443975829,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.005",
+            "scheme": "ftm2",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0008717253833099292,
+          "max_common_grid_relative_power_error": 0.0028592022034947817,
+          "max_relative_power_error": 0.0028592022034947817,
+          "accepted_steps": 96,
+          "rejected_steps": 0,
+          "neutron_block_solves": 179,
+          "fgmres_iterations": 339,
+          "pcg_iterations": 1443,
+          "frequency_refinements": 83,
+          "maximum_final_frequency_log_defect": 6.825708391484226e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991162559715,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.005",
+            "scheme": "ftm",
+            "dt": 0.005,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03058873240536908,
+          "max_common_grid_relative_power_error": 0.03320101090958105,
+          "max_relative_power_error": 0.03320101090958105,
+          "accepted_steps": 96,
+          "rejected_steps": 0,
+          "neutron_block_solves": 189,
+          "fgmres_iterations": 319,
+          "pcg_iterations": 1470,
+          "frequency_refinements": 93,
+          "maximum_final_frequency_log_defect": 8.805395552016464e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.1134704208476128,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.002",
+            "scheme": "crank-nicolson",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.4203351678189373,
+          "max_common_grid_relative_power_error": 0.4532392537109211,
+          "max_relative_power_error": 0.4532392537109211,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 214,
+          "pcg_iterations": 713,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347793376848168,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.42033516778889846,
+          "max_common_grid_relative_power_error": 0.460722111607331,
+          "max_relative_power_error": 0.460722111607331,
+          "accepted_steps": 100,
+          "rejected_steps": 0,
+          "neutron_block_solves": 100,
+          "fgmres_iterations": 213,
+          "pcg_iterations": 712,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 1,
+          "minimum_power": 0.11347812730410581,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.002",
+            "scheme": "backward-euler",
+            "dt": 0.002,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05980050928675884,
+          "max_common_grid_relative_power_error": 0.06255567472976664,
+          "max_relative_power_error": 0.06255567472976664,
+          "accepted_steps": 146,
+          "rejected_steps": 0,
+          "neutron_block_solves": 146,
+          "fgmres_iterations": 293,
+          "pcg_iterations": 1261,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347000769112753,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.002111770836391358,
+          "max_common_grid_relative_power_error": 0.0020908668083001736,
+          "max_relative_power_error": 0.002111770836391358,
+          "accepted_steps": 146,
+          "rejected_steps": 0,
+          "neutron_block_solves": 146,
+          "fgmres_iterations": 389,
+          "pcg_iterations": 1484,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346990012660423,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0007182646030911011,
+          "max_common_grid_relative_power_error": 0.0029663774862218606,
+          "max_relative_power_error": 0.0029663774862218606,
+          "accepted_steps": 146,
+          "rejected_steps": 0,
+          "neutron_block_solves": 146,
+          "fgmres_iterations": 383,
+          "pcg_iterations": 1488,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991443894212,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.002",
+            "scheme": "ftm2",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0008717253833099292,
+          "max_common_grid_relative_power_error": 0.0028592022034947817,
+          "max_relative_power_error": 0.0028592022034947817,
+          "accepted_steps": 146,
+          "rejected_steps": 0,
+          "neutron_block_solves": 231,
+          "fgmres_iterations": 490,
+          "pcg_iterations": 2070,
+          "frequency_refinements": 85,
+          "maximum_final_frequency_log_defect": 7.890540053933637e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991162542772,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.002",
+            "scheme": "ftm",
+            "dt": 0.002,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03058873240536908,
+          "max_common_grid_relative_power_error": 0.03320101090958105,
+          "max_relative_power_error": 0.03320101090958105,
+          "accepted_steps": 146,
+          "rejected_steps": 0,
+          "neutron_block_solves": 241,
+          "fgmres_iterations": 427,
+          "pcg_iterations": 1955,
+          "frequency_refinements": 95,
+          "maximum_final_frequency_log_defect": 8.805395552016464e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347041924255215,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "crank-nicolson-uniform-h0.001",
+            "scheme": "crank-nicolson",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.18823756643992318,
+          "max_common_grid_relative_power_error": 0.19852256380077815,
+          "max_relative_power_error": 0.19852256380077815,
+          "accepted_steps": 200,
+          "rejected_steps": 0,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 415,
+          "pcg_iterations": 1793,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347391680943818,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.18823756643803202,
+          "max_common_grid_relative_power_error": 0.19969958765844198,
+          "max_relative_power_error": 0.19969958765844198,
+          "accepted_steps": 200,
+          "rejected_steps": 0,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 417,
+          "pcg_iterations": 1813,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347399960070331,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "BE-graded-h0.001",
+            "scheme": "backward-euler",
+            "dt": 0.001,
+            "graded": true
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.05980050928675884,
+          "max_common_grid_relative_power_error": 0.06255567472976664,
+          "max_relative_power_error": 0.06255567472976664,
+          "accepted_steps": 239,
+          "rejected_steps": 0,
+          "neutron_block_solves": 239,
+          "fgmres_iterations": 484,
+          "pcg_iterations": 2090,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346995546701041,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "zero-frequency-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency": 0.0,
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.002111770836391358,
+          "max_common_grid_relative_power_error": 0.0020908668083001736,
+          "max_relative_power_error": 0.002111770836391358,
+          "accepted_steps": 239,
+          "rejected_steps": 0,
+          "neutron_block_solves": 239,
+          "fgmres_iterations": 668,
+          "pcg_iterations": 2586,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346990012704392,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0005855201860780479,
+          "max_common_grid_relative_power_error": 0.0029663774862218606,
+          "max_relative_power_error": 0.0029663774862218606,
+          "accepted_steps": 239,
+          "rejected_steps": 0,
+          "neutron_block_solves": 239,
+          "fgmres_iterations": 590,
+          "pcg_iterations": 2318,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991395577805,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm2-graded-h0.001",
+            "scheme": "ftm2",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "startup_be_steps": 2,
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0007592113364451869,
+          "max_common_grid_relative_power_error": 0.0028592022034947817,
+          "max_relative_power_error": 0.0028592022034947817,
+          "accepted_steps": 239,
+          "rejected_steps": 0,
+          "neutron_block_solves": 333,
+          "fgmres_iterations": 630,
+          "pcg_iterations": 2763,
+          "frequency_refinements": 94,
+          "maximum_final_frequency_log_defect": 8.103776246246863e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346991141353541,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "corrected-ftm1-graded-h0.001",
+            "scheme": "ftm",
+            "dt": 0.001,
+            "graded": true,
+            "ftm_kwargs": {
+              "frequency_iterations": 4
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.03058873240536908,
+          "max_common_grid_relative_power_error": 0.03320101090958105,
+          "max_relative_power_error": 0.03320101090958105,
+          "accepted_steps": 239,
+          "rejected_steps": 0,
+          "neutron_block_solves": 343,
+          "fgmres_iterations": 624,
+          "pcg_iterations": 2836,
+          "frequency_refinements": 104,
+          "maximum_final_frequency_log_defect": 9.825996669654975e-07,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347039024540295,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "ftm2-uniform-BE-startup-h0.01",
+            "scheme": "ftm2",
+            "dt": 0.01,
+            "ftm_kwargs": {
+              "startup_be_steps": 2
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 1.2173298394762715,
+          "max_common_grid_relative_power_error": 1.8404381958219882,
+          "max_relative_power_error": 1.8404381958219882,
+          "accepted_steps": 20,
+          "rejected_steps": 0,
+          "neutron_block_solves": 20,
+          "fgmres_iterations": 45,
+          "pcg_iterations": 164,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 2,
+          "unsafe_frequency_BE_steps": 1,
+          "minimum_power": 0.11297595004404576,
+          "wrong_direction_increments": 2
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol0.0001",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.004876807060523181,
+          "max_common_grid_relative_power_error": 0.004884411013566625,
+          "max_relative_power_error": 0.004884411013566625,
+          "accepted_steps": 457,
+          "rejected_steps": 6,
+          "neutron_block_solves": 463,
+          "fgmres_iterations": 698,
+          "pcg_iterations": 2358,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347075975847065,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-05",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.001546072390598674,
+          "max_common_grid_relative_power_error": 0.0015467961116808482,
+          "max_relative_power_error": 0.0015467961116808482,
+          "accepted_steps": 1403,
+          "rejected_steps": 9,
+          "neutron_block_solves": 1412,
+          "fgmres_iterations": 2044,
+          "pcg_iterations": 5597,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347070605546633,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf1-rtol1e-06",
+            "scheme": "bdf1",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": false
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 0.0004893198104267693,
+          "max_common_grid_relative_power_error": 0.0004893873208615673,
+          "max_relative_power_error": 0.0004893873208615673,
+          "accepted_steps": 4392,
+          "rejected_steps": 12,
+          "neutron_block_solves": 4404,
+          "fgmres_iterations": 5309,
+          "pcg_iterations": 14832,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347035311411102,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol0.0001",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 0.0001,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 6.543942038050865e-05,
+          "max_common_grid_relative_power_error": 0.004200446772902211,
+          "max_relative_power_error": 0.004200446772902211,
+          "accepted_steps": 73,
+          "rejected_steps": 11,
+          "neutron_block_solves": 84,
+          "fgmres_iterations": 147,
+          "pcg_iterations": 591,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.1134707048139651,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-05",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-05,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 3.9239470503993346e-06,
+          "max_common_grid_relative_power_error": 0.0017803384182102366,
+          "max_relative_power_error": 0.0017803384182102366,
+          "accepted_steps": 94,
+          "rejected_steps": 10,
+          "neutron_block_solves": 104,
+          "fgmres_iterations": 185,
+          "pcg_iterations": 737,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11347032106285132,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-06",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-06,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 5.845576851459811e-07,
+          "max_common_grid_relative_power_error": 0.001101462737937542,
+          "max_relative_power_error": 0.001101462737937542,
+          "accepted_steps": 130,
+          "rejected_steps": 14,
+          "neutron_block_solves": 144,
+          "fgmres_iterations": 254,
+          "pcg_iterations": 982,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346989953219631,
+          "wrong_direction_increments": 0
+        },
+        {
+          "configuration": {
+            "name": "adaptive-bdf5-rtol1e-07",
+            "scheme": "bdf5",
+            "dt": 1e-05,
+            "adaptive": {
+              "rtol": 1e-07,
+              "automatic_order": true
+            }
+          },
+          "status": "completed",
+          "max_endpoint_relative_power_error": 9.393751643216319e-08,
+          "max_common_grid_relative_power_error": 0.00044918879818101054,
+          "max_relative_power_error": 0.00044918879818101054,
+          "accepted_steps": 181,
+          "rejected_steps": 19,
+          "neutron_block_solves": 200,
+          "fgmres_iterations": 341,
+          "pcg_iterations": 1293,
+          "frequency_refinements": 0,
+          "maximum_final_frequency_log_defect": null,
+          "frequency_steps_above_tolerance": 0,
+          "startup_BE_steps": 0,
+          "unsafe_frequency_BE_steps": 0,
+          "minimum_power": 0.11346989970258994,
+          "wrong_direction_increments": 0
+        }
+      ]
+    }
+  }
+}
