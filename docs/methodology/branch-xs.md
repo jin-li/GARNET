@@ -194,3 +194,60 @@ The `build_thermal_star` constructor also accepts `compatible_serpent_versions`
 and forwards that policy to its `BranchLibrary`. This permits an explicitly
 accepted executable-version pair without waiving training roles, nuclear-data
 identity or the caller-supplied qualification policy.
+
+## Experimental node-local rod occupancy weights
+
+The optional `garnet.branch_rod.evaluate_rod_occupancy` evaluator applies only
+to an explicit one-dimensional segment in an identity-transformed rod
+coordinate. It first uses `BranchLibrary.evaluate` to enforce the existing
+domain and fixed-condition contract and recover the contributing source IDs.
+Exact anchors retain the ordinary exact-state result without invoking geometry.
+For an interpolated segment with global right weight $w$, a caller-supplied
+geometry function provides the absorber fractions $o_{L,n}$, $o_{R,n}$ and
+$o_{t,n}$ for each physical region $n$. Its local right weight is
+
+$$
+w_n = \begin{cases}
+\dfrac{o_{t,n}-o_{L,n}}{o_{R,n}-o_{L,n}}, & o_{R,n}\ne o_{L,n},\\
+w, & o_{R,n}=o_{L,n}.
+\end{cases}
+$$
+
+Every occupancy must be finite and within $[0,1]$; target occupancy must also
+lie within the closed interval spanned by its endpoint occupancies. This
+includes equality when endpoints coincide. Reversed segment orientation and
+decreasing occupancy are supported by the same expression. The method rejects
+nonbracketed geometry instead of modifying its values. The geometry and its
+coordinate units are application responsibilities; the module contains no
+reactor-specific dimensions or region identities.
+
+For each region, the same $w_n$ is applied to $D$, absorption, scattering, the
+full emitted/source fission matrix, the independent spectrum and optional
+kappa-fission/total channels:
+
+$$ X_{t,n}=(1-w_n)X_{L,n}+w_n X_{R,n}. $$
+
+Face factors use
+
+$$ f_{t,n,s,g}=\exp\big((1-w_n)\log f_{L,n,s,g}
+                         +w_n\log f_{R,n,s,g}\big). $$
+
+The spectrum is normalized by the same rule as the ordinary library evaluator;
+exterior face factors are set to exact unity. Nonnegative XS and positive
+diffusion/factors follow from convex interpolation of compatible sources.
+Regions with unchanged occupancy use the original global interpolation,
+including core-induced changes in their homogenized properties. If every
+region has unchanged occupancy, this reduces to the ordinary segment algebra.
+This is an interpolation prescription, not a proof of conserved transport
+reaction rates, preservation of a heterogeneous flux, or qualified rod worth.
+
+Returned global contributor weights remain lineage, while immutable metadata
+records the separate local weights, occupancies, source IDs/roles and explicit
+geometry identity. The experimental result has no native transport record and
+receives no source qualification. Original states and their roles are retained
+unchanged; interpolated metadata is explicitly labelled `role="prediction"`. The geometry callback is deliberately excluded from library
+serialization: archive its implementation and geometry provenance separately
+with the source library and prediction snapshot. Existing development cases
+must remain identified as such; introducing this evaluator does not turn a
+retrospective comparison into blind validation. No PRATIC, full-rod or
+differential-worth qualification is implied by this software interface.
