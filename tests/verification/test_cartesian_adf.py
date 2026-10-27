@@ -277,7 +277,10 @@ def test_bernal_case_setup_and_base_solve():
 
 
 def test_gpu_adf_fused_matches_unfused_if_available():
-    cp = pytest.importorskip('cupy')
+    try:
+        import cupy as cp
+    except ImportError as exc:
+        pytest.skip(f'CuPy runtime is unavailable: {exc}')
     try:
         if cp.cuda.runtime.getDeviceCount() < 1:
             pytest.skip('no CUDA device')
@@ -298,8 +301,11 @@ def test_gpu_adf_fused_matches_unfused_if_available():
     previous = kernels.set_fused(True)
     try:
         fused = cp.asnumpy(op.apply(phi))
+        fused_transpose = cp.asnumpy(op.apply_transpose(phi))
         kernels.set_fused(False)
         unfused = cp.asnumpy(op.apply(phi))
+        unfused_transpose = cp.asnumpy(op.apply_transpose(phi))
     finally:
         kernels.set_fused(previous)
     np.testing.assert_allclose(fused, unfused, rtol=1e-13, atol=1e-13)
+    np.testing.assert_allclose(fused_transpose, unfused_transpose, rtol=1e-13, atol=1e-13)

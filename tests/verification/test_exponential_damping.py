@@ -218,7 +218,10 @@ def test_two_group_distinct_delayed_spectra_against_matrix_exponential(frequency
                     nu_sigma_f=fission, sigma_s=scatter, chi=spectrum)
     model = (Model((1, 1, 1), (1, 1, 1)).fill(fuel).set_boundary('reflective')
              .set_kinetics(Kinetics(velocities, beta, decay, chi_delayed=delayed)))
-    steady = model.steady(device='cpu', tol_k=1e-13, tol_source=1e-12)
+    # Resolve the fixed-source equations more tightly than the final balance.
+    steady = model.steady(device='cpu', tol_k=1e-13, tol_source=1e-12,
+                          tol_fixed_source=1e-13)
+    assert steady.converged
     phi = steady.flux.ravel()
     phi = phi / (fission @ phi / steady.k_eff)
     initial = np.r_[phi, beta / decay]

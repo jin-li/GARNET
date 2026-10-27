@@ -1,6 +1,7 @@
 """Provisional Bernal et al. simple 3-D reactor; see docs/bernal_adf_benchmark.md.
 
-Usage: PYTHONPATH=. python examples/bernal_adf_benchmark.py --refinements 1 2
+Install GARNET first (python -m pip install -e .).
+Usage: python examples/bernal_adf_benchmark.py --refinements 1 2
 A replacement integer material map may be supplied with --map (NumPy .npy,
 shape (11,11,10), with 0 for excised cells and 1..6 for paper materials).
 """

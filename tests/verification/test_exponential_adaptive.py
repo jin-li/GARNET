@@ -153,7 +153,10 @@ def test_localized_two_group_shape_change_against_independent_matrix_exponential
     model = (Model((4, 1, 1), (4, 1, 1)).fill(fuel).add_box(left, x=(0, 2))
              .set_boundary('reflective').set_kinetics(Kinetics(speeds, beta, decay,
                                                                             chi_delayed=delayed)))
-    steady = model.steady(device='cpu', tol_k=1e-13, tol_source=1e-12)
+    # Resolve the fixed-source equations more tightly than the final balance.
+    steady = model.steady(device='cpu', tol_k=1e-13, tol_source=1e-12,
+                          tol_fixed_source=1e-13)
+    assert steady.converged
     initial_flux = steady.flux_numpy.reshape(2, 4).copy()
     initial_flux /= np.sum(fission[:, None] * initial_flux) / steady.k_eff
     source = fission @ initial_flux / steady.k_eff

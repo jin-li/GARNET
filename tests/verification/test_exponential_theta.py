@@ -142,8 +142,10 @@ def test_multigroup_changing_fission_source_against_independent_ode():
         sigma_a, nu_f = coefficients(t)
         return [base.replace(sigma_a=sigma_a, nu_sigma_f=nu_f)], None
 
+    # Resolve the fixed-source equations more tightly than the final balance.
     steady = DiffusionEigenSolver(grid, [base], bc="reflective", device="cpu").solve(
-        tol_k=1e-13, tol_source=1e-12)
+        tol_k=1e-13, tol_source=1e-12, tol_fixed_source=1e-13)
+    assert steady.converged
     phi0 = steady.flux[:, 0, 0, 0]
     phi0 = phi0/(np.dot(fission, phi0)/steady.k_eff)
     prompt = spectrum-beta @ delayed
