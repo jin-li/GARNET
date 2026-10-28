@@ -6,6 +6,7 @@ In particular, negative unused auxiliary traces are retained by the caller;
 they are never clipped or used to modify exterior boundary conditions.
 """
 import numpy as np
+from .face_conventions import NEM_OPPOSITE_FACES
 
 
 def extend_reflector_interface_factors(fuel_factors, fuel_mask, neighbors,
@@ -40,7 +41,7 @@ def extend_reflector_interface_factors(fuel_factors, fuel_mask, neighbors,
     if (adjacent.dtype.kind not in 'iu' or adjacent.shape != (n, 6)
             or np.any(adjacent < -1) or np.any(adjacent >= n)):
         raise ValueError('neighbors must be integer (N,6) indices or -1')
-    opposite = (2, 3, 0, 1, 5, 4)
+    opposite = NEM_OPPOSITE_FACES
     internal = adjacent >= 0
     for node, side in np.argwhere(internal):
         other = adjacent[node, side]

@@ -6,6 +6,8 @@ acts on every spatial moment through the inherited complete-state iteration.
 """
 import numpy as np
 from scipy import sparse
+
+from .nem_degree_policy import validate_nem_degree
 from .nem import NEMDiffusionSolver,NEMResult,NEMSolverError,_field,_relative,_PAIRS
 from .nem_polynomial_axis import NEMPolynomialAxisResponse,profile_minimum
 
@@ -18,9 +20,9 @@ class NEMHigherOrderDiffusionSolver(NEMDiffusionSolver):
     explicit properties of CuboidNodalGrid. Negative physical states survive.
     """
     def __init__(self,*args,degree=14,**kwargs):
-        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14,16):
-            raise ValueError('degree must be one of 4,6,8,10,12,14,16')
-        self.degree=int(degree);self.n_moments=self.degree-2
+        degree = validate_nem_degree(degree)
+        self.degree = degree
+        self.n_moments = self.degree - 2
         super().__init__(*args,**kwargs)
 
     def _signature(self):

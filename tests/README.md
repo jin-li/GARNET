@@ -1,7 +1,23 @@
 # Test suite layout
 
-The default suite contains verification and validation. Preserved low-level
+The [Testing and Verification Manual](../docs/testing/index.md) is the complete
+guide to test selection, coverage, optional dependencies, evidence limits, failure
+triage and package/manual checks. It accompanies the
+[User Manual](../docs/user/index.md) and
+[Software Methodology Manual](../docs/methodology/index.md).
+
+The default suite includes root-level feature tests, verification and validation. Preserved low-level
 tests under `legacy/` are inactive unless `--run-legacy` is supplied.
+
+## Root feature tests
+
+Active `tests/test_*.py` modules cover synthetic Serpent records and native
+moments, ADF/interface conventions, meshes, NEM/polynomial references, coupled
+moment operators, static branch libraries/qualification gates, and static
+kinetics production/families/projection. See the
+[coverage map](../docs/testing/coverage.md) for representative modules and their
+evidence limits. GPU mocks check API contracts; only actual-device cases supply
+hardware execution evidence. Report skips with `python -m pytest -q -ra`.
 
 ## `verification/` — is the *mathematics* solved correctly?
 
@@ -10,9 +26,9 @@ infinite-medium k∞, the 1D slab limit), discretization *order* (error must
 fall 4× per mesh doubling), exact invariants (symmetry planes, reflective ⇒
 k = k∞, extruded-2D ⇒ 3D equality), cross-solver equivalence on identical
 meshes, spec parsing, and exact file transcription (FEMFFUSION readers).
-These tests would fail if the numerics were wrong, regardless of any physics
-data. Fast; no external data needed (the FEMFFUSION reader tests skip
-without a checkout).
+These checks isolate numerical and API contracts from reactor-data validation.
+Some verification cases are marked `slow`; unmarked cases also vary in cost.
+Optional FEMFFUSION reader and other dependency checks skip when unavailable.
 
 | File | Pins down |
 |---|---|
@@ -67,10 +83,14 @@ third-party reference inputs used to derive data, never imported.
 The cylindrical, transient point-kinetics, per-material kinetics, triangular
 kinetics-theory, TWIGL/LMW and ANL-7416 modules use model methods wherever the
 calculation fits the diffusion API. Specialized low-level engine tests remain
-active. All original test functions and assertions are retained.
+active. The legacy collection retains comparison coverage for earlier entry points.
 
-Their pre-migration versions are stored byte-for-byte under
-`legacy/verification/` and `legacy/validation/` (62 parameterized cases).
+Earlier low-level versions are stored under `legacy/verification/` and
+`legacy/validation/`. Two cases in `test_transient_point_kinetics.py` were adapted
+during integration: the monolithic-feedback fixture now requests tighter
+eigenvalue/source convergence and asserts balance, and schedule validation
+expects the current BDF/FTM error wording. These files are not a byte-for-byte
+snapshot; use source history for the original revision.
 These are a reproducible comparison with the earlier entry points, not a
 second default copy of each test:
 

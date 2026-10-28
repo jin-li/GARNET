@@ -3,7 +3,9 @@
 The experimental `garnet.branch_xs` module provides immutable table states,
 exact selection, bounded absolute interpolation and fresh CPU NEM operators.
 It is separate from `TabulatedFeedback`: it does not clamp requests or apply
-ratios to an existing solver. Run the data-free example from the checkout:
+ratios to an existing solver. Native NEM branch states use three
+Cartesian axes and six whole-node faces in the order `x-, y-, x+, y+, z-, z+`.
+Generic table interpolation does not add support for arbitrary spatial topology. Run the data-free example from the checkout:
 
 ```sh
 python examples/isonees_features/branch_xs.py
@@ -28,6 +30,26 @@ do not establish scientific qualification. The library compares declarations;
 it does not verify that a mask hash describes the receiving geometry or that
 the receiving solver implements the declared closure.
 
+For additional application-specific constraints, use the explicit metadata
+namespace `compatibility_identities`, for example:
+
+```python
+metadata = {"compatibility_identities": {
+    "processing_route": "local-collapse-v2",
+    "composition": {"salt_recipe": "recipe-7", "option": None},
+}}
+```
+
+The namespace must be a mapping of nonempty string names to JSON-compatible
+identity values. The library compares the entire mapping, including nested
+keys: an omitted identity differs from an explicit null. Namespace omission
+also differs from an empty mapping. Keep ordinary descriptive provenance
+outside it. Legacy identity keys remain checked with their historical presence
+rules: closure keys distinguish omission/null, while other legacy keys compare
+missing and null equally. Neither matching metadata nor custom identities
+establish scientific equivalence. The namespace and explicit version policy
+survive JSON save/load without a separate key registry.
+
 Create segments or triangles explicitly. Use separate libraries/elements for
 ARO/ARI configurations (normally labelled `aro`/`ari`), different bank
 environments and different geometry or nuclear-data families. A five-point
@@ -38,7 +60,26 @@ error. Unvalidated interpolation remains labelled unvalidated.
 `select(state_id)` returns the exact immutable state. `evaluate(conditions,
 configuration=..., family=...)` returns absolute arrays and source weights.
 Inspect those weights and the provenance before interpreting a prediction.
-`BenchmarkModeratorPath` supplies the bounded three-knot benchmark density path.
+`TabulatedModeratorPath` supplies a caller-defined bounded density path:
+
+```python
+from garnet.branch_xs import TabulatedModeratorPath
+
+path = TabulatedModeratorPath(
+    temperatures=(300., 400., 500.),       # K, increasing
+    densities=(1.0, .95, .85),             # g/cm3, strictly monotone
+    path_id="my-fluid-table-v1", pressure_bar=20.,
+)
+```
+
+Supply at least two positive finite knots and an explicit nonblank identity.
+Densities may increase or decrease; interpolation uses shape-preserving PCHIP
+and rejects extrapolation. Omit `pressure_bar` when it is unknown or not relevant;
+a supplied pressure must be positive finite and is provenance only. This class
+does not calculate an equation of state. `BenchmarkModeratorPath` remains the
+historical 155-bar PRATIC wrapper with unchanged default knots and positional
+argument order. Migrate other fluids or pressures to `TabulatedModeratorPath`;
+no PRATIC geometry, material names or two-group energy structure is required.
 Use `evaluate_temperatures(Tf, Tm, path, configuration=..., family=...)` to
 evaluate it without treating moderator temperature as another independent
 axis. Record the same `moderator_path_id` on every source state. `save(path)`
@@ -83,6 +124,35 @@ qualified for arbitrary cellwise temperatures. This release does not add a
 transient feedback hook, rod-motion dynamics, temperature/rod combinations or
 depletion interpolation.
 
+## Metrics and application acceptance policy
+
+`garnet.branch_validation` computes reactivity differences in pcm, temperature
+coefficients in pcm/K, interval rod worth in pcm/cm, and normalized power RMS
+as a fraction. Acceptance thresholds are caller policy. Historical defaults
+remain for compatibility: 20 pcm for reconstruction interpolation, 0.01 for
+power RMS, and 0.05 relative for coefficient convergence/rod worth. Choose
+thresholds explicitly for a new application. To compute metrics without
+acceptance:
+
+```python
+from garnet.branch_validation import compare_reconstruction_chain
+
+report = compare_reconstruction_chain(
+    k_interpolated, k_exact, k_ce,
+    target_pcm=None, power_target=None,
+    power_interpolated=p_interpolated, power_exact=p_exact, power_ce=p_ce,
+)
+assert report["status"] == "descriptive"
+```
+
+The chain forwards `power_target` to the interpolated-versus-exact power
+comparison. Transport comparisons remain descriptive. A requested metric with
+no threshold prevents an overall pass; a failed assessed metric still fails.
+For individual helpers, use `normalized_power_rms(..., target=None)`,
+`coefficient_convergence(..., relative_target=None)` or
+`assess_rod_worth(..., relative_target=None)`. Descriptive reports retain input,
+physical-bin, uncertainty and coverage validation. They never qualify a result.
+
 ## Import returned Serpent files
 
 `garnet.branch_io.import_returned_serpent_state` accepts a returned result file
@@ -116,7 +186,7 @@ factors; it does not reconstruct or qualify ADFs.
 
 `garnet.branch_thermal.build_thermal_star` takes five original native-backed
 states in order: nominal, fuel-low, fuel-high, moderator-low, moderator-high.
-Low/high mean actual temperature, so the moderator-low point has higher density.
+Low/high mean actual temperature; densities follow the supplied monotone path.
 Supply the actual `moderator_temperature` in each state's conditions or metadata,
 its `moderator_path_id`, and metadata `role="nominal"` or `role="training"`.
 Every source must explicitly name `geometry_family`, `nuclear_data_family`,

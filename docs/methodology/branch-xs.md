@@ -4,7 +4,9 @@ The branch-library interfaces are experimental static data tools. Numerical
 tests establish interpolation and operator construction; reactor accuracy
 requires independent withheld transport states. A single full-core branch
 temperature represents a uniform perturbation, not arbitrary spatial thermal
-feedback. No transient NEM or moving-mesh method is supplied here.
+feedback. No transient NEM or moving-mesh method is supplied here. Native NEM branch states use three
+Cartesian axes and six whole-node faces in the order `x-, y-, x+, y+, z-, z+`.
+Generic table interpolation does not add support for arbitrary spatial topology.
 
 ## Native, qualified and evaluated states
 
@@ -32,10 +34,30 @@ a policy retain strict comparison.
 explicit segments or triangles; it neither triangulates across categorical
 configurations automatically nor extrapolates outside supplied elements.
 Fuel temperature can use the coordinate $u=\sqrt{T_f}$ and moderator density
-can parameterize one declared fixed-pressure path. Density and moderator
+can parameterize one declared temperature/density path. Density and moderator
 temperature are not independent axes for that path. Inactive conditions must
 match, and requests for another rod configuration or temperature family need
 their own elements.
+
+`TabulatedModeratorPath` accepts application-owned positive finite knots:
+temperature in K must increase, and density in g/cm3 must be strictly monotone
+in either direction. Bounded PCHIP preserves that shape without extrapolating.
+A caller-defined `path_id` identifies the tabulation and must match source
+metadata for thermal-star construction. Optional positive `pressure_bar` is
+provenance, not an equation-of-state parameter. The historical
+`BenchmarkModeratorPath` wrapper retains the original three PRATIC knots and
+155-bar restriction; generic thermal construction has no such pressure or
+energy-group-count requirement.
+
+Legacy compatibility identity names and their original presence rules are
+centralized in `garnet.branch_xs`: closure declarations distinguish omitted
+from null, while other legacy identities retain value comparison using a
+missing default of null. The `compatibility_identities` metadata namespace is
+an extensible caller-owned mapping compared in full. Extra keys, omitted keys,
+and explicit null values therefore affect compatibility, including inside
+nested mappings. Absence of the namespace differs from an empty mapping.
+Serialization preserves both these declarations and the separate exact-string
+Serpent-version policy; permitting versions never waives any identity check.
 
 For barycentric weights $w_i\geq0$, $\sum_iw_i=1$, interpolate absolute data:
 
@@ -131,9 +153,19 @@ do not qualify the outer intervals or the global derivative maximum.
 
 `garnet.branch_validation` distinguishes interpolation versus exact-state
 GARNET, exact-state GARNET versus continuous-energy transport, and the full
-interpolated prediction versus transport. A 20 pcm interpolation limit applies
-to the first comparison, not to total model error. Power comparisons use
-identical physical bins and explicit normalization/weights.
+interpolated prediction versus transport. The historical compatibility defaults
+apply 20 pcm to the first comparison and 0.01 fractional RMS to its power
+comparison, not to total model error. These are application policies, not
+universal reactor accuracy criteria. `compare_reconstruction_chain` exposes
+`target_pcm` and `power_target` independently. Setting either to `None` leaves
+that metric descriptive; any requested unassessed metric prevents an overall
+pass, while a failure in an assessed metric still fails. Setting both to `None`
+is the metric-only route. Transport comparisons carry no inherited gate.
+Power comparisons use identical physical bins and explicit normalization/weights.
+`normalized_power_rms` also accepts `target=None`; coefficient convergence and
+rod-worth assessment accept `relative_target=None`. The latter still reports
+missing intervals and peak resolution. No absent threshold accepts a result,
+and all physical and uncertainty-input validation still applies.
 
 Withheld-state XS and factors are used only after prediction to construct the
 exact-state comparison. A prediction that consumed those tallies is not
@@ -155,7 +187,7 @@ the same closure and mask with the factors throughout each comparison.
 The high-level thermal builder creates four explicit triangles between the
 nominal point and adjacent axis endpoints. The endpoints must bracket the
 nominal actual temperatures and preserve the other thermal coordinate.
-Each moderator density must reproduce the declared bounded benchmark path.
+Each moderator density must reproduce the declared bounded tabulated path.
 This guards against treating a temperature/density pair as independent axes
 or admitting the uncomputed corners of a rectangular domain.
 

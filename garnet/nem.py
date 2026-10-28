@@ -13,10 +13,12 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import LinearOperator, onenormest, splu
 
+from .face_conventions import NEM_AXIS_FACE_PAIRS
 from .nem_geometry import CuboidNodalGrid
 from .nodal_polynomial_reference import _stationary_points
 
-_PAIRS = ((0, 2), (1, 3), (4, 5))
+# Retained for existing internal consumers.
+_PAIRS = NEM_AXIS_FACE_PAIRS
 
 
 @dataclass(frozen=True)
