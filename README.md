@@ -113,7 +113,7 @@ Optional tests require CUDA, preCICE, or external reference files. See the
 [V&V report](docs/verification_validation.md#reproducing-the-checks) for setup
 and the [test layout](tests/README.md) for the verification/validation split.
 
-Licensed under the [GNU GPL v3](LICENSE).
+Licensed under the [Apache v2.0](LICENSE).
 
 ## References
 
