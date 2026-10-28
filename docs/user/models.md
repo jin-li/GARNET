@@ -97,3 +97,18 @@ independently constructed diffusion equivalence factors. The provisional
 Bernal geometry remains unverified, and the Dall'Osso reconstruction retains
 an unresolved reference discrepancy. None of this evidence qualifies PRATIC
 or establishes transferability of Serpent factors to a different receiver.
+
+For a library indexed by region, `expand_region_side_factors(regions, factors)`
+expands `(G,R,6)` factors into the cell-side array consumed by
+`assembly_face_factors`. `region_side_traces(operators, flux, regions)` collects
+area-averaged traces and integrated outward currents on active interior region
+interfaces. Its side order is x−, x+, y−, y+, z−, z+. Unscored sides have NaN
+traces and zero area/current; they are not usable ADF denominators. A region's
+same-orientation faces are pooled, so a single box-face interpretation requires
+box-shaped regions.
+
+The [C5G7 colorset example](../c5g7_colorset_adf.md) compares isolated-assembly
+libraries on several arrangements. Read the reference-refinement results before
+interpreting an ADF improvement; these are diffusion comparisons, not a new
+qualification of transport-derived factors. The GH200 staging scripts prepare
+separate optional GPU campaigns and do not launch from the normal test suite.

@@ -51,7 +51,7 @@ from ..grid import Grid
 from ..materials import Kinetics
 from ._c5g7_data import C5G7_XS
 from .c5g7 import (CORE_LAYOUT, FUEL_FRACTION, MOX_LATTICE, N_PIN, PIN_PITCH,
-                   UO2_LATTICE, _material_from_xs, _pin_coverage)
+                   UO2_LATTICE, _material_from_xs, pin_coverage)
 
 # --- kinetics data (benchmark Tables 9-13) --------------------------------
 
@@ -244,7 +244,7 @@ def build_c5g7_td(case: str = "TD1-1", cells_per_pin: int = 2,
         # Exact-area rasterization as in build_c5g7_2d, but partial cells
         # blend against the *in-assembly* moderator (index 9), which TD3
         # scales while the reflector stays nominal.
-        frac = np.tile(_pin_coverage(s), (n, n))
+        frac = np.tile(pin_coverage(s), (n, n))
         frac[expanded >= _CORE_WATER] = 0.0
         eps = 1e-9
         full = frac >= 1.0 - eps

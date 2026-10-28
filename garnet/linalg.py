@@ -233,7 +233,7 @@ def neumann_preconditioner(apply_A, inv_diag, degree):
 
     Approximates A^-1 by the first `degree`+1 terms of the Neumann series in
     the Jacobi splitting,  sum_k (I - D^-1 A)^k D^-1,  evaluated as `degree`
-    damped-Jacobi sweeps: z <- z + D^-1 (r - A z). Symmetric positive
+    Jacobi correction sweeps: z <- z + D^-1 (r - A z). Symmetric positive
     definite whenever Jacobi converges (diagonally dominant A), so CG theory
     still applies. Each application costs `degree` extra operator applies --
     pure stencil streaming, no dot products -- and cuts the CG iteration
@@ -392,8 +392,8 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
             residual_replace_every=residual_replace_every)
         return solved, iterations + fallback_iterations
 
-    stop2 = max(rtol * float(xp.sqrt(dot(b, b))), atol) ** 2
-    if float(dot(r, r)) <= stop2:
+    residual_tolerance_squared = max(rtol * float(xp.sqrt(dot(b, b))), atol) ** 2
+    if float(dot(r, r)) <= residual_tolerance_squared:
         return x, 0
 
     z = apply_preconditioner(r, z_buf)
@@ -486,10 +486,10 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
                 kernels.dot(xp, r, z_buf, out=scalars["rz"])
 
             if replaced or iterations % check_every == 0:
-                residual2 = float(dot(r, r))
-                if np.isfinite(residual2) and residual2 <= stop2:
+                residual_norm_squared = float(dot(r, r))
+                if np.isfinite(residual_norm_squared) and residual_norm_squared <= residual_tolerance_squared:
                     return x, iterations
-                if not np.isfinite(residual2):
+                if not np.isfinite(residual_norm_squared):
                     retried = retry_with_fallback(iterations)
                     if retried is not None:
                         return retried
@@ -501,7 +501,7 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
             raise RuntimeError(
                 f"PCG failed to converge in {maxiter} iterations "
                 f"(residual {float(xp.sqrt(dot(r, r))):.3e}, "
-                f"target {stop2**0.5:.3e})")
+                f"target {residual_tolerance_squared**0.5:.3e})")
         return x, iterations
 
     for it in range(1, maxiter + 1):
@@ -529,16 +529,18 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
                 xp.copyto(ap_buf, apply_A(x))
                 xp.subtract(b, ap_buf, out=r)
         if replaced or it % check_every == 0:
-            residual2 = float(dot(r, r))
-            if np.isfinite(residual2) and residual2 <= stop2:
+            residual_norm_squared = float(dot(r, r))
+            if np.isfinite(residual_norm_squared) and residual_norm_squared <= residual_tolerance_squared:
                 return x, it
-            if not np.isfinite(residual2):
+            if not np.isfinite(residual_norm_squared):
                 retried = retry_with_fallback(it)
                 if retried is not None:
                     return retried
                 break
         z = apply_preconditioner(r, z_buf)
         if replaced:
+            # A recomputed residual starts a new CG recurrence; old conjugacy
+            # is no longer reliable after recursive-residual drift.
             if workspace is None:
                 p = z.copy()
             else:
@@ -555,7 +557,7 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
     if raise_on_fail:
         raise RuntimeError(
             f"PCG failed to converge in {maxiter} iterations "
-            f"(residual {float(xp.sqrt(dot(r, r))):.3e}, target {stop2**0.5:.3e})"
+            f"(residual {float(xp.sqrt(dot(r, r))):.3e}, target {residual_tolerance_squared**0.5:.3e})"
         )
     return x, maxiter
 
@@ -666,23 +668,23 @@ def gmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
     M = precond if precond is not None else (lambda r: inv_diag * r)
 
     x = x0.copy()
-    stop = max(rtol * norm(b), atol)
+    residual_tolerance = max(rtol * norm(b), atol)
     r = b - apply_A(x)
-    res = norm(r)
-    if res <= stop:
+    residual_norm = norm(r)
+    if residual_norm <= residual_tolerance:
         return x, 0
 
-    it = 0
-    while it < maxiter:
-        m = min(restart, maxiter - it)
-        V = [r / res]                       # Arnoldi basis (device arrays)
-        H = np.zeros((m + 1, m))            # Hessenberg, host
-        cs, sn = np.zeros(m), np.zeros(m)   # Givens rotations
-        g = np.zeros(m + 1)                 # rotated residual vector
-        g[0] = res
-        k = 0
-        for j in range(m):
-            it += 1
+    iteration_count = 0
+    while iteration_count < maxiter:
+        cycle_length = min(restart, maxiter - iteration_count)
+        V = [r / residual_norm]                       # Arnoldi basis (device arrays)
+        H = np.zeros((cycle_length + 1, cycle_length))            # Hessenberg, host
+        givens_cos, givens_sin = np.zeros(cycle_length), np.zeros(cycle_length)   # Givens rotations
+        g = np.zeros(cycle_length + 1)                 # rotated residual vector
+        g[0] = residual_norm
+        basis_size = 0
+        for j in range(cycle_length):
+            iteration_count += 1
             w = apply_A(M(V[j]))
             h = np.zeros(j + 2)
             for i in range(j + 1):          # modified Gram-Schmidt
@@ -694,32 +696,35 @@ def gmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
                 V.append(w / h[j + 1])
             # Rotate the new column into upper-triangular form.
             for i in range(j):
-                h[i], h[i + 1] = (cs[i] * h[i] + sn[i] * h[i + 1],
-                                  -sn[i] * h[i] + cs[i] * h[i + 1])
+                h[i], h[i + 1] = (givens_cos[i] * h[i] + givens_sin[i] * h[i + 1],
+                                  -givens_sin[i] * h[i] + givens_cos[i] * h[i + 1])
             denom = float(np.hypot(h[j], h[j + 1]))
-            cs[j], sn[j] = (1.0, 0.0) if denom == 0.0 else (h[j] / denom, h[j + 1] / denom)
+            givens_cos[j], givens_sin[j] = (1.0, 0.0) if denom == 0.0 else (h[j] / denom, h[j + 1] / denom)
             h[j], h[j + 1] = denom, 0.0
             H[:j + 2, j] = h
-            g[j + 1] = -sn[j] * g[j]
-            g[j] = cs[j] * g[j]
-            k = j + 1
-            if abs(g[k]) <= stop or breakdown:
+            g[j + 1] = -givens_sin[j] * g[j]
+            g[j] = givens_cos[j] * g[j]
+            basis_size = j + 1
+            if abs(g[basis_size]) <= residual_tolerance or breakdown:
                 break
-        y = np.linalg.solve(H[:k, :k], g[:k])   # small upper-triangular system
-        dv = float(y[0]) * V[0]
-        for j in range(1, k):
-            dv += float(y[j]) * V[j]
-        x += M(dv)                              # M linear: M(V y) = (M V) y
+        y = np.linalg.solve(
+            H[:basis_size, :basis_size],
+            g[:basis_size],
+        )   # small upper-triangular system
+        basis_correction = float(y[0]) * V[0]
+        for j in range(1, basis_size):
+            basis_correction += float(y[j]) * V[j]
+        x += M(basis_correction)                              # M linear: M(V y) = (M V) y
         r = b - apply_A(x)
-        res = norm(r)
-        if res <= stop:
-            return x, it
+        residual_norm = norm(r)
+        if residual_norm <= residual_tolerance:
+            return x, iteration_count
     if raise_on_fail:
         raise RuntimeError(
             f"GMRES failed to converge in {maxiter} iterations "
-            f"(residual {res:.3e}, target {stop:.3e})"
+            f"(residual {residual_norm:.3e}, target {residual_tolerance:.3e})"
         )
-    return x, it
+    return x, iteration_count
 
 
 def _fgmres_workspace_solve(apply_A, b, x0, xp, M, *, rtol, atol,
@@ -745,24 +750,24 @@ def _fgmres_workspace_solve(apply_A, b, x0, xp, M, *, rtol, atol,
         return float(xp.sqrt(kernels.dot(xp, value, value)))
 
     xp.copyto(x, x0)
-    stop = max(float(rtol) * norm(b), float(atol))
+    residual_tolerance = max(float(rtol) * norm(b), float(atol))
     apply_operator(x, w)
     xp.subtract(b, w, out=r)
-    res = norm(r)
-    if res <= stop:
+    residual_norm = norm(r)
+    if residual_norm <= residual_tolerance:
         return x, 0
 
-    it = 0
-    while it < maxiter:
-        m = min(restart, maxiter - it)
-        xp.multiply(r, 1.0 / res, out=V[0])
-        H = np.zeros((m + 1, m))
-        cs, sn = np.zeros(m), np.zeros(m)
-        g = np.zeros(m + 1)
-        g[0] = res
-        k = 0
-        for j in range(m):
-            it += 1
+    iteration_count = 0
+    while iteration_count < maxiter:
+        cycle_length = min(restart, maxiter - iteration_count)
+        xp.multiply(r, 1.0 / residual_norm, out=V[0])
+        H = np.zeros((cycle_length + 1, cycle_length))
+        givens_cos, givens_sin = np.zeros(cycle_length), np.zeros(cycle_length)
+        g = np.zeros(cycle_length + 1)
+        g[0] = residual_norm
+        basis_size = 0
+        for j in range(cycle_length):
+            iteration_count += 1
             apply_preconditioner(V[j], Z[j])
             apply_operator(Z[j], w)
             if kernels.is_cupy(xp):
@@ -770,18 +775,18 @@ def _fgmres_workspace_solve(apply_A, b, x0, xp, M, *, rtol, atol,
                 # orthogonality, but both projection passes remain on device.
                 basis = V[:j + 1].reshape(j + 1, -1)
                 flat_w = w.reshape(-1)
-                h1 = basis @ flat_w
+                first_projection = basis @ flat_w
                 kernels.basis_accumulate(
-                    xp, w, V, h1, j + 1, alpha=-1.0)
-                h2 = basis @ flat_w
+                    xp, w, V, first_projection, j + 1, alpha=-1.0)
+                second_projection = basis @ flat_w
                 kernels.basis_accumulate(
-                    xp, w, V, h2, j + 1, alpha=-1.0)
-                h_device = h1 + h2
+                    xp, w, V, second_projection, j + 1, alpha=-1.0)
+                projection_device = first_projection + second_projection
                 wnorm = xp.sqrt(kernels.dot(xp, w, w))
-                packed = xp.concatenate((h_device, wnorm.reshape(1)))
-                host = asnumpy(packed)  # one host synchronization per Arnoldi step
-                H[:j + 1, j] = host[:-1]
-                H[j + 1, j] = float(host[-1])
+                packed = xp.concatenate((projection_device, wnorm.reshape(1)))
+                projection_host = asnumpy(packed)  # one host synchronization per Arnoldi step
+                H[:j + 1, j] = projection_host[:-1]
+                H[j + 1, j] = float(projection_host[-1])
             else:
                 # Preserve modified Gram--Schmidt on CPU, where scalar access
                 # does not synchronize a device and small BLAS calls cost more.
@@ -794,34 +799,34 @@ def _fgmres_workspace_solve(apply_A, b, x0, xp, M, *, rtol, atol,
                 xp.multiply(w, 1.0 / H[j + 1, j], out=V[j + 1])
             for i in range(j):
                 h0, h1_host = H[i, j], H[i + 1, j]
-                H[i, j] = cs[i] * h0 + sn[i] * h1_host
-                H[i + 1, j] = -sn[i] * h0 + cs[i] * h1_host
+                H[i, j] = givens_cos[i] * h0 + givens_sin[i] * h1_host
+                H[i + 1, j] = -givens_sin[i] * h0 + givens_cos[i] * h1_host
             denom = float(np.hypot(H[j, j], H[j + 1, j]))
             if denom == 0.0:
-                cs[j], sn[j] = 1.0, 0.0
+                givens_cos[j], givens_sin[j] = 1.0, 0.0
             else:
-                cs[j] = H[j, j] / denom
-                sn[j] = H[j + 1, j] / denom
+                givens_cos[j] = H[j, j] / denom
+                givens_sin[j] = H[j + 1, j] / denom
             H[j, j], H[j + 1, j] = denom, 0.0
-            g[j + 1] = -sn[j] * g[j]
-            g[j] = cs[j] * g[j]
-            k = j + 1
-            if abs(g[k]) <= stop or breakdown:
+            g[j + 1] = -givens_sin[j] * g[j]
+            g[j] = givens_cos[j] * g[j]
+            basis_size = j + 1
+            if abs(g[basis_size]) <= residual_tolerance or breakdown:
                 break
 
-        y = np.linalg.solve(H[:k, :k], g[:k])
+        y = np.linalg.solve(H[:basis_size, :basis_size], g[:basis_size])
         y_device = xp.asarray(y, dtype=x.dtype)
-        kernels.basis_accumulate(xp, x, Z, y_device, k)
+        kernels.basis_accumulate(xp, x, Z, y_device, basis_size)
         apply_operator(x, w)
         xp.subtract(b, w, out=r)
-        res = norm(r)
-        if res <= stop:
-            return x, it
+        residual_norm = norm(r)
+        if residual_norm <= residual_tolerance:
+            return x, iteration_count
     if raise_on_fail:
         raise RuntimeError(
-            f"FGMRES failed to converge in {it} applies "
-            f"(residual {res:.3e}, target {stop:.3e})")
-    return x, it
+            f"FGMRES failed to converge in {iteration_count} applies "
+            f"(residual {residual_norm:.3e}, target {residual_tolerance:.3e})")
+    return x, iteration_count
 
 
 def fgmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0,
@@ -858,24 +863,24 @@ def fgmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0,
             maxiter=maxiter, restart=restart, raise_on_fail=raise_on_fail,
             workspace=workspace)
     x = x0.copy()
-    stop = max(rtol * norm(b), atol)
+    residual_tolerance = max(rtol * norm(b), atol)
     r = b - apply_A(x)
-    res = norm(r)
-    if res <= stop:
+    residual_norm = norm(r)
+    if residual_norm <= residual_tolerance:
         return x, 0
 
-    it = 0
-    while it < maxiter:
-        m = min(restart, maxiter - it)
-        V = [r / res]
+    iteration_count = 0
+    while iteration_count < maxiter:
+        cycle_length = min(restart, maxiter - iteration_count)
+        V = [r / residual_norm]
         Z = []
-        H = np.zeros((m + 1, m))
-        cs, sn = np.zeros(m), np.zeros(m)
-        g = np.zeros(m + 1)
-        g[0] = res
-        k = 0
-        for j in range(m):
-            it += 1
+        H = np.zeros((cycle_length + 1, cycle_length))
+        givens_cos, givens_sin = np.zeros(cycle_length), np.zeros(cycle_length)
+        g = np.zeros(cycle_length + 1)
+        g[0] = residual_norm
+        basis_size = 0
+        for j in range(cycle_length):
+            iteration_count += 1
             zj = M(V[j])
             Z.append(zj)
             w = apply_A(zj)
@@ -888,35 +893,35 @@ def fgmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0,
                 V.append(w / H[j + 1, j])
             for i in range(j):
                 h0, h1 = H[i, j], H[i + 1, j]
-                H[i, j] = cs[i] * h0 + sn[i] * h1
-                H[i + 1, j] = -sn[i] * h0 + cs[i] * h1
+                H[i, j] = givens_cos[i] * h0 + givens_sin[i] * h1
+                H[i + 1, j] = -givens_sin[i] * h0 + givens_cos[i] * h1
             denom = float(np.hypot(H[j, j], H[j + 1, j]))
             if denom == 0.0:
-                cs[j], sn[j] = 1.0, 0.0
+                givens_cos[j], givens_sin[j] = 1.0, 0.0
             else:
-                cs[j] = H[j, j] / denom
-                sn[j] = H[j + 1, j] / denom
+                givens_cos[j] = H[j, j] / denom
+                givens_sin[j] = H[j + 1, j] / denom
             H[j, j], H[j + 1, j] = denom, 0.0
-            g[j + 1] = -sn[j] * g[j]
-            g[j] = cs[j] * g[j]
-            k = j + 1
-            if abs(g[k]) <= stop or breakdown:
+            g[j + 1] = -givens_sin[j] * g[j]
+            g[j] = givens_cos[j] * g[j]
+            basis_size = j + 1
+            if abs(g[basis_size]) <= residual_tolerance or breakdown:
                 break
 
-        y = np.linalg.solve(H[:k, :k], g[:k])
-        for j in range(k):
+        y = np.linalg.solve(H[:basis_size, :basis_size], g[:basis_size])
+        for j in range(basis_size):
             x = x + float(y[j]) * Z[j]
         # A true residual at every restart protects the stopping decision from
         # loss of orthogonality and from an inexact/variable preconditioner.
         r = b - apply_A(x)
-        res = norm(r)
-        if res <= stop:
-            return x, it
+        residual_norm = norm(r)
+        if residual_norm <= residual_tolerance:
+            return x, iteration_count
     if raise_on_fail:
         raise RuntimeError(
-            f"FGMRES failed to converge in {it} applies "
-            f"(residual {res:.3e}, target {stop:.3e})")
-    return x, it
+            f"FGMRES failed to converge in {iteration_count} applies "
+            f"(residual {residual_norm:.3e}, target {residual_tolerance:.3e})")
+    return x, iteration_count
 
 
 def cocg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
@@ -1026,7 +1031,9 @@ def bicgstab(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
         it += 1
         denom = dot(r_hat, v)
         if abs(denom) < 1e-300:
-            r_hat = r.copy(); rho = alpha = omega = 1.0; v = p = None
+            r_hat = r.copy()
+            rho = alpha = omega = 1.0
+            v = p = None
             if restarted:
                 break
             restarted = True
@@ -1074,24 +1081,24 @@ def fgmres_c(apply_A, b, x0, xp, precond, rtol=1e-8, atol=0.0, maxiter=1000,
     nrm = lambda u: float(xp.sqrt(xp.sum((u.conj() * u).real)))
 
     x = x0.copy()
-    stop = max(rtol * nrm(b), atol)
+    residual_tolerance = max(rtol * nrm(b), atol)
     r = b - apply_A(x)
-    res = nrm(r)
-    if res <= stop:
+    residual_norm = nrm(r)
+    if residual_norm <= residual_tolerance:
         return x, 0
-    it = 0
-    while it < maxiter:
-        m = min(restart, maxiter - it)
-        V = [r / res]
+    iteration_count = 0
+    while iteration_count < maxiter:
+        cycle_length = min(restart, maxiter - iteration_count)
+        V = [r / residual_norm]
         Z = []
-        H = np.zeros((m + 1, m), dtype=np.complex128)
-        cs = np.zeros(m, dtype=np.complex128)
-        sn = np.zeros(m, dtype=np.complex128)
-        g = np.zeros(m + 1, dtype=np.complex128)
-        g[0] = res
-        k = 0
-        for j in range(m):
-            it += 1
+        H = np.zeros((cycle_length + 1, cycle_length), dtype=np.complex128)
+        givens_cos = np.zeros(cycle_length, dtype=np.complex128)
+        givens_sin = np.zeros(cycle_length, dtype=np.complex128)
+        g = np.zeros(cycle_length + 1, dtype=np.complex128)
+        g[0] = residual_norm
+        basis_size = 0
+        for j in range(cycle_length):
+            iteration_count += 1
             zj = precond(V[j])                  # flexible: may be iterative
             Z.append(zj)
             w = apply_A(zj)
@@ -1105,8 +1112,8 @@ def fgmres_c(apply_A, b, x0, xp, precond, rtol=1e-8, atol=0.0, maxiter=1000,
                 V.append(w / hjj)
             for i in range(j):                  # apply stored Givens to column j
                 t1, t2 = H[i, j], H[i + 1, j]
-                H[i, j] = cs[i] * t1 + sn[i] * t2
-                H[i + 1, j] = -np.conj(sn[i]) * t1 + cs[i] * t2
+                H[i, j] = givens_cos[i] * t1 + givens_sin[i] * t2
+                H[i + 1, j] = -np.conj(givens_sin[i]) * t1 + givens_cos[i] * t2
             a, bb = H[j, j], H[j + 1, j]         # complex Givens to zero H[j+1,j]
             if bb == 0:
                 c, s, rr = 1.0, 0.0 + 0j, a
@@ -1116,23 +1123,23 @@ def fgmres_c(apply_A, b, x0, xp, precond, rtol=1e-8, atol=0.0, maxiter=1000,
                 aa, ab = abs(a), abs(bb)
                 nu = np.hypot(aa, ab)
                 c, s, rr = aa / nu, (a / aa) * np.conj(bb) / nu, (a / aa) * nu
-            cs[j], sn[j] = c, s
+            givens_cos[j], givens_sin[j] = c, s
             H[j, j], H[j + 1, j] = rr, 0.0
             g[j + 1] = -np.conj(s) * g[j]
             g[j] = c * g[j]
-            k = j + 1
-            if abs(g[k]) <= stop or breakdown:
+            basis_size = j + 1
+            if abs(g[basis_size]) <= residual_tolerance or breakdown:
                 break
-        y = np.linalg.solve(H[:k, :k], g[:k])
-        for j in range(k):
+        y = np.linalg.solve(H[:basis_size, :basis_size], g[:basis_size])
+        for j in range(basis_size):
             x = x + complex(y[j]) * Z[j]
         r = b - apply_A(x)
-        res = nrm(r)
-        if res <= stop:
-            return x, it
+        residual_norm = nrm(r)
+        if residual_norm <= residual_tolerance:
+            return x, iteration_count
     raise RuntimeError(
-        f"FGMRES failed to converge in {it} applies "
-        f"(residual {res:.3e}, target {stop:.3e})")
+        f"FGMRES failed to converge in {iteration_count} applies "
+        f"(residual {residual_norm:.3e}, target {residual_tolerance:.3e})")
 
 
 #: Drop the Anderson history when the residual grows by more than this factor.
@@ -1143,6 +1150,44 @@ def fgmres_c(apply_A, b, x0, xp, precond, rtol=1e-8, atol=0.0, maxiter=1000,
 #: not restarting can diverge. (Same constant, same reason, as the noise
 #: solver's Gauss-Seidel sweep.)
 ANDERSON_RESTART_GROWTH = 1.5
+
+
+def mix_source_history(history, raw, xp, *, copy_raw=False):
+    """Regularized Anderson mixing of ``(input, map_output)`` source pairs.
+
+    Residual differences are measured against the latest pair. The small
+    normal equations stay on the host; source arrays stay on their backend.
+    A singular system or excessive coefficients falls back to the raw iterate.
+    This source mixer has different safeguards from :func:`anderson_step`.
+    """
+    if len(history) < 2:
+        return raw
+    residuals = [output - source for source, output in history]
+    differences = [residual - residuals[-1] for residual in residuals[:-1]]
+    count = len(differences)
+    gram = np.array([
+        [float(xp.sum(left * right)) for right in differences]
+        for left in differences])
+    rhs = np.array([-float(xp.sum(delta * residuals[-1]))
+                    for delta in differences])
+    # Scale the Tikhonov floor with the residual energy to regularize
+    # nearly dependent history vectors without imposing an absolute scale.
+    regularization = 1e-12 * (np.trace(gram) + 1e-300)
+    gram[np.diag_indices(count)] += regularization
+    try:
+        coefficients = np.linalg.solve(gram, rhs)
+    except np.linalg.LinAlgError:
+        return raw
+    if not np.all(np.abs(coefficients) < 1e4):
+        return raw
+    mixed = raw.copy() if copy_raw else raw
+    for index, coefficient in enumerate(coefficients):
+        correction = float(coefficient) * (history[index][1] - history[-1][1])
+        if copy_raw:
+            mixed += correction
+        else:
+            mixed = mixed + correction
+    return mixed
 
 
 def anderson_step(X, F, beta=1.0):

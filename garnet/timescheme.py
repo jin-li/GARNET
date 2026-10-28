@@ -560,7 +560,7 @@ _BDF_COEFFICIENTS = {
 
 
 class BDF(TimeScheme):
-    """Constant-step BDF with startup order ramping from one to ``max_order``.
+    """Fixed- or variable-step BDF, starting at order one up to ``max_order``.
 
     Orders one and two are A-stable.  Orders three through six are only
     A(alpha)-stable, with a shrinking stability wedge, so they remain opt-in

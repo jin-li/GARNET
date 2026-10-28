@@ -300,3 +300,40 @@ two-group analytical reference-DF study and a preliminary published two-group
 slab comparison are described in [adf_slab_reference.md](adf_slab_reference.md)
 and [dallosso_1d_reference.md](dallosso_1d_reference.md). These do not resolve
 the Bernal input ambiguity or constitute transport validation.
+
+### Update, 28 October 2026: GPU readiness and colorset study
+
+An audit of the 27 October code confirmed the operator algebra: directed
+weights, diagonals, transpose, CSR assembly and the fused-kernel indexing all
+agree with the generic stencil. It also found the following, now addressed:
+
+- The ADF CUDA kernel was derived from the symmetric kernel source by
+  unchecked string replacement. Each edit must now match exactly once, or
+  kernel construction fails; a test covers this.
+- The only GPU test was a forward apply in float64 on a 4×3×2 grid. It is
+  replaced by a parametrized fused-vs-unfused-vs-CPU test (three shapes
+  including an empty face axis; float32 and float64; with and without masks;
+  forward and transpose; with and without `out=`), plus GPU vs CPU forward and
+  adjoint eigensolves and a Bernal base-case comparison.
+- Stage 2's trace diagnostic was missing. `GroupOperator.face_traces` now
+  returns both homogeneous surface-flux reconstructions. `region_side_traces`
+  and `expand_region_side_factors` (in `garnet/adf.py`) take per-region,
+  per-side traces and factors to solver input.
+- `examples/adf_slab_reference.py` and `examples/bernal_adf_benchmark.py`
+  violated `test_examples_current.py` (`PYTHONPATH=.` in their usage strings);
+  this is fixed.
+- The Bernal example compared CG without ADFs against GMRES with ADFs.
+  `tools/assess_adf_gpu.py` separates the two: ADF off with CG and with GMRES,
+  explicit unity factors, and Table 1 factors with GMRES and BiCGStab. It also
+  has a factor-contrast × preconditioner study.
+
+Stage 4's first independent-factor case is the
+[C5G7 colorset study](c5g7_colorset_adf.md). Two-point nodes of assembly size
+cannot hold admissible reference DFs for C5G7, and coarse-mesh error swamps the
+ADF effect there. At pin-pitch nodes, isolated-assembly ADFs improve assembly
+powers and currents in two of three layouts, but bias k by 5–20 pcm. Reference
+XS plus DF reproduce the reference exactly.
+
+The GH200 runs are prepared but not yet executed; see
+[the campaign README](../benchmark-results/adf-gh200/README.md). Stage 3
+remains open until those runs pass.

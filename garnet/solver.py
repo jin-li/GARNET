@@ -130,21 +130,21 @@ class Result:
 
 
 def scatter_stack(xp, sigma_s, G, adjoint, shape, dtype):
-    """Dense (G, G, \\*shape) in-scatter matrix: ``S[g][gf]`` is the g' -> g
-    coupling, diagonal zeroed and absent couplings materialized as zeros.
+    """Dense in-scatter fields with shape (target groups, source groups, *shape).
 
-    Forward that is ``sigma_s[gf][g]``; the adjoint transposes to
-    ``sigma_s[g][gf]``. Kept a module-level function so the transpose -- the
-    part that a batched rewrite can silently get backwards, and that only the
-    adjoint solves would notice -- is testable without a GPU.
+    The diagonal and absent couplings are zero. Forward assembly reads
+    sigma_s[source][target]; adjoint assembly reads sigma_s[target][source].
+    Explicit axis names make this transpose testable independently of GPU
+    source contractions.
     """
-    S = xp.zeros((G, G) + tuple(shape), dtype=dtype)
-    for g in range(G):
-        for gf in range(G):
-            sc = sigma_s[g][gf] if adjoint else sigma_s[gf][g]
-            if gf != g and sc is not None:
-                S[g, gf] = sc
-    return S
+    scatter_to_from = xp.zeros((G, G) + tuple(shape), dtype=dtype)
+    for target_group in range(G):
+        for source_group in range(G):
+            scatter = (sigma_s[target_group][source_group] if adjoint
+                       else sigma_s[source_group][target_group])
+            if source_group != target_group and scatter is not None:
+                scatter_to_from[target_group, source_group] = scatter
+    return scatter_to_from
 
 
 class Fields:
@@ -377,7 +377,7 @@ class _PowerIterationSolver:
         raise NotImplementedError
 
     # -----------------------------------------------------------------------
-    def _make_group_batch(self, state, adjoint, prod):
+    def _make_group_batch(self, state, adjoint, production_weights):
         r"""Stacked group data for the batched source assembly, or None.
 
         The per-group Python loops in ``solve`` cost O(G^2) kernel launches per
@@ -405,10 +405,11 @@ class _PowerIterationSolver:
             free = 0
         if free and nbytes > free // 8:
             return None                       # not worth the footprint
-        S = scatter_stack(xp, self.sigma_s, G, adjoint, phi0.shape, phi0.dtype)
-        W = xp.stack([prod[g] for g in range(G)])
+        scatter_to_from = scatter_stack(xp, self.sigma_s, G, adjoint, phi0.shape, phi0.dtype)
+        production_stack = xp.stack([production_weights[g] for g in range(G)])
         phi = xp.stack([self._phi(state[g]) for g in range(G)])
-        return {"S": S, "W": W, "phi": phi}
+        return {"scatter_to_from": scatter_to_from,
+                "production_weights": production_stack, "phi": phi}
 
     def _fission_source(self, state, weight):
         """Sum_g weight[g] * phi0_g -- the field that drives the outer loop.
@@ -503,8 +504,8 @@ class _PowerIterationSolver:
         # Fission couples groups as F[g,g'] = chi_g * nu_sigma_f_g'. Its
         # transpose F* moves chi to the production weight and nu_sigma_f to the
         # emission spectrum; scattering transposes independently (below).
-        prod = self.chi if adjoint else self.nu_sigma_f
-        emit = self.nu_sigma_f if adjoint else self.chi
+        production_weights = self.chi if adjoint else self.nu_sigma_f
+        emission_spectrum = self.nu_sigma_f if adjoint else self.chi
 
         # state0 warm-starts the power iteration from a previous solve's group
         # state -- the payoff in an outer coupling loop, where each iteration
@@ -514,20 +515,20 @@ class _PowerIterationSolver:
         # the cold start every existing caller gets.
         state = self._initial_state() if state0 is None else [
             self.xp.asarray(s, dtype=self.dtype).copy() for s in state0]
-        batch = self._make_group_batch(state, adjoint, prod)
+        batch = self._make_group_batch(state, adjoint, production_weights)
         linear_components = [self._linear_components(g, adjoint) for g in range(G)]
 
         def fission_source():
-            """Sum_g prod[g] * phi0_g, batched into one kernel when available."""
+            """Sum production_weights[g] * phi0_g with optional group batching."""
             if batch is None:
-                return self._fission_source(state, prod)
+                return self._fission_source(state, production_weights)
             out = xp.zeros_like(batch["phi"][0])
-            return kernels.group_accumulate(xp, out, batch["W"], batch["phi"])
+            return kernels.group_accumulate(xp, out, batch["production_weights"], batch["phi"])
 
         def group_rhs(g, current_source, current_k):
-            q0 = xp.asarray((emit[g] / current_k) * current_source, dtype=self.dtype)
+            q0 = xp.asarray((emission_spectrum[g] / current_k) * current_source, dtype=self.dtype)
             if batch is not None:
-                kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
+                kernels.group_accumulate(xp, q0, batch["scatter_to_from"][g], batch["phi"])
             else:
                 for gf in range(G):
                     s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
@@ -605,7 +606,7 @@ class _PowerIterationSolver:
             # the core). Propagate the existing scalar bound through the
             # nonnegative production weights, without clipping either field.
             # Extrapolated Anderson sources still require exact nonnegativity.
-            source_roundoff = scalar_negative_tolerance * sum(prod)
+            source_roundoff = scalar_negative_tolerance * sum(production_weights)
             return admissible_source(source, source_roundoff)
 
         fsrc = fission_source()
@@ -662,7 +663,7 @@ class _PowerIterationSolver:
                     # sweep and consumes the remaining declared sweep budget.
                     rows = []
                     for g in range(G):
-                        source = xp.asarray(emit[g] * fsrc, dtype=self.dtype)
+                        source = xp.asarray(emission_spectrum[g] * fsrc, dtype=self.dtype)
                         if self._src_weight is not None:
                             source = source * self._src_weight
                         rows.append(self._rhs(g, source))
@@ -703,7 +704,7 @@ class _PowerIterationSolver:
                 state[g] *= scale
             if batch is not None:
                 batch["phi"] *= scale         # phi0 is linear in the state
-            g_fsrc = fsrc_new * scale                     # raw power iterate, mean 1
+            raw_fission_source = fsrc_new * scale                     # raw power iterate, mean 1
             k = k_new
 
             k_hist.append(k)
@@ -712,7 +713,7 @@ class _PowerIterationSolver:
                 print(f"  outer {outer:4d}  k = {k:.8f}  dk = {dk:.2e}  src_err = {src_err:.2e}")
 
             if dk < tol_k and src_err < tol_source:
-                fsrc = g_fsrc
+                fsrc = raw_fission_source
                 balance_error = current_balance()
                 if (np.isfinite(k) and k > 0 and balance_error < tol_balance
                         and physical_source(fission_source())):
@@ -728,7 +729,7 @@ class _PowerIterationSolver:
                 continue
 
             # Anderson update of the fission source (state stays the plain iterate).
-            fsrc = g_fsrc
+            fsrc = raw_fission_source
             if anderson_depth > 1:
                 # Anderson can take nonmonotone steps while resolving clustered
                 # eigenmodes. Bound growth against the residuals represented
@@ -736,10 +737,10 @@ class _PowerIterationSolver:
                 # successful extrapolation beats its immediate successor.
                 if hist and src_err > 1.1 * max(err_hist[-len(hist)-1:-1]):
                     hist = []
-                hist.append((fsrc_in, g_fsrc))
+                hist.append((fsrc_in, raw_fission_source))
                 if len(hist) > anderson_depth:
                     hist.pop(0)
-                proposed = _anderson_source(hist, g_fsrc, xp, weights)
+                proposed = _anderson_source(hist, raw_fission_source, xp, weights)
                 if admissible_source(proposed):
                     fsrc = proposed * (norm_measure / float(integral(proposed)))
                 else:

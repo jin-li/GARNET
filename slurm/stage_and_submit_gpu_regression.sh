@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-src_root="/afs/psi.ch/project/stars/workspace/RND/SB-RND-ACT-011-24/WP2/PM41/GARNET"
+src_root="${GARNET_SRC_ROOT:-$HOME/GARNET}"
 stage_root="${GARNET_REGRESSION_STAGE:-/data/scratch/shared/poncet_m/garnet-regression-stage}"
 logdir="${GARNET_REGRESSION_LOG_DIR:-/data/scratch/shared/poncet_m/garnet-regression-logs}"
 
