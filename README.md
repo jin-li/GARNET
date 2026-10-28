@@ -80,8 +80,9 @@ SPH data, moving control drums, and coupled calculations.
 - [Examples](examples/) and a [GPU walkthrough](notebooks/colab_coupled_transient_gpu_latest.ipynb).
 
 ## Verification and validation
+**GARNET** code is AI generated. For that reason, there is greater emphasis on qualification via verification and validation. Results of major V&V tests are examined with human eyes. 
 
-More than 600 automated test cases cover analytic solutions, spatial and
+More than 700 automated test cases cover analytic solutions, spatial and
 temporal convergence, conservation, and published reactor benchmarks. The
 [V&V report](docs/verification_validation.md) maps each core feature to its
 tests, states the acceptance criteria, and records the current CPU results.

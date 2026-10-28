@@ -4,7 +4,10 @@ Usage: python examples/c5g7_colorset_adf.py --cells-per-pin 4 \
            --nodes 1 2 17 --device cpu --output colorset.json
 
 A fine-mesh, pin-cell-resolved diffusion solution of each colorset is the
-reference. Assembly cross sections and ADFs come from isolated, reflected
+reference. With --pin-resolved, each pin is the benchmark's r = 0.54 cm fuel
+cylinder in water, rasterized with area-weighted boundary cells as in
+build_c5g7_2d(pin_resolved=True); this needs cells_per_pin >= 8 for a
+meaningful reference. Assembly cross sections and ADFs come from isolated, reflected
 single-assembly solves (the practical lattice-code workflow). Coarse
 homogenized solves with and without those ADFs are compared against the
 reference. Reference cross sections and reference discontinuity factors on
@@ -23,11 +26,13 @@ from garnet import DiffusionEigenSolver, Grid
 from garnet.adf import assembly_face_factors, expand_region_side_factors, region_side_traces
 from garnet.backend import asnumpy
 from garnet.benchmarks.c5g7 import (ASSEMBLY_PITCH, MOX_LATTICE, N_PIN, UO2_LATTICE,
-                                    build_c5g7_2d)
+                                    pin_coverage, build_c5g7_2d)
 from garnet.sph import flux_weighted_homogenize
 
 # Pin-cell material order of build_c5g7_2d (water reflector follows).
 PIN_CHARS = ["U", "m", "o", "x", "G", "F"]
+WATER = len(PIN_CHARS)
+COVERAGE_SAMPLES = 256
 LATTICES = {"U": UO2_LATTICE, "M": MOX_LATTICE}
 # Assembly layouts, layout[row][col] with x = col and y = row; every outer
 # face reflects. checker3 puts MOX at the centre and corners, so the centre
@@ -41,15 +46,22 @@ FINE_TOL = dict(tol_k=1e-10, tol_source=1e-9, inner_rtol_floor=1e-11)
 COARSE_TOL = dict(tol_k=1e-10, tol_source=1e-9, inner_rtol_floor=1e-11)
 
 
-def pin_materials():
-    """Pin-cell-homogenized C5G7 materials and their fission cross sections."""
-    problem = build_c5g7_2d(cells_per_pin=1)
-    n = len(PIN_CHARS)
+def pin_materials(pin_resolved=False):
+    """C5G7 pin materials and their fission cross sections.
+
+    Pin-cell-homogenized by default; with ``pin_resolved`` the pure pin
+    materials followed by water (index ``WATER``).
+    """
+    problem = build_c5g7_2d(cells_per_pin=1, pin_resolved=pin_resolved)
+    n = len(PIN_CHARS) + pin_resolved
     return problem.materials[:n], np.asarray(problem.fission_xs)[:n]
 
 
-def fine_problem(layout, s):
-    """Fine material map, assembly region map and grid for a layout."""
+def fine_problem(layout, s, pin_resolved=False):
+    """Fine material map, assembly region map, grid and blend for a layout.
+
+    The blend (mix_material, mix_weight) is None unless ``pin_resolved``.
+    """
     layout = [list(row) for row in layout]
     ny, nx = len(layout), len(layout[0])
     n = N_PIN * s
@@ -63,18 +75,46 @@ def fine_problem(layout, s):
             mmap[col * n:(col + 1) * n, row * n:(row + 1) * n, 0] = block
             regions[col * n:(col + 1) * n, row * n:(row + 1) * n, 0] = row * nx + col
     grid = Grid(mmap.shape, (nx * ASSEMBLY_PITCH, ny * ASSEMBLY_PITCH, 1.0))
-    return grid, mmap, regions
+    if not pin_resolved:
+        return grid, mmap, regions, None, None
+    # Same exact-area rasterization as build_c5g7_2d(pin_resolved=True): cells
+    # inside the cylinder are pure pin, outside are water, and boundary cells
+    # blend the pin into water by covered area. Every lattice position holds a
+    # pin (guide tubes and the fission chamber included), so all are carved.
+    # The default 16 x 16 sampling misstates the fuel area by up to 0.7% (s = 4)
+    # and 0.06% (s = 8), worth tens of pcm and non-monotone in s; 256 x 256
+    # keeps it below 5e-5 at every s, so k_ref converges cleanly.
+    frac = np.tile(pin_coverage(s, sub=COVERAGE_SAMPLES), (nx * N_PIN, ny * N_PIN))[..., None]
+    eps = 1e-9
+    full = frac >= 1.0 - eps
+    part = (frac > eps) & ~full
+    mix_material = np.where(part, mmap, -1)
+    mix_weight = np.where(part, frac, 0.0)
+    mmap = np.where(full, mmap, WATER)
+    return grid, mmap, regions, mix_material, mix_weight
 
 
-def solve_fine(layout, s, device):
-    materials, fission = pin_materials()
-    grid, mmap, regions = fine_problem(layout, s)
-    solver = DiffusionEigenSolver(grid, materials, mmap, bc="reflective", device=device)
+def cell_sigma_f(fine):
+    """Per-cell fission cross section (*shape, G), honouring the blend."""
+    sigma_f = fine["fission"][fine["mmap"]]
+    if fine["mix_material"] is not None:
+        w = fine["mix_weight"][..., None]
+        mixed = fine["fission"][np.maximum(fine["mix_material"], 0)]
+        sigma_f = np.where(w > 0, (1 - w) * sigma_f + w * mixed, sigma_f)
+    return sigma_f
+
+
+def solve_fine(layout, s, device, pin_resolved=False):
+    materials, fission = pin_materials(pin_resolved)
+    grid, mmap, regions, mix_material, mix_weight = fine_problem(layout, s, pin_resolved)
+    solver = DiffusionEigenSolver(grid, materials, mmap, bc="reflective", device=device,
+                                  mix_material=mix_material, mix_weight=mix_weight)
     result = solver.solve(**FINE_TOL)
     if not result.converged:
         raise RuntimeError(f"fine solve failed for {layout}: {result}")
     return dict(solver=solver, result=result, materials=materials, fission=fission,
-                grid=grid, mmap=mmap, regions=regions)
+                grid=grid, mmap=mmap, regions=regions, mix_material=mix_material,
+                mix_weight=mix_weight)
 
 
 def node_map(layout, nodes, cells_per_node=1):
@@ -93,16 +133,20 @@ def homogenize(fine, regions=None):
     regions = fine["regions"] if regions is None else regions
     flux = fine["result"].flux_numpy
     volume = float(np.prod(fine["grid"].spacing))
+    # The blended part of a cell belongs to the cell's own region, not to a
+    # region numbered after its material (the helper's default).
     mats, region_flux, region_volume = flux_weighted_homogenize(
-        flux, fine["materials"], fine["mmap"], regions, cell_volume=volume)
+        flux, fine["materials"], fine["mmap"], regions, cell_volume=volume,
+        mix_material=fine["mix_material"], mix_weight=fine["mix_weight"],
+        mix_region_map=regions if fine["mix_material"] is not None else None)
     rates = np.zeros_like(region_flux)
-    sigma_f = fine["fission"][fine["mmap"]]                      # (*shape, G)
+    sigma_f = cell_sigma_f(fine)                                 # (*shape, G)
     for g in range(flux.shape[0]):
         np.add.at(rates[:, g], regions.ravel(), (sigma_f[..., g] * flux[g]).ravel() * volume)
     return mats, rates / (region_flux * region_volume[:, None]), region_flux
 
 
-def assembly_library(s, device):
+def assembly_library(s, device, pin_resolved=False):
     """Isolated, reflected UO2 and MOX assemblies: XS, Sigma_f and side ADFs.
 
     With reflective faces the homogeneous solution is flat, so each side's ADF
@@ -112,7 +156,7 @@ def assembly_library(s, device):
     """
     library = {}
     for kind in LATTICES:
-        fine = solve_fine([kind], s, device)
+        fine = solve_fine([kind], s, device, pin_resolved)
         mats, sigma_f, region_flux = homogenize(fine)
         flux = fine["result"].flux_numpy[..., 0]                 # (G, nx, ny)
         sides = [flux[:, 0, :], flux[:, -1, :], flux[:, :, 0], flux[:, :, -1]]
@@ -202,14 +246,14 @@ def compare(row, k_ref, rate_ref, current_ref, rate, current):
     return row
 
 
-def study(layout_name, s, nodes, device, library=None):
+def study(layout_name, s, nodes, device, library=None, pin_resolved=False):
     layout = LAYOUTS[layout_name]
-    library = library or assembly_library(s, device)
+    library = library or assembly_library(s, device, pin_resolved)
     t0 = time.perf_counter()
-    fine = solve_fine(layout, s, device)
+    fine = solve_fine(layout, s, device, pin_resolved)
     fine_seconds = time.perf_counter() - t0
     k_ref = fine["result"].k_eff
-    sigma_f_fine = np.moveaxis(fine["fission"][fine["mmap"]], -1, 0)
+    sigma_f_fine = np.moveaxis(cell_sigma_f(fine), -1, 0)
     rate_ref, current_ref = observables(fine["solver"], fine["result"].flux, fine["regions"],
                                         sigma_f_fine)
     kinds = [kind for row in layout for kind in row]
@@ -249,7 +293,7 @@ def study(layout_name, s, nodes, device, library=None):
                        inner_iterations=result.inner_iterations,
                        solve_seconds=result.solve_seconds)
             rows.append(compare(row, k_ref, rate_ref, current_ref, rate, current))
-    return dict(layout=layout_name, cells_per_pin=s, device=device,
+    return dict(layout=layout_name, cells_per_pin=s, device=device, pin_resolved=pin_resolved,
                 fine_cells=int(np.prod(fine["grid"].shape)), k_ref=k_ref,
                 fine_outer_iterations=fine["result"].outer_iterations,
                 fine_inner_iterations=fine["result"].inner_iterations,
@@ -263,18 +307,21 @@ def main():
     p.add_argument("--nodes", nargs="+", type=int, default=[1, 2, 17])
     p.add_argument("--layouts", nargs="+", choices=list(LAYOUTS), default=list(LAYOUTS))
     p.add_argument("--device", choices=["cpu", "gpu", "auto"], default="cpu")
+    p.add_argument("--pin-resolved", action="store_true",
+                   help="fuel cylinders in water instead of homogenized pin cells")
     p.add_argument("--output", help="write JSON results to this file")
     args = p.parse_args()
-    out = dict(notes="diffusion-only equivalence study; pin-cell homogenized C5G7 fine mesh; "
+    geometry = "pin-resolved" if args.pin_resolved else "pin-cell homogenized"
+    out = dict(notes=f"diffusion-only equivalence study; {geometry} C5G7 fine mesh; "
                      "pcm = 1e5 (k - k_ref); power is Sigma_f rate per assembly, mean 1",
-               device=args.device, libraries=[], studies=[])
+               device=args.device, pin_resolved=args.pin_resolved, libraries=[], studies=[])
     for s in args.cells_per_pin:
-        library = assembly_library(s, args.device)
+        library = assembly_library(s, args.device, args.pin_resolved)
         out["libraries"].append({"cells_per_pin": s, **{
             k: dict(k_inf=v["k_inf"], adf=v["adf"].tolist(), solve_seconds=v["solve_seconds"])
             for k, v in library.items()}})
         for name in args.layouts:
-            res = study(name, s, args.nodes, args.device, library)
+            res = study(name, s, args.nodes, args.device, library, args.pin_resolved)
             out["studies"].append(res)
             print(f"\n{name}  s={s}  fine cells={res['fine_cells']}  k_ref={res['k_ref']:.7f}  "
                   f"fine t={res['fine_seconds']:.2f}s")

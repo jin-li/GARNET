@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-src_root="/afs/psi.ch/project/stars/workspace/RND/SB-RND-ACT-011-24/WP2/PM41/GARNET"
+src_root="${GARNET_SRC_ROOT:-$HOME/GARNET}"
 stage_root="${GARNET_ADF_STAGE_ROOT:-/data/scratch/shared/poncet_m/garnet-adf-stage}"
 work_root="${GARNET_ADF_WORK_ROOT:-/data/scratch/shared/poncet_m/garnet-adf}"
 partition="${GARNET_ADF_PARTITION:-gh-interactive}"

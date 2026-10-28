@@ -126,7 +126,9 @@ JSON is `benchmark-results/adf-gh200/colorset-cpu-s2-s4.json`.
    Library ADFs move k by only 2–10 pcm, and power slightly in either
    direction. On this stencil, ADFs are no substitute for spatial refinement.
 4. **At pin-pitch resolution (N = 17), library ADFs mostly improve power and
-   interface currents, but not k.** Pmax falls from 0.93 to 0.43% in
+   interface currents, but not k.** (At s ≤ 4. With a converged s = 16
+   reference the benefit largely disappears; see the
+   [28 October update](#update-28-october-2026-converged-reference-cpu-s--8-and-16).) Pmax falls from 0.93 to 0.43% in
    `island3` and from 0.81 to 0.60% in `checker3`, and island3's current
    error from 0.024 to 0.005. In `checker2` at s = 4, Pmax rises slightly,
    0.34 → 0.39%. k moves 5–20 pcm *away* from the reference in every layout.
@@ -135,13 +137,60 @@ JSON is `benchmark-results/adf-gh200/colorset-cpu-s2-s4.json`.
    same order as the improvement in power. Treat these as mixed results, not
    evidence of a general benefit.
 
+## Update, 28 October 2026: converged reference (CPU, s = 8 and 16)
+
+The s = 8 and 16 runs were made on the CPU while the GH200 nodes were
+unavailable (Merlin7 `daily`, `cn018`, x86_64, NumPy 2.3.5, one thread; fine
+solve 426 s for island3 at s = 16). JSON:
+`benchmark-results/adf-gh200/colorset-cpu-s8-s16.json`. From s = 8 to 16 the
+fine k_ref changes by 2–4 pcm, and every N = 17 error below by at most 0.5 pcm
+and 0.01 percentage points, so s = 16 is converged for these purposes.
+The N = 1 and 2 rows change by less than 1 pcm from s = 4, and those
+reference DFs remain inadmissible.
+
+N = 17, library cross sections, without → with isolated-assembly ADFs:
+
+| layout | s | Δpcm | Pmax [%] | Prms [%] | Jmax |
+|---|---:|---|---|---|---|
+| checker2 | 2 | +63.3 → +72.5 | 0.42 → 0.28 | 0.37 → 0.24 | 0.020 → 0.009 |
+| checker2 | 16 | +69.2 → +78.9 | 0.32 → 0.43 | 0.28 → 0.37 | 0.018 → 0.013 |
+| checker3 | 2 | +75.2 → +95.1 | 0.93 → 0.43 | 0.53 → 0.40 | 0.023 → 0.015 |
+| checker3 | 16 | +83.1 → +103.5 | 0.78 → 0.65 | 0.41 → 0.56 | 0.019 → 0.020 |
+| island3 | 2 | +22.4 → +27.1 | 1.06 → 0.25 | 0.37 → 0.13 | 0.025 → 0.005 |
+| island3 | 16 | +24.8 → +29.7 | 0.88 → 0.49 | 0.31 → 0.21 | 0.023 → 0.006 |
+
+Reference XS + DF at N = 17 reproduces k_ref to < 0.001 pcm in every layout
+at s = 8 and 16, which meets the `colorset` acceptance gate on the CPU.
+
+As the reference converges, the no-ADF errors fall slightly and the ADF-on
+errors grow. Most of the apparent library-ADF benefit at s = 2 was therefore
+reference discretization error. At s = 16:
+
+- `island3` still improves clearly: Pmax 0.88 → 0.49%, Prms 0.31 → 0.21%,
+  Jmax 0.023 → 0.006.
+- `checker3` is mixed: Pmax improves (0.78 → 0.65%) but Prms worsens
+  (0.41 → 0.56%), and Jmax is unchanged.
+- `checker2` is worse in power (Pmax 0.32 → 0.43%, Prms 0.28 → 0.37%) but
+  better in interface current (0.018 → 0.013).
+- k moves away from the reference in every layout, by +9.7, +20.4 and
+  +4.9 pcm respectively.
+
+Finding 4 should therefore be read as: at pin-pitch nodes, isolated-assembly
+ADFs improve RMS assembly power in one of three layouts, improve interface
+currents in two, and bias k by 5–20 pcm. This is no evidence of a general
+benefit for these layouts. The comparison remains between diffusion
+solutions with a pin-cell-homogenized reference (see below).
+
 ## Limits and next steps
 
-- Fine meshes of s = 8 and 16 run on the GPU (`colorset` stage); check that
-  the conclusions hold as the reference converges.
+- Fine meshes of s = 8 and 16 confirm a converged reference on the CPU (see
+  the update above). The GPU `colorset` stage now checks only device
+  agreement and timing.
 - The fine reference is pin-cell homogenized. A pin-resolved fine mesh
   (`build_c5g7_2d(pin_resolved=True)` style, with blended cells) would make
-  N = 17 a genuine homogenization test.
+  N = 17 a genuine homogenization test. This is implemented as
+  `--pin-resolved` and smoke-tested on the CPU; the GPU runs and gates are in
+  [c5g7_pin_resolved_plan.md](c5g7_pin_resolved_plan.md).
 - A water reflector needs reflector factors from a fuel/reflector colorset.
   It is not included.
 - Transport (S_N) references and SPH combinations are out of scope.

@@ -38,16 +38,17 @@ if [[ "$(uname -m)" != "aarch64" ]]; then
     echo "error: this job expects a GH200 (aarch64) node, got $(uname -m)" >&2
     exit 1
 fi
-unset PMODULES_ENV
-module purge
-module use Spack unstable
-module load gcc/12.3 cuda/12.6.0-wak5 python/3.13.5-xbg5
 python_bin="${GARNET_PYTHON_BIN:-/data/scratch/shared/poncet_m/garnet-gh-py313-v1/bin/python}"
 if [[ ! -x "$python_bin" ]]; then
     echo "error: GH200 Python environment not found: $python_bin" >&2
-    echo "build it with slurm/setup_gh_environment.sh" >&2
+    echo "build it on a login node with slurm/setup_gh_environment.sh" >&2
     exit 1
 fi
+# The CUDA 12.6 runtime libraries come from the environment's nvidia-* wheels.
+for lib in "$(dirname "$(dirname "$python_bin")")"/lib/python3.13/site-packages/nvidia/*/lib; do
+    LD_LIBRARY_PATH="$lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+done
+export LD_LIBRARY_PATH
 
 repo="${GARNET_REPO:-}"
 if [[ -z "$repo" ]]; then
