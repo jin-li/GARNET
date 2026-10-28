@@ -38,41 +38,13 @@ from .backend import asnumpy, device_name, get_backend, synchronize
 from .blend import MaterialBlend
 from .grid import Grid
 from . import kernels
-from .linalg import get_linear_solver, neumann_preconditioner, pcg
+from .linalg import (get_linear_solver, neumann_preconditioner, pcg,
+                     mix_source_history as _anderson_source)
 from .materials import Material
 from .sp3 import SP3GroupOperator
 from .spn import (CongruentSDPNOperator, SDPNGroupOperator, _SDPN_C, _SDPN_G,
                   _SPN_C, _SPN_G, _congruence_available, _diag_similarity)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
-
-
-def _anderson_source(hist, raw, xp):
-    """Anderson-accelerated next iterate from a history of (input, raw_output).
-
-    Given the recent (S_j, G(S_j)) pairs (latest last) and the latest raw iterate
-    G(S), return the residual-minimizing affine combination that collapses the
-    slow fixed-point modes. With fewer than two pairs it is the plain iterate.
-    A tiny diagonal regularization and a magnitude guard on the coefficients keep
-    it robust; the fixed point (and hence the eigenpair) is unchanged.
-    """
-    if len(hist) < 2:
-        return raw
-    res = [Gj - Sj for Sj, Gj in hist]                    # residuals f_j = G_j - S_j
-    dres = [res[i] - res[-1] for i in range(len(res) - 1)]
-    m = len(dres)
-    A = np.array([[float(xp.sum(dres[i] * dres[j])) for j in range(m)] for i in range(m)])
-    b = np.array([-float(xp.sum(dres[i] * res[-1])) for i in range(m)])
-    A[np.diag_indices(m)] += 1e-12 * (np.trace(A) + 1e-300)
-    try:
-        gamma = np.linalg.solve(A, b)
-    except np.linalg.LinAlgError:
-        return raw
-    if not np.all(np.abs(gamma) < 1e4):
-        return raw
-    out = raw
-    for j in range(m):
-        out = out + float(gamma[j]) * (hist[j][1] - hist[-1][1])
-    return out
 
 
 @dataclass
@@ -101,21 +73,21 @@ class Result:
 
 
 def scatter_stack(xp, sigma_s, G, adjoint, shape, dtype):
-    """Dense (G, G, \\*shape) in-scatter matrix: ``S[g][gf]`` is the g' -> g
-    coupling, diagonal zeroed and absent couplings materialized as zeros.
+    """Dense in-scatter fields with shape (target groups, source groups, *shape).
 
-    Forward that is ``sigma_s[gf][g]``; the adjoint transposes to
-    ``sigma_s[g][gf]``. Kept a module-level function so the transpose -- the
-    part that a batched rewrite can silently get backwards, and that only the
-    adjoint solves would notice -- is testable without a GPU.
+    The diagonal and absent couplings are zero. Forward assembly reads
+    sigma_s[source][target]; adjoint assembly reads sigma_s[target][source].
+    Explicit axis names make this transpose testable independently of GPU
+    source contractions.
     """
-    S = xp.zeros((G, G) + tuple(shape), dtype=dtype)
-    for g in range(G):
-        for gf in range(G):
-            sc = sigma_s[g][gf] if adjoint else sigma_s[gf][g]
-            if gf != g and sc is not None:
-                S[g, gf] = sc
-    return S
+    scatter_to_from = xp.zeros((G, G) + tuple(shape), dtype=dtype)
+    for target_group in range(G):
+        for source_group in range(G):
+            scatter = (sigma_s[target_group][source_group] if adjoint
+                       else sigma_s[source_group][target_group])
+            if source_group != target_group and scatter is not None:
+                scatter_to_from[target_group, source_group] = scatter
+    return scatter_to_from
 
 
 class Fields:
@@ -346,7 +318,7 @@ class _PowerIterationSolver:
         raise NotImplementedError
 
     # -----------------------------------------------------------------------
-    def _make_group_batch(self, state, adjoint, prod):
+    def _make_group_batch(self, state, adjoint, production_weights):
         r"""Stacked group data for the batched source assembly, or None.
 
         The per-group Python loops in ``solve`` cost O(G^2) kernel launches per
@@ -374,10 +346,11 @@ class _PowerIterationSolver:
             free = 0
         if free and nbytes > free // 8:
             return None                       # not worth the footprint
-        S = scatter_stack(xp, self.sigma_s, G, adjoint, phi0.shape, phi0.dtype)
-        W = xp.stack([prod[g] for g in range(G)])
+        scatter_to_from = scatter_stack(xp, self.sigma_s, G, adjoint, phi0.shape, phi0.dtype)
+        production_stack = xp.stack([production_weights[g] for g in range(G)])
         phi = xp.stack([self._phi(state[g]) for g in range(G)])
-        return {"S": S, "W": W, "phi": phi}
+        return {"scatter_to_from": scatter_to_from,
+                "production_weights": production_stack, "phi": phi}
 
     def _fission_source(self, state, weight):
         """Sum_g weight[g] * phi0_g -- the field that drives the outer loop.
@@ -428,8 +401,8 @@ class _PowerIterationSolver:
         # Fission couples groups as F[g,g'] = chi_g * nu_sigma_f_g'. Its
         # transpose F* moves chi to the production weight and nu_sigma_f to the
         # emission spectrum; scattering transposes independently (below).
-        prod = self.chi if adjoint else self.nu_sigma_f
-        emit = self.nu_sigma_f if adjoint else self.chi
+        production_weights = self.chi if adjoint else self.nu_sigma_f
+        emission_spectrum = self.nu_sigma_f if adjoint else self.chi
 
         # state0 warm-starts the power iteration from a previous solve's group
         # state -- the payoff in an outer coupling loop, where each iteration
@@ -439,14 +412,14 @@ class _PowerIterationSolver:
         # the cold start every existing caller gets.
         state = self._initial_state() if state0 is None else [
             self.xp.asarray(s, dtype=self.dtype).copy() for s in state0]
-        batch = self._make_group_batch(state, adjoint, prod)
+        batch = self._make_group_batch(state, adjoint, production_weights)
 
         def fission_source():
-            """Sum_g prod[g] * phi0_g, batched into one kernel when available."""
+            """Sum production_weights[g] * phi0_g with optional group batching."""
             if batch is None:
-                return self._fission_source(state, prod)
+                return self._fission_source(state, production_weights)
             out = xp.zeros_like(batch["phi"][0])
-            return kernels.group_accumulate(xp, out, batch["W"], batch["phi"])
+            return kernels.group_accumulate(xp, out, batch["production_weights"], batch["phi"])
 
         fsrc = fission_source()
         total = xp.sum(fsrc)
@@ -471,20 +444,20 @@ class _PowerIterationSolver:
                 # Keep an FP32 solve genuinely FP32. Host kinetics/eigenvalue
                 # scalars may otherwise promote the seeded source before the
                 # fused group contraction sees it.
-                q0 = xp.asarray((emit[g] / k) * fsrc, dtype=self.dtype)
+                q0 = xp.asarray((emission_spectrum[g] / k) * fsrc, dtype=self.dtype)
                 if batch is not None:
                     # One kernel for the whole in-scatter row. batch["phi"] is
                     # kept current group by group below, so this reads the
                     # updated flux for g' < g and the previous one for g' > g --
                     # the same Gauss-Seidel sweep the Python loop performed.
-                    kernels.group_accumulate(xp, q0, batch["S"][g], batch["phi"])
+                    kernels.group_accumulate(xp, q0, batch["scatter_to_from"][g], batch["phi"])
                 else:
-                    for gf in range(G):
+                    for source_group in range(G):
                         # forward: in-scatter g'->g uses sigma_s[g'][g];
                         # adjoint transposes to sigma_s[g][g'].
-                        s = self.sigma_s[g][gf] if adjoint else self.sigma_s[gf][g]
-                        if gf != g and s is not None:
-                            q0 += s * self._phi(state[gf])
+                        s = self.sigma_s[g][source_group] if adjoint else self.sigma_s[source_group][g]
+                        if source_group != g and s is not None:
+                            q0 += s * self._phi(state[source_group])
                 if self._src_weight is not None:
                     q0 = q0 * self._src_weight
                 apply_A, precond = self._linear_components(g, adjoint)
@@ -510,7 +483,7 @@ class _PowerIterationSolver:
                 state[g] *= scale
             if batch is not None:
                 batch["phi"] *= scale         # phi0 is linear in the state
-            g_fsrc = fsrc_new * scale                     # raw power iterate, mean 1
+            raw_fission_source = fsrc_new * scale                     # raw power iterate, mean 1
             k = k_new
 
             k_hist.append(k)
@@ -519,19 +492,19 @@ class _PowerIterationSolver:
                 print(f"  outer {outer:4d}  k = {k:.8f}  dk = {dk:.2e}  src_err = {src_err:.2e}")
 
             if dk < tol_k and src_err < tol_source:
-                fsrc = g_fsrc
+                fsrc = raw_fission_source
                 converged = True
                 break
 
             # Anderson update of the fission source (state stays the plain iterate).
-            fsrc = g_fsrc
+            fsrc = raw_fission_source
             if anderson_depth > 1:
                 if src_err > 1.1 * prev_src_err:          # last mix overshot -> restart
                     hist = []
-                hist.append((fsrc_in, g_fsrc))
+                hist.append((fsrc_in, raw_fission_source))
                 if len(hist) > anderson_depth:
                     hist.pop(0)
-                fsrc = _anderson_source(hist, g_fsrc, xp)
+                fsrc = _anderson_source(hist, raw_fission_source, xp)
                 fsrc = fsrc * (self.grid.n_cells / float(xp.sum(fsrc)))
             prev_src_err = src_err
             total = xp.sum(fsrc)

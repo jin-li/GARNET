@@ -24,6 +24,7 @@ without a checkout).
 | `test_tri_prisms.py` | tri-z extrusion: slab limit, order, extruded-2D = 3D |
 | `test_unstructured_mesh.py` | unstructured FV ≡ structured FV on the same mesh |
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
+| `test_delayed_spectra.py` | shared and family-specific delayed spectra vs independently assembled two-group neutron/precursor equations, with BDF1/BDF2 and both diffusion step solvers |
 | `test_transient_model_api.py` | shared Cartesian/r-z/triangular histories, event schedules, accepted-step callbacks, initial-state compatibility and cylindrical coupling |
 | `test_exponential_damping.py` | damped transformed BDF2, independent kinetics/stiff-mode references, six precursor families, unequal widths, event/fallback guards and coupled API regression |
 | `test_exponential_adaptive.py` | physical-state FTM error control, complete trial rollback, volume/mask norms, events, six-family Radau and localized multigroup matrix-exponential references |

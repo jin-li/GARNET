@@ -292,24 +292,24 @@ def _build_ell(face_i, face_j, n):
     on the GPU) -- the same access pattern that makes the structured stencils
     fast on CUDA.
     """
-    nf = face_i.size
+    face_count = face_i.size
     owner = np.concatenate([face_i, face_j])
-    neigh = np.concatenate([face_j, face_i])
-    fidx = np.concatenate([np.arange(nf), np.arange(nf)]).astype(np.int64)
-    deg = np.bincount(owner, minlength=n)
-    K = max(int(deg.max()) if nf else 0, 1)
+    neighbor = np.concatenate([face_j, face_i])
+    face_indices = np.concatenate([np.arange(face_count), np.arange(face_count)]).astype(np.int64)
+    neighbor_count = np.bincount(owner, minlength=n)
+    max_neighbors = max(int(neighbor_count.max()) if face_count else 0, 1)
     offset = np.zeros(n, dtype=np.int64)
     if n:
-        offset[1:] = np.cumsum(deg)[:-1]
+        offset[1:] = np.cumsum(neighbor_count)[:-1]
     order = np.argsort(owner, kind="stable")
-    owner_s = owner[order]
-    slot = np.arange(owner.size) - offset[owner_s]           # 0..deg-1 within each row
-    nbr = np.tile(np.arange(n, dtype=np.int64), (K, 1))      # (K, n), self-padded
-    fmap = np.full((K, n), -1, dtype=np.int64)
-    if nf:
-        nbr[slot, owner_s] = neigh[order]
-        fmap[slot, owner_s] = fidx[order]
-    return nbr, fmap
+    sorted_owner = owner[order]
+    slot = np.arange(owner.size) - offset[sorted_owner]           # 0..deg-1 within each row
+    neighbors = np.tile(np.arange(n, dtype=np.int64), (max_neighbors, 1))      # (K, n), self-padded
+    face_map = np.full((max_neighbors, n), -1, dtype=np.int64)
+    if face_count:
+        neighbors[slot, sorted_owner] = neighbor[order]
+        face_map[slot, sorted_owner] = face_indices[order]
+    return neighbors, face_map
 
 
 class _MeshGroupOperator:
@@ -368,38 +368,41 @@ class UnstructuredDiffusionSolver:
         self.G = G = self.mats[0].n_groups
         n = mesh.n_cells
 
-        area = np.asarray(mesh.area, dtype=dtype)
+        cell_measure = np.asarray(mesh.area, dtype=dtype)
         D = [np.array([self.mats[m].diffusion[g] for m in cm], dtype=dtype) for g in range(G)]
         removal = [np.array([self.mats[m].removal[g] for m in cm], dtype=dtype) for g in range(G)]
 
         # Face and boundary connectivity as flat arrays (host; moved to device).
-        fi = np.array([f[0] for f in mesh.faces], dtype=np.int64)
-        fj = np.array([f[1] for f in mesh.faces], dtype=np.int64)
-        fL = np.array([f[2] for f in mesh.faces], dtype=dtype)
-        fd = np.array([f[3] for f in mesh.faces], dtype=dtype)
-        bi = np.array([b[0] for b in mesh.bfaces], dtype=np.int64)
-        bL = np.array([b[1] for b in mesh.bfaces], dtype=dtype)
-        bd = np.array([b[2] for b in mesh.bfaces], dtype=dtype)
+        face_owner = np.array([f[0] for f in mesh.faces], dtype=np.int64)
+        face_neighbor = np.array([f[1] for f in mesh.faces], dtype=np.int64)
+        face_measure = np.array([f[2] for f in mesh.faces], dtype=dtype)
+        center_distance = np.array([f[3] for f in mesh.faces], dtype=dtype)
+        boundary_owner = np.array([b[0] for b in mesh.bfaces], dtype=np.int64)
+        boundary_measure = np.array([b[1] for b in mesh.bfaces], dtype=dtype)
+        boundary_distance = np.array([b[2] for b in mesh.bfaces], dtype=dtype)
 
         # ELLPACK adjacency (geometry, shared across groups); moved to device once.
-        nbr, fmap = _build_ell(fi, fj, n)
+        nbr, fmap = _build_ell(face_owner, face_neighbor, n)
         nbr_dev = xp.asarray(nbr.astype(np.int32))
         fpad = np.where(fmap >= 0, fmap, 0)                    # safe index for padding
 
         self.ops = []
         for g in range(G):
             Dg = D[g]
-            Di, Dj = Dg[fi], Dg[fj]
-            face_w = 2.0 * Di * Dj / (Di + Dj) * fL / fd       # harmonic-mean coupling
+            diffusion_owner, diffusion_neighbor = Dg[face_owner], Dg[face_neighbor]
+            face_w = (2.0 * diffusion_owner * diffusion_neighbor
+                      / (diffusion_owner + diffusion_neighbor)
+                      * face_measure / center_distance)
             # per-slot weights (0 where padded); diag from the same face weights.
             w_ell = (np.where(fmap >= 0, face_w[fpad], 0.0).astype(dtype)
                      if face_w.size else np.zeros(fmap.shape, dtype=dtype))
-            diag = removal[g] * area
-            diag = diag + np.bincount(fi, weights=face_w, minlength=n)
-            diag = diag + np.bincount(fj, weights=face_w, minlength=n)
+            diag = removal[g] * cell_measure
+            diag = diag + np.bincount(face_owner, weights=face_w, minlength=n)
+            diag = diag + np.bincount(face_neighbor, weights=face_w, minlength=n)
             if self.alpha != 0.0:
-                bw = self.alpha * Dg[bi] * bL / (bd * self.alpha + Dg[bi])
-                diag = diag + np.bincount(bi, weights=bw, minlength=n)
+                boundary_weight = (self.alpha * Dg[boundary_owner] * boundary_measure
+                                   / (boundary_distance * self.alpha + Dg[boundary_owner]))
+                diag = diag + np.bincount(boundary_owner, weights=boundary_weight, minlength=n)
             self.ops.append(_MeshGroupOperator(
                 xp, nbr_dev, xp.asarray(w_ell), xp.asarray(diag)))
         self.preconds = [neumann_preconditioner(op.apply, op.inv_diag,
@@ -407,7 +410,7 @@ class UnstructuredDiffusionSolver:
                          for op in self.ops]
 
         # Source data, device-resident.
-        self.area = xp.asarray(area)
+        self.area = xp.asarray(cell_measure)
         self.nsf = [xp.asarray(np.array([self.mats[m].nu_sigma_f[g] for m in cm], dtype=dtype))
                     for g in range(G)]
         self.chi = [xp.asarray(np.array([self.mats[m].chi[g] for m in cm], dtype=dtype))

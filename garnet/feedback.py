@@ -119,38 +119,41 @@ class ThermalFeedback:
         G = fields.n_groups
         # xp.asarray keeps a device array on the device and lifts a host array
         # onto it; either way the arithmetic below stays on one backend.
-        T = xp.asarray(temperature, dtype=blend.dtype)
-        if T.shape != blend.shape:
-            raise ValueError(f"temperature shape {T.shape} != grid shape "
+        temperature_field = xp.asarray(temperature, dtype=blend.dtype)
+        if temperature_field.shape != blend.shape:
+            raise ValueError(f"temperature shape {temperature_field.shape} != grid shape "
                              f"{blend.shape}")
-        n_cols = self.doppler.shape[1]
-        if n_cols not in (1, G):
+        coefficient_groups = self.doppler.shape[1]
+        if coefficient_groups not in (1, G):
             # Otherwise the group lookup below would clamp to the last column
             # and silently give every remaining group the wrong coefficient.
             raise ValueError(
                 f"doppler must have 1 column (applied to every group) or one "
-                f"per group ({G}), got {n_cols}")
+                f"per group ({G}), got {coefficient_groups}")
 
         # Coefficients ride onto the mesh through the SAME blend the cross
         # sections used, so a drum cell that is 30% B4C is 30% B4C here too.
-        t_ref = blend.linear(self.t_ref)
+        reference_temperature = blend.linear(self.t_ref)
         # Clamp: sqrt of a negative temperature is not a physics question, and
         # a coupling iterate can transiently undershoot before it converges.
-        dsqrt = xp.sqrt(xp.maximum(T, 0.0)) - xp.sqrt(t_ref)
+        sqrt_temperature_change = xp.sqrt(xp.maximum(
+            temperature_field,
+            0.0,
+        )) - xp.sqrt(reference_temperature)
 
         if self.expansion is not None:
-            f = 1.0 - blend.linear(self.expansion) * (T - t_ref)
-            if float(xp.min(f)) <= 0.0:
+            density_factor = 1.0 - blend.linear(self.expansion) * (temperature_field - reference_temperature)
+            if float(xp.min(density_factor)) <= 0.0:
                 raise ValueError(
                     "the expansion law drove a density factor to zero or "
                     "below; the linearization is only valid for "
                     "beta_exp * (T - T_ref) << 1")
         else:
-            f = None
+            density_factor = None
 
         for g in range(G):
-            c_d = blend.linear(self.doppler[:, 0 if n_cols == 1 else g])
-            d_sa = c_d * fields.sigma_a[g] * dsqrt
+            c_d = blend.linear(self.doppler[:, 0 if coefficient_groups == 1 else g])
+            d_sa = c_d * fields.sigma_a[g] * sqrt_temperature_change
 
             fields.sigma_a[g] = fields.sigma_a[g] + d_sa
             fields.removal[g] = fields.removal[g] + d_sa
@@ -163,15 +166,15 @@ class ThermalFeedback:
                 fields.diffusion[g] = fields.diffusion[g] / (
                     1.0 + 3.0 * d_sa * fields.diffusion[g])
 
-            if f is not None:
-                fields.sigma_a[g] = fields.sigma_a[g] * f
-                fields.removal[g] = fields.removal[g] * f
-                fields.sigma_t[g] = fields.sigma_t[g] * f
-                fields.nu_sigma_f[g] = fields.nu_sigma_f[g] * f
-                fields.diffusion[g] = fields.diffusion[g] / f
+            if density_factor is not None:
+                fields.sigma_a[g] = fields.sigma_a[g] * density_factor
+                fields.removal[g] = fields.removal[g] * density_factor
+                fields.sigma_t[g] = fields.sigma_t[g] * density_factor
+                fields.nu_sigma_f[g] = fields.nu_sigma_f[g] * density_factor
+                fields.diffusion[g] = fields.diffusion[g] / density_factor
                 for gt in range(G):
                     if fields.sigma_s[g][gt] is not None:
-                        fields.sigma_s[g][gt] = fields.sigma_s[g][gt] * f
+                        fields.sigma_s[g][gt] = fields.sigma_s[g][gt] * density_factor
         # chi is deliberately untouched: it is a normalized emission spectrum,
         # not a cross section, and scaling it would lose fission neutrons.
 

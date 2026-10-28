@@ -742,6 +742,11 @@ Only one perturbation callback may be supplied.
 
 Both `Model` and `TriReactor` accept a `Kinetics` object in `set_kinetics` and a
 compatible public steady result in `transient(initial_steady=result)`.
+For diffusion kinetics, `set_kinetics(..., chi_delayed=...)` accepts either
+one delayed spectrum or one per precursor family. These may differ from
+`Material.chi`, the total equilibrium fission spectrum; the solver accounts
+for prompt production and delayed precursor emission separately. See the
+[kinetics API](model_api.md) for the spectrum convention and an example.
 Construction controls such as the Neumann preconditioner degree go in
 `solver_kwargs={"precond_degree": 1}`; tolerance and time-integration controls
 go directly to `steady` or `transient`. Steady `MeshModel` runs use this split
