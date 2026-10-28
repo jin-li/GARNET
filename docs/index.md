@@ -2,7 +2,8 @@
 
 Start with the User Manual for running calculations. The Software Methodology
 Manual explains the equations, numerical methods and limits of the implementation.
-Both manuals are maintained as Markdown and built as searchable HTML and PDF.
+The Testing and Verification Manual explains executable evidence, test selection
+and release checks. All three manuals are maintained as Markdown and built as searchable HTML and PDF.
 
 ```{toctree}
 :maxdepth: 2
@@ -10,6 +11,7 @@ Both manuals are maintained as Markdown and built as searchable HTML and PDF.
 
 user/index
 methodology/index
+testing/index
 ```
 
 ```{toctree}
@@ -45,7 +47,8 @@ environment.
 
 PDF builds additionally require pdfLaTeX, latexmk and make from TeX Live. The generated
 files are `docs/_build/latex/garnet-user-manual.pdf` and
-`docs/_build/latex/garnet-methodology-manual.pdf`. Generated HTML and PDFs are build
+`docs/_build/latex/garnet-methodology-manual.pdf`, plus
+`docs/_build/latex/garnet-testing-manual.pdf`. Generated HTML and PDFs are build
 artifacts; hosting and package publication are separate actions.
 
 ```{toctree}

@@ -29,6 +29,8 @@ mistaking dual source weights for point samples of $\phi^*$.
 
 ## Why the complete source response matters
 
+The receiver is restricted to three Cartesian axes and six conforming whole cuboid faces. NEM side arrays retain x−, y−, x+, y+, z−, z+ ordering, while Cartesian diffusion ADF arrays retain x−, x+, y−, y+, z−, z+. The shared `garnet.face_conventions` constants and `reorder_faces` utility describe indexing only; they do not transform current conventions or establish equivalence of homogeneous references. Supported polynomial degrees and the three-level local reference qualification policy are defined in `garnet.nem_degree_policy`. Local qualification requires exactly three increasing supported degrees ending at the receiver, with a default mean-normalized order limit of `0.005`. That policy is separate from the physical adjoint construction below.
+
 The frozen uncondensed physical NEM eigenpencil is $A x=Qx/k$. The state $x$ contains means, Legendre coefficients and shared face currents. Let $P$ extract means and every retained weak spatial moment, $E$ inject physical source terms, and $C$ be the local production kernel. Then
 
 ```{math}

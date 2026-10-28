@@ -1,6 +1,7 @@
 """Interior-face assembly discontinuity factors for Cartesian diffusion."""
 
 import numpy as np
+from .face_conventions import CARTESIAN_AXIS_FACE_PAIRS
 
 
 def _real_positive_factors(xp, values, *, dtype=None):
@@ -39,12 +40,12 @@ def assembly_face_factors(regions, side_factors):
     if factors.ndim != 5 or factors.shape[1:] != (6, *regions.shape) or factors.shape[0] < 1:
         raise ValueError("side_factors must have shape (G, 6, *regions.shape)")
     result = []
-    for axis in range(3):
+    for axis, (minus, plus) in enumerate(CARTESIAN_AXIS_FACE_PAIRS):
         lo = [slice(None)] * 3
         hi = [slice(None)] * 3
         lo[axis], hi[axis] = slice(None, -1), slice(1, None)
         lo, hi = tuple(lo), tuple(hi)
         interface = regions[lo] != regions[hi]
-        result.append((np.where(interface, factors[(slice(None), 2 * axis + 1, *lo)], 1.0),
-                       np.where(interface, factors[(slice(None), 2 * axis, *hi)], 1.0)))
+        result.append((np.where(interface, factors[(slice(None), plus, *lo)], 1.0),
+                       np.where(interface, factors[(slice(None), minus, *hi)], 1.0)))
     return tuple(result)

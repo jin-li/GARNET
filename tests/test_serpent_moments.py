@@ -115,3 +115,27 @@ def test_unknown_higher_assignment_syntax_and_optional_malformed(tmp_path):
         read_serpent_moment_xs(write(tmp_path,extra='\nINF_SP3(idx,unknown)=[0];'))
     with pytest.raises(ValueError,match='INF_SP7'):
         read_serpent_moment_xs(write(tmp_path,{'INF_SP7':'[1 0]'}))
+
+
+@pytest.mark.parametrize("reader", [read_serpent_xs, read_serpent_moment_xs])
+def test_scalar_and_moment_record_selection_share_diagnostics(tmp_path, reader):
+    path = write(tmp_path)
+    block = path.read_text()
+    counter = "if (exist('idx', 'var')); idx = idx + 1; else; idx = 1; end;\n"
+    path.write_text(counter + block + counter + block.replace("'synthetic'", "'other'"))
+
+    assert reader(path, universe="other").record_index == 1
+    assert reader(path, universe="other", record_index=1).universe == "other"
+    for selection, matches in [({}, 2), ({"universe": "absent"}, 0),
+                               ({"universe": "other", "record_index": 0}, 0)]:
+        with pytest.raises(ValueError) as exc:
+            reader(path, **selection)
+        message = str(exc.value)
+        assert path.name in message
+        assert f"selection matched {matches} records" in message
+        assert "available [(0, 'synthetic'), (1, 'other')]" in message
+
+    path.write_text(counter + block + counter + block)
+    with pytest.raises(ValueError, match="selection matched 2 records"):
+        reader(path, universe="synthetic")
+    assert reader(path, universe="synthetic", record_index=1).record_index == 1

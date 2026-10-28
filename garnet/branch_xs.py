@@ -11,6 +11,31 @@ import json
 from pathlib import Path
 import numpy as np
 
+from .moderator_paths import TabulatedModeratorPath
+
+
+# Legacy identities retain their original missing/null comparison rules.
+# New caller identities belong in COMPATIBILITY_IDENTITIES_NAMESPACE instead.
+CLOSURE_IDENTITY_KEYS = (
+    'transverse_leakage_identity', 'reflector_mask_sha256',
+    'leakage_boundary', 'reference_current_convention',
+)
+LEGACY_COMPATIBILITY_KEYS = (
+    'diffusion', 'absorption_convention', 'scattering_order', 'fission_order',
+    'length_unit', 'energy_unit', 'temperature_unit', 'density_unit',
+    'adf_prescription', 'geometry_family', 'nuclear_data_family', 'scoring_identity',
+    'reference_orders', 'solver_family', 'moderator_path_id', 'library_identity',
+    'thermal_scattering_identity', 'energy_structure_identity',
+    'library_id', 'nuclear_data_id', 'nuclear_data_library',
+    'geometry_id', 'geometry_bounds_sha256', 'scoring_id', 'adf_solver_identity',
+    'thermal_scattering_library',
+) + CLOSURE_IDENTITY_KEYS
+COMPATIBILITY_IDENTITIES_NAMESPACE = 'compatibility_identities'
+THERMAL_STAR_REQUIRED_IDENTITIES = (
+    'geometry_family', 'nuclear_data_family', 'scoring_identity',
+    'adf_prescription', 'solver_family',
+)
+
 
 def _array(value, name, shape=None):
     raw = np.asarray(value)
@@ -51,6 +76,18 @@ def _plain(value):
     if isinstance(value, (tuple, list)):
         return [_plain(v) for v in value]
     return value
+
+
+def _validate_identity_names(value):
+    """Reject mapping keys that metadata freezing/JSON would otherwise coerce."""
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) or not key.strip() for key in value):
+            raise ValueError('compatibility_identities requires nonempty string mapping keys')
+        for item in value.values():
+            _validate_identity_names(item)
+    elif isinstance(value, (tuple, list)):
+        for item in value:
+            _validate_identity_names(item)
 
 
 @dataclass(frozen=True)
@@ -135,6 +172,12 @@ class BranchState:
             if ('temperature' in key or 'density' in key) and (not isinstance(value,(int,float,np.number)) or not np.isfinite(value) or value <= 0):
                 raise ValueError(f'{key} must be positive finite')
         object.__setattr__(self, 'conditions', _freeze(self.conditions))
+        namespace = COMPATIBILITY_IDENTITIES_NAMESPACE
+        if namespace in self.metadata:
+            identities = self.metadata[namespace]
+            if not isinstance(identities, Mapping):
+                raise ValueError('compatibility_identities must be a mapping of nonempty string keys')
+            _validate_identity_names(identities)
         object.__setattr__(self, 'metadata', _freeze(self.metadata))
         if not isinstance(self.qualification, str) or not self.qualification:
             raise ValueError('qualification must be explicit nonempty text')
@@ -249,22 +292,18 @@ class BranchLibrary:
                 raise ValueError('incompatible region, energy or exterior topology')
             if any((getattr(s,k) is None)!=(getattr(first,k) is None) for k in ('total','kappa_fission')):
                 raise ValueError('inconsistent optional XS channels')
-            closure_keys=('transverse_leakage_identity','reflector_mask_sha256',
-                          'leakage_boundary','reference_current_convention')
-            # These optional declarations belong to the ADF reference closure.
-            # Even an explicit null must not silently match an omitted identity.
-            if any((k in s.metadata) != (k in first.metadata) for k in closure_keys):
+            # Closure presence is significant; legacy non-closure keys retain
+            # historical get() equality (omitted and null compare equal).
+            if any((key in s.metadata) != (key in first.metadata)
+                   for key in CLOSURE_IDENTITY_KEYS):
                 raise ValueError('incompatible spatial-reference closure identity declarations')
-            keys=('diffusion','absorption_convention','scattering_order','fission_order',
-                  'length_unit','energy_unit','temperature_unit','density_unit',
-                  'adf_prescription','geometry_family','nuclear_data_family','scoring_identity',
-                  'reference_orders','solver_family','moderator_path_id','library_identity',
-                  'thermal_scattering_identity','energy_structure_identity',
-                  'library_id','nuclear_data_id','nuclear_data_library',
-                  'geometry_id','geometry_bounds_sha256','scoring_id','adf_solver_identity',
-                  'thermal_scattering_library') + closure_keys
-            if any(_plain(s.metadata.get(k)) != _plain(first.metadata.get(k)) for k in keys):
+            if any(_plain(s.metadata.get(key)) != _plain(first.metadata.get(key))
+                   for key in LEGACY_COMPATIBILITY_KEYS):
                 raise ValueError('incompatible XS units/conventions/ADF prescription')
+            namespace = COMPATIBILITY_IDENTITIES_NAMESPACE
+            if ((namespace in s.metadata) != (namespace in first.metadata)
+                    or _plain(s.metadata.get(namespace)) != _plain(first.metadata.get(namespace))):
+                raise ValueError('incompatible caller compatibility identities')
         versions = [s.metadata.get('serpent_version') for s in vertices]
         if any(_plain(v) != _plain(versions[0]) for v in versions[1:]):
             if not self.compatible_serpent_versions or any(
@@ -311,7 +350,8 @@ class BranchLibrary:
             # Reject true extrapolation, permit only floating-point boundary noise.
             if np.any(weights < -1e-12) or np.any(weights > 1+1e-12):
                 continue
-            weights=np.maximum(weights,0); weights/=weights.sum()
+            weights = np.maximum(weights, 0)
+            weights /= weights.sum()
             data=_arguments(vertices[0])
             for key in ('D','sigma_a','sigma_s','fission_matrix','chi','kappa_fission','total'):
                 if data[key] is not None:
@@ -319,7 +359,8 @@ class BranchLibrary:
             data['factors']=np.exp(sum(w*np.log(s.factors) for w,s in zip(weights,vertices)))
             data['factors'][vertices[0].exterior_mask]=1
             # Nonfissile chi is harmless metadata; fuel spectra remain normalized.
-            chi=data['chi']; norm=chi.sum(axis=1)
+            chi = data['chi']
+            norm = chi.sum(axis=1)
             chi[norm>0]/=norm[norm>0,None]
             data.update(state_id='interpolated:'+','.join(ids),conditions=conditions,native=None,
                         qualification='interpolated-unvalidated',
@@ -330,13 +371,13 @@ class BranchLibrary:
 
     def evaluate_temperatures(self, fuel_temperature, moderator_temperature, path, *,
                               conditions=None, configuration=None, family=None):
-        """Evaluate along an explicit benchmark moderator T/density path.
+        """Evaluate along an explicit tabulated moderator T/density path.
 
         Actual moderator temperature is provenance, not an independent axis.
         A supplied density or temperature must agree with that same path.
         """
-        if not isinstance(path, BenchmarkModeratorPath):
-            raise TypeError('path must be BenchmarkModeratorPath')
+        if not isinstance(path, TabulatedModeratorPath):
+            raise TypeError('path must be TabulatedModeratorPath')
         if self.axes != ('fuel_temperature','moderator_density'):
             raise ValueError('temperature helper requires fuel_temperature/moderator_density axes')
         conditions=dict(conditions or {})
@@ -381,36 +422,39 @@ class BranchLibrary:
                    compatible_serpent_versions=payload.get('compatible_serpent_versions', ()))
 
 
-@dataclass(frozen=True)
-class BenchmarkModeratorPath:
-    """Bounded monotone PCHIP of supplied 155-bar benchmark water densities.
+@dataclass(frozen=True, init=False)
+class BenchmarkModeratorPath(TabulatedModeratorPath):
+    """Legacy 155-bar PRATIC compatibility wrapper, not an equation of state.
 
-    This reproduces benchmark tabulation; it is not an IAPWS implementation.
-    More extensive paths require explicit tabulated knots and a new path_id.
+    Historical defaults and the restriction to decreasing density at 155 bar
+    are retained. New applications should use ``TabulatedModeratorPath``.
+    Changed benchmark knots require a caller-defined path identity.
     """
-    temperatures: tuple = (558.15,573.15,588.15)
-    densities: tuple = (.75572,.72683,.69325)
-    pressure_bar: float = 155.
+    temperatures: tuple = (558.15, 573.15, 588.15)
+    densities: tuple = (.75572, .72683, .69325)
     path_id: str = 'pratic-155bar-558.15-588.15K-v1'
+    pressure_bar: float = 155.
+
+    def __init__(self, temperatures=(558.15, 573.15, 588.15),
+                 densities=(.75572, .72683, .69325), pressure_bar=155.,
+                 path_id='pratic-155bar-558.15-588.15K-v1'):
+        # Preserve the historical positional argument order.
+        object.__setattr__(self, 'temperatures', temperatures)
+        object.__setattr__(self, 'densities', densities)
+        object.__setattr__(self, 'pressure_bar', pressure_bar)
+        object.__setattr__(self, 'path_id', path_id)
+        self.__post_init__()
 
     def __post_init__(self):
-        t=_array(self.temperatures,'path temperatures')
-        rho=_array(self.densities,'path densities')
-        if t.ndim!=1 or rho.shape!=t.shape or len(t)<2 or np.any(t<=0) or np.any(rho<=0) or np.any(np.diff(t)<=0) or np.any(np.diff(rho)>=0):
-            raise ValueError('path requires increasing positive T and decreasing positive density knots')
-        if self.pressure_bar != 155. or not isinstance(self.path_id,str) or not self.path_id:
-            raise ValueError('benchmark path requires 155 bar and nonempty identity')
+        super().__post_init__()
+        if self.pressure_bar != 155.:
+            raise ValueError('benchmark path requires 155 bar')
+        if np.any(np.diff(self.densities) >= 0):
+            raise ValueError('benchmark path requires decreasing positive density knots')
         if self.path_id == 'pratic-155bar-558.15-588.15K-v1' and (
-                tuple(t) != (558.15,573.15,588.15) or tuple(rho) != (.75572,.72683,.69325)):
+                self.temperatures != (558.15, 573.15, 588.15)
+                or self.densities != (.75572, .72683, .69325)):
             raise ValueError('changed benchmark knots require a new path_id')
-        object.__setattr__(self,'temperatures',tuple(float(x) for x in t))
-        object.__setattr__(self,'densities',tuple(float(x) for x in rho))
-
-    def evaluate(self, temperature):
-        from scipy.interpolate import PchipInterpolator
-        if not np.isscalar(temperature) or isinstance(temperature,(bool,np.bool_)) or not np.isfinite(temperature) or not self.temperatures[0]<=temperature<=self.temperatures[-1]:
-            raise ValueError('moderator temperature outside benchmark path')
-        return float(PchipInterpolator(self.temperatures,self.densities,extrapolate=False)(temperature))
 
 
 def import_serpent_state(state_id, conditions, records, *, diffusion='inf', factors=None,
@@ -446,7 +490,8 @@ def import_serpent_state(state_id, conditions, records, *, diffusion='inf', fact
         if any(v is None for v in vals):
             raise ValueError(f'inconsistent native {name}')
         return np.stack(vals)
-    chi=stack('chi'); nu=stack('nu_sigma_f')
+    chi = stack('chi')
+    nu = stack('nu_sigma_f')
     return BranchState(state_id,conditions,regions,bounds,stack('diffusion'),stack('sigma_a'),
                        stack('sigma_s'),chi[:,:,None]*nu[:,None,:],chi,
                        kappa_fission=stack('kappa_fission'),total=stack('total'),factors=factors,
@@ -463,6 +508,8 @@ def build_nem_solver(state, grid, region_indices=None, *, degree=16, **kwargs):
 
     ``region_indices`` maps each grid node to a state region index. No operator
     cache is shared between states; grid exterior-factor checks remain active.
+    The receiving NEM grid uses three Cartesian axes and six whole-node faces;
+    table genericity does not provide arbitrary spatial topology support.
     """
     from .nem_higher_order import NEMHigherOrderDiffusionSolver
     if not isinstance(state,BranchState):

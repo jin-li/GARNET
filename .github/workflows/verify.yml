@@ -63,3 +63,4 @@ jobs:
             docs/_build/html
             docs/_build/latex/garnet-user-manual.pdf
             docs/_build/latex/garnet-methodology-manual.pdf
+            docs/_build/latex/garnet-testing-manual.pdf

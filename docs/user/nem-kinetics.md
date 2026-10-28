@@ -30,11 +30,15 @@ print(parameters.beta, parameters.neutron_lifetime)
 assert np.isclose(parameters.generation_time, 1/(220000*0.035))
 ```
 
-`NEMDiffusionSolver` provides the base quartic receiver. The higher-order class permits explicit degree 4 through 16 in even steps. Its default is not a substitute for order convergence. These solvers have no `device="gpu"` pathway. NEM geometry requires exact conforming whole cuboid faces; reuse shared coordinates. Hanging/partial faces are rejected.
+`NEMDiffusionSolver` provides the base quartic receiver. The higher-order class permits degrees `(4, 6, 8, 10, 12, 14, 16)`, defined by `SUPPORTED_NEM_DEGREES` in `garnet.nem_degree_policy`. Its default is not a substitute for order convergence. These solvers have no `device="gpu"` pathway. NEM geometry requires exact conforming whole cuboid faces; reuse shared coordinates. The implementation supports exactly three Cartesian axes and six whole faces per node. Hanging/partial faces are rejected.
 
 ## Factors and local reconstruction
 
 Factors use `(node,side,group)` and side order x−, y−, x+, y+, z−, z+. Exterior factors must be one. Importing a tally is distinct from constructing its matching homogeneous reference. The reference must match production kernel, geometry, polynomial degree and transverse leakage policy. Use `reconstruct_nem_reference` and the explicit reflector-inclusive qualification API for the supported reconstruction workflow. Keep negative profile diagnostics and reference-side current disagreements visible.
+
+Cartesian diffusion ADF arrays use x−, x+, y−, y+, z−, z+ instead. Use `garnet.face_conventions.reorder_faces` with explicit `CARTESIAN_FACE_ORDER`, `NEM_FACE_ORDER` and the face axis to reorder CPU arrays. For example, a Cartesian `(group,side,nx,ny,nz)` array uses `axis=1`. This preserves values and changes only their indexing. Current signs, integrated versus density normalization, geometry and the homogeneous reference must still match the receiving model; reordering alone establishes no physical equivalence.
+
+`qualify_nem_reference_factors` intentionally requires exactly three increasing supported degrees ending at the receiving degree. Both successive face changes must satisfy its mean-normalized order limit. The default levels are `(12, 14, 16)` and the default limit is `0.005`; these defaults require a degree-16 receiver. Set explicit levels ending at the receiver for another supported degree. The three levels also supply conservative reflector positivity and factor-change bounds. This is a local qualification prescription, not an adaptive order search, and it neither clips negative profiles nor relaxes failed gates.
 
 The runnable [local reference example](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/nem_local_reference.py) supplies an artificial reference. A successful local reconstruction does not validate the full receiving core. An auxiliary reference closure source must never be inserted into core fission or population.
 

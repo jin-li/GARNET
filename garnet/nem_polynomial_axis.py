@@ -7,6 +7,8 @@ or full three-dimensional point-field guarantee.
 from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import brentq
+
+from .nem_degree_policy import validate_nem_degree
 from .nodal_polynomial_reference import _array, _equilibrate, _positive_scalar
 
 
@@ -80,8 +82,7 @@ class NEMPolynomialAxisResponse:
         D,C = _array(D,'D'),_array(C,'C')
         L = _positive_scalar(L,'L')
         limit = _positive_scalar(condition_limit,'condition_limit')
-        if isinstance(degree,(bool,np.bool_)) or degree not in (4,6,8,10,12,14,16):
-            raise ValueError('degree must be one of 4,6,8,10,12,14,16')
+        degree = validate_nem_degree(degree)
         if D.ndim != 1 or not D.size or np.any(D <= 0) or C.shape != (len(D),len(D)):
             raise ValueError('D/C must be positive vector / square matching matrix')
         if limit < 1:

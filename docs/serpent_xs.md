@@ -35,7 +35,9 @@ with vacuum boundaries would require a spatial model and leakage treatment.
 
 `read_serpent_results(path)` returns all records. `read_serpent_xs(path,
 universe=None, record_index=None)` selects exactly one; ambiguous selections
-raise an error. Record indices are zero-based. Each record retains its source
+raise an error listing the available `(record_index, universe)` pairs. When both
+selectors are supplied, both must match the same record. The opt-in
+`read_serpent_moment_xs` uses this same selection contract. Record indices are zero-based. Each record retains its source
 path, SHA256, universe, Serpent version, group count, raw literal fields and
 descending energy boundaries in MeV. The supplied upper `1e37` sentinel and
 lower zero boundary are preserved. Different group structures need not be

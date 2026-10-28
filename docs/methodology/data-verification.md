@@ -8,6 +8,15 @@ The scalar diffusion adapter uses `INF_RABSXS`, source-major `INF_SP0`, `INF_NSF
 
 The scalar adapter, native moment reader, ADF reader and kinetics reader are separate interfaces. Importing one category does not qualify the others. Global IFP/analog/implicit estimates remain distinct; repeated whole-system fields must agree rather than being averaged. Exact estimator definitions depend on Serpent version. The [current time-constant reference](https://serpent.vtt.fi/docs/user_guide/standard_output.html#reactor-time-constants) must not be assumed identical to every older implementation.
 
+Native micro-depletion (`*_mdx*.m`) tables supply regional raw fluxes and
+microscopic reaction data, whereas the kinetics reader supplies repeated global
+transport estimates. The two imports do not establish regional/global estimator
+equivalence. Micro-depletion files embed neither energy boundaries nor a version:
+the caller must obtain the matching boundaries, group order, exact region
+selectors and version qualification from the generating input/result provenance.
+The source hash identifies the table file; it does not verify that this external
+provenance matches. No default group structure, isotope set or version is inferred.
+
 ## A hierarchy of evidence
 
 | Check | What it establishes | What it leaves open |

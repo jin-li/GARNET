@@ -1,4 +1,4 @@
-"""Build the user and methodology manuals from the same Markdown sources."""
+"""Build the user, methodology and testing manuals from the same Markdown sources."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -17,6 +17,7 @@ html_static_path = []
 latex_engine = 'pdflatex'
 latex_documents = [
     ('user/index', 'garnet-user-manual.tex', 'GARNET User Manual', author, 'manual', False),
+    ('testing/index', 'garnet-testing-manual.tex', 'GARNET Testing and Verification Manual', author, 'manual', False),
     ('methodology/index', 'garnet-methodology-manual.tex', 'GARNET Software Methodology Manual', author, 'manual', False),
 ]
-latex_elements = {'papersize': 'a4paper', 'pointsize': '11pt', 'fontpkg': r'\usepackage{lmodern}', 'fncychap': '', 'preamble': r'\DeclareUnicodeCharacter{2212}{\ensuremath{-}}'}
+latex_elements = {'papersize': 'a4paper', 'pointsize': '11pt', 'fontpkg': r'\usepackage{lmodern}', 'fncychap': '', 'preamble': r'\DeclareUnicodeCharacter{2212}{\ensuremath{-}}\setlength{\headheight}{15pt}'}

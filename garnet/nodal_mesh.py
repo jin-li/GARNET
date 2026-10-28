@@ -8,12 +8,13 @@ from __future__ import annotations
 import numpy as np
 
 from .mesh import Mesh
+from .face_conventions import NEM_AXIS_FACE_PAIRS
 
 
 SIDE_NAMES = ('x_minus', 'y_minus', 'x_plus', 'y_plus', 'z_minus', 'z_plus')
 SIDE_NORMALS = np.array([[-1, 0, 0], [0, -1, 0], [1, 0, 0], [0, 1, 0],
                          [0, 0, -1], [0, 0, 1]], dtype=np.int64)
-_SIDE_PAIRS = ((0, 2), (1, 3), (4, 5))
+_SIDE_PAIRS = NEM_AXIS_FACE_PAIRS
 
 
 def _edges(values, name):

@@ -1,6 +1,8 @@
 """Physical acceptance checks for static CPU branch NEM eigen solutions."""
 import numpy as np
 
+from .face_conventions import NEM_AXIS_FACE_PAIRS
+
 
 def _array(value, name, shape):
     raw = np.asarray(value)
@@ -56,7 +58,7 @@ def assess_nem_solution(solver, result, *, balance_tolerance=1e-5):
     production = float(np.sum(grid.volumes[:, None] * q0) * k)
     if not np.isfinite(production) or production <= 0:
         raise ValueError('fission production normalization must be finite positive')
-    pairs = ((0, 2), (1, 3), (4, 5))
+    pairs = NEM_AXIS_FACE_PAIRS
     divergence = np.stack([
         (currents[grid.node_faces[:, sp]] - currents[grid.node_faces[:, sm]])
         / grid.widths[:, axis, None] for axis, (sm, sp) in enumerate(pairs)], axis=1)

@@ -152,3 +152,20 @@ def test_native_definition_qualification_requires_exact_version(tmp_path):
     assert "unqualified_total_lambda_definition:ADJ_IFP_IMP_LAMBDA" in result.flags
     assert "unqualified_time_convention:ADJ_IFP_GEN_TIME" in result.flags
     assert "unqualified_GARNET_MC_time_equivalence" in result.flags
+
+
+def test_shared_result_grammar_preserves_strings_comments_and_fortran_exponents(tmp_path):
+    text = block().replace("'fixture'", "'fuel; 100% ''quoted'''")
+    text = text.replace("2e-5 0.001", "2D-5, % numeric vector comment\n 0.001")
+    result = read(tmp_path, text)
+    assert result.metadata["TITLE"] == "fuel; 100% 'quoted'"
+    assert result.estimates["ADJ_IFP_GEN_TIME"].mean[0] == 2e-5
+
+
+@pytest.mark.parametrize("rhs", ["[2e-5; 0 1e-5 0 3e-5 0]",
+                                  "[2e-5+1 0 1e-5 0 3e-5 0]",
+                                  "[2e-5 0 1e-5 0 3e-5 0] + 1"])
+def test_shared_result_grammar_rejects_expressions_and_matrix_rows(tmp_path, rhs):
+    text = assignment("ADJ_IFP_GEN_TIME", rhs)
+    with pytest.raises(ValueError, match="expressions are unsupported"):
+        read(tmp_path, text)

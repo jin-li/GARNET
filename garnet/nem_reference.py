@@ -9,6 +9,11 @@ import numpy as np
 from .nem import NEMDiffusionSolver, _PAIRS
 from .nem_polynomial_axis import NEMPolynomialAxisResponse
 from .kinetics_data import _array
+from .face_conventions import NEM_OPPOSITE_FACES
+from .nem_degree_policy import (
+    DEFAULT_REFERENCE_DEGREES, DEFAULT_REFERENCE_ORDER_TOLERANCE,
+    validate_nem_degree, validate_reference_degrees,
+)
 
 
 @dataclass(frozen=True)
@@ -50,9 +55,7 @@ def reconstruct_nem_reference(solver, *, k_eff, means, currents=None,
     mean = _array(means, 'means')
     receiving_degree = getattr(solver,'degree',4)
     p = receiving_degree if degree is None else degree
-    if isinstance(p,(bool,np.bool_)) or p not in (4,6,8,10,12,14,16):
-        raise ValueError('reference degree must be one of 4,6,8,10,12,14,16')
-    p = int(p)
+    p = validate_nem_degree(p, name="reference degree")
     n,g = solver.n_nodes,solver.n_groups
     if mean.shape != (n,g) or np.any(mean <= 0):
         raise ValueError('means must be positive with shape (N,G)')
@@ -78,7 +81,7 @@ def reconstruct_nem_reference(solver, *, k_eff, means, currents=None,
             # Shared whole faces have exactly one reciprocal side pair.
             side = np.flatnonzero(grid.neighbors[low] == high)
             for sp in side:
-                sm = (2,3,0,1,5,4)[sp]
+                sm = NEM_OPPOSITE_FACES[sp]
                 a,b = side_current[low,sp],side_current[high,sm]
                 mismatch = max(mismatch,float(np.max(abs(a-b))))
     with np.errstate(over='ignore',invalid='ignore',divide='ignore'):
@@ -140,8 +143,8 @@ class NEMReferenceFactors:
 
 
 def qualify_nem_reference_factors(solver, *, k_eff, means, heterogeneous_faces,
-                                  fuel_mask, degrees=(12,14,16),
-                                  order_tolerance=.005, currents=None,
+                                  fuel_mask, degrees=DEFAULT_REFERENCE_DEGREES,
+                                  order_tolerance=DEFAULT_REFERENCE_ORDER_TOLERANCE, currents=None,
                                   net_inward_integrated=None):
     """Apply the existing fuel/reflector internal-trace prescription to general C.
 
@@ -154,11 +157,7 @@ def qualify_nem_reference_factors(solver, *, k_eff, means, heterogeneous_faces,
     not a receiving full-core solve or independent transport prediction.
     """
     from .reflector_interface_factors import extend_reflector_interface_factors
-    levels = tuple(degrees)
-    valid = (4,6,8,10,12,14,16)
-    if (len(levels)!=3 or any(isinstance(v,(bool,np.bool_)) or v not in valid for v in levels)
-            or not levels[0]<levels[1]<levels[2] or levels[-1]!=getattr(solver,'degree',4)):
-        raise ValueError('three increasing reference degrees ending at receiving degree required')
+    levels = validate_reference_degrees(degrees, getattr(solver, 'degree', 4))
     tolerance = _array(order_tolerance,'order_tolerance')
     if tolerance.ndim!=0 or tolerance<=0:
         raise ValueError('order_tolerance must be finite positive')

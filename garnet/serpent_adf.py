@@ -7,6 +7,7 @@ predictions. Surface currents are integrated and inward-positive.
 from dataclasses import dataclass
 import math
 import numpy as np
+from .face_conventions import NEM_AXIS_FACE_PAIRS
 
 
 @dataclass(frozen=True)
@@ -77,7 +78,7 @@ def cuboid_flat_source_reconstruction(mean_flux, diffusion, removal,
     density = currents / areas[:,None]
     faces = np.empty_like(currents)
     minimum = mean.copy()
-    for axis, (minus,plus) in enumerate([(0,2),(1,3),(4,5)]):
+    for axis, (minus,plus) in enumerate(NEM_AXIS_FACE_PAIRS):
         half = widths[axis]/2
         for g in range(mean.size):
             t = half*math.sqrt(r[g]/D[g])

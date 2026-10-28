@@ -18,7 +18,7 @@ from typing import Mapping
 
 import numpy as np
 
-from .serpent_xs import _ASSIGNMENT, _COUNTER, _literal, _statements
+from ._serpent_literals import _ASSIGNMENT, _COUNTER, _literal, _statements
 
 _BETA = {"FWD_ANA_BETA_ZERO", "ADJ_IFP_IMP_BETA_EFF", "ADJ_IFP_ANA_BETA_EFF"}
 _LAMBDA = {"FWD_ANA_LAMBDA", "ADJ_IFP_IMP_LAMBDA", "ADJ_IFP_ANA_LAMBDA"}
