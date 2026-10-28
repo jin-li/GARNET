@@ -13,16 +13,21 @@ builders here wrap the common cases: define a reactor in centimetres, paint it
 with named materials, set boundary conditions by name, and get a transparent,
 human-readable report.
 
-Three builders share one report type (`ReactorResult`):
+Four geometry front ends share one steady report type (`ReactorResult`):
 
 | Builder | Geometry | Methods |
 |---|---|---|
 | [`Model`](#model--structured-cartesian) | structured Cartesian, 1-D / 2-D / 3-D | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
+| [`CylindricalModel`](#cylindricalmodel--r-z) | full cylindrical body, radial/axial cells | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
 | [`MeshModel`](#meshmodel--unstructured) | arbitrary unstructured mesh (Gmsh or assembled), 2-D / 3-D | diffusion |
 | [`HexLattice` → `TriReactor`](#hexlattice--trireactor) | hexagonal/prismatic cores on the triangular solver | diffusion/SPN/SDPN, adjoint, transient, thermal coupling |
 
 Materials are ordinary `garnet.Material` objects throughout, so defining cross
 sections is unchanged — only the grid/array bookkeeping is removed.
+
+For time integration, event schedules and result telemetry, see the
+[transient API guide](transient_api.md). Neutron transients on Cartesian,
+cylindrical and triangular grids now share `TransientModelResult`.
 
 ---
 
@@ -254,7 +259,7 @@ The report includes a power-vs-time sparkline:
 
 ```
   initial steady state : k0 = 0.913100  (fission source normalised by k0; unperturbed -> P/P0 stays 1)
-  time span            : 0 -> 0.5 s, 100 recorded intervals, ...
+  time span            : 0 -> 0.5 s, 100 steps (backward-euler), ...
   power P/P0:
     peak      : 2.1310 at t = 0.5 s
     final     : 2.1310 at t = 0.5 s
@@ -269,6 +274,32 @@ and `quasistatic_transient`, with the same named thermal/feedback inputs as
 automatically. The complete runnable
 [Cartesian diffusion workflow](../examples/diffusion_workflow.py) shows power
 edits, a material perturbation, hot equilibrium and a coupled transient.
+
+---
+
+## `CylindricalModel` — r-z
+
+```python
+core = (garnet.CylindricalModel(radius=60, height=120, cells=(12, 24))
+        .fill(reflector)
+        .add_region(fuel, r=(0, 40), z=(10, 110))
+        .set_boundary(r="vacuum", z=("reflective", "vacuum")))
+result = core.steady(device="auto")
+```
+
+`r` and `z` ranges select cell centres; `add_box` is an alias for `add_region`.
+The r=0 symmetry axis has zero face area. `material_map` is `(nr, nz)` and flux
+is `(groups, nr, 1, nz)`. Use `radial_centers` and `axial_centers` for coordinates.
+`result.cell_volumes` contains full annular volumes, and
+`result.power_density(total_power=...)` therefore uses full-cylinder watts.
+Steady, adjoint, neutron-transient and coupled methods follow the Cartesian API.
+
+`Model.from_grid(grid, materials, material_map, bc=..., kinetics=...)` wraps an
+existing structured problem and returns `CylindricalModel` when the grid is
+cylindrical. Cartesian input preserves all three explicit boundary axes and
+physical extents, including one-cell directions. See the
+[r-z workflow](transient_api.md#cylindrical-r-z-geometry) and
+[runnable example](../examples/cylindrical_transient.py).
 
 ---
 
@@ -335,6 +366,12 @@ kinetics = core.transient(t_end=1.0, dt=0.02, device="gpu")
 `refine` sets `6·refine²` triangles per hex. `steady(method=...)` accepts
 `diffusion`, `sp1/3/5/7`, or `sdp1/2/3`; `adjoint=True` is available. Inactive
 raster padding is generated and excluded from reports automatically.
+
+`transient` returns the same public history/report type as `Model`, including
+`steady`, `power_at`, `step_widths`, `precursors_numpy`, and `raw`. Existing
+solver telemetry is forwarded. Final public flux is NumPy; use `raw.flux` for
+the original device array. Timed controls, accepted-step callbacks and adaptive
+BDF options are described in the [transient guide](transient_api.md).
 
 The compiled object exposes `grid`, `materials`, `material_map`, `active`,
 `mix_material`, and `mix_weight` for advanced uses. `TriReactor(...)` can also

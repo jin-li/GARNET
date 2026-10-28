@@ -12,12 +12,17 @@ builder reference and a validated TWIGL example, see
 [model_api.md](model_api.md). For coupling internals and external thermal-code
 integration, see [coupling.md](coupling.md).
 
+The [transient and r-z guide](transient_api.md) covers event schedules,
+adaptive BDF, progress callbacks, shared transient results, and full cylindrical
+models with physical annular volumes.
+
 ## Main capabilities
 
 | Capability | Public entry point | Current scope |
 |---|---|---|
 | Hexagonal/prismatic full-core models | `HexLattice.build()` → `TriReactor` | 2-D triangular and extruded 3-D triangular-prism grids |
 | Cartesian models | `Model` | 1-D, 2-D, or 3-D structured grids |
+| Cylindrical r-z models | `CylindricalModel` | Full body of revolution with annular cell volumes |
 | General meshes | `MeshModel` | Gmsh or assembled 2-D/3-D finite-volume meshes |
 | Criticality | `steady()` / `run()` | Diffusion; SP1/3/5/7 and SDP1/2/3 on the tri-grid |
 | Importance | `steady(adjoint=True)` | Adjoint k-eigenvalue calculation |
@@ -43,6 +48,7 @@ intended for SPH-corrected coupled transients.
 |---|---|---|
 | Hexagonal assembly lattice or microreactor | `HexLattice` | The design maps naturally to hex sites and triangular cells |
 | Rectangular benchmark or Cartesian core | `Model` | Regions can be painted as axis-aligned boxes |
+| Cylindrical reactor | `CylindricalModel` | Regions are specified by radius and axial height |
 | Existing CAD-derived/Gmsh mesh | `MeshModel` | An unstructured diffusion calculation is required |
 | Custom discretization or research method | Solver classes | You need direct access to operators, arrays, or an experimental method |
 
@@ -542,7 +548,107 @@ also pass.
 `garnet.BDF.error_norm(...)` and `garnet.BDFStepController` remain public for
 benchmark and custom-driver development.
 
-`coupled_transient` supports the same adaptive controls through
+An experimental shared-frequency exponential method is available for diffusion:
+
+```python
+ftm = core.transient(
+    t_end=0.10, dt=0.001, time_scheme="ftm", step_solver="monolithic",
+)
+print(ftm.power)
+```
+
+FTM estimates growth from accepted neutron populations, modifies the time
+diagonal and history source separately, and integrates its exponential-source
+precursor model analytically. It supports fixed or explicit nonuniform widths;
+`adaptive_bdf` remains BDF-only. `ftm_kwargs={"frequency": 0.0}` is a useful
+analytic-precursor control and differs from BE. Rates with
+`abs(frequency * dt) > 0.5` use actual BE for that step. The
+{download}`prototype study <../benchmark-results/exponential-prototype/README.md>`
+compares BE, adaptive BE/BDF and thermal coupling at declared error budgets.
+This first-order prototype has not earned a production performance promotion.
+
+An experimental second-order neutron variant is selected with
+`time_scheme="ftm2"`, using the same `ftm_kwargs`. It applies the trapezoidal
+rule after removing the shared exponential and integrates linear transformed
+delayed-neutron production. Fixed and explicit nonuniform widths are supported.
+The accepted physical neutron derivative and endpoint production are carried
+between steps; unsafe frequencies fall back to BE and report order one.
+This scheme uses ordinary endpoint heat quadrature and leaves the heat-transfer
+solver unchanged. Its second-order result applies to smooth neutron problems;
+prompt events can ring, and coupled thermal accuracy is a separate question.
+See the {download}`first development checkpoint <../benchmark-results/exponential-second-order/README.md>`
+for verification and a neutron solve-count comparison against BE, CN and BDF.
+
+FTM2 also accepts `ftm_kwargs={"startup_be_steps": 2}` for actual BE steps
+after initialization and declared restarts. Choose suitably small initial
+widths; this option does not refine the schedule. FTM and FTM2 can request
+up to N extra endpoint solves with `frequency_iterations=N` (default zero),
+`frequency_tolerance=1e-6` and `frequency_relaxation=1.0`. Refinement requires
+monolithic steps, cannot use a prescribed frequency, and currently refuses
+implicit feedback. The result records `step_frequency_refinements` and
+`step_frequency_log_defects`; existing solve/Krylov counters include all
+repetitions. Iteration convergence is separate from time accuracy. See the
+{download}`prompt-event checkpoint <../benchmark-results/exponential-second-order/CHUNK2.md>`
+for controls, shared-mesh comparisons and remaining stability work.
+
+An alternative second-order transform is available as `time_scheme="ftm-bdf2"`:
+
+```python
+damped = core.transient(
+    t_end=0.1, dt=0.001, time_scheme="ftm-bdf2", step_solver="monolithic",
+)
+print(damped.time_orders, damped.ftm_fallback_reasons)
+```
+
+It applies BDF2 to neutrons and precursors in the current step's exponential
+frame, with one endpoint solve per step before any frequency refinements.
+This supplies stiff-mode damping; it does not guarantee positivity or resolve
+sharp events at coarse widths. Its precursor update is a rational BDF
+recurrence, distinct from FTM2's analytic production integral. Zero frequency
+reproduces ordinary BDF2. Startup and event restarts use BDF1; unsafe frequency,
+history exponent or width-ratio growth uses actual BE and reports the cause.
+Fixed and explicit nonuniform widths, `event_times`, named materials and
+progress callbacks work through the model API. `adaptive_bdf` is refused.
+Thermal coupling keeps its existing endpoint heat rule.
+
+Use `adaptive_ftm={"rtol": 1e-4, "min_dt": 1e-10, "max_dt": 0.01}` to
+enable physical-state full-step/two-half-step error control for `ftm2` or
+`ftm-bdf2`. The fine trajectory is committed once per macro endpoint, with
+rollback on rejection and exact event alignment. Each flux group and
+precursor family has its own volume/mask-aware defect; all trial solves are
+charged. This opt-in controller supports monolithic neutron/precursor
+integration only. Add `"output_rtol": 1e-4` to test the existing midpoint
+against the endpoint line in each physical field and in power, restricting
+macro widths for linear output without an extra spatial solve. This output
+tolerance is separate from the integration tolerance and does not certify
+accumulated error. See the [adaptive API details](transient_api.md),
+{download}`fourth checkpoint <../benchmark-results/exponential-second-order/CHUNK4.md>`
+and {download}`output checkpoint <../benchmark-results/exponential-second-order/CHUNK5.md>`.
+
+`adaptive_ftm={"rtol": 1e-4, "output_rtol": 1e-4, "estimator": "history"}`
+selects an experimental quadratic physical-history state check. Smooth
+second-order attempts use two half-step solves; startup, events and unsafe
+histories retain step doubling. `"estimator": "history-audit"` records both
+defects while retaining reference decisions. The output check remains
+independent. See the {download}`estimator checkpoint <../benchmark-results/exponential-second-order/CHUNK6.md>`
+for physical error and solve-count comparisons; fewer solves do not establish
+a runtime speedup or a gain over adaptive BDF.
+
+The {download}`TWIGL spatial assessment <../benchmark-results/exponential-second-order/CHUNK7.md>`
+compares independently measured power, shape, region power, integrated power
+and final precursor errors. At the declared 0.1% temporal budget, tuned
+adaptive BDF uses less work than the tested transforms. Mesh refinement
+still changes the 40×40 thermal-group shape by about 1.10%, so these temporal
+results do not establish 0.1% spatial accuracy or earn a production speedup
+claim.
+
+The {download}`damping checkpoint <../benchmark-results/exponential-second-order/CHUNK3.md>`
+records independent verification and 196 error/work configurations. Adaptive
+BDF remains the strongest tested comparator. The two-stage transformed
+SDIRK2 candidate remains a dense research driver because its extra stages
+did not earn a finite-volume implementation.
+
+`coupled_transient` supports adaptive BDF controls through
 `transient_kwargs`. Thermal exchange times are exact non-restarting adaptive
 endpoints, and unequal neutron-step powers are averaged by elapsed time rather
 than step count. The coupled HP-MR gate shows why method speedups must be
@@ -602,6 +708,13 @@ def control_state(t):
 All frames must preserve grid dimensions, physical size, boundaries, active
 cells and material count. The base reactor owns the thermal configuration; a
 state supplies the time-dependent material and volume-mix arrays.
+
+For timed controls, `event_times=[...]` on neutron `transient` splits fixed
+BDF schedules or aligns adaptive BDF and restarts history at the listed times.
+All model grids return `TransientModelResult`, including `power_at(times)`,
+accepted `step_widths`, `precursors_numpy`, and the initial public `steady`
+report. Solver telemetry is forwarded from `raw`; final device fields are
+available there. See the [transient guide](transient_api.md) for details.
 
 ## Cartesian and unstructured alternatives
 
@@ -692,6 +805,7 @@ validation in `tests/verification/` and `tests/validation/`.
 | `examples/hpmr_sph_reference_families.py` | SPH generation and reference-method comparison |
 | `examples/twigl_benchmark.py` | Validated static and transient Cartesian workflow |
 | `examples/diffusion_workflow.py` | Named Cartesian material edits, power, kinetics and thermal feedback |
+| `examples/cylindrical_transient.py` | Full r-z geometry, timed controls and fixed/adaptive BDF |
 | `examples/unstructured_mesh.py` | Gmsh/finite-volume `MeshModel` workflow |
 
 ## Public API at a glance
@@ -725,12 +839,23 @@ Model(size, cells)
   .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
   .quasistatic_transient(...)
 
+CylindricalModel(radius, height, cells=(nr, nz))
+  .fill(...) / .add_region(material, r=..., z=...) / .set_boundary(r=..., z=...)
+  .steady(...) / .transient(...) / .with_materials(...)
+  .configure_thermal(...) / .coupled_steady(...) / .coupled_transient(...)
+  .quasistatic_transient(...)
+
+Model.from_grid(grid, materials, material_map, bc=..., kinetics=...)
+
 MeshModel(mesh)
   .fill(...) / .assign(...) / .add_box(...) / .set_boundary(...)
   .steady(...) / .run(...) / .with_materials(list_or_mapping)
 
 ReactorResult
   .power_density(total_power=...) / .cell_volumes / .material_summary / .raw
+
+TransientModelResult
+  .steady / .times / .power / .power_at(times) / .step_widths / .raw
 ```
 
 When the public objects do not expose a research-specific option,

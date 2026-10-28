@@ -1,0 +1,815 @@
+{
+  "date": "2026-10-26",
+  "scope": "Stronger output-width BE/BDF controls for the spatial FTM gate",
+  "reference": "Same independently assembled physical system and sparse Radau rtol=3e-11 as primary sweep",
+  "primary_default_max_dt_s": 0.02,
+  "source_sha256": {
+    "garnet/transient.py": "ab7adf50ab67646cb46d7e0eedd73d5dcd6b99fb85695d677457a9d092d19268",
+    "garnet/timescheme.py": "fcd9db69be189290d6aed506e82be71f4424eff94fe3bade2b6dc42868b90621",
+    "garnet/benchmarks/twigl.py": "50e2e17924ee77895b0b3f095e348c185aebef70bb312a30f283fa1b71d429e3",
+    "tools/assess_exponential_twigl.py": "c0f99261dd81b42f60dc301945755c1fdbf017ed838b5c97cb4f7a5e75876233",
+    "tools/assess_exponential_twigl_widths.py": "9dab255e753bfc66881e026bd3619bf730b24c10b0ff48214b23952df5b6e510"
+  },
+  "cases": {
+    "step-2": {
+      "k0": 0.913000920741512,
+      "records": [
+        {
+          "maximum_relative_power_error": 0.0017660282288187723,
+          "maximum_endpoint_relative_power_error": 0.0017254589630808503,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0017585458617550538,
+            0.001779474090661647
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.00047610798250770966,
+            0.0006857618490537904
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0017803095623077914,
+            0.0017616937621453,
+            0.0017594773063238645
+          ],
+          "relative_power_integral_error": 0.00013186953343213847,
+          "final_relative_precursor_rms_error_by_family": [
+            1.4519582617725973e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.4524190641740375e-05
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.077971707268318e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 132,
+          "rejected_steps": 46,
+          "implicit_solves": 178,
+          "krylov_iterations": 70778,
+          "fgmres_iterations": 2739,
+          "operator_rebuilds": 144,
+          "diagnostic_solve_seconds": 7.090290041000117,
+          "final_power": 2.131665162912821
+        },
+        {
+          "maximum_relative_power_error": 0.000932642278075102,
+          "maximum_endpoint_relative_power_error": 3.526985807900118e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0009288245805673494,
+            0.0009395007555906441
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.908895170368329e-05,
+            4.007015901058003e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0009399262199382141,
+            0.0009304307312810733,
+            0.0009292998259716745
+          ],
+          "relative_power_integral_error": 1.6620002434075687e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            1.2800285807030367e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.2804348972217383e-05
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.077961213563695e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 108,
+          "rejected_steps": 19,
+          "implicit_solves": 127,
+          "krylov_iterations": 44481,
+          "fgmres_iterations": 1770,
+          "operator_rebuilds": 93,
+          "diagnostic_solve_seconds": 5.60176665400104,
+          "final_power": 2.131661498143603
+        },
+        {
+          "maximum_relative_power_error": 0.0017660282288187723,
+          "maximum_endpoint_relative_power_error": 0.0017254589630808503,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0017585458617550538,
+            0.001779474090661647
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.00047610798250770966,
+            0.0006857618490537904
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0017803095623077914,
+            0.0017616937621453,
+            0.0017594773063238645
+          ],
+          "relative_power_integral_error": 0.0001305635465040922,
+          "final_relative_precursor_rms_error_by_family": [
+            7.675555678713201e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            7.677984871667931e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.077929934211243e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 176,
+          "rejected_steps": 45,
+          "implicit_solves": 221,
+          "krylov_iterations": 88749,
+          "fgmres_iterations": 3422,
+          "operator_rebuilds": 141,
+          "diagnostic_solve_seconds": 8.506309754999165,
+          "final_power": 2.131650574523436
+        },
+        {
+          "maximum_relative_power_error": 0.000932642278075102,
+          "maximum_endpoint_relative_power_error": 3.526985807900118e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0009288245805673494,
+            0.0009395007555906441
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.908895170368329e-05,
+            4.007015901058003e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0009399262199382141,
+            0.0009304307312810733,
+            0.0009292998259716745
+          ],
+          "relative_power_integral_error": 1.867168624036797e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            6.695120266371109e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            6.697239267605681e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.077923950170023e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 149,
+          "rejected_steps": 19,
+          "implicit_solves": 168,
+          "krylov_iterations": 61737,
+          "fgmres_iterations": 2426,
+          "operator_rebuilds": 94,
+          "diagnostic_solve_seconds": 6.08620431899908,
+          "final_power": 2.131648484674986
+        },
+        {
+          "maximum_relative_power_error": 0.00423795022084017,
+          "maximum_endpoint_relative_power_error": 0.004166899194726459,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0042207318713048435,
+            0.004268882974486308
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.0005331773643170012,
+            0.0008278124865118525
+          ],
+          "maximum_relative_regional_power_error": [
+            0.00427079984269918,
+            0.004227976119552501,
+            0.0042228741081176135
+          ],
+          "relative_power_integral_error": 0.0003023187883036682,
+          "final_relative_precursor_rms_error_by_family": [
+            8.001421732477974e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            8.003953968716004e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.077931923115777e-07,
+          "configuration": {
+            "method": "adaptive-be",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 164,
+          "rejected_steps": 10,
+          "implicit_solves": 174,
+          "krylov_iterations": 70291,
+          "fgmres_iterations": 2702,
+          "operator_rebuilds": 88,
+          "diagnostic_solve_seconds": 6.807059746999585,
+          "final_power": 2.131651269123532
+        }
+      ]
+    },
+    "ramp-2": {
+      "k0": 0.913000920741512,
+      "records": [
+        {
+          "maximum_relative_power_error": 0.0005949039201618156,
+          "maximum_endpoint_relative_power_error": 0.0005601503403148689,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005907343087437032,
+            0.0006027045450816489
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            1.0304341282322393e-05,
+            1.3925529745090355e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0006029400187526068,
+            0.0005924660956191374,
+            0.00059109316377981
+          ],
+          "relative_power_integral_error": 1.2420451322103787e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            1.0840272085388104e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.0852214165746332e-05
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.013741383070164e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 75,
+          "rejected_steps": 17,
+          "implicit_solves": 92,
+          "krylov_iterations": 41310,
+          "fgmres_iterations": 1549,
+          "operator_rebuilds": 75,
+          "diagnostic_solve_seconds": 4.235242295999342,
+          "final_power": 2.1101726908803347
+        },
+        {
+          "maximum_relative_power_error": 0.0005541336167165234,
+          "maximum_endpoint_relative_power_error": 7.52324828112716e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005500119222002327,
+            0.0005481532000184299
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            1.0367460734445193e-05,
+            1.3731211079967064e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0005496864929726009,
+            0.0005463123638485001,
+            0.0005731125808927651
+          ],
+          "relative_power_integral_error": 5.7046391889636894e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            5.5042814699197825e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            5.5068412447845105e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.013708644862121e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 88,
+          "rejected_steps": 21,
+          "implicit_solves": 109,
+          "krylov_iterations": 46646,
+          "fgmres_iterations": 1756,
+          "operator_rebuilds": 96,
+          "diagnostic_solve_seconds": 4.6267544599995745,
+          "final_power": 2.1101614355450717
+        },
+        {
+          "maximum_relative_power_error": 0.0005949039201618156,
+          "maximum_endpoint_relative_power_error": 0.0005614631699334405,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005911700103368666,
+            0.0006027045450816489
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            8.143407758278944e-06,
+            1.3925529745090355e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0006029400187526068,
+            0.0005924660956191374,
+            0.0005914292762733142
+          ],
+          "relative_power_integral_error": 3.309466797074556e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            5.843027600337877e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            5.84896161659465e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.013710908716503e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 117,
+          "rejected_steps": 15,
+          "implicit_solves": 132,
+          "krylov_iterations": 58498,
+          "fgmres_iterations": 2197,
+          "operator_rebuilds": 86,
+          "diagnostic_solve_seconds": 5.688481989000138,
+          "final_power": 2.110162148607098
+        },
+        {
+          "maximum_relative_power_error": 0.00014564314551046564,
+          "maximum_endpoint_relative_power_error": 7.52324828112716e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0001445869619490393,
+            0.0001441030533613817
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.4920917291214725e-06,
+            5.986361673295937e-06
+          ],
+          "maximum_relative_regional_power_error": [
+            0.00014449593516907555,
+            0.00014363414581586298,
+            0.00015051723199199785
+          ],
+          "relative_power_integral_error": 1.3396516005403925e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            3.456936979070627e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            3.4583127359599786e-06
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.013696246124472e-07,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 127,
+          "rejected_steps": 19,
+          "implicit_solves": 146,
+          "krylov_iterations": 62521,
+          "fgmres_iterations": 2357,
+          "operator_rebuilds": 105,
+          "diagnostic_solve_seconds": 6.053609864000464,
+          "final_power": 2.110157115695607
+        },
+        {
+          "maximum_relative_power_error": 0.0010428728788127728,
+          "maximum_endpoint_relative_power_error": 0.0009722547780206536,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0010391971409751616,
+            0.0010469127934431101
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            8.143407758278944e-06,
+            1.3925529745090355e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0010477152264054546,
+            0.0010398147651284884,
+            0.001043569728952587
+          ],
+          "relative_power_integral_error": 0.00021590674000648846,
+          "final_relative_precursor_rms_error_by_family": [
+            0.00018732995131069233
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            0.0001879397682924555
+          ],
+          "minimum_recorded_flux": 7.578859224885475e-05,
+          "minimum_final_precursor": 6.014848356639112e-07,
+          "configuration": {
+            "method": "adaptive-be",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 119,
+          "rejected_steps": 7,
+          "implicit_solves": 126,
+          "krylov_iterations": 56473,
+          "fgmres_iterations": 2110,
+          "operator_rebuilds": 76,
+          "diagnostic_solve_seconds": 5.5217190149996895,
+          "final_power": 2.110544605446974
+        }
+      ]
+    },
+    "step-4": {
+      "k0": 0.9131004857823249,
+      "records": [
+        {
+          "maximum_relative_power_error": 0.0017681066519309452,
+          "maximum_endpoint_relative_power_error": 0.0017269519958045265,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.001760644911352941,
+            0.0017813338478238979
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.00047299707236216965,
+            0.0006883493380000627
+          ],
+          "maximum_relative_regional_power_error": [
+            0.001782066463738241,
+            0.0017639528465941412,
+            0.0017617419240687493
+          ],
+          "relative_power_integral_error": 0.00013128677376150755,
+          "final_relative_precursor_rms_error_by_family": [
+            1.4716055185076177e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.4720794994094177e-05
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.808178645139928e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 132,
+          "rejected_steps": 46,
+          "implicit_solves": 178,
+          "krylov_iterations": 143729,
+          "fgmres_iterations": 2735,
+          "operator_rebuilds": 142,
+          "diagnostic_solve_seconds": 16.99608156999966,
+          "final_power": 2.1307430212140326
+        },
+        {
+          "maximum_relative_power_error": 0.0010868017351313153,
+          "maximum_endpoint_relative_power_error": 3.6639798191906436e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0010824031918509017,
+            0.0010945965901247546
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.9066081712941726e-05,
+            3.9581028260483146e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0010950271545407952,
+            0.0010843532237350129,
+            0.00108304967450501
+          ],
+          "relative_power_integral_error": 1.9914235533935454e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            1.2477429346081782e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.24814489668168e-05
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.808170084046086e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 108,
+          "rejected_steps": 18,
+          "implicit_solves": 126,
+          "krylov_iterations": 89363,
+          "fgmres_iterations": 1752,
+          "operator_rebuilds": 92,
+          "diagnostic_solve_seconds": 11.531469605000893,
+          "final_power": 2.1307382515139492
+        },
+        {
+          "maximum_relative_power_error": 0.0017681066519309452,
+          "maximum_endpoint_relative_power_error": 0.0017269519958045265,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.001760644911352941,
+            0.0017813338478238979
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.00047299707236216965,
+            0.0006883493380000627
+          ],
+          "maximum_relative_regional_power_error": [
+            0.001782066463738241,
+            0.0017639528465941412,
+            0.0017617419240687493
+          ],
+          "relative_power_integral_error": 0.00013016782652286452,
+          "final_relative_precursor_rms_error_by_family": [
+            7.663783977652453e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            7.66624531101101e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.8081516750192016e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 176,
+          "rejected_steps": 45,
+          "implicit_solves": 221,
+          "krylov_iterations": 180179,
+          "fgmres_iterations": 3416,
+          "operator_rebuilds": 141,
+          "diagnostic_solve_seconds": 20.810943058000703,
+          "final_power": 2.130727995385392
+        },
+        {
+          "maximum_relative_power_error": 0.0010868017351313153,
+          "maximum_endpoint_relative_power_error": 3.6639798191906436e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0010824031918509017,
+            0.0010945965901247546
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.9066081712941726e-05,
+            3.9581028260483146e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0010950271545407952,
+            0.0010843532237350129,
+            0.00108304967450501
+          ],
+          "relative_power_integral_error": 2.1733377649102437e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            6.667932771488294e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            6.6700743825975906e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.8081478666480386e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 149,
+          "rejected_steps": 18,
+          "implicit_solves": 167,
+          "krylov_iterations": 124298,
+          "fgmres_iterations": 2405,
+          "operator_rebuilds": 91,
+          "diagnostic_solve_seconds": 14.465948604000005,
+          "final_power": 2.1307258735873598
+        },
+        {
+          "maximum_relative_power_error": 0.0042367352268092295,
+          "maximum_endpoint_relative_power_error": 0.004166153110507498,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.004219562246446869,
+            0.004267723067846472
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            0.0005307883966627445,
+            0.0008309546135603013
+          ],
+          "maximum_relative_regional_power_error": [
+            0.004269436631200607,
+            0.004227164130321093,
+            0.004222082046667297
+          ],
+          "relative_power_integral_error": 0.0003014862834147536,
+          "final_relative_precursor_rms_error_by_family": [
+            7.99088534055455e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            7.993451635046611e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.808152925930148e-08,
+          "configuration": {
+            "method": "adaptive-be",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 164,
+          "rejected_steps": 10,
+          "implicit_solves": 174,
+          "krylov_iterations": 143024,
+          "fgmres_iterations": 2702,
+          "operator_rebuilds": 88,
+          "diagnostic_solve_seconds": 16.32307277200016,
+          "final_power": 2.1307286923198623
+        }
+      ]
+    },
+    "ramp-4": {
+      "k0": 0.9131004857823249,
+      "records": [
+        {
+          "maximum_relative_power_error": 0.0005948088626324122,
+          "maximum_endpoint_relative_power_error": 0.000558012659827023,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005906561173571596,
+            0.0006024815942834664
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            1.025551356657003e-05,
+            1.3931540677262958e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0006026569834802764,
+            0.0005924789344775583,
+            0.0005911046726279068
+          ],
+          "relative_power_integral_error": 1.2747428216997037e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            1.105168246882384e-05
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            1.1064102446667334e-05
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.767943393261363e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 75,
+          "rejected_steps": 17,
+          "implicit_solves": 92,
+          "krylov_iterations": 84233,
+          "fgmres_iterations": 1548,
+          "operator_rebuilds": 73,
+          "diagnostic_solve_seconds": 9.318434397000601,
+          "final_power": 2.10928364019749
+        },
+        {
+          "maximum_relative_power_error": 0.0005514708774720933,
+          "maximum_endpoint_relative_power_error": 7.53521193990192e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005473354125581138,
+            0.0005455765963127888
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            1.0305837255322056e-05,
+            1.3701716166263946e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0005471711789237776,
+            0.0005437693617817985,
+            0.0005700692904444526
+          ],
+          "relative_power_integral_error": 5.769117053500139e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            5.9520445004158525e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            5.954805691210652e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.767923767208474e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.01
+          },
+          "accepted_steps": 87,
+          "rejected_steps": 20,
+          "implicit_solves": 107,
+          "krylov_iterations": 93403,
+          "fgmres_iterations": 1723,
+          "operator_rebuilds": 93,
+          "diagnostic_solve_seconds": 10.704755607999687,
+          "final_power": 2.109272887693188
+        },
+        {
+          "maximum_relative_power_error": 0.0005948088626324122,
+          "maximum_endpoint_relative_power_error": 0.0005593206768433889,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0005906561173571596,
+            0.0006024815942834664
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            8.143812457709587e-06,
+            1.3931540677262958e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0006026569834802764,
+            0.0005924789344775583,
+            0.0005911046726279068
+          ],
+          "relative_power_integral_error": 3.283336398396397e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            5.8328534435043695e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            5.83898293982088e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.767923456198126e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 117,
+          "rejected_steps": 15,
+          "implicit_solves": 132,
+          "krylov_iterations": 119564,
+          "fgmres_iterations": 2198,
+          "operator_rebuilds": 86,
+          "diagnostic_solve_seconds": 14.026176932999078,
+          "final_power": 2.109272634777289
+        },
+        {
+          "maximum_relative_power_error": 0.00016942295956567932,
+          "maximum_endpoint_relative_power_error": 7.53521193990192e-05,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0001688201473337597,
+            0.00017049089975442348
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            3.4874242763750037e-06,
+            5.988866519023269e-06
+          ],
+          "maximum_relative_regional_power_error": [
+            0.00017054912408709377,
+            0.0001690876532324248,
+            0.00016890796767055072
+          ],
+          "relative_power_integral_error": 1.3441813955683557e-05,
+          "final_relative_precursor_rms_error_by_family": [
+            3.5852502217910364e-06
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            3.586695038748644e-06
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.7679147893002325e-08,
+          "configuration": {
+            "method": "adaptive-bdf",
+            "rtol": 0.0001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 126,
+          "rejected_steps": 19,
+          "implicit_solves": 145,
+          "krylov_iterations": 127237,
+          "fgmres_iterations": 2346,
+          "operator_rebuilds": 103,
+          "diagnostic_solve_seconds": 14.596344874000351,
+          "final_power": 2.1092678959135047
+        },
+        {
+          "maximum_relative_power_error": 0.0010406718103133095,
+          "maximum_endpoint_relative_power_error": 0.0009700496617357501,
+          "maximum_relative_flux_rms_error_by_group": [
+            0.0010370077372840192,
+            0.0010446104228218345
+          ],
+          "maximum_relative_shape_rms_error_by_group": [
+            8.143812457709587e-06,
+            1.3931540677262958e-05
+          ],
+          "maximum_relative_regional_power_error": [
+            0.0010453847464289012,
+            0.0010376976544872463,
+            0.0010414197409216452
+          ],
+          "relative_power_integral_error": 0.00021576851385907148,
+          "final_relative_precursor_rms_error_by_family": [
+            0.00018725031964944705
+          ],
+          "final_relative_precursor_inventory_error_by_family": [
+            0.00018788957924553706
+          ],
+          "minimum_recorded_flux": 4.749090573136759e-06,
+          "minimum_final_precursor": 3.768636550630111e-08,
+          "configuration": {
+            "method": "adaptive-be",
+            "rtol": 0.001,
+            "max_dt": 0.005
+          },
+          "accepted_steps": 119,
+          "rejected_steps": 7,
+          "implicit_solves": 126,
+          "krylov_iterations": 115045,
+          "fgmres_iterations": 2106,
+          "operator_rebuilds": 76,
+          "diagnostic_solve_seconds": 12.832914738999534,
+          "final_power": 2.1096548120273555
+        }
+      ]
+    }
+  }
+}

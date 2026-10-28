@@ -19,10 +19,9 @@ tight tolerance and warm starts. Convergence additionally requires the complete
 current-state eigen-equations to balance.
 
 The same outer loop solves the adjoint (importance) problem via
-``solve(adjoint=True)``: the leakage+removal operator is self-adjoint, so only
-the fission (chi <-> nu_sigma_f) and scattering (group-index transpose)
-couplings flip. The adjoint flux weights first-order perturbation theory and
-adjoint kinetics parameters.
+``solve(adjoint=True)``. The fission and scattering couplings transpose; the
+Cartesian ADF leakage operator also uses its algebraic transpose. The adjoint
+flux weights first-order perturbation theory and adjoint kinetics parameters.
 
 Everything — fluxes, coupling coefficients, sources — lives on the device for
 the entire solve; only per-iteration convergence scalars cross the PCIe bus.
@@ -287,10 +286,9 @@ class _PowerIterationSolver:
                    setting (cf. E et al., NED 320 (2017), where degree-3
                    Neumann-PCG was the fastest GPU solver for 2e4-3e6 cells).
     linear_solver : "cg" (default), "gmres", or "bicgstab" -- the within-group
-                   Krylov solver. The built-in operators are SPD, so CG is
-                   right; the other two exist for future non-symmetric
-                   operators (see garnet.linalg) and as cross-checks, at
-                   higher cost.
+                   Krylov solver. CG applies to symmetric positive definite
+                   operators; nonsymmetric ADF or cylindrical divergence
+                   operators require GMRES or BiCGStab.
     symmetric_operator : cylindrical grids only (True default). False builds
                    the natural divergence-form (per-unit-volume) stencil,
                    which is non-symmetric -- pair it with
@@ -325,6 +323,7 @@ class _PowerIterationSolver:
         self.hybrid_confine = bool(hybrid_confine)
         self.symmetric_operator = bool(symmetric_operator)
         self._linsolve = get_linear_solver(linear_solver)
+        self._precond_degree = int(precond_degree)
         if (not self.symmetric_operator and self._linsolve is pcg
                 and getattr(grid, "geometry", "cartesian") == "cylindrical"):
             raise ValueError(
@@ -361,6 +360,9 @@ class _PowerIterationSolver:
     # ---- hooks implemented by the angular approximation -------------------
     def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
         raise NotImplementedError
+
+    def _linear_components(self, g, adjoint):
+        return self.ops[g].apply, self.preconds[g]
 
     def _initial_state(self):
         """Per-group solution state, as a list of device arrays."""
@@ -462,13 +464,12 @@ class _PowerIterationSolver:
         the plain power iteration; the converged eigenpair is identical either way.
 
         adjoint : solve the adjoint (importance) k-eigenproblem M* phi* =
-        (1/k) F* phi* instead of the forward one. The within-group operator
-        (leakage + removal) is self-adjoint, so only the two energy couplings
-        transpose: fission swaps the production weight nu_sigma_f and the
-        emission spectrum chi, and scattering swaps its group indices
+        (1/k) F* phi* instead of the forward one. Fission swaps the production
+        weight nu_sigma_f and the emission spectrum chi, scattering swaps its group indices
         (sigma_s[g'->g] becomes sigma_s[g->g']). The dominant eigenvalue is
         identical to the forward k; the eigenvector is the adjoint flux, used
         for adjoint-weighted kinetics and first-order perturbation theory.
+        Cartesian ADF diffusion also transposes the nonsymmetric leakage.
         """
         xp, G = self.xp, self.n_groups
         dtype_eps = np.finfo(self.dtype).eps
@@ -514,6 +515,7 @@ class _PowerIterationSolver:
         state = self._initial_state() if state0 is None else [
             self.xp.asarray(s, dtype=self.dtype).copy() for s in state0]
         batch = self._make_group_batch(state, adjoint, prod)
+        linear_components = [self._linear_components(g, adjoint) for g in range(G)]
 
         def fission_source():
             """Sum_g prod[g] * phi0_g, batched into one kernel when available."""
@@ -548,7 +550,7 @@ class _PowerIterationSolver:
 
         def coupled_loss(values):
             return xp.stack([
-                self.ops[g].apply(values[g])
+                linear_components[g][0](values[g])
                 - scattering_rhs(g, values, range(G)) for g in range(G)])
 
         def scattering_preconditioner(residual):
@@ -559,9 +561,9 @@ class _PowerIterationSolver:
                 if not bool(xp.any(rhs)):
                     continue
                 values[g], iterations = self._linsolve(
-                    self.ops[g].apply, rhs, values[g],
+                    linear_components[g][0], rhs, values[g],
                     self.ops[g].inv_diag, xp, rtol=rtol,
-                    precond=self.preconds[g])
+                    precond=linear_components[g][1])
                 inner_total += iterations
             return values
 
@@ -569,7 +571,7 @@ class _PowerIterationSolver:
             actual_source = fission_source() if fixed_source is None else fixed_source
             residual2 = loss2 = 0.
             for g in range(G):
-                loss = self.ops[g].apply(state[g])
+                loss = linear_components[g][0](state[g])
                 rhs = group_rhs(g, actual_source, k if fixed_source is None else 1.)
                 residual2 += xp.sum((loss-rhs)**2)
                 loss2 += xp.sum(loss**2)
@@ -640,9 +642,9 @@ class _PowerIterationSolver:
                         state[g], n_it = xp.zeros_like(state[g]), 0
                     else:
                         state[g], n_it = self._linsolve(
-                            self.ops[g].apply, rhs, state[g],
+                            linear_components[g][0], rhs, state[g],
                             self.ops[g].inv_diag, xp, rtol=rtol,
-                            precond=self.preconds[g])
+                            precond=linear_components[g][1])
                     if batch is not None:
                         batch["phi"][g] = self._phi(state[g])
                     inner_total += n_it
@@ -775,16 +777,52 @@ class _PowerIterationSolver:
 
 
 class DiffusionEigenSolver(_PowerIterationSolver):
-    """Multigroup neutron diffusion k-eigenvalue solver (see base for args)."""
+    """Multigroup neutron diffusion k-eigenvalue solver (see base for args).
+
+    ``adf`` is an optional three-tuple of (low-side, high-side) interior
+    face arrays, each shaped (G, *face_shape). Factors are heterogeneous over
+    homogeneous surface flux, and must already be unity on faces internal to
+    a homogenized region. Only Cartesian grids are supported. Use
+    GMRES or BiCGStab; supplying factors conservatively rejects CG even when
+    the supplied arrays happen to produce a symmetric operator.
+    """
+
+    def __init__(self, *args, adf=None, **kwargs):
+        if adf is not None and type(self) is not DiffusionEigenSolver:
+            raise ValueError("Cartesian ADFs are not supported by this solver")
+        self.adf = adf
+        super().__init__(*args, **kwargs)
+        if adf is not None and self._linsolve is pcg:
+            raise ValueError("ADF may produce a nonsymmetric operator; use linear_solver='gmres' or 'bicgstab'")
+        if adf is not None:
+            self._adjoint_preconds = [neumann_preconditioner(
+                op.apply_transpose, op.inv_diag, self._precond_degree) for op in self.ops]
+
+    def _linear_components(self, g, adjoint):
+        if adjoint and self.adf is not None:
+            return self.ops[g].apply_transpose, self._adjoint_preconds[g]
+        return super()._linear_components(g, adjoint)
 
     def _build_operators(self, grid, diffusion, sigma_t, removal, bc):
         if self.hybrid_mask is not None:
             raise ValueError("hybrid_mask has no effect on the diffusion solver "
                              "(diffusion has no higher moments); use an SP3/SDPN "
                              "solver to run transport on the masked subdomain")
+        adf = self.adf
+        if adf is not None:
+            if len(adf) != 3 or any(len(pair) != 2 for pair in adf):
+                raise ValueError("adf must contain three (low, high) face-array pairs")
+            adf = tuple(tuple(self.xp.asarray(a) for a in pair) for pair in adf)
+            for axis, pair in enumerate(adf):
+                shape = list(grid.shape)
+                shape[axis] -= 1
+                expected = (self.n_groups, *shape)
+                if any(a.shape != expected for a in pair):
+                    raise ValueError(f"adf axis {axis} factors must have shape {expected}")
         self.ops = [GroupOperator(self.xp, grid, diffusion[g], removal[g], bc=bc,
                                   active=self.active, mask_bc=self.mask_bc,
-                                  symmetric=self.symmetric_operator)
+                                  symmetric=self.symmetric_operator,
+                                  adf=None if adf is None else tuple((lo[g], hi[g]) for lo, hi in adf))
                     for g in range(self.n_groups)]
 
     def _initial_state(self):

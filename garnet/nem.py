@@ -469,19 +469,38 @@ class NEMDiffusionSolver:
                        currents=result.currents/production,side_face_means=result.side_face_means/production,
                        corrected_face_means=result.corrected_face_means/production)
 
-    def solve_eigenvalue(self,*,rtol=1e-10,max_iterations=1000,initial_means=None,initial_moments=None):
+    def solve_eigenvalue(self,*,rtol=1e-10,max_iterations=1000,initial_means=None,initial_moments=None,
+                         tol_k=None,tol_source=None,tol_balance=None):
         """Power iteration of A0^-1 F on ALL seven nodal flux moments.
 
         Boundary drive is exactly zero. Fission acts on the mean and every
         spatial moment, never face constraints. Production normalization scales
         the complete recovered state. Dominance of a positive physical mode is
         not guaranteed: competing/negative modes can prevent convergence.
+
+        With no tol_* arguments, legacy relative-k/residual rtol stopping is
+        unchanged. Supplying any tol_* enables absolute k change, successive
+        normalized fission-source change and independent full residual gates.
+        Omitted explicit controls inherit rtol. Source change uses a joint
+        infinity norm over mean AND every signed spatial source, scaled by the
+        larger old/new source norm, avoiding division by zero local moments.
+        Constructor rtol independently gates each fixed-source linear solve.
         """
         self._assert_unchanged()
         if not np.isscalar(rtol) or not np.isfinite(rtol) or rtol <= 0:
             raise ValueError('rtol must be finite positive')
         if isinstance(max_iterations,(bool,np.bool_)) or not isinstance(max_iterations,(int,np.integer)) or max_iterations < 1:
             raise ValueError('max_iterations must be a positive integer')
+        explicit = any(value is not None for value in (tol_k,tol_source,tol_balance))
+        for name,value in [('tol_k',tol_k),('tol_source',tol_source),('tol_balance',tol_balance)]:
+            if value is not None and (isinstance(value,(bool,np.bool_)) or not np.isscalar(value)
+                                      or not np.isfinite(value) or value <= 0):
+                raise ValueError(name+' must be finite positive')
+        resolved = dict(tol_k=rtol if tol_k is None else float(tol_k),
+                        tol_source=rtol if tol_source is None else float(tol_source),
+                        tol_balance=rtol if tol_balance is None else float(tol_balance),
+                        eigenvalue_change='absolute' if explicit else 'relative',
+                        source_change_norm='joint infinity norm of all normalized mean and spatial fission sources')
         N,G,F = self.n_nodes,self.n_groups,self.n_faces
         means = np.ones((N,G)) if initial_means is None else _field(initial_means,'initial_means',(N,G))
         moments = np.zeros((N,3,self.n_moments,G)) if initial_moments is None else _field(initial_moments,'initial_moments',(N,3,self.n_moments,G))
@@ -508,17 +527,35 @@ class NEMDiffusionSolver:
             evidence = self._assess(candidate,target0,targetm,drive,profiles=False)
             error = max(evidence[key] for key in self._residual_keys)
             change = abs(k-previous_k)/abs(k) if previous_k is not None else float('inf')
-            history.append(dict(iteration=iteration,k_eff=k,full_eigen_residual=error,relative_k_change=change if previous_k is not None else None))
+            absolute_change = abs(k-previous_k) if previous_k is not None else float('inf')
+            next0 = target0*k
+            nextm = targetm*k
+            source_scale = max(float(np.max(abs(q0))),float(np.max(abs(qm))),
+                               float(np.max(abs(next0))),float(np.max(abs(nextm))),np.finfo(float).tiny)
+            source_change = max(float(np.max(abs(next0-q0))),float(np.max(abs(nextm-qm))))/source_scale
+            row = dict(iteration=iteration,k_eff=k,full_eigen_residual=error,relative_k_change=change if previous_k is not None else None)
+            if explicit:
+                row.update(absolute_k_change=absolute_change if previous_k is not None else None,
+                           relative_fission_source_change=source_change)
+            history.append(row)
             current = replace(candidate,k_eff=k,iterations=iteration)
-            if error <= rtol and change <= rtol:
+            converged = (error <= resolved['tol_balance'] and absolute_change <= resolved['tol_k']
+                         and source_change <= resolved['tol_source']) if explicit else (error <= rtol and change <= rtol)
+            if converged:
                 info = self._backend_evidence.copy()
                 info.update(self._assess(current,target0,targetm,drive,profiles=True))
                 info.update(full_eigen_residual=error,power_iteration_history=history,
                             fission_production=self._production(current),all_spatial_fission_moments=True)
+                if explicit:
+                    info.update(convergence_controls=resolved,absolute_k_change=absolute_change,
+                                relative_fission_source_change=source_change)
                 return replace(current,diagnostics=info)
             previous_k = k
         info = current.diagnostics.copy()
         info.update(self._assess(current,target0,targetm,drive,profiles=True))
         info.update(full_eigen_residual=history[-1]['full_eigen_residual'],power_iteration_history=history)
+        if explicit:
+            info.update(convergence_controls=resolved,absolute_k_change=absolute_change,
+                        relative_fission_source_change=source_change)
         current = replace(current,diagnostics=info)
-        raise NEMSolverError('NEM eigen iteration did not converge',info,current)
+        raise NEMSolverError('NEM eigen iteration did not converge' ,info,current)

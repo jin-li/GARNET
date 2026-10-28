@@ -76,6 +76,22 @@ The latest full CPU result and machine-readable evidence are recorded in the
 [V&V report](verification_validation.md#diffusion-api-check).
 CUDA execution requires a GPU and was not repeated for this API change.
 
+## Transient and cylindrical follow-up
+
+The [transient API guide](transient_api.md) records the completed follow-up:
+`CylindricalModel`, common neutron-transient reports, accepted-step observers,
+event schedules, automatic supported defaults for opt-in adaptive BDF, named
+coupled perturbations, and validation of public time-zero eigenpairs. Existing
+structured benchmarks can enter through `Model.from_grid` without repainting.
+Annular volumes are used for cylindrical power and diagnostics.
+
+Six test modules were migrated where these public methods express the same
+problem. The original modules are preserved byte-for-byte under `tests/legacy`
+and are collected only with `--run-legacy`. All 58 test functions and 149
+assertions in those modules remain; specialized solver-internal cases continue
+to use the low-level interfaces. See the
+[recorded V&V results](verification_validation.md#transient-api-and-cylindrical-check).
+
 ## Compatibility and remaining work
 
 `run`, complete material lists, component-array kinetics and the raw solver
@@ -85,21 +101,18 @@ calling `fill` deliberately resets the painting and material list.
 
 Partial material callbacks resolve against the base model at every time: `{}`
 selects the base constants. Return cached material/state objects to preserve
-operator reuse. A supplied `initial_steady` must represent the same t=0
-geometry, material data and boundary conditions; matching array shapes alone
-do not establish physical compatibility.
+operator reuse. Public `initial_steady` results are now checked against the
+actual t=0 grid, material data, boundaries, active cells and volume mixing.
+Raw solver results retain their caller-owned physical-compatibility contract.
 
 The next useful API work is bounded:
 
-1. Cylindrical r-z geometry still uses `Grid` and the low-level diffusion
-   solvers. A dedicated builder should make radial/axial coordinates and true
-   annular volumes explicit rather than reinterpreting Cartesian arguments.
-2. `MeshModel` remains steady diffusion-only. Transient, adjoint and thermal
+1. `MeshModel` remains steady diffusion-only. Transient, adjoint and thermal
    methods need mesh-specific solver support and verification before exposure.
-3. Cartesian neutron transients retain `TransientModelResult`; triangular
-   transients retain their existing low-level history result. A common history
-   interface and restart format would improve consistency, but should preserve
-   adaptive-step and device telemetry used by existing studies.
+2. A public transient checkpoint/restart format should preserve precursor,
+   temperature and multistep history as well as mesh and cross-section
+   compatibility. Reusing an initial steady eigenpair does not provide that
+   full restart contract.
 
 SPH generation, discrete-ordinates transport and specialized feedback hooks
 continue to use their existing lower-level interfaces. This change improves

@@ -155,11 +155,12 @@ def _source_weight(solver):
 
 
 def _loss_apply(solver, flux, *, adjoint=False):
-    """Apply the forward or energy-transposed loss operator to a flux shape."""
+    """Apply the loss operator using the eigensolver's transpose convention."""
     weight = _source_weight(solver)
     out = []
     for g in range(solver.n_groups):
-        value = solver.ops[g].apply(flux[g])
+        apply_A, _ = solver._linear_components(g, adjoint)
+        value = apply_A(flux[g])
         for gf in range(solver.n_groups):
             scatter = (solver.sigma_s[g][gf] if adjoint
                        else solver.sigma_s[gf][g])
@@ -335,8 +336,8 @@ def projected_adjoint_residual(solver, forward, adjoint) -> float:
     It measures whether a reused adjoint still satisfies the current operator,
     without treating arbitrary adjoint normalization or eigenvalue change as a
     shape error. The transpose follows the eigen solver's discrete convention:
-    within-group leakage/removal is self-adjoint, while scattering and fission
-    exchange their energy-group production/emission roles.
+    Cartesian ADF leakage uses its algebraic transpose, and scattering and
+    fission exchange their energy-group production/emission roles.
     """
     xp = solver.xp
     groups = solver.n_groups
