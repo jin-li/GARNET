@@ -10,7 +10,7 @@ order, and the r = 0 axis must behave as a natural (regular) boundary.
 import numpy as np
 import pytest
 
-from garnet import DiffusionEigenSolver, Grid, Material
+from garnet import CylindricalModel, Grid, Material
 
 J0_ZERO = 2.404825557695773
 
@@ -25,9 +25,9 @@ def bare_cylinder_k():
 
 
 def solve(n, bc=BC):
-    grid = Grid(shape=(n, 1, 2 * n), size=(R, 1.0, H), geometry="cylindrical")
-    s = DiffusionEigenSolver(grid, MAT, bc=bc, device="cpu")
-    return s.solve(tol_k=1e-9, tol_source=1e-8)
+    return (CylindricalModel(radius=R, height=H, cells=(n, 2*n)).fill(MAT)
+            .set_boundary(r=bc[0], z=bc[2])
+            .steady(device="cpu", tol_k=1e-9, tol_source=1e-8))
 
 
 def test_bare_cylinder_analytic_k_and_convergence_order():

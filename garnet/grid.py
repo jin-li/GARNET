@@ -53,6 +53,19 @@ class Grid:
         dx, dy, dz = self.spacing
         return dx * dy * dz
 
+    @property
+    def cell_volumes(self) -> np.ndarray:
+        """Physical cell volumes in cm³, including full annuli on an r-z grid.
+
+        ``cell_volume`` remains the rectangular stencil volume. Use this
+        field for integrals in watts, inventories and geometric diagnostics.
+        """
+        if self.geometry == "cylindrical":
+            edges = np.arange(self.shape[0] + 1) * self.spacing[0]
+            annuli = np.pi * np.diff(edges**2) * self.spacing[2]
+            return np.broadcast_to(annuli[:, None, None], self.shape).copy()
+        return np.full(self.shape, self.cell_volume)
+
     def cell_centers(self, axis: int) -> np.ndarray:
         n = self.shape[axis]
         d = self.spacing[axis]

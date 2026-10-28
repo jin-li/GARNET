@@ -18,6 +18,54 @@ A transient initialized from an arbitrary eigenstate uses the documented critica
 
 Backward Euler is the baseline implicit scheme. BDF pathways extend the history approximation, with startup/restart and optional adaptive controllers. Abrupt state changes require aligned time points and restart controls where appropriate. Decreasing a linear tolerance does not remove time error. Compare time refinements and inspect rejected steps, startup order and discontinuity handling. Coupled drivers may impose stronger schedule restrictions than a standalone transient solver.
 
+## Experimental exponential time integration
+
+Write a physical state as $u(t)=\exp(\omega(t-t_n))z(t)$ within a step,
+using a single population-derived frequency $\omega$ in s$^{-1}$. The
+transformed equation shifts the loss operator by $\omega/v_g$; the time
+coefficient and carried history must be treated separately. This does not
+remove spatial modes that grow or decay at other rates.
+
+`ftm` uses a first-order transformed neutron step and integrates a frozen
+exponential precursor source. `ftm2` uses a transformed trapezoidal step,
+carries the physical neutron derivative and integrates a linear transformed
+precursor source. Smooth neutron second order does not ensure damping at a
+prompt event. `ftm-bdf2` instead applies variable-width BDF2 to both physical
+fields expressed in the current exponential frame. Its precursor update is a
+rational BDF recurrence, not the analytic FTM2 integral; zero frequency reduces
+to ordinary BDF2. BDF1 startup/restarts and actual BE safeguards handle unsafe
+frequencies, history exponents and width ratios. These safeguards are observable
+order reductions, not a guarantee of positivity or resolved event dynamics.
+
+The opt-in `adaptive_ftm` controller compares one full step with two half
+steps, commits the latter, and restores state/history after rejection. For each
+flux group and precursor family it forms an active-volume weighted RMS defect,
+scaled by `atol + rtol * max(abs(start), abs(fine))`; the maximum controls
+acceptance. The raw difference has no Richardson divisor. An independent
+`output_rtol` checks the first half-step against the line joining macro
+endpoints, including a scalar power check with changing fission coefficients.
+The chord defect is second order in width and controls linear output resolution,
+not a global integration-error bound or two-sided discontinuous output.
+
+The experimental history estimator compares a quadratic physical-history
+prediction with the fine endpoint. It avoids mixing exponential frames but has
+no universal error constant; curvature on an exponential tail can make it more
+restrictive. Unsafe history, events and startup revert to step doubling. Audit
+mode retains step-doubling decisions for same-trial comparisons. Work counters
+include discarded trials and frequency refinement, so endpoint solve counts
+alone do not establish speedup. Adaptive FTM currently requires monolithic
+neutron/precursor integration and excludes thermal coupling, implicit feedback
+and external error state. Fixed-step transforms retain their documented heat
+rules and do not transform absolute temperature.
+
+The [transient API](../transient_api.md) specifies event callback conventions,
+error blocks and fallback diagnostics. The
+[literature review](../exponential_literature_review_2026-10-26.md) and
+[proposal assessment](../exponential_proposal_review.md) record the research
+context. The available error/work studies do not establish a production
+performance promotion over tuned adaptive BDF. Mesh, time integration and output
+sampling errors require separate checks.
+
 ## Quasi-static reduction
 
 Factor the spatial flux as $\phi(\mathbf r,E,t)=a(t)\psi(\mathbf r,E,t)$. Importance-weighted projection yields a small amplitude/precursor system. Fixed-shape reduction freezes $\psi$; IQS updates it through macro corrections while retaining fine-step amplitude and spatial precursor history. Adiabatic mode instead uses instantaneous eigen shapes.

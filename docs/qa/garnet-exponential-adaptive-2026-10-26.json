@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-26",
+  "source_revision_before_changes": "572ef8088e27e09628d989e7f71f1963acdb7b96",
+  "environment": {
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "numpy": "2.3.5",
+    "scipy": "1.16.3",
+    "pytest": "9.0.2",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "device": "cpu",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "focused_verification": {
+    "tests": 259,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 259,
+    "seconds": 228.386,
+    "failures_detail": []
+  },
+  "default_cpu_run": {
+    "tests": 814,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 12,
+    "passed": 801,
+    "seconds": 751.077,
+    "failures_detail": [
+      {
+        "classname": "tests.verification.test_examples_current",
+        "name": "test_cross_example_import_works_from_documented_entry_point",
+        "message": "AssertionError: Traceback (most recent call last):\n    File \"/home/poncetma/code/GARNET/examples/hpmr_adaptive_coupled_benchmark.py\", line 18, in <module>\n      from hpmr_bdf_cpu_benchmark import _problem_at, _trajectory_frames\n    File \"/home/poncetma/code/GARNET/examples/hpmr_bdf_cpu_benchmark.py\", line 23, in <module>\n      from garnet.benchmarks.hpmr import build_hpmr2d\n  ModuleNotFoundError: No module named 'garnet'\n  \nassert 1 == 0\n +  where 1 = CompletedProcess(args=['/usr/bin/python3', 'examples/hpmr_adaptive_coupled_benchmark.py', '--help'], returncode=1, std..., in <module>\\n    from garnet.benchmarks.hpmr import build_hpmr2d\\nModuleNotFoundError: No module named \\'garnet\\'\\n').returncode"
+      }
+    ]
+  },
+  "example_retest": {
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 4,
+    "seconds": 0.781,
+    "failures_detail": []
+  },
+  "resolution": "The default run had one example subprocess import failure because the checkout was not installed. All four example checks pass with PYTHONPATH set to the absolute checkout path. No example source changes were needed. 802 distinct CPU checks pass across the run and retest; 12 hardware/optional-data cases skip; 10 slow cases excluded.",
+  "source_sha256": {
+    "garnet/transient.py": "2d3207c297372bc3f7b152b28a2b88f4d5c2fb77fcc8bb887bde009ef6f553d6",
+    "garnet/timescheme.py": "9d6c6fd7fea95bb9c1df7ed6ea498d0a41b8114511fdd5857975d3c7c3a864d6",
+    "garnet/_model_support.py": "806454a9944cc49bd8d16ded2eda76dfcd7d52636a12391019c7fb70e0ec30f5",
+    "garnet/model.py": "9efa3bb844615e0209fdcbed494be7c1f7a33c5e875e634723c5ed151fcd6e48",
+    "garnet/coupling.py": "2369db2789152bffd7655c72c3e535b969468cd62fa26c6f33f21cfffe3dbbac",
+    "tests/verification/test_exponential_adaptive.py": "50da6ddb56a8c653aab0e916659cdb03982a232c833cc2178033970053da63ca",
+    "tools/assess_exponential_adaptive.py": "a012b391521ceabf67f90f9886b07e680459b130f28dc00bd5cde490bf030b5e"
+  },
+  "archive_sha256": "f4cda232f067751f580860d90ef7f95d16733d7c6130061584d174d3dc65b95f",
+  "archive_smoke": {
+    "module": "/tmp/garnet-chunk4-install-5yln2u1g/installed/garnet/__init__.py",
+    "scheme": "ftm-bdf2",
+    "accepted_steps": 33,
+    "rejected_steps": 3,
+    "final_power": 1.3092962092804876,
+    "event_hit": true,
+    "callbacks": 33,
+    "implicit_solves": 108
+  },
+  "benchmark_configurations": 80,
+  "gpu_execution": false
+}

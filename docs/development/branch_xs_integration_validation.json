@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "updated_utc": "2026-10-21T23:28:44.265196+00:00",
+  "status": "software_verified; application_qualification_pending",
+  "branch": "feature/branch-xs-interpolation",
+  "base_feature_commit": "4141d0472c719d622fe8c0af26ee063247304c53",
+  "reused_NEM_convergence_commit": "8a17760b098953295a87e956110c0a329d01886c",
+  "scope": "Experimental static CPU NEM. Retrospective returned-data import, explicit five-point thermal stars, independent full-F physical checks. No application data/library distributed.",
+  "regression": {
+    "full_passed": 1681,
+    "full_skipped": 16,
+    "full_slow_deselected": 10,
+    "full_seconds": 975.97,
+    "final_focused_passed": 204,
+    "final_focused_seconds": 4.65,
+    "coverage_note": "Full regression plus final focused coverage after identity hardening and the new high-level example. CI runs the full final collection on supported Python versions."
+  },
+  "packaging": {
+    "wheel_and_sdist": true,
+    "wheel_and_sdist_module_bytes_match": true,
+    "private_outputs_excluded": true,
+    "isolated_wheel_thermal_star_example": true,
+    "colab_source_archive_rebuilt": true
+  },
+  "manuals": {
+    "strict_html": true,
+    "both_PDFs": true,
+    "branch_pages_visually_reviewed": true
+  },
+  "compatibility": {
+    "historical_ADF_reference_prescription_unchanged": true,
+    "legacy_NEM_rtol_behavior_unchanged": true,
+    "old_feedback_unchanged": true
+  },
+  "application_limits": [
+    "Retrospective hashes are not original execution receipts; executable and ACE content identities remain unknown.",
+    "Evidence policy and qualified local factors are application requirements; diagnostic construction never bypasses compatibility.",
+    "No ARI/rod, transient, arbitrary nodewise thermal field, or qualified reactor-interpolation claim."
+  ],
+  "source_sha256": {
+    "ndgpu/branch_io.py": "c35f598bf04517cc6108b0ee3c012934139b637d5b2ba70cb6399799dcec7660",
+    "ndgpu/branch_thermal.py": "eeb0c99c92471e9b78e01d8dc168defb8b77a7643d197a6ef9cb86630c281c86",
+    "ndgpu/branch_nem_validation.py": "6711058ac533ceb2e4b82c537d837ec0e061d3f863fbe8fc3b9af9afc3b3204a",
+    "ndgpu/nem.py": "53198deb418f0a76fac163b60a51cf0d061632316e6327be330cdc70ad473c54",
+    "ndgpu/nem_reference.py": "2943d3761e40e86e78741df0e9a31e21baadb694d815cc48768ae723b6cb1bee",
+    "examples/branch_xs/thermal_star.py": "140dddfa82549a47802cd00604b48113cfd6d32a4e293a2c49b8e4d41e08f3cc",
+    "tests/test_branch_io.py": "86deab3918d3e2cab9b5229fd54d8416970511fb6f56d651c3b254df2ad0dad4",
+    "tests/test_branch_thermal.py": "74a33f73a74bb4d6338cdf238ee10e73a817b608aa42b3088af4471ee68c0880",
+    "tests/test_branch_nem_validation.py": "23b653f2651f7ad777fde125967b03cff77eac34443d089f1b07f52b096443bd",
+    "tests/test_branch_workflow.py": "d7d0362822cb4a1002ab4e5842b3f262f7b34e8b9cc19b75fccf0e77c128d084",
+    "tests/test_nem_requested_convergence.py": "7ccf08a785cd005a7b029b95f88c223ab789cb07002f1b13bb8f9c184aa8a4df"
+  }
+}

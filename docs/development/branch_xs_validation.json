@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "software_numerically_verified; external_transport_qualification_pending",
+  "base_commit": "3fb6cb6",
+  "branch": "feature/branch-xs-interpolation",
+  "python": "3.13.15",
+  "regression": {
+    "unique_passed": 1582,
+    "skipped": 16,
+    "slow_deselected": 10,
+    "first_full_run": {
+      "passed": 1577,
+      "failed": 1,
+      "seconds": 512.63,
+      "failure": "Colab source archive became stale during final source hardening; rebuilt and verified by the final focused run."
+    },
+    "final_focused_public_passed": 56,
+    "final_branch_focused_public_passed": 51
+  },
+  "packaging": {
+    "wheel_and_sdist_built": true,
+    "isolated_wheel_example_passed": true,
+    "final_wheel_source_bytes_verified": true,
+    "old_feedback_behavior_unchanged": true
+  },
+  "manuals": {
+    "strict_html": true,
+    "strict_sphinx_pdf": true,
+    "methodology_pages": 30,
+    "user_pages": 21,
+    "rendered_branch_chapters_reviewed": true
+  },
+  "review_fixes": [
+    "Reject ambiguous exact-condition lookup",
+    "Reject evaluated states reused as table states",
+    "Reject changed benchmark knots under the reserved path identity"
+  ],
+  "scope": "Static experimental CPU NEM. No new transport calculations, transient feedback hook or physics accuracy qualification.",
+  "source_sha256": {
+    "ndgpu/branch_xs.py": "db88077318a3e812276bca6a10f8bad3e71cce84572e0d7506f26c4031901339",
+    "ndgpu/branch_validation.py": "a0e031af658f937b3aebfaa8026d9f5b643749a03ccdf60dcd925d681c8ff333",
+    "examples/isonees_features/branch_xs.py": "8a68884b5d0e2be37eec1596c61a55ce15ab186a0bc2d9b1ed5ac6a478b5041a"
+  }
+}

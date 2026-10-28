@@ -53,7 +53,9 @@ from .multigroup import (EnergyGroupGaussSeidelPreconditioner,
 from .sn import SNTransportSolver
 from .sp3 import SP3GroupOperator
 from .spn import SDPNGroupOperator, _SPN_C
-from .timescheme import BDF, BDFStepController, make_time_scheme
+from .timescheme import (BDF, BDFStepController, ExponentialBDF2, ExponentialTheta,
+                         FrequencyTransform, make_time_scheme, physical_state_errors,
+                         physical_history_prediction)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
 from .solver import (DiffusionEigenSolver, Fields, Result, SDP1EigenSolver,
                      SDPNEigenSolver, scatter_stack)
@@ -208,6 +210,28 @@ class TransientResult:
     rejected_time_orders: list = field(default_factory=list)
     rejected_step_iterations: list = field(default_factory=list)
     rejected_feedback_iterations: list = field(default_factory=list)
+    # Adaptive FTM: flux-group then precursor-family errors, and all three
+    # trial solves (full, first half, second half) for each macro attempt.
+    local_error_blocks: list = field(default_factory=list)
+    rejected_error_blocks: list = field(default_factory=list)
+    # Optional linear-output midpoint defects: flux groups, precursor families,
+    # then relative power. Empty unless adaptive_ftm['output_rtol'] is set.
+    output_error_blocks: list = field(default_factory=list)
+    rejected_output_error_blocks: list = field(default_factory=list)
+    ftm_trial_diagnostics: list = field(default_factory=list)
+    rejected_ftm_trial_diagnostics: list = field(default_factory=list)
+    # Opt-in history estimator: per-attempt method/reason and same-trial
+    # history defects. Audit mode retains step-doubling acceptance decisions.
+    ftm_estimator_diagnostics: list = field(default_factory=list)
+    rejected_ftm_estimator_diagnostics: list = field(default_factory=list)
+    # Temporal quadrature weights for endpoint fission heat sources. BE/BDF
+    # retain endpoint rectangles; FTM integrates its exponential source model.
+    step_source_weights: list = field(default_factory=list)
+    step_frequencies: list = field(default_factory=list)
+    step_frequency_refinements: list = field(default_factory=list)
+    step_frequency_log_defects: list = field(default_factory=list)
+    ftm_fallback_reasons: list = field(default_factory=list)
+    operator_rebuilds: int = 0
 
     @property
     def flux_numpy(self) -> np.ndarray:
@@ -309,6 +333,10 @@ class TransientSolver:
         # Keeping it outside the numerical result avoids timing overhead unless
         # a coupled/benchmark driver explicitly opts in.
         self.phase_context = phase_context
+        # Current trial's heat-source integral weight, available to endpoint
+        # feedback callbacks and to on_step after acceptance. No state is
+        # committed by reading this scalar.
+        self.step_source_weight = 0.0
         self.kinetics = kinetics
         self.bc = bc
         self.active = active
@@ -437,11 +465,13 @@ class TransientSolver:
               multigroup_kwargs: dict | None = None,
               time_scheme: str = "backward-euler",
               time_weight: float | None = None,
+              ftm_kwargs: dict | None = None,
               bdf_restart_times=None,
               step_alignment_times=None,
               adaptive_bdf: dict | None = None,
               max_feedback_iterations: int = 12,
-              verbose: bool = False) -> TransientResult:
+              verbose: bool = False,
+              adaptive_ftm: dict | None = None) -> TransientResult:
         """March from the steady state at t=0 to ``t_end``.
 
         dt : one constant step width, or an explicit sequence of positive
@@ -520,11 +550,26 @@ class TransientSolver:
             CPU HP-MR gates found that it reduced outer iterations but raised
             total PCG work and wall time.
         time_scheme : ``"backward-euler"`` (default), ``"bdf2"`` through
-            ``"bdf6"``, or ``"crank-nicolson"``. BDF ramps from order one as
-            history becomes available. Orders above two are opt-in because
-            they are A(alpha)-stable rather than A-stable.
+            ``"bdf6"``, ``"ftm"`` (first order), ``"ftm2"`` (transformed
+            trapezoidal neutrons), ``"ftm-bdf2"`` (transformed BDF2 for
+            neutrons and precursors), or ``"crank-nicolson"``. BDF ramps from
+            order one as history becomes available. Orders above two are
+            opt-in because they are A(alpha)-stable rather than A-stable.
         time_weight : legacy theta-method weight; it cannot be combined with a
             named BDF scheme.
+        ftm_kwargs : experimental diffusion-only frequency-transform controls:
+            ``frequency=None`` estimates one shared rate from accepted neutron
+            populations; a finite prescribed rate enables verification and
+            zero-frequency controls. ``max_exponent=0.5`` bounds abs(omega*dt);
+            unsafe estimates use actual BE for that step. FTM accepts fixed or
+            explicit nonuniform schedules, but not ``adaptive_bdf``. Its heat
+            source weight is available as ``solver.step_source_weight`` during
+            feedback/on_step callbacks and in ``result.step_source_weights``.
+            FTM2 preserves ordinary endpoint heat quadrature and does not
+            transform the heat-transfer equation. FTM-BDF2 also uses endpoint
+            heat weights; its precursor update is a rational recurrence.
+            It starts at order one and guards both historical exponents and
+            abrupt width growth, reporting actual-BE fallbacks in the result.
         bdf_restart_times : known material/control discontinuities, each at a
             step end. Flux and precursor history is discarded before that
             step, forcing BDF1 and then ramping again. Use this for abrupt drum
@@ -545,6 +590,29 @@ class TransientSolver:
             candidate ``q-1/q/q+1`` predictor defects compete by safe proposed
             width. A coupled driver may add its state through
             ``adaptive_error_state`` and ``adaptive_order_error_state``.
+        adaptive_ftm : experimental physical-state step-doubling controller
+            for ``ftm2`` and ``ftm-bdf2``. Supports the width/tolerance controls
+            above, excluding automatic order selection. Defaults to rtol=1e-3,
+            max_factor=1.2 and error-based rejection. One full step and two
+            half steps compare each physical flux group and precursor family
+            in an active-volume weighted RMS norm, taking the maximum block
+            error with no Richardson divisor. The two-half-step state is
+            committed once per macro endpoint; all three solves are counted.
+            Rejections restore physical, frequency and recurrence history.
+            Scalar dt and monolithic stepping are required. External feedback
+            and thermal integration are not supported by this controller.
+            Optional ``output_rtol`` and ``output_atol`` (default zero) also
+            test the first half-step state and power against the macro-endpoint
+            chord. This restricts widths for linear output using an O(h**2)
+            defect, without another solve. These local checks do not bound
+            accumulated error or certify every point inside the interval.
+            ``estimator='history'`` experimentally skips the full step on
+            smooth second-order histories, comparing the fine endpoint with
+            a quadratic physical-history prediction. Startup, event resets,
+            guarded width ratios and BE fallbacks retain step doubling.
+            ``'history-audit'`` records this prediction on step-doubling
+            trials while retaining the reference acceptance decisions.
+            The default remains ``'step-doubling'``.
         step_alignment_times : optional interior endpoints that an adaptive
             schedule must hit exactly without discarding BDF history. Use
             ``bdf_restart_times`` instead when the solution or coefficients
@@ -602,10 +670,16 @@ class TransientSolver:
         """
         xp, kin = self.xp, self.kinetics
         beta, lam = kin.beta, kin.decay
-        scheme = make_time_scheme(time_scheme, time_weight)
+        scheme = make_time_scheme(time_scheme, time_weight, ftm_kwargs=ftm_kwargs)
+        is_ftm = isinstance(scheme, FrequencyTransform)
         step_solver = str(step_solver).lower()
         if step_solver not in ("fixed-point", "monolithic"):
             raise ValueError("step_solver must be 'fixed-point' or 'monolithic'")
+        if is_ftm and scheme.frequency_iterations:
+            if step_solver != "monolithic":
+                raise ValueError("frequency refinement currently requires monolithic steps")
+            if self.feedback_iteration is not None:
+                raise ValueError("frequency refinement with implicit feedback is not yet supported")
         if step_solver == "monolithic" and not self.symmetric_operator:
             raise ValueError("monolithic group preconditioning currently needs "
                              "symmetric within-group diffusion operators")
@@ -638,8 +712,16 @@ class TransientSolver:
         unknown_mg = sorted(set(mg_kw) - allowed_mg)
         if unknown_mg:
             raise ValueError(f"unknown multigroup_kwargs: {unknown_mg}")
-        adaptive_kw = None if adaptive_bdf is None else dict(adaptive_bdf)
+        if adaptive_bdf is not None and adaptive_ftm is not None:
+            raise ValueError("use adaptive_bdf or adaptive_ftm, not both")
+        ftm_adaptive = adaptive_ftm is not None
+        adaptive_name = "adaptive_ftm" if ftm_adaptive else "adaptive_bdf"
+        adaptive_controls = adaptive_ftm if ftm_adaptive else adaptive_bdf
+        adaptive_kw = None if adaptive_controls is None else dict(adaptive_controls)
         adaptive = adaptive_kw is not None
+        ftm_output_rtol = None
+        ftm_output_atol = 0.0
+        ftm_estimator = "step-doubling"
         if adaptive:
             allowed_adaptive = {
                 "rtol", "atol", "min_dt", "max_dt", "safety", "floor",
@@ -647,15 +729,29 @@ class TransientSolver:
                 "automatic_order", "order_hysteresis",
                 "rejection_strategy", "reject_max_factor",
             }
+            if ftm_adaptive:
+                allowed_adaptive -= {"automatic_order", "order_hysteresis"}
+                allowed_adaptive |= {"output_rtol", "output_atol", "estimator"}
             unknown = sorted(set(adaptive_kw) - allowed_adaptive)
             if unknown:
-                raise ValueError(f"unknown adaptive_bdf controls: {unknown}")
+                raise ValueError(f"unknown {adaptive_name} controls: {unknown}")
             if np.ndim(dt) != 0:
-                raise ValueError("adaptive_bdf requires a scalar initial dt")
+                raise ValueError(f"{adaptive_name} requires a scalar initial dt")
             if step_solver != "monolithic":
-                raise ValueError("adaptive_bdf currently requires "
+                raise ValueError(f"{adaptive_name} currently requires "
                                  "step_solver='monolithic'")
-            if not isinstance(scheme, BDF):
+            if ftm_adaptive:
+                ftm_estimator = adaptive_kw.get("estimator", "step-doubling")
+                if ftm_estimator not in ("step-doubling", "history", "history-audit"):
+                    raise ValueError("adaptive_ftm estimator must be step-doubling, history or history-audit")
+                if not isinstance(scheme, (ExponentialTheta, ExponentialBDF2)):
+                    raise ValueError("adaptive_ftm requires ftm2 or ftm-bdf2")
+                if (self.feedback_iteration is not None
+                        or self.adaptive_error_state is not None
+                        or self.adaptive_order_error_state is not None
+                        or self.adaptive_order_callback is not None):
+                    raise ValueError("adaptive_ftm does not yet support external feedback/state")
+            elif not isinstance(scheme, BDF):
                 raise ValueError("adaptive_bdf currently requires bdf1..bdf6")
             initial_dt = float(dt)
             if (not np.isfinite(t_end) or t_end < 0.0
@@ -664,9 +760,19 @@ class TransientSolver:
             adaptive_rtol = float(adaptive_kw.get("rtol", 1e-3))
             adaptive_atol = float(adaptive_kw.get("atol", 0.0))
             if not np.isfinite(adaptive_rtol) or adaptive_rtol <= 0.0:
-                raise ValueError("adaptive_bdf rtol must be finite and positive")
+                raise ValueError(f"{adaptive_name} rtol must be finite and positive")
             if not np.isfinite(adaptive_atol) or adaptive_atol < 0.0:
-                raise ValueError("adaptive_bdf atol must be finite and non-negative")
+                raise ValueError(f"{adaptive_name} atol must be finite and non-negative")
+            if ftm_adaptive:
+                if "output_atol" in adaptive_kw and adaptive_kw.get("output_rtol") is None:
+                    raise ValueError("adaptive_ftm output_atol requires output_rtol")
+                if adaptive_kw.get("output_rtol") is not None:
+                    ftm_output_rtol = float(adaptive_kw["output_rtol"])
+                    ftm_output_atol = float(adaptive_kw.get("output_atol", 0.0))
+                    if not np.isfinite(ftm_output_rtol) or ftm_output_rtol <= 0.0:
+                        raise ValueError("adaptive_ftm output_rtol must be finite and positive")
+                    if not np.isfinite(ftm_output_atol) or ftm_output_atol < 0.0:
+                        raise ValueError("adaptive_ftm output_atol must be finite and non-negative")
             adaptive_min_dt = float(adaptive_kw.get(
                 "min_dt", max(1e-12, initial_dt * 1e-4)))
             adaptive_max_dt = float(adaptive_kw.get(
@@ -674,17 +780,17 @@ class TransientSolver:
             if (not np.isfinite(adaptive_min_dt) or adaptive_min_dt <= 0.0
                     or not np.isfinite(adaptive_max_dt)
                     or adaptive_max_dt < adaptive_min_dt):
-                raise ValueError("adaptive_bdf min_dt/max_dt are invalid")
+                raise ValueError(f"{adaptive_name} min_dt/max_dt are invalid")
             max_rejections = int(adaptive_kw.get("max_rejections", 20))
             if max_rejections < 1:
-                raise ValueError("adaptive_bdf max_rejections must be positive")
+                raise ValueError(f"{adaptive_name} max_rejections must be positive")
             controller = BDFStepController(
                 safety=adaptive_kw.get("safety", 1.25),
                 floor=adaptive_kw.get("floor", 1e-6),
                 min_factor=adaptive_kw.get("min_factor", 0.2),
-                max_factor=adaptive_kw.get("max_factor", 5.0),
+                max_factor=adaptive_kw.get("max_factor", 1.2 if ftm_adaptive else 5.0),
                 rejection_strategy=adaptive_kw.get(
-                    "rejection_strategy", "half"),
+                    "rejection_strategy", "error" if ftm_adaptive else "half"),
                 reject_max_factor=adaptive_kw.get(
                     "reject_max_factor", 0.5),
             )
@@ -714,9 +820,10 @@ class TransientSolver:
             n_steps = len(step_widths)
             dt_step = (float(step_widths[0]) if n_steps else float(dt))
         if np.ndim(dt) != 0 and not (
-                scheme.name == "backward-euler" or scheme.name.startswith("bdf")):
+                scheme.name == "backward-euler" or is_ftm
+                or scheme.name.startswith("bdf")):
             raise NotImplementedError(
-                "explicit nonuniform steps currently support BDF schemes only")
+                "explicit nonuniform steps currently support BDF and FTM schemes only")
         restart_steps = set()
         restart_times = np.empty(0)
         if bdf_restart_times is not None:
@@ -736,7 +843,10 @@ class TransientSolver:
                     if matches.size != 1:
                         raise ValueError(
                             f"BDF restart time {event:g} must coincide with a step end")
-                    restart_steps.add(int(matches[0]) + 1)
+                    # FTM's population samples belong to accepted endpoints:
+                    # discard them before leaving the event, as adaptive BDF
+                    # already does. Preserve the legacy fixed-BDF convention.
+                    restart_steps.add(int(matches[0]) + (2 if is_ftm else 1))
         alignment_times = np.empty(0)
         if step_alignment_times is not None:
             alignment_times = np.asarray(step_alignment_times, dtype=float)
@@ -877,8 +987,16 @@ class TransientSolver:
         beta, inv_vdt_base = kinetic_fields(fields, dt_step)
         a0 = scheme.a0(1)
         inv_vdt = [a0 * theta for theta in inv_vdt_base]
+        inv_vdt_rhs = ([scheme.history_factor(1) * theta for theta in inv_vdt_base]
+                       if is_ftm else inv_vdt)
+        population_mass = [dt_step * theta for theta in inv_vdt_base] if is_ftm else None
 
         phi = [steady.flux[g].copy() for g in range(G)]
+        ftm_active = (xp.asarray(self.active, dtype=bool)
+                      if is_ftm and self.active is not None else None)
+        if ftm_active is not None:
+            for p in phi:
+                p[~ftm_active] = 0.0
         # On GPU the group loops below collapse into one kernel per row; `phi`
         # then aliases the rows of a single (G, *grid) array so the batched
         # kernel always reads the current Gauss-Seidel iterate.
@@ -922,11 +1040,28 @@ class TransientSolver:
             if bool(xp.any(supplied < 0.0)):
                 raise ValueError("initial_precursors must be non-negative")
             C = [supplied[i].copy() for i in range(kin.n_families)]
+        if ftm_active is not None:
+            for c in C:
+                c[~ftm_active] = 0.0
 
         # Retain independent flux snapshots: the batched group path updates
         # its stack in place, so views would overwrite the BDF history.
         sch_phi = scheme
         sch_phi.start([p.copy() for p in phi])
+
+        def neutron_population():
+            # One host scalar transfer for FTM only. Constant cell volumes
+            # cancel from the logarithmic rate; cylindrical radial metrics
+            # remain necessary, just as for the physical power integral.
+            population = population_mass[0] * phi[0]
+            for g in range(1, G):
+                population = population + population_mass[g] * phi[g]
+            if ftm_active is not None:
+                population = xp.where(ftm_active, population, 0.0)
+            return total_power(population)
+
+        if is_ftm:
+            scheme.observe_population(neutron_population())
         C_hist = [C]
         S_prev = S
         # The recurrence consumes q precursor states, while its degree-q LTE
@@ -1007,11 +1142,45 @@ class TransientSolver:
 
         ops, preconds, fallback_preconds, setup_fallbacks = \
             self._step_operators(fields, inv_vdt, G)
+        operator_rebuilds = 1
+        time_coefficient_key = getattr(scheme, "coefficient_key", None)
         workspaces = (pcg_workspaces(ops, phi)
                       if (step_solver == "fixed-point"
                           and reuse_krylov_workspaces and self._linsolve is pcg)
                       else None)
         src_w = getattr(ops[0], "rhs_weight", None)
+
+        def seed_exponential_derivative():
+            """Physical neutron RHS using accepted fields, including leakage.
+
+            Subtract the time shift from the existing spatial operators rather
+            than building another set. This also handles non-equilibrium
+            supplied precursors and geometric RHS weights at a restart.
+            """
+            if not isinstance(scheme, ExponentialTheta):
+                return
+            derivatives = []
+            for g in range(G):
+                rhs = fields.chi[g] * S
+                for i in range(kin.n_families):
+                    spectrum = (chi_d2[i, g] if chi_d2 is not None else
+                                kin.chi_delayed[g] if kin.chi_delayed is not None else
+                                fields.chi[g])
+                    rhs = rhs + spectrum * (float(lam[i])*C[i] - beta[i]*S)
+                for gf in range(G):
+                    scatter = fields.sigma_s[gf][g]
+                    if gf != g and scatter is not None:
+                        rhs = rhs + scatter * phi[gf]
+                loss = ops[g].apply(phi[g])
+                if src_w is not None:
+                    loss = loss / src_w
+                derivative = (rhs - loss + inv_vdt[g]*phi[g]) / population_mass[g]
+                if ftm_active is not None:
+                    derivative = xp.where(ftm_active, derivative, 0.0)
+                derivatives.append(derivative)
+            scheme.seed_derivative(derivatives, beta)
+
+        seed_exponential_derivative()
         monolithic_block = None
         monolithic_precond = None
         monolithic_workspace = None
@@ -1046,6 +1215,57 @@ class TransientSolver:
         rejection_streak = 0
         next_adaptive_dt = dt_step
         restarted_events: set[float] = set()
+        source_weights: list[float] = []
+        frequencies: list[float] = []
+        frequency_refinements: list[int] = []
+        frequency_log_defects: list[float | None] = []
+        ftm_fallback_reasons: list[str] = []
+        local_error_blocks = []
+        rejected_error_blocks = []
+        output_error_blocks = []
+        rejected_output_error_blocks = []
+        ftm_trial_diagnostics = []
+        rejected_ftm_trial_diagnostics = []
+        ftm_estimator_diagnostics = []
+        rejected_ftm_estimator_diagnostics = []
+        ftm_history = None
+        ftm_attempt = None
+        error_weights = None
+        if ftm_adaptive:
+            error_weights = xp.ones(self.grid.shape, dtype=self.dtype)
+            if vol_w is not None:
+                error_weights *= vol_w
+            if self.active is not None:
+                error_weights *= xp.asarray(self.active)
+
+        def restore_ftm_attempt(attempt):
+            """Restore accepted physical and temporal history after a trial.
+
+            Spatial setups are rebuilt at the next trial time. Krylov work
+            counters intentionally survive rollback and include every solve.
+            """
+            nonlocal C, C_hist, S, S_prev, last_upd
+            for g in range(G):
+                phi[g][...] = attempt["phi"][g]
+            C, C_hist = attempt["C"], list(attempt["C_hist"])
+            S, S_prev = attempt["S"], attempt["S_prev"]
+            scheme.__dict__.clear()
+            scheme.__dict__.update(copy.deepcopy(attempt["scheme"]))
+            last_upd = object()  # Invalidate fields, kinetics and time setup.
+
+        def commit_time_diagnostics():
+            source_weights.append(self.step_source_weight)
+            if is_ftm:
+                frequencies.append(scheme.frequency)
+                frequency_refinements.append(scheme.frequency_refinements)
+                frequency_log_defects.append(scheme.frequency_log_defect)
+                ftm_fallback_reasons.append(scheme.fallback_reason)
+                population = neutron_population()
+                if not np.isfinite(population) or population <= 0.0:
+                    raise RuntimeError(
+                        "FTM produced a non-positive or non-finite neutron population; "
+                        "reduce the step width")
+                scheme.observe_population(population)
 
         n = 1
         while ((times[-1] < t_end - 1e-14 * max(1.0, t_end))
@@ -1059,18 +1279,54 @@ class TransientSolver:
                             and np.isclose(t_start, event, rtol=1e-12,
                                            atol=1e-14 * max(1.0, abs(event)))):
                         sch_phi.start([p.copy() for p in phi])
+                        if is_ftm:
+                            scheme.observe_population(neutron_population())
+                            seed_exponential_derivative()
                         C_hist = [C]
                         S_prev = S
+                        ftm_history = None
                         restarted_events.add(float(event))
-                limit = float(t_end)
-                future_events = stop_times[stop_times > t_start + 1e-14]
-                if future_events.size:
-                    limit = min(limit, float(future_events[0]))
-                next_dt = min(next_adaptive_dt, adaptive_max_dt,
-                              limit - t_start)
-                if next_dt <= 0.0:
-                    raise RuntimeError("adaptive BDF produced a non-positive step")
-                t = t_start + next_dt
+                if ftm_adaptive and ftm_attempt is not None:
+                    next_dt = ftm_attempt["width"] * (1 if ftm_attempt["phase"] == 0 else 0.5)
+                    t = (t_start + next_dt if ftm_attempt["phase"] == 1
+                         else ftm_attempt["end"])
+                else:
+                    limit = float(t_end)
+                    future_events = stop_times[stop_times > t_start + 1e-14]
+                    if future_events.size:
+                        limit = min(limit, float(future_events[0]))
+                    next_dt = min(next_adaptive_dt, adaptive_max_dt,
+                                  limit - t_start)
+                    if next_dt <= 0.0 or t_start + next_dt == t_start:
+                        raise RuntimeError("adaptive integration produced a non-positive step")
+                    t = min(t_start + next_dt, limit)
+                    if ftm_adaptive:
+                        ftm_attempt = dict(
+                            phase=0, width=next_dt, end=t,
+                            phi=[p.copy() for p in phi], C=C, C_hist=list(C_hist),
+                            S=S, S_prev=S_prev, scheme=copy.deepcopy(scheme.__dict__),
+                            iterations=0, solves=0, trials=[], active_trial_offset=0,
+                            estimator="step-doubling", estimator_reason="", history_eligible=False)
+                        if ftm_estimator != "step-doubling":
+                            reason = "bootstrap"
+                            if ftm_history is not None:
+                                ratio = 0.5 * next_dt / ftm_history["half_width"]
+                                if not 0.25 <= ratio <= 2.0:
+                                    reason = "history-width-ratio"
+                                else:
+                                    probe = copy.deepcopy(scheme)
+                                    probe.prepare_step(n, next_dt)
+                                    reason = (probe.fallback_reason or "scheme-startup"
+                                              if probe.order_at(n) != 2 else "")
+                            ftm_attempt["history_eligible"] = not reason
+                            ftm_attempt["estimator_reason"] = reason
+                            if not reason and ftm_estimator == "history":
+                                ftm_attempt["estimator"] = "history"
+                                ftm_attempt["phase"] = 1
+                                next_dt *= 0.5
+                                t = t_start + next_dt
+                            elif not reason:
+                                ftm_attempt["estimator_reason"] = "audit"
             else:
                 t = float(target_times[n - 1])
                 next_dt = float(step_widths[n - 1])
@@ -1078,15 +1334,20 @@ class TransientSolver:
             dt_step = next_dt
             if not adaptive and n in restart_steps:
                 sch_phi.start([p.copy() for p in phi])
+                if is_ftm:
+                    scheme.observe_population(neutron_population())
+                seed_exponential_derivative()
                 C_hist = [C]
                 S_prev = S
             scheme.prepare_step(n, dt_step)
+            self.step_source_weight = scheme.source_integral_weight(dt_step)
             predicted_phi = (scheme.predict(
                 dt_step,
                 max_degree=(scheme.order_at(n)
                             if automatic_order else None))
-                if adaptive else None)
-            accepted_phi = ([p.copy() for p in phi] if adaptive else None)
+                if adaptive and not ftm_adaptive else None)
+            accepted_phi = ([p.copy() for p in phi]
+                            if adaptive and not ftm_adaptive else None)
             accepted_source = S
             time_order_n = int(getattr(
                 scheme, "order_at", lambda _n: scheme.order)(n))
@@ -1094,9 +1355,11 @@ class TransientSolver:
             mats, mmap, mix_m, mix_w = spec
             upd = self.xs_update_at(t) if self.xs_update_at is not None else None
             a0_n = scheme.a0(n)
-            order_changed = a0_n != a0
+            coefficient_key = getattr(scheme, "coefficient_key", None)
+            order_changed = a0_n != a0 or coefficient_key != time_coefficient_key
             if order_changed:
                 a0 = a0_n
+                time_coefficient_key = coefficient_key
             # Rebuild on identity change of anything the fields depend on --
             # including the update itself, so a driver whose state has not moved
             # can hand back the SAME closure and skip the rebuild. That matters:
@@ -1136,10 +1399,15 @@ class TransientSolver:
             # elimination even if the spatial material fields are unchanged.
             if fields_changed or dt_changed:
                 beta, inv_vdt_base = kinetic_fields(fields, dt_step)
+                if is_ftm:
+                    population_mass = [dt_step * theta for theta in inv_vdt_base]
             if fields_changed or order_changed or dt_changed:
                 inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                inv_vdt_rhs = ([scheme.history_factor(n) * theta
+                                for theta in inv_vdt_base] if is_ftm else inv_vdt)
                 (ops, preconds, fallback_preconds,
                  setup_count) = self._step_operators(fields, inv_vdt, G)
+                operator_rebuilds += 1
                 setup_fallbacks += setup_count
                 src_w = getattr(ops[0], "rhs_weight", None)
                 monolithic_block = None
@@ -1194,7 +1462,7 @@ class TransientSolver:
                                     monolithic_workspace.V,
                                     monolithic_workspace.Z))
                     fixed_rhs = monolithic_block.fixed_rhs(
-                        inv_vdt, phi_old, dsrc_g)
+                        inv_vdt_rhs, phi_old, dsrc_g)
                     phi_stack = (batch["phi"] if batch is not None
                                  else xp.stack(phi))
                     monolithic_precond.reset_stats()
@@ -1222,6 +1490,36 @@ class TransientSolver:
                     outer_total += outer_it
                     coupled_it += 1
 
+                    refinement_population = (neutron_population()
+                        if is_ftm and scheme.frequency_iterations else None)
+                    if (is_ftm and scheme.frequency_iterations
+                            and (not ftm_adaptive or (
+                                np.isfinite(refinement_population) and refinement_population > 0.0))
+                            and scheme.refine_frequency(refinement_population)):
+                        # Refit only provisional coefficients. Accepted flux,
+                        # precursor and population histories remain untouched.
+                        a0 = scheme.a0(n)
+                        time_coefficient_key = scheme.coefficient_key
+                        time_order_n = int(getattr(
+                            scheme, "order_at", lambda _n: scheme.order)(n))
+                        self.step_source_weight = scheme.source_integral_weight(dt_step)
+                        inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                        inv_vdt_rhs = [scheme.history_factor(n) * theta
+                                        for theta in inv_vdt_base]
+                        (ops, preconds, fallback_preconds,
+                         setup_count) = self._step_operators(fields, inv_vdt, G)
+                        operator_rebuilds += 1
+                        setup_fallbacks += setup_count
+                        src_w = getattr(ops[0], "rhs_weight", None)
+                        bcoef = scheme.precursor_bcoef(n, beta, lam, dt_step)
+                        bcoef_sum = sum(bcoef)
+                        w_fis = fission_weights()
+                        phi_old = scheme.carried(n)
+                        dsrc_g = delayed_source_by_group(n, dt_step)
+                        monolithic_block = None
+                        monolithic_precond = None
+                        continue
+
                     if self.feedback_iteration is None:
                         break
                     callback_phi = (batch["phi"] if batch is not None else phi)
@@ -1246,8 +1544,13 @@ class TransientSolver:
                         batch.update(self._batch_fields(fields, G, batch["fsrc"]))
                     beta, inv_vdt_base = kinetic_fields(fields, dt_step)
                     inv_vdt = [a0 * theta for theta in inv_vdt_base]
+                    inv_vdt_rhs = ([scheme.history_factor(n) * theta
+                                    for theta in inv_vdt_base] if is_ftm else inv_vdt)
+                    if is_ftm:
+                        population_mass = [dt_step * theta for theta in inv_vdt_base]
                     (ops, preconds, fallback_preconds,
                      setup_count) = self._step_operators(fields, inv_vdt, G)
+                    operator_rebuilds += 1
                     setup_fallbacks += setup_count
                     src_w = getattr(ops[0], "rhs_weight", None)
                     bcoef = scheme.precursor_bcoef(n, beta, lam, dt_step)
@@ -1261,7 +1564,146 @@ class TransientSolver:
                 C_trial = [xp.asarray(c, dtype=self.dtype) for c in
                            scheme.precursor_update(
                                n, C_hist, S, S_prev, beta, lam, dt_step)]
-                if adaptive:
+                if ftm_adaptive:
+                    # The full step is discarded. The two half steps form a
+                    # provisional fine trajectory, including its own fitted
+                    # frequencies and physical precursor/BDF histories.
+                    attempt = ftm_attempt
+                    attempt["iterations"] += outer_total
+                    attempt["solves"] += coupled_it
+                    attempt["trials"].append(dict(
+                        width=dt_step, order=time_order_n,
+                        frequency=scheme.frequency,
+                        frequency_refinements=scheme.frequency_refinements,
+                        frequency_log_defect=scheme.frequency_log_defect,
+                        fallback_reason=scheme.fallback_reason))
+                    if (attempt["estimator"] == "history"
+                            and (time_order_n != 2 or scheme.fallback_reason)):
+                        # A provisional half can change the fitted rate and
+                        # trigger a safeguard not visible at the macro start.
+                        # Charge the discarded work, then retry the same width
+                        # with the full/fine oracle from the accepted state.
+                        restore_ftm_attempt(attempt)
+                        attempt.update(phase=0, estimator="step-doubling",
+                                       estimator_reason="trial-fallback", history_eligible=False,
+                                       active_trial_offset=len(attempt["trials"]))
+                        continue
+                    if attempt["phase"] == 0:
+                        attempt["coarse"] = [p.copy() for p in phi] + C_trial
+                        restore_ftm_attempt(attempt)
+                        attempt["phase"] = 1
+                        continue
+                    population = neutron_population()
+                    valid_population = np.isfinite(population) and population > 0.0
+                    if attempt["phase"] == 1 and valid_population:
+                        if ftm_output_rtol is not None or ftm_estimator != "step-doubling":
+                            attempt["midpoint"] = [p.copy() for p in phi] + C_trial
+                            attempt["midpoint_power"] = total_power(S)
+                        C = C_trial
+                        C_hist.insert(0, C)
+                        del C_hist[history_limit:]
+                        S_prev = S
+                        sch_phi.push([p.copy() for p in phi])
+                        scheme.observe_population(population)
+                        attempt["phase"] = 2
+                        continue
+                    active_trials = attempt["trials"][attempt["active_trial_offset"]:]
+                    history_blocks = None
+                    if (attempt["history_eligible"] and "midpoint" in attempt
+                            and all(trial["order"] == 2 for trial in active_trials)):
+                        prediction = physical_history_prediction(
+                            ftm_history["state"], attempt["phi"] + attempt["C"],
+                            attempt["midpoint"], half_width=0.5 * attempt["width"],
+                            previous_half_width=ftm_history["half_width"])
+                        history_blocks = physical_state_errors(
+                            list(phi) + C_trial, prediction, attempt["phi"] + attempt["C"],
+                            rtol=adaptive_rtol, atol=adaptive_atol, weights=error_weights)
+                    if attempt["estimator"] == "history":
+                        block_errors = history_blocks if history_blocks is not None else [np.inf] * (G + kin.n_families)
+                    else:
+                        block_errors = physical_state_errors(
+                            list(phi) + C_trial, attempt["coarse"],
+                            attempt["phi"] + attempt["C"],
+                            rtol=adaptive_rtol, atol=adaptive_atol, weights=error_weights)
+                    estimator_diagnostic = dict(method=attempt["estimator"],
+                        reason=attempt["estimator_reason"], history_error_blocks=history_blocks)
+                    state_error = max(block_errors) if valid_population else np.inf
+                    output_blocks = []
+                    if ftm_output_rtol is not None:
+                        if "midpoint" in attempt:
+                            chord = [0.5 * (start + end) for start, end in zip(
+                                attempt["phi"] + attempt["C"], list(phi) + C_trial)]
+                            output_blocks = physical_state_errors(
+                                attempt["midpoint"], chord, attempt["midpoint"],
+                                rtol=ftm_output_rtol, atol=ftm_output_atol,
+                                weights=error_weights)
+                            # Power can curve even for constant flux when the
+                            # fission coefficients change. Check its own chord.
+                            midpoint_power = attempt["midpoint_power"]
+                            power_defect = abs(midpoint_power - 0.5 * (power[-1] + total_power(S)))
+                            power_scale = ftm_output_atol + ftm_output_rtol * abs(midpoint_power)
+                            power_error = (power_defect / power_scale if power_scale > 0.0
+                                           else 0.0 if power_defect == 0.0 else np.inf)
+                            output_blocks.append(power_error if np.isfinite(power_error) else np.inf)
+                        else:
+                            output_blocks = [np.inf] * (G + kin.n_families + 1)
+                    output_error = max(output_blocks, default=0.0)
+                    local_error = max(state_error, output_error)
+                    macro_width = attempt["width"]
+                    # A BE safeguard or startup reduces the estimator order.
+                    time_order_n = min(trial["order"] for trial in active_trials)
+                    outer_total, coupled_it = attempt["iterations"], attempt["solves"]
+                    accepted = local_error <= 1.0
+                    proposed_dt = controller.propose(
+                        macro_width, state_error, time_order_n, accepted=accepted)
+                    if ftm_output_rtol is not None:
+                        # A chord has an O(h**2) defect even when integration
+                        # is second order (O(h**3) local state error).
+                        proposed_dt = min(proposed_dt, controller.propose(
+                            macro_width, output_error, 1, accepted=accepted))
+                    if local_error > 1.0:
+                        rejected_errors.append(local_error)
+                        rejected_error_blocks.append(block_errors)
+                        if ftm_estimator != "step-doubling":
+                            rejected_ftm_estimator_diagnostics.append(estimator_diagnostic)
+                        if ftm_output_rtol is not None:
+                            rejected_output_error_blocks.append(output_blocks)
+                        rejected_ftm_trial_diagnostics.append(attempt["trials"])
+                        rejected_times.append(attempt["end"])
+                        rejected_widths.append(macro_width)
+                        rejected_orders.append(time_order_n)
+                        rejected_step_its.append(outer_total)
+                        rejected_feedback_its.append(coupled_it)
+                        restore_ftm_attempt(attempt)
+                        ftm_attempt = None
+                        rejection_streak += 1
+                        if rejection_streak > max_rejections:
+                            raise RuntimeError(
+                                f"adaptive FTM exceeded {max_rejections} "
+                                f"consecutive rejections at t={times[-1]:g} s")
+                        if macro_width <= adaptive_min_dt * (1.0 + 1e-12):
+                            raise RuntimeError(
+                                f"adaptive FTM error {local_error:.3e} exceeds "
+                                f"one at min_dt={adaptive_min_dt:g} s")
+                        next_adaptive_dt = max(adaptive_min_dt, proposed_dt)
+                        continue
+                    local_errors.append(local_error)
+                    local_error_blocks.append(block_errors)
+                    if ftm_estimator != "step-doubling":
+                        ftm_estimator_diagnostics.append(estimator_diagnostic)
+                        ftm_history = (dict(state=attempt["midpoint"], half_width=0.5 * macro_width)
+                                       if time_order_n == 2 else None)
+                    if ftm_output_rtol is not None:
+                        output_error_blocks.append(output_blocks)
+                    ftm_trial_diagnostics.append(attempt["trials"])
+                    accepted_widths.append(macro_width)
+                    next_adaptive_dt = min(adaptive_max_dt, max(
+                        adaptive_min_dt, proposed_dt))
+                    rejection_streak = 0
+                    # Only the final half remains to push below. The heat
+                    # equation is outside this controller's scope.
+                    self.step_source_weight = macro_width
+                elif adaptive:
                     predicted_C = scheme.predict_history(
                         C_hist, dt_step,
                         max_degree=(time_order_n
@@ -1381,6 +1823,11 @@ class TransientSolver:
                 del C_hist[history_limit:]
                 S_prev = S
                 sch_phi.push([p.copy() for p in phi])
+                commit_time_diagnostics()
+                if ftm_adaptive:
+                    frequency_refinements[-1] = sum(
+                        trial["frequency_refinements"] for trial in ftm_attempt["trials"])
+                    ftm_attempt = None
                 if adaptive and automatic_order:
                     scheme.select_order(next_order_n)
                 step_its.append(outer_total)
@@ -1410,7 +1857,7 @@ class TransientSolver:
                 fixed_total = 0.0
                 fixed_cell = None
                 for g in range(G):
-                    term = dsrc_g[g] + inv_vdt[g] * phi_old[g]
+                    term = dsrc_g[g] + inv_vdt_rhs[g] * phi_old[g]
                     if src_w is not None:
                         term = term * src_w
                     fixed_total += float(xp.sum(term))
@@ -1437,7 +1884,7 @@ class TransientSolver:
                 for _ in range(n_sub):
                     for g in range(G):
                         q = xp.asarray(
-                            inv_vdt[g] * phi_old[g] + w_fis[g] * S + dsrc_g[g],
+                            inv_vdt_rhs[g] * phi_old[g] + w_fis[g] * S + dsrc_g[g],
                             dtype=self.dtype)
                         if batch is not None:
                             # One kernel for the whole in-scatter row. The flux
@@ -1553,6 +2000,7 @@ class TransientSolver:
             del C_hist[history_limit:]
             S_prev = S
             sch_phi.push([p.copy() for p in phi])
+            commit_time_diagnostics()
 
             step_its.append(sweep)
             feedback_its.append(1)
@@ -1613,6 +2061,20 @@ class TransientSolver:
             rejected_time_orders=rejected_orders,
             rejected_step_iterations=rejected_step_its,
             rejected_feedback_iterations=rejected_feedback_its,
+            local_error_blocks=local_error_blocks,
+            rejected_error_blocks=rejected_error_blocks,
+            output_error_blocks=output_error_blocks,
+            rejected_output_error_blocks=rejected_output_error_blocks,
+            ftm_trial_diagnostics=ftm_trial_diagnostics,
+            rejected_ftm_trial_diagnostics=rejected_ftm_trial_diagnostics,
+            ftm_estimator_diagnostics=ftm_estimator_diagnostics,
+            rejected_ftm_estimator_diagnostics=rejected_ftm_estimator_diagnostics,
+            step_source_weights=source_weights,
+            step_frequencies=frequencies,
+            step_frequency_refinements=frequency_refinements,
+            step_frequency_log_defects=frequency_log_defects,
+            ftm_fallback_reasons=ftm_fallback_reasons,
+            operator_rebuilds=operator_rebuilds,
             solve_seconds=time.perf_counter() - t0,
             device=self.device,
         )
@@ -2220,6 +2682,8 @@ class TransientSNSolver:
         beta = [float(b) for b in kin.beta]
         lam = kin.decay
         scheme = make_time_scheme(time_scheme, time_weight)
+        if isinstance(scheme, FrequencyTransform):
+            raise NotImplementedError("FTM currently supports diffusion only, not S_N")
         if not scheme.is_bdf and any(b != 0.0 for b in beta):
             # The precursor substitution is of BDF form (see timescheme.py);
             # the theta-method carries F^n instead of past states and has no

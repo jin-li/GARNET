@@ -32,11 +32,14 @@ jobs:
           /tmp/garnet-wheel/bin/python -m pip install build/dist/*.whl
           mkdir -p /tmp/garnet-wheel-run/examples
           cp -R examples/isonees_features /tmp/garnet-wheel-run/examples/
+          cp -R examples/branch_xs /tmp/garnet-wheel-run/examples/
           cd /tmp/garnet-wheel-run
           /tmp/garnet-wheel/bin/python -I -c "import garnet; assert '/tmp/garnet-wheel/' in garnet.__file__"
           /tmp/garnet-wheel/bin/python -I examples/isonees_features/common_mesh_fv.py
           /tmp/garnet-wheel/bin/python -I examples/isonees_features/nem_local_reference.py
           /tmp/garnet-wheel/bin/python -I examples/isonees_features/static_kinetics.py
+          /tmp/garnet-wheel/bin/python -I examples/isonees_features/branch_xs.py
+          /tmp/garnet-wheel/bin/python -I examples/branch_xs/thermal_star.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

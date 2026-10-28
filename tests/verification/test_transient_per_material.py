@@ -10,8 +10,8 @@ spectrum differs from the material (cumulative) spectrum, and the mix-array
 import numpy as np
 import pytest
 
-from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material,
-                   TransientSDP1Solver, TransientSolver)
+from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material, Model,
+                    TransientSDP1Solver, TransientSolver)
 
 # Two-region, two-group toy core (TWIGL-flavoured numbers).
 _SEED = dict(diffusion=[1.4, 0.4], sigma_a=[0.010, 0.150],
@@ -35,6 +35,11 @@ def _two_region():
     return mats, mmap, problem_at
 
 
+def _model(problem_at, kinetics, *, grid=GRID):
+    materials, mmap = problem_at(0.0)[:2]
+    return Model.from_grid(grid, materials, mmap, bc="zero-flux", kinetics=kinetics)
+
+
 def test_uniform_per_material_rows_match_global_kinetics():
     """Identical rows for every material = global data; traces must agree to
     the arithmetic noise of field-vs-scalar evaluation."""
@@ -43,8 +48,10 @@ def test_uniform_per_material_rows_match_global_kinetics():
     kin_m = Kinetics(velocities=np.tile(V, (2, 1)), beta=np.tile(BETA, (2, 1)),
                      decay=LAM)
     kw = dict(t_end=0.1, dt=0.01)
-    p_g = TransientSolver(GRID, problem_at, kin_g, device="cpu").solve(**kw).power
-    p_m = TransientSolver(GRID, problem_at, kin_m, device="cpu").solve(**kw).power
+    p_g = _model(problem_at, kin_g, grid=GRID).transient(
+        at=problem_at, device='cpu', **kw).power
+    p_m = _model(problem_at, kin_m, grid=GRID).transient(
+        at=problem_at, device='cpu', **kw).power
     assert p_g[-1] > 1.01  # the step actually inserted reactivity
     assert np.allclose(p_g, p_m, rtol=0, atol=1e-9), np.max(np.abs(p_g - p_m))
 
@@ -56,8 +63,10 @@ def test_per_family_chi_delayed_identical_rows_match_single_spectrum():
     kin_2 = Kinetics(velocities=V, beta=BETA, decay=LAM,
                      chi_delayed=np.tile(chi_d, (2, 1)))
     kw = dict(t_end=0.1, dt=0.01)
-    p_1 = TransientSolver(GRID, problem_at, kin_1, device="cpu").solve(**kw).power
-    p_2 = TransientSolver(GRID, problem_at, kin_2, device="cpu").solve(**kw).power
+    p_1 = _model(problem_at, kin_1, grid=GRID).transient(
+        at=problem_at, device='cpu', **kw).power
+    p_2 = _model(problem_at, kin_2, grid=GRID).transient(
+        at=problem_at, device='cpu', **kw).power
     assert np.allclose(p_1, p_2, rtol=0, atol=1e-9), np.max(np.abs(p_1 - p_2))
 
 
@@ -71,7 +80,8 @@ def test_equilibrium_exact_for_distinct_delayed_spectrum():
     kin = Kinetics(velocities=np.tile(V, (2, 1)),
                    beta=[[0.005, 0.0025], [0.006, 0.002]], decay=LAM,
                    chi_delayed=[[0.95, 0.05], [0.85, 0.15]])
-    res = TransientSolver(GRID, static, kin, device="cpu").solve(t_end=0.1, dt=0.02)
+    res = _model(static, kin, grid=GRID).transient(
+        at=static, device='cpu', t_end=0.1, dt=0.02)
     assert np.allclose(res.power, 1.0, atol=1e-6), res.power
 
 
@@ -87,9 +97,9 @@ def test_equilibrium_with_mix_arrays():
     kin = Kinetics(velocities=np.tile(V, (2, 1)),
                    beta=[[0.005, 0.0025], [0.006, 0.002]], decay=LAM,
                    chi_delayed=[[0.95, 0.05], [0.85, 0.15]])
-    res = TransientSolver(GRID, static, kin, device="cpu",
-                          mix_material=mix_material,
-                          mix_weight=mix_weight).solve(t_end=0.1, dt=0.02)
+    res = _model(static, kin, grid=GRID).transient(
+        at=lambda t: (*static(t), mix_material, mix_weight), device='cpu', t_end=0.1,
+        dt=0.02)
     assert np.allclose(res.power, 1.0, atol=1e-6), res.power
 
 
@@ -113,8 +123,10 @@ def test_per_material_kinetics_follow_a_moving_material_map():
     static = lambda t: (mats0, mmap0) if t <= 0.1 else (mats1, mmap0)
     moving = lambda t: (mats0, mmap0) if t <= 0.1 else (mats1, mmap1)
     kw = dict(t_end=0.2, dt=0.02)
-    p_static = TransientSolver(grid, static, kin, device="cpu").solve(**kw).power
-    p_moving = TransientSolver(grid, moving, kin, device="cpu").solve(**kw).power
+    p_static = _model(static, kin, grid=grid).transient(
+        at=static, device='cpu', **kw).power
+    p_moving = _model(moving, kin, grid=grid).transient(
+        at=moving, device='cpu', **kw).power
     assert abs(p_moving[-1] - p_static[-1]) > 1e-6
 
 
@@ -125,9 +137,9 @@ def test_per_material_kinetics_accept_static_blend_from_problem_at():
     mix_weight = np.zeros(GRID.shape)
     kin = Kinetics(velocities=np.tile(V, (2, 1)), beta=np.tile(BETA, (2, 1)),
                    decay=LAM)
-    res = TransientSolver(
-        GRID, lambda _t: (mats, mmap, mix_material, mix_weight), kin,
-        device="cpu").solve(t_end=0.1, dt=0.02)
+    res = _model(lambda _t: (mats, mmap, mix_material, mix_weight), kin, grid=GRID).transient(
+        at=lambda _t: (mats, mmap, mix_material, mix_weight), device='cpu', t_end=0.1,
+        dt=0.02)
     assert np.allclose(res.power, 1.0, atol=1e-6)
 
 

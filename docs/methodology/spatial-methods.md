@@ -38,6 +38,47 @@ Factors are positive node-side/group data, not a material-independent correction
 
 A whole-face average preserves one scalar trace per group and face. It cannot impose a subface distribution or face moments. Mesh moment factors and native face-trace developments use distinct representations; do not equate a refined submesh calculation with a whole-face ADF receiver. Transfer requires an explicit derivation and independent convergence evidence.
 
+### Cartesian two-point ADF receiver
+
+The experimental low-level Cartesian steady receiver uses oriented interior
+factor pairs. With current density positive from low-coordinate cell L to
+high-coordinate cell R, half widths $d_L,d_R$ and diffusion constants $D_L,D_R$,
+
+```{math}
+J_{L\to R}=\frac{f_L\phi_L-f_R\phi_R}
+{f_Ld_L/D_L+f_Rd_R/D_R}.
+```
+
+Multiplication by face area supplies the integrated leakage; opposite signs in
+the adjacent balances conserve current. Common positive scaling of a factor
+pair leaves the current unchanged. The implementation normalizes the pair
+before evaluating resistance and rejects factor ratios or coefficients that
+cannot be represented as finite positive values in the operator dtype.
+The resulting directed matrix is generally nonsymmetric. The adjoint uses its
+algebraic transpose, including the projected adjoint-residual diagnostic;
+GMRES/BiCGStab replace CG for any supplied ADF arrays.
+
+This two-point trace reconstruction is distinct from polynomial FVM and NEM
+trace closure. The Cartesian helper consumes `(G,6,nx,ny,nz)` in x−, x+, y−,
+y+, z−, z+ order, while NEM uses `(N,6,G)` in x−, y−, x+, y+, z−, z+ order.
+Mesh receivers have their own topology and face representation. No automatic
+mapping among these contracts is implied. Physical exterior and mask faces
+retain the homogeneous boundary law; only active interior faces receive these
+Cartesian factors. It is a steady scalar Cartesian pathway, not an extension
+to transient, cylindrical, mesh, SPN or triangular operators.
+
+The [synthetic slab record](../adf_slab_reference.md) constructs reference
+factors from a known heterogeneous diffusion answer. Agreement tests equivalence,
+conservation and normalization, not predictive assembly-library transfer.
+Coarse two-group reconstructions can have negative homogeneous traces and must
+refuse positive-factor construction. The
+[provisional Bernal study](../bernal_adf_benchmark.md) uses an unverified map;
+the [Dall'Osso comparison](../dallosso_1d_reference.md) retains an unresolved
+heterogeneous-reference discrepancy. These records do not qualify PRATIC,
+transport-generated factors, or the fork's mesh/NEM prescriptions. The
+[implementation audit](../qa/adf_audit_2026-10-27.md) separates CPU algebraic
+checks from the remaining real-GPU evidence.
+
 ## SPH
 
 Superhomogenization adjusts homogenized constants until selected regional reaction-rate or flux constraints match a reference calculation. `sph_correct`, `sph_correct_monolithic` and `sph_get_correct` provide explicit reference/coarse iterations; `flux_weighted_homogenize` and `region_average` support the reduction. A successful correction reproduces the declared target and state. It does not establish prediction after temperature, control geometry, energy partition or transport closure changes.

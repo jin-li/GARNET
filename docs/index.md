@@ -18,6 +18,7 @@ methodology/index
 
 user_guide
 model_api
+transient_api
 coupling
 serpent_xs
 amd_rocm
@@ -51,4 +52,25 @@ artifacts; hosting and package publication are separate actions.
 :maxdepth: 1
 
 development/garnet-migration
+```
+
+## Research and verification records
+
+These records preserve scoped numerical experiments, input uncertainties and
+implementation audits. They supplement the manuals; their presence does not
+qualify a reactor model or promote an experimental method to production use.
+Development plans remain excluded from the manual sources and are linked as
+downloads where needed for provenance.
+
+```{toctree}
+:maxdepth: 1
+:caption: Research and verification records
+
+adf_slab_reference
+bernal_adf_benchmark
+dallosso_1d_reference
+qa/adf_audit_2026-10-27
+exponential_literature_review_2026-10-26
+exponential_proposal_review
+moc_2d1d_feasibility_2026-10-26
 ```

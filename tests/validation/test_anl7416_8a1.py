@@ -23,11 +23,16 @@ mesh-converged answer.
 import numpy as np
 import pytest
 
-from garnet import DiffusionEigenSolver, TransientSolver
+from garnet import Model
 from garnet.benchmarks import build_anl8a1
 from garnet.benchmarks.anl_bss8 import K_REFERENCE, P_REFERENCE
 
 K_EIGENSOLVE_REFERENCE = 0.867053   # 8-A1-1's unadjusted eigensolve (same mesh)
+
+
+def _core(prob):
+    mats, mmap = prob.problem_at(0.0)
+    return Model.from_grid(prob.grid, mats, mmap, bc=prob.bc, kinetics=prob.kinetics)
 
 
 def test_region_layout_tiles_the_reactor():
@@ -51,8 +56,7 @@ def test_initial_keff_matches_book():
     # cell-centered FV lands 75 pcm above it.
     prob = build_anl8a1(perturbed=False)
     mats, mmap = prob.problem_at(0.0)
-    res = DiffusionEigenSolver(prob.grid, mats, mmap, bc=prob.bc,
-                               device="cpu").solve(tol_k=1e-8, tol_source=1e-7)
+    res = _core(prob).steady(device="cpu", tol_k=1e-8, tol_source=1e-7)
     assert res.converged
     assert res.k_eff == pytest.approx(K_EIGENSOLVE_REFERENCE, abs=1.5e-3)
 
@@ -61,8 +65,7 @@ def test_initial_keff_matches_book():
     # discretizations agree in the limit.
     prob4 = build_anl8a1(refine=4, perturbed=False)
     mats, mmap = prob4.problem_at(0.0)
-    res4 = DiffusionEigenSolver(prob4.grid, mats, mmap, bc=prob4.bc,
-                                device="cpu").solve(tol_k=1e-8, tol_source=1e-7)
+    res4 = _core(prob4).steady(device="cpu", tol_k=1e-8, tol_source=1e-7)
     assert res4.k_eff == pytest.approx(K_REFERENCE, abs=5e-4)
     # and refinement moves k toward the reference
     assert abs(res4.k_eff - K_REFERENCE) < abs(res.k_eff - K_REFERENCE)
@@ -72,9 +75,7 @@ def test_transient_exhibit_a():
     # 2x the benchmark mesh, dt = 0.02 s (backward Euler is dt-converged at
     # this step: dt = 0.005 changes the trace by < 0.2%).
     prob = build_anl8a1(refine=2)
-    solver = TransientSolver(prob.grid, prob.problem_at, prob.kinetics,
-                             bc=prob.bc, device="cpu")
-    res = solver.solve(t_end=4.0, dt=0.02)
+    res = _core(prob).transient(t_end=4.0, dt=0.02, at=prob.problem_at, device="cpu")
     assert res.k0 == pytest.approx(K_REFERENCE, abs=1e-3)
 
     p = {t: float(res.power[np.searchsorted(res.times, t)]) for t in P_REFERENCE}
@@ -117,13 +118,10 @@ def test_keff_via_divergence_form(name):
     prob = build_anl8a1(perturbed=False)
     mats, mmap = prob.problem_at(0.0)
     with pytest.raises(ValueError, match="gmres.*bicgstab"):
-        DiffusionEigenSolver(prob.grid, mats, mmap, bc=prob.bc, device="cpu",
-                             symmetric_operator=False)
-    k_cg = DiffusionEigenSolver(prob.grid, mats, mmap, bc=prob.bc, device="cpu"
-                                ).solve(tol_k=1e-8, tol_source=1e-7).k_eff
-    res = DiffusionEigenSolver(prob.grid, mats, mmap, bc=prob.bc, device="cpu",
-                               symmetric_operator=False, linear_solver=name
-                               ).solve(tol_k=1e-8, tol_source=1e-7)
+        _core(prob).steady(device="cpu", solver_kwargs={"symmetric_operator": False})
+    k_cg = _core(prob).steady(device="cpu", tol_k=1e-8, tol_source=1e-7).k_eff
+    res = _core(prob).steady(device="cpu", tol_k=1e-8, tol_source=1e-7,
+        solver_kwargs={"symmetric_operator": False, "linear_solver": name})
     assert res.converged
     assert res.k_eff == pytest.approx(k_cg, abs=1e-7)
     assert res.k_eff == pytest.approx(K_EIGENSOLVE_REFERENCE, abs=1.5e-3)
@@ -138,9 +136,8 @@ def test_transient_via_divergence_form():
     traces = {}
     for kw in (dict(),
                dict(symmetric_operator=False, linear_solver="bicgstab")):
-        s = TransientSolver(prob.grid, prob.problem_at, prob.kinetics,
-                            bc=prob.bc, device="cpu", **kw)
-        res = s.solve(t_end=4.0, dt=0.02)
+        res = _core(prob).transient(t_end=4.0, dt=0.02, at=prob.problem_at,
+                                    device="cpu", solver_kwargs=kw)
         assert res.k0 == pytest.approx(K_REFERENCE, abs=1.5e-3)
         traces[bool(kw)] = res.power
     assert np.allclose(traces[True], traces[False], rtol=3e-4)

@@ -19,7 +19,7 @@ resolved in-window, and the match tightens to a few 1e-4 (backward-Euler O(dt)).
 import numpy as np
 import pytest
 
-from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material,
+from garnet import (DiffusionEigenSolver, Grid, Kinetics, Material, Model,
                    TransientSolver, TransientSDP1Solver)
 
 D, SIGMA_A, NU_SIGMA_F = 1.3, 0.030, 0.035
@@ -32,6 +32,10 @@ KIN = Kinetics(velocities=[V], beta=[BETA], decay=[LAM])
 GRID = Grid(shape=(12, 12, 12), size=(90.0, 90.0, 90.0))
 
 
+def _core():
+    return Model.from_grid(GRID, BASE, bc="zero-flux", kinetics=KIN)
+
+
 def absorption_step_problem(delta_sigma_a):
     """Sigma_a -> Sigma_a - delta everywhere for t > 0 (positive reactivity)."""
     m0 = [BASE]
@@ -41,20 +45,19 @@ def absorption_step_problem(delta_sigma_a):
 
 
 def test_unperturbed_transient_stays_steady():
-    solver = TransientSolver(GRID, lambda t: ([BASE], None), KIN, device="cpu")
-    res = solver.solve(t_end=0.5, dt=0.05)
+    core = Model.from_grid(GRID, BASE, bc="zero-flux", kinetics=KIN)
+    res = core.transient(t_end=0.5, dt=0.05, device="cpu")
     assert np.allclose(res.power, 1.0, atol=1e-5), res.power
 
 
 def test_diffusion_bdf_orders_preserve_equilibrium_and_report_startup_order():
     """BDF1--6 share the diffusion path and must not manufacture reactivity."""
-    steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve(
-        tol_k=1e-9, tol_source=1e-8)
+    steady = _core().steady(
+        device='cpu', tol_k=1e-09, tol_source=1e-08)
     for order in range(1, 7):
-        result = TransientSolver(
-            GRID, lambda _t: ([BASE], None), KIN, device="cpu").solve(
-                t_end=0.06, dt=0.01, initial_steady=steady,
-                time_scheme=f"bdf{order}", tol_step=1e-9)
+        result = _core().transient(
+            at=lambda _t: ([BASE], None), device='cpu', t_end=0.06, dt=0.01,
+            initial_steady=steady, time_scheme=f'bdf{order}', tol_step=1e-09)
         assert result.time_scheme == ("backward-euler" if order == 1
                                       else f"bdf{order}")
         assert result.time_orders == [min(step, order)
@@ -65,14 +68,15 @@ def test_diffusion_bdf_orders_preserve_equilibrium_and_report_startup_order():
 def test_bdf3_monolithic_and_groupwise_diffusion_solve_same_equations():
     """High-order time history is independent of the in-step solver choice."""
     prob = absorption_step_problem(0.0005)
-    steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve(
-        tol_k=1e-9, tol_source=1e-8)
+    steady = _core().steady(
+        device='cpu', tol_k=1e-09, tol_source=1e-08)
     common = dict(t_end=0.008, dt=0.002, initial_steady=steady,
                   time_scheme="bdf3", tol_step=1e-9)
-    fixed = TransientSolver(GRID, prob, KIN, device="cpu").solve(**common)
-    monolithic = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, step_solver="monolithic",
-        multigroup_kwargs={"rtol": 1e-11})
+    fixed = _core().transient(
+        at=prob, device='cpu', **common)
+    monolithic = _core().transient(
+        at=prob, device='cpu', **common, step_solver='monolithic',
+        multigroup_kwargs={'rtol': 1e-11})
     assert fixed.time_orders == monolithic.time_orders == [1, 2, 3, 3]
     np.testing.assert_allclose(monolithic.power, fixed.power,
                                rtol=3e-8, atol=2e-11)
@@ -119,10 +123,9 @@ def test_monolithic_feedback_repeats_without_advancing_bdf_history():
 
 def test_nonuniform_bdf_schedule_preserves_diffusion_equilibrium():
     widths = [0.007, 0.011, 0.004, 0.013, 0.009, 0.016]
-    result = TransientSolver(
-        GRID, lambda _t: ([BASE], None), KIN, device="cpu").solve(
-            t_end=sum(widths), dt=widths, time_scheme="bdf5",
-            tol_step=1e-9)
+    result = _core().transient(
+        at=lambda _t: ([BASE], None), device='cpu', t_end=sum(widths), dt=widths,
+        time_scheme='bdf5', tol_step=1e-09)
     np.testing.assert_allclose(result.times,
                                np.r_[0.0, np.cumsum(widths)], atol=2e-16)
     assert result.time_orders == [1, 2, 3, 4, 5, 5]
@@ -136,16 +139,15 @@ def test_explicit_step_schedule_validation_is_strict():
         solver.solve(t_end=0.1, dt=[0.04, 0.04])
     with pytest.raises(ValueError, match="finite and positive"):
         solver.solve(t_end=0.1, dt=[0.05, -0.05, 0.1])
-    with pytest.raises(NotImplementedError, match="BDF schemes only"):
+    with pytest.raises(NotImplementedError, match="BDF and FTM schemes only"):
         solver.solve(t_end=0.1, dt=[0.05, 0.05],
                      time_scheme="crank-nicolson")
 
 
 def test_bdf_history_restart_reduces_order_without_disturbing_equilibrium():
-    result = TransientSolver(
-        GRID, lambda _t: ([BASE], None), KIN, device="cpu").solve(
-            t_end=0.08, dt=0.01, time_scheme="bdf5",
-            bdf_restart_times=[0.04], tol_step=1e-9)
+    result = _core().transient(
+        at=lambda _t: ([BASE], None), device='cpu', t_end=0.08, dt=0.01,
+        time_scheme='bdf5', bdf_restart_times=[0.04], tol_step=1e-09)
     assert result.time_orders == [1, 2, 3, 1, 2, 3, 4, 5]
     np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=2e-9)
 
@@ -266,24 +268,24 @@ def test_rejects_a_horizon_that_is_not_an_integer_number_of_steps():
 def test_default_step_acceleration_matches_the_documented_configuration():
     """Pin the public defaults used by existing transient input decks."""
     prob = absorption_step_problem(0.001)
-    default = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        t_end=0.02, dt=0.002).power
-    explicit = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        t_end=0.02, dt=0.002, anderson_depth=5, rebalance=False).power
+    default = _core().transient(
+        at=prob, device='cpu', t_end=0.02, dt=0.002).power
+    explicit = _core().transient(
+        at=prob, device='cpu', t_end=0.02, dt=0.002, anderson_depth=5, rebalance=False).power
     np.testing.assert_allclose(default, explicit, rtol=0, atol=1e-12)
 
 
 def test_opt_in_monolithic_steps_match_fixed_point_history():
     """The direct block solve changes convergence, not transient equations."""
     prob = absorption_step_problem(0.001)
-    steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve(
-        tol_k=1e-9, tol_source=1e-8)
+    steady = _core().steady(
+        device='cpu', tol_k=1e-09, tol_source=1e-08)
     common = dict(t_end=0.006, dt=0.002, initial_steady=steady)
-    fixed = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, tol_step=1e-9)
-    monolithic = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, step_solver="monolithic", tol_step=1e-9,
-        multigroup_kwargs={"rtol": 1e-11})
+    fixed = _core().transient(
+        at=prob, device='cpu', **common, tol_step=1e-09)
+    monolithic = _core().transient(
+        at=prob, device='cpu', **common, step_solver='monolithic', tol_step=1e-09,
+        multigroup_kwargs={'rtol': 1e-11})
     assert fixed.step_method == "fixed-point"
     assert monolithic.step_method == "monolithic"
     np.testing.assert_allclose(monolithic.power, fixed.power,
@@ -294,9 +296,9 @@ def test_opt_in_monolithic_steps_match_fixed_point_history():
 
 def test_monolithic_adjoint_coarse_correction_is_opt_in_and_counted():
     prob = absorption_step_problem(0.001)
-    result = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        t_end=0.004, dt=0.002, step_solver="monolithic",
-        multigroup_kwargs={"coarse_correction": True, "rtol": 1e-10})
+    result = _core().transient(
+        at=prob, device='cpu', t_end=0.004, dt=0.002, step_solver='monolithic',
+        multigroup_kwargs={'coarse_correction': True, 'rtol': 1e-10})
     assert result.step_method == "monolithic"
     assert result.adjoint_coarse_setups == 2
     assert np.all(np.isfinite(result.power))
@@ -341,17 +343,14 @@ def test_monolithic_energy_anderson_is_opt_in_and_preserves_solution():
     prob = absorption_step_problem(0.001)
     common = dict(t_end=0.004, dt=0.002, step_solver="monolithic",
                   tol_step=1e-9)
-    plain = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, multigroup_kwargs={"rtol": 1e-11})
-    accelerated = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, multigroup_kwargs={"rtol": 1e-11,
-                                     "scatter_sweeps": 3,
-                                     "energy_anderson": 1})
-    reduction_free = TransientSolver(GRID, prob, KIN, device="cpu").solve(
-        **common, multigroup_kwargs={"rtol": 1e-11,
-                                     "scatter_sweeps": 4,
-                                     "energy_anderson": 1,
-                                     "inner_fixed_relaxations": 1})
+    plain = _core().transient(
+        at=prob, device='cpu', **common, multigroup_kwargs={'rtol': 1e-11})
+    accelerated = _core().transient(
+        at=prob, device='cpu', **common,
+        multigroup_kwargs={'rtol': 1e-11, 'scatter_sweeps': 3, 'energy_anderson': 1})
+    reduction_free = _core().transient(
+        at=prob, device='cpu', **common,
+        multigroup_kwargs={'rtol': 1e-11, 'scatter_sweeps': 4, 'energy_anderson': 1, 'inner_fixed_relaxations': 1})
     np.testing.assert_allclose(
         accelerated.power, plain.power, rtol=2e-9, atol=2e-12)
     np.testing.assert_allclose(
@@ -375,14 +374,14 @@ def test_monolithic_step_options_fail_fast():
 
 def test_reused_pcg_workspaces_preserve_transient_history_and_work():
     """Persistent storage is an execution optimization, not new numerics."""
-    steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve()
+    steady = _core().steady(
+        device='cpu', tol_k=1e-07, tol_source=1e-06)
     prob = absorption_step_problem(0.001)
     results = {}
     for reuse in (False, True):
-        results[reuse] = TransientSolver(
-            GRID, prob, KIN, device="cpu").solve(
-                t_end=0.006, dt=0.002, initial_steady=steady,
-                reuse_krylov_workspaces=reuse)
+        results[reuse] = _core().transient(
+            at=prob, device='cpu', t_end=0.006, dt=0.002, initial_steady=steady,
+            reuse_krylov_workspaces=reuse)
     old, new = results[False], results[True]
     assert new.total_inner_iterations == old.total_inner_iterations
     assert new.step_iterations == old.step_iterations
@@ -391,14 +390,15 @@ def test_reused_pcg_workspaces_preserve_transient_history_and_work():
 
 
 def test_fp32_preconditioner_preserves_fp64_transient_accuracy():
-    steady = DiffusionEigenSolver(GRID, [BASE], device="cpu").solve()
+    steady = _core().steady(
+        device='cpu', tol_k=1e-07, tol_source=1e-06)
     prob = absorption_step_problem(0.001)
     common = dict(t_end=0.006, dt=0.002, initial_steady=steady)
-    full = TransientSolver(
-        GRID, prob, KIN, device="cpu", precond_degree=1).solve(**common)
-    mixed = TransientSolver(
-        GRID, prob, KIN, device="cpu", precond_degree=1,
-        precond_dtype=np.float32).solve(**common)
+    full = _core().transient(
+        at=prob, device='cpu', solver_kwargs={'precond_degree': 1}, **common)
+    mixed = _core().transient(
+        at=prob, device='cpu',
+        solver_kwargs={'precond_degree': 1, 'precond_dtype': np.float32}, **common)
     assert mixed.mixed_precision_fallbacks == 0
     assert mixed.step_iterations == full.step_iterations
     np.testing.assert_allclose(mixed.power, full.power, rtol=5e-8, atol=0.0)
@@ -419,14 +419,13 @@ def test_mixed_preconditioner_dtype_is_conservative():
 
 def test_full_fp32_transient_stays_in_fp32():
     prob = absorption_step_problem(0.001)
-    result = TransientSolver(
-        GRID, prob, KIN, device="cpu", dtype=np.float32).solve(
-            t_end=0.004, dt=0.002)
+    result = _core().transient(
+        at=prob, device='cpu', solver_kwargs={'dtype': np.float32}, t_end=0.004, dt=0.002)
     assert result.flux.dtype == np.float32
     assert result.precursors.dtype == np.float32
     assert np.all(np.isfinite(result.power))
     assert result.steady.converged
-    assert result.steady.balance_error < 64 * np.finfo(np.float32).eps
+    assert result.steady.raw.balance_error < 64 * np.finfo(np.float32).eps
 
 
 def test_full_fp32_transient_preserves_explicit_steady_accuracy():
@@ -513,15 +512,15 @@ def test_matches_point_kinetics_for_uniform_perturbation():
 
     # Get the initial eigenvalue for the exact critical adjustment (a = nuSf/k0),
     # then size the absorption drop to a +$0.50 step (well below prompt critical).
-    k0 = TransientSolver(GRID, lambda t: ([BASE], None), KIN, device="cpu").solve(
-        t_end=1e-3, dt=1e-3).k0
+    k0 = _core().transient(
+        at=lambda t: ([BASE], None), device='cpu', t_end=0.001, dt=0.001).k0
     a = NU_SIGMA_F / k0
     rho_dollars = 0.5
     d_sigma_a = rho_dollars * BETA * a
 
     t_end, dt = 0.5, 1e-4
-    res = TransientSolver(GRID, absorption_step_problem(d_sigma_a), KIN,
-                          device="cpu").solve(t_end=t_end, dt=dt)
+    res = _core().transient(
+        at=absorption_step_problem(d_sigma_a), device='cpu', t_end=t_end, dt=dt)
 
     # Exact point kinetics for this absorption step. With the critical
     # adjustment DB^2 + Sigma_a = a, dropping Sigma_a by d_sigma_a gives

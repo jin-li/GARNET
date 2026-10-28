@@ -75,3 +75,39 @@ wheel. The source distribution includes the manual sources and excludes local
 scratch directories and generated manuals.
 
 Detailed source hashes and local gate results: {download}`integration validation <integration_validation.json>`.
+
+## Static branch-library development
+
+The subsequent experimental branch-library implementation has **1582 distinct
+passing software tests**, with 16 optional skips and 10 slow tests deselected,
+combining the regression run and final focused checks. The first regression
+run found a source archive that became stale during final API hardening; the
+archive was rebuilt and its byte-level check passed in the final 56-test run.
+The new branch-specific public checks comprise 51 tests.
+
+The wheel and source distribution build successfully. Four examples ran from
+an isolated wheel installation outside the checkout, and the final wheel's
+module bytes match the source. Strict HTML/PDF builds and visual review of the
+new manual chapters passed. Numerical fixtures do not establish reactor
+interpolation accuracy: that qualification awaits independent transport states.
+
+Source hashes and the exact verification scope:
+{download}`branch-library validation <branch_xs_validation.json>`.
+
+## Returned branch data and thermal-star integration
+
+The returned-data importer and high-level thermal-star workflow add source
+snapshot, native inventory/completion, explicit training-role, bounded-path and
+qualification-policy checks. The receiving NEM assessor checks full production
+matrices, mean/interface/boundary conservation and fresh profile diagnostics.
+Legacy convergence and ADF prescriptions remain available unchanged.
+
+Verification comprises a 1,681-pass regression run and a final 204-pass focused
+run covering subsequent identity hardening and the new analytical workflow.
+The source archive, isolated wheel example, source-distribution contents and
+strict HTML/two-PDF builds passed. These are software checks; application
+nuclear-data equivalence, ADF qualification and withheld transport accuracy
+remain explicit requirements. No reactor branch library is distributed.
+
+Source hashes and verification scope:
+{download}`branch integration validation <branch_xs_integration_validation.json>`.

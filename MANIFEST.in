@@ -4,3 +4,4 @@ prune docs/_build
 recursive-include examples/isonees_features *.py *.md
 include examples/kinetics/static_nem.py
 recursive-include tests *.py *.md
+recursive-include examples/branch_xs *.py *.md

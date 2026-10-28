@@ -6,6 +6,7 @@ running natively on CUDA GPUs via CuPy with a NumPy CPU fallback.
 
 from .analytic import (geometric_buckling_box, k_bare_box, k_bare_box_sp3,
                        k_from_buckling, k_from_buckling_sp3, k_infinite)
+from .adf import assembly_face_factors
 from .backend import asnumpy, device_name, get_backend
 from .femffusion import read_material_xml, read_xsec
 from .griffin_xs import (read_library as read_griffin_library,
@@ -24,7 +25,8 @@ from .serpent_kinetics import (SerpentKineticsEstimate, SerpentKineticsResult,
                                 read_serpent_kinetics)
 from .mesh import (Mesh, MeshGrid, MeshGroupOperator, MeshResult, UnstructuredDiffusionSolver, assemble_mesh,
                   assemble_mesh_3d, read_gmsh)
-from .model import (FeedbackSpec, HexLattice, MaterialSummary, MeshModel, Model, ModelResult,
+from .model import (CylindricalModel, FeedbackSpec, HexLattice, MaterialSummary,
+                   MeshModel, Model, ModelResult,
                    ReactorResult, TransientModelResult, TriReactor, hex_disk,
                    hex_ring)
 from .noise import (NoiseResult, NoiseSolver, NoiseSource,
@@ -80,7 +82,9 @@ __all__ = [
     "MeshGrid", "MeshGroupOperator", "MeshDiffusionEigenSolver",
     "MeshSPNEigenSolver", "MeshSDPNEigenSolver", "MeshSP1EigenSolver",
     "MeshSP3EigenSolver", "MeshSDP1EigenSolver",
+    "assembly_face_factors",
     "Model",
+    "CylindricalModel",
     "MeshModel",
     "HexLattice",
     "TriReactor",

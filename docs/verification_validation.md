@@ -6,6 +6,144 @@ evidence to the core features exposed in the [README](https://github.com/jin-li/
 assertions are the executable acceptance criteria; benchmark reports retain
 the mesh, time step, physics data, and hardware behind their results.
 
+## Physical-state adaptive exponential check
+
+The {download}`seventh checkpoint <../benchmark-results/exponential-second-order/CHUNK7.md>`
+assesses TWIGL step/ramp on 20×20 and 40×40 meshes, with independent sparse
+physical-generator references and a finer spatial check. **118 targeted
+checks pass**; the later 12-case independent-reference check overlaps.
+The 116-configuration comparison retains output-width-tuned adaptive BDF as
+the cheaper tested method at the common 0.1% temporal power/shape/region/
+integral/final-precursor budget. A 40×40-to-80×80 thermal-shape difference
+of **1.10%** exposes a separate unresolved spatial budget. The
+[QA record](qa/garnet-exponential-twigl-2026-10-26.json) links the references,
+mesh diagnosis, tests and combined work selections. This assessment does
+not pass spatial-accuracy or performance-promotion conditions; full-suite
+and GPU records below remain earlier evidence.
+
+The {download}`sixth checkpoint <../benchmark-results/exponential-second-order/CHUNK6.md>`
+adds an opt-in two-solve physical-history estimator and a reference audit
+mode. **363 distinct CPU checks pass** across a 361-case regression and two
+smooth-insertion stress cases; a separate 101-case focused batch overlaps.
+At the 0.1% power/integral/precursor budget, tested history configurations
+use **31.5–33.1% fewer solves** than full/fine FTM, while adaptive BDF still
+uses less work. Audits cover 20,410 paired output-aware trials and 5,482
+state-only/smooth-insertion trials, including 13 failed reference state
+checks that the history estimate also flags. Tight exponential tails can
+make this physical predictor more restrictive. The default stays step
+doubling, output control remains independent, and no runtime speedup is
+claimed. The [QA record](qa/garnet-exponential-estimator-2026-10-26.json)
+links the work/error studies, tests and isolated archive validation.
+
+The {download}`fifth checkpoint <../benchmark-results/exponential-second-order/CHUNK5.md>`
+adds optional physical midpoint/chord width control for linear output.
+**314 regression checks pass**, and an updated **58-case focused batch**
+passes with four additional output-aware physical-reference configurations;
+the batches overlap. The rapid-rise FTM2 common-grid power error falls from
+**2.20658% to 0.006738%** at unchanged state tolerance, and its power-integral
+error falls from **0.910182% to 0.004572%**. The 160-run comparison still
+finds adaptive BDF cheaper at matched power/integral/precursor accuracy.
+Verification covers constant-power spectral redistribution, localized
+multigroup output, six families and output-driven rollback on three
+geometries. The [QA record](qa/garnet-exponential-output-2026-10-26.json)
+links the tests, benchmark and isolated source-archive check. Full-suite,
+slow-study and GPU results below remain the preceding checkpoint's records.
+
+On 26 October 2026, **259 targeted checks passed**, including 33 new adaptive
+FTM cases. The default CPU run recorded **801 passed, 12 skipped, 10 slow
+cases excluded**, with one example subprocess import failure because this
+checkout was not installed. All four example checks passed on retest with
+the absolute checkout path in `PYTHONPATH`; no example code changed. Across
+the run and retest, all **802 distinct executable CPU checks pass**. The
+original full-run failure remains in the evidence rather than being hidden.
+
+The new `adaptive_ftm` controller compares physical full/two-half-step flux
+and precursor fields, commits the fine state once per macro endpoint, and
+restores all temporal history on rejection. Verification includes exact
+accepted-half-step replay on three geometries, six-family Radau references,
+and a localized two-group/two-family diffusion matrix exponential. The
+masked-grid checks also led to explicit inactive-state/derivative masking
+for FTM population histories.
+
+The {download}`fourth checkpoint <../benchmark-results/exponential-second-order/CHUNK4.md>`
+records 80 accuracy/work configurations. Adaptive BDF remains the cheapest
+tested method at matched output accuracy. Long exponential steps expose a
+separate linear-output-interpolation limit; neither a speedup nor a coupled
+thermal accuracy claim is made. GPU execution was not repeated.
+
+The refreshed source archive was installed into an isolated temporary
+directory and passed an adaptive cylindrical event/rejection/callback check.
+Evidence: [focused tests](../benchmark-results/exponential-second-order/chunk4-verification.xml),
+[original full CPU run](../benchmark-results/exponential-second-order/chunk4-cpu.xml),
+[example retest](../benchmark-results/exponential-second-order/chunk4-examples-verification.xml),
+and [environment, source fingerprints and archive check](qa/garnet-exponential-adaptive-2026-10-26.json).
+
+## Exponential damping check
+
+On 26 October 2026 the default CPU suite passed: **777 passed, 0 failed,
+7 skipped, 13 slow cases excluded**, in 687.55 s. All **43 new method checks**
+also passed in a final focused run. A later source edit only extends a
+docstring; the executable AST is unchanged. GPU execution and the excluded
+slow studies were not repeated.
+
+The experimental `ftm-bdf2` recurrence transforms neutrons and precursors in
+the current step's frame, using one endpoint solve before any requested
+frequency refinement. The {download}`damping checkpoint <../benchmark-results/exponential-second-order/CHUNK3.md>`
+records its derivation, guards and 196 error/work configurations. Adaptive
+BDF remains the strongest tested comparator; no runtime speedup or positivity
+guarantee is inferred from stiff damping.
+
+The [new tests](../tests/verification/test_exponential_damping.py) compare
+Cartesian/r-z/triangular solves with an independent matrix recurrence, check
+second-order refinement and six-family non-equilibrium precursors against
+Radau, and verify distinct delayed spectra against a matrix exponential.
+They also cover mapped material kinetics, BE fallbacks, frequency-corrector
+accounting, event continuity, a stiff shutdown mode and unchanged thermal
+exchanges/progress callbacks. The two-stage SDIRK2 candidate stays a dense
+research driver because its extra stages did not earn an FV implementation.
+
+The refreshed Colab source archive was installed in isolation. It ran an
+r-z transient with an event restart, reproduced ordinary BDF2 at zero
+frequency, and integrated a power-density field to 2 MW.
+
+Evidence: [full pytest record](qa/garnet-exponential-cpu-2026-10-26.xml),
+[new verification record](../benchmark-results/exponential-second-order/chunk3-verification.xml),
+and [environment, source fingerprints and archive checks](qa/garnet-exponential-damping-2026-10-26.json).
+
+## Transient API and cylindrical check
+
+The transient API follow-up on 23 October 2026 passed the default CPU suite:
+**666 passed, 0 failed, 7 skipped, 13 slow cases excluded**, in 714.27 s.
+The final focused run passed **105 cases**, including three additional
+parameterized guards for public steady-state reuse with untracked spatial
+cross-section hooks. The full-suite snapshot predates that guard; the final
+focused run covers both changed Python files. The optional-dependency and
+hardware skips are the same as in the earlier CPU record below.
+
+The [transient workflow checks](../tests/verification/test_transient_model_api.py)
+exercise common Cartesian/cylindrical/triangular reports, named material and
+cached-state controls, event alignment, adaptive-step rejection, accepted-step
+callbacks, and time-zero compatibility. Cylindrical checks include exact
+annular volumes, full-core power integration, and full/quasi-static thermal
+coupling. See the [transient API guide](transient_api.md) and
+[r-z example](../examples/cylindrical_transient.py).
+
+Six existing modules now exercise the public API where it expresses the same
+physics calculation. All **58 test functions and 149 assertions** were
+preserved. Their original files are retained byte-for-byte in
+`tests/legacy/`, inactive by default; all **62 legacy cases
+passed** separately in 168.81 s with `--run-legacy`.
+
+The refreshed Colab source archive was installed in isolation and ran the r-z
+example with fixed and adaptive BDF, including off-grid event times and a
+power density integrating to 2 MW. CUDA execution and slow studies were not
+repeated. These checks establish API and numerical regression coverage; the
+demonstration cross sections are not a validated reactor design.
+
+Evidence: [full pytest record](qa/garnet-transient-cpu-2026-10-23.xml),
+[preserved legacy record](qa/garnet-transient-legacy-2026-10-23.xml), and
+[environment, source fingerprints, focused results and archive checks](qa/garnet-transient-api-2026-10-23.json).
+
 ## Diffusion API check
 
 The diffusion API audit on 23 October 2026 added 44 workflow cases. The full

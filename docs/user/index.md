@@ -8,6 +8,7 @@ Use this manual to select a supported workflow, build a model and interpret its 
 getting-started
 models
 serpent-mesh
+branch-xs
 nem-kinetics
 transients
 validation
@@ -21,6 +22,7 @@ validation
 | Hexagonal/prismatic model | `HexLattice.build()` → `TriReactor` | Steady, selected higher moments, transient and thermal interfaces |
 | General finite-volume mesh | `MeshModel`; low-level `MeshGrid` solvers for advanced moments | Builder is diffusion-only; low-level capabilities have separate contracts |
 | Fixed Serpent scalar constants | `read_serpent_xs` | Explicit record/field choice; no automatic state interpolation |
+| Static branch XS | `BranchLibrary`, `build_nem_solver` | Experimental bounded absolute interpolation; CPU NEM, independent transport validation required |
 | Native anisotropic matrices | `read_serpent_moment_xs` and coupled moment operators | Opt-in research path, explicit orientation; distinct from standard SPN |
 | Cuboid NEM/ADF | `CuboidNodalGrid`, NEM solver classes | CPU NumPy/SciPy; local reference qualification is explicit |
 | Static physical kinetics | Matching forward/adjoint projection | Raw regional data required for delayed families; no transient NEM solver |
