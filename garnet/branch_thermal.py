@@ -4,7 +4,8 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 
-from .branch_xs import BranchLibrary, BranchState, BenchmarkModeratorPath, _plain
+from .branch_xs import (BranchLibrary, BranchState, TabulatedModeratorPath,
+                        THERMAL_STAR_REQUIRED_IDENTITIES, _plain)
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,7 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
     """Build four triangles covering a five-point transformed diamond.
 
     ``low/high`` refer to actual fuel or moderator *temperature*. Moderator
-    density consequently decreases from moderator_low to moderator_high.
+    density follows the caller-defined monotone path.
     All inputs must be original native-backed BranchState objects, with actual
     ``moderator_temperature`` in conditions or metadata, and metadata
     ``moderator_path_id`` matching ``path``. The dependent moderator temperature
@@ -55,8 +56,8 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
     ``compatible_serpent_versions`` forwards the explicit application policy to
     BranchLibrary; source/native versions and all other identity checks remain.
     """
-    if not isinstance(path, BenchmarkModeratorPath):
-        raise TypeError('path must be BenchmarkModeratorPath')
+    if not isinstance(path, TabulatedModeratorPath):
+        raise TypeError('path must be TabulatedModeratorPath')
     if type(diagnostic) is not bool:
         raise TypeError('diagnostic must be boolean')
     if qualification_policy is not None and not callable(qualification_policy):
@@ -77,8 +78,7 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
     converted = []
     temperatures = []
     for index, s in enumerate(states):
-        for key in ('geometry_family', 'nuclear_data_family', 'scoring_identity',
-                    'adf_prescription', 'solver_family'):
+        for key in THERMAL_STAR_REQUIRED_IDENTITIES:
             identity = s.metadata.get(key)
             if not isinstance(identity, str) or not identity.strip():
                 raise ValueError(f'{s.state_id}: nonempty explicit {key} identity required')
@@ -120,8 +120,9 @@ def build_thermal_star(nominal, fuel_low, fuel_high, moderator_low, moderator_hi
         converted.append(replace(s, conditions=conditions, metadata=metadata,
                                  qualification='diagnostic-unvalidated' if diagnostic else s.qualification))
 
-    # In cyclic order: lower fuel, higher moderator density, higher fuel,
-    # lower moderator density. The center is an explicit vertex in every cell.
+    # Adjacent endpoints: lower fuel, lower moderator T, higher fuel,
+    # higher moderator T. Either monotone density direction gives a diamond;
+    # the center is an explicit vertex in every cell.
     c, fl, fh, ml, mh = converted
     simplices = ((c.state_id, fl.state_id, ml.state_id),
                  (c.state_id, ml.state_id, fh.state_id),

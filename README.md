@@ -43,6 +43,8 @@ should reinstall the editable project after updating. Historical research
 commits and saved results retain their original NDgpu names.
 
 - [User Manual](docs/user/index.md) and [Software Methodology Manual](docs/methodology/index.md).
+- [Testing and Verification Manual](docs/testing/index.md): commands, coverage,
+  provenance, failure diagnosis and release checks.
 - [HTML/PDF build instructions](docs/index.md) and [feature inventory](docs/development/integration_inventory.md).
 - [Serpent XS interface](docs/serpent_xs.md), [ADFs](docs/user/serpent-mesh.md),
   [kinetics parameters](docs/kinetics_parameters.md), and [NEM](docs/user/nem-kinetics.md).

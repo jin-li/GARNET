@@ -62,6 +62,11 @@ def centered_temperature_coefficient(k_lower, k_upper, t_lower, t_upper, *,
 
 def _screen(difference, standard_error, target, confidence_z):
     z = _number(confidence_z, "confidence_z", positive=True)
+    if target is None:
+        return {"status": "descriptive", "signed_difference": float(difference),
+                "absolute_difference": float(abs(difference)),
+                "standard_error": float(standard_error), "target": None,
+                "confidence_z": z}
     target = _number(target, "target", nonnegative=True)
     uncertainty = z * standard_error
     status = "pass" if abs(difference) + uncertainty <= target else (
@@ -78,8 +83,9 @@ def coefficient_convergence(full, half, *, relative_target=0.05, confidence_z=1.
     Pass requires the entire discrepancy interval below a conservative lower
     bound on the relative tolerance. Weak/unresolved reference coefficients are
     inconclusive. Shared-endpoint/correlated coefficient estimates are not
-    supported: recompute with their covariance outside this helper. If records
-    include endpoint geometry, both must have the same midpoint and a 2:1
+    supported: recompute with their covariance outside this helper.
+    ``relative_target=None`` reports descriptive discrepancies with no pass.
+    If records include endpoint geometry, both must have the same midpoint and a 2:1
     full/half separation; bare coefficient records leave that check to callers.
     """
     geometry_keys = ("temperature_midpoint_K", "temperature_separation_K")
@@ -97,21 +103,21 @@ def coefficient_convergence(full, half, *, relative_target=0.05, confidence_z=1.
     h = _number(half["value_pcm_per_K"], "half coefficient")
     sf = _number(full["standard_error_pcm_per_K"], "full error", nonnegative=True)
     sh = _number(half["standard_error_pcm_per_K"], "half error", nonnegative=True)
-    r = _number(relative_target, "relative_target", positive=True)
+    r = None if relative_target is None else _number(relative_target, "relative_target", positive=True)
     z = _number(confidence_z, "confidence_z", positive=True)
     sd = math.hypot(sf, sh)
     lower_reference = max(0., abs(h) - z * sh)
-    lower_tolerance = r * lower_reference
-    upper_tolerance = r * (abs(h) + z * sh)
-    status = "inconclusive"
-    if lower_reference > 0:
+    lower_tolerance = None if r is None else r * lower_reference
+    upper_tolerance = None if r is None else r * (abs(h) + z * sh)
+    status = "descriptive" if r is None else "inconclusive"
+    if r is not None and lower_reference > 0:
         if abs(f - h) + z * sd <= lower_tolerance:
             status = "pass"
         elif abs(f - h) - z * sd > upper_tolerance:
             status = "fail"
     return {"status": status, "signed_difference_pcm_per_K": f - h,
             "standard_error_pcm_per_K": sd, "relative_target": r,
-            "nominal_target_pcm_per_K": r * abs(h),
+            "nominal_target_pcm_per_K": None if r is None else r * abs(h),
             "target_interval_pcm_per_K": [lower_tolerance, upper_tolerance],
             "reference_resolved": bool(lower_reference > 0), "confidence_z": z,
             "uncertainty_assumption": "independent full/half coefficients; conservative interval screening"}
@@ -123,6 +129,8 @@ def normalized_power_rms(predicted, reference, *, weights=None, target=0.01):
     Arrays must have identical ordered physical bins and positive weighted
     normalization. Weights are explicit bin weights (uniform by default).
     Native bin Monte Carlo errors/covariances are not evaluated by this metric.
+    ``target=None`` reports a descriptive metric without acceptance; the default
+    0.01 is a historical application policy, not a generic physics tolerance.
     """
     p, r = np.asarray(predicted, dtype=float), np.asarray(reference, dtype=float)
     if p.ndim != 1 or p.size == 0 or p.shape != r.shape:
@@ -136,8 +144,9 @@ def normalized_power_rms(predicted, reference, *, weights=None, target=0.01):
     if mp <= 0 or mr <= 0:
         raise ValueError("power normalization must be positive")
     rms = float(np.sqrt(np.average((p / mp - r / mr)**2, weights=w)))
-    target = _number(target, "target", nonnegative=True)
-    return {"status": "pass" if rms <= target else "fail", "rms_fraction": rms,
+    target = None if target is None else _number(target, "target", nonnegative=True)
+    status = "descriptive" if target is None else "pass" if rms <= target else "fail"
+    return {"status": status, "rms_fraction": rms,
             "target_fraction": target, "bin_count": int(p.size),
             "normalization": "each array divided by its weighted mean",
             "uncertainty_assessment": "not performed; fixed ordered physical bins required"}
@@ -146,11 +155,13 @@ def normalized_power_rms(predicted, reference, *, weights=None, target=0.01):
 def compare_reconstruction_chain(k_interpolated, k_exact, k_ce, *,
                                  k_ce_standard_error=0.0, target_pcm=20.0,
                                  power_interpolated=None, power_exact=None,
-                                 power_ce=None, power_weights=None):
+                                 power_ce=None, power_weights=None, power_target=0.01):
     """Separate interpolation error from exact-state GARNET/CE model bias.
 
-    The 20 pcm gate applies only to interpolated versus exact-state GARNET.
-    CE differences are descriptive and carry no inherited 20 pcm gate.
+    Historical defaults are 20 pcm and 1% power RMS, applied only to
+    interpolated versus exact-state GARNET. Pass ``target_pcm=None`` and
+    ``power_target=None`` for a metric-only report; any unassessed requested
+    metric prevents an overall pass. CE comparisons remain descriptive.
     """
     interpolation = reactivity_change(k_exact, k_interpolated)
     assessment = _screen(interpolation["value_pcm"], 0., target_pcm, 1.96)
@@ -162,15 +173,18 @@ def compare_reconstruction_chain(k_interpolated, k_exact, k_ce, *,
     if any(item is not None for item in powers):
         if not all(item is not None for item in powers):
             raise ValueError("supply all three power arrays together")
-        comparisons["interpolated_vs_exact"]["power"] = normalized_power_rms(power_interpolated, power_exact, weights=power_weights)
+        comparisons["interpolated_vs_exact"]["power"] = normalized_power_rms(
+            power_interpolated, power_exact, weights=power_weights, target=power_target)
         for name, value in (("exact_vs_ce", power_exact), ("interpolated_vs_ce", power_interpolated)):
-            metric = normalized_power_rms(value, power_ce, weights=power_weights)
+            metric = normalized_power_rms(value, power_ce, weights=power_weights, target=None)
             metric["status"] = "descriptive"
             metric.pop("target_fraction")
             comparisons[name]["power"] = metric
-    status = assessment["status"]
-    if powers[0] is not None and comparisons["interpolated_vs_exact"]["power"]["status"] == "fail":
-        status = "fail"
+    statuses = [assessment["status"]]
+    if powers[0] is not None:
+        statuses.append(comparisons["interpolated_vs_exact"]["power"]["status"])
+    status = ("fail" if "fail" in statuses else
+              "descriptive" if "descriptive" in statuses else assessment["status"])
     return {"status": status, "comparisons": comparisons,
             "gate_scope": "interpolated GARNET versus exact-state GARNET only"}
 
@@ -199,6 +213,8 @@ def assess_rod_worth(predicted: Sequence[dict], reference: Sequence[dict], *,
     supplied reference peak; a maximum over sparse central checks is insufficient.
     No global/full-travel claim is made by this helper. Missing coverage or an
     unresolved peak yields inconclusive, including for perfect agreement.
+    ``relative_target=None`` returns descriptive interval metrics and coverage
+    without accepting the comparison, regardless of peak resolution.
     """
     def interval(item):
         if len(item) != 2:
@@ -220,7 +236,7 @@ def assess_rod_worth(predicted: Sequence[dict], reference: Sequence[dict], *,
                            _number(record["standard_error_pcm_per_cm"], "worth error", nonnegative=True))
         return result
     p, r = indexed(predicted), indexed(reference)
-    ratio = _number(relative_target, "relative_target", positive=True)
+    ratio = None if relative_target is None else _number(relative_target, "relative_target", positive=True)
     z = _number(confidence_z, "confidence_z", positive=True)
     sp = _number(peak_standard_error, "peak_standard_error", nonnegative=True)
     peak = None if reference_peak is None else _number(reference_peak, "reference_peak", positive=True)
@@ -230,12 +246,14 @@ def assess_rod_worth(predicted: Sequence[dict], reference: Sequence[dict], *,
     for key in required:
         if key not in p or key not in r:
             continue
-        pv, ps = p[key]; rv, rs = r[key]
+        pv, ps = p[key]
+        rv, rs = r[key]
         difference, se = pv - rv, math.hypot(ps, rs)
-        report = _screen(difference, se, ratio * peak if peak is not None else 0., z)
-        if not resolved:
+        target = None if ratio is None else ratio * peak if peak is not None else 0.
+        report = _screen(difference, se, target, z)
+        if ratio is not None and not resolved:
             report["status"] = "inconclusive"
-        else:
+        elif ratio is not None:
             # Conservative bounds account for uncertainty in the peak scale too.
             if abs(difference) + z * se <= ratio * (peak - z * sp):
                 report["status"] = "pass"
@@ -245,7 +263,7 @@ def assess_rod_worth(predicted: Sequence[dict], reference: Sequence[dict], *,
                 report["status"] = "inconclusive"
         reports.append({"interval_cm": list(key), **report})
     states = [item["status"] for item in reports]
-    status = "fail" if "fail" in states else (
+    status = "descriptive" if ratio is None else "fail" if "fail" in states else (
         "inconclusive" if missing or not resolved or "inconclusive" in states else "pass")
     return {"status": status, "interval_reports": reports, "missing_intervals_cm": missing,
             "required_intervals_cm": [list(key) for key in required],

@@ -20,14 +20,16 @@ After changing package code, rebuild the tracked Colab upload archive with
 `python tools/build_src_zip.py`. The example checks reject stale archive code;
 normal wheel and source-distribution builds remain separate.
 
-Update the User and Software Methodology manuals with each feature. Explain
+Update the User, Software Methodology, and Testing and Verification manuals with
+each feature. The [testing manual](docs/testing/index.md) maps coverage, selection
+commands, optional skips, fixture provenance and failure triage. Explain
 units, array orientation, assumptions, supported solver/backend combinations,
 convergence settings and remaining limits. Experimental interfaces must be
 identified as such. Add small synthetic examples that require no private
 reactor data. Installation must remain usable without CuPy, Serpent or preCICE.
 
 Install `.[docs]` and build as described in [documentation](docs/index.md).
-The strict HTML build and both PDF builds must pass; inspect math, tables and
+The strict HTML build and all three PDF builds must pass; inspect math, tables and
 code listings visually. The tested Python documentation dependency snapshot is
 `docs/requirements-build.txt`; core runtime dependencies remain separate.
 

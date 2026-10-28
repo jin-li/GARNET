@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import numpy as np
 
-_SIDE_PAIRS = ((0, 2), (1, 3), (4, 5))
+from .face_conventions import NEM_AXIS_FACE_PAIRS, NEM_NORMAL_SIGNS
+
+_SIDE_PAIRS = NEM_AXIS_FACE_PAIRS
 
 
 def _readonly(values, dtype=None):
@@ -139,7 +141,7 @@ class CuboidNodalGrid:
             ('boundary_kinds', conditions, str),
             ('boundary_alpha', [.5 if c == 'vacuum' else 0. for c in conditions], float),
             ('node_face_areas', np.array(face_areas)[nf], float),
-            ('normal_signs', [-1, -1, 1, 1, -1, 1], np.int64),
+            ('normal_signs', NEM_NORMAL_SIGNS, np.int64),
         ):
             setattr(self, name, _readonly(value, dtype))
         degrees = np.empty((self.n_nodes, 3), dtype=np.int64)

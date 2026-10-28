@@ -16,6 +16,8 @@ import re
 import numpy as np
 
 from .materials import Material
+# Preserve historical private names for callers that used the scalar parser.
+from ._serpent_literals import _ASSIGNMENT, _COUNTER, _NUMBER, _literal, _statements
 
 
 _VECTOR_FIELDS = {
@@ -23,6 +25,7 @@ _VECTOR_FIELDS = {
     "CMM_DIFFCOEF", "INF_DIFFCOEF", "TRC_DIFFCOEF", "INF_FISS", "INF_KAPPA",
 }
 _MATRIX_FIELDS = {"INF_S0", "INF_SP0"}
+_MAX_MOMENT_ORDER = 7
 _REFERENCE_FIELDS = {"IMP_KEFF", "INF_KINF", "ANA_KEFF", "TOT_LEAKRATE"}
 _ADF_VOLUME_FIELDS = {"DF_HET_VOL_FLUX", "DF_HOM_VOL_FLUX"}
 _ADF_SURFACE_FIELDS = {
@@ -38,59 +41,6 @@ _REQUIRED = {
     "INF_S0", "INF_SP0",
 }
 _KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS
-_ASSIGNMENT = re.compile(
-    r"^([A-Z][A-Z0-9_]*)\s*\(\s*idx\s*,\s*(1|\[\s*1\s*:\s*(\d+)\s*\])"
-    r"\s*\)\s*=\s*(.*?)\s*$", re.S)
-_NUMBER = re.compile(
-    r"[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?|inf|nan)$", re.I)
-_COUNTER = re.compile(r"^if\s*\(\s*exist\s*\(\s*'idx'\s*,\s*'var'\s*\)\s*\)$")
-
-
-def _statements(text):
-    """Split MATLAB data statements; honor quoted strings and percent comments."""
-    current, quoted, comment, brackets = [], False, False, 0
-    i = 0
-    while i < len(text):
-        c = text[i]
-        if comment:
-            if c == "\n":
-                comment = False
-                current.append(c)
-        elif quoted:
-            current.append(c)
-            if c == "'":
-                if i + 1 < len(text) and text[i + 1] == "'":
-                    current.append("'")
-                    i += 1
-                else:
-                    quoted = False
-        elif c == "%":
-            comment = True
-        elif c == "'":
-            quoted = True
-            current.append(c)
-        elif c == ";" and brackets == 0:
-            yield "".join(current).strip()
-            current = []
-        else:
-            brackets += (c == "[") - (c == "]")
-            current.append(c)
-        i += 1
-    if quoted or brackets != 0:
-        raise ValueError("unterminated string or numeric vector")
-    if "".join(current).strip():
-        raise ValueError("unterminated statement (missing semicolon)")
-
-
-def _literal(rhs):
-    if re.fullmatch(r"'(?:[^']|'')*'", rhs, re.S):
-        return rhs[1:-1].replace("''", "'")
-    if rhs.startswith("[") and rhs.endswith("]"):
-        rhs = rhs[1:-1].strip()
-    tokens = rhs.replace(",", " ").split()
-    if not tokens or any(not _NUMBER.fullmatch(t) for t in tokens):
-        raise ValueError("expected a numeric literal/vector or quoted string; expressions are unsupported")
-    return np.array([float(t.replace("D", "E").replace("d", "e")) for t in tokens])
 
 
 @dataclass(frozen=True)
@@ -293,7 +243,11 @@ def read_serpent_results(path, *, moment_orders=None):
     ``read_serpent_moment_results`` for the documented opt-in API.
     """
     orders = _moment_orders(moment_orders) if moment_orders is not None else None
-    moment_fields = {f"INF_{kind}{order}" for order in range(1, 8) for kind in ("S", "SP")} if orders is not None else set()
+    moment_fields = (
+        {f"INF_{kind}{order}"
+         for order in range(1, _MAX_MOMENT_ORDER + 1) for kind in ("S", "SP")}
+        if orders is not None else set()
+    )
     known = _KNOWN | moment_fields
     path = Path(path)
     raw = path.read_bytes()
@@ -342,23 +296,30 @@ def read_serpent_results(path, *, moment_orders=None):
     return records
 
 
-def read_serpent_xs(path, *, universe=None, record_index=None):
-    """Select exactly one universe/record; ambiguous selections are errors."""
-    records = read_serpent_results(path)
-    selected = [r for r in records
-                if (universe is None or r.universe == str(universe))
-                and (record_index is None or r.record_index == record_index)]
+def _select_record(records, path, *, universe, record_index):
+    """Apply the same exact selection contract to scalar and moment records."""
+    selected = [record for record in records
+                if (universe is None or record.universe == str(universe))
+                and (record_index is None or record.record_index == record_index)]
     if len(selected) != 1:
-        available = [(r.record_index, r.universe) for r in records]
+        available = [(record.record_index, record.universe) for record in records]
         raise ValueError(f"{Path(path).name}: selection matched {len(selected)} records; "
                          f"choose universe/record_index; available {available}")
     return selected[0]
 
 
+def read_serpent_xs(path, *, universe=None, record_index=None):
+    """Select exactly one universe/record; ambiguous selections are errors."""
+    return _select_record(read_serpent_results(path), path,
+                          universe=universe, record_index=record_index)
+
+
 def _moment_orders(orders):
     orders = tuple(orders)
-    if not orders or any(type(x) is not int for x in orders) or orders != tuple(range(max(orders)+1)) or max(orders) > 7:
-        raise ValueError("moment orders must be consecutive integers 0..L, L <= 7")
+    if (not orders or any(type(order) is not int for order in orders)
+            or orders != tuple(range(max(orders) + 1))
+            or max(orders) > _MAX_MOMENT_ORDER):
+        raise ValueError(f"moment orders must be consecutive integers 0..L, L <= {_MAX_MOMENT_ORDER}")
     return orders
 
 
@@ -377,23 +338,24 @@ class SerpentMomentRecord(SerpentXSRecord):
     required_orders: tuple = (0, 1, 2, 3)
 
     def moment_estimate(self, kind, order):
-        if kind not in ("S", "SP") or type(order) is not int or not 0 <= order <= 7:
-            raise self._error("moment", "use S/SP and integer order 0..7")
+        if kind not in ("S", "SP") or type(order) is not int or not 0 <= order <= _MAX_MOMENT_ORDER:
+            raise self._error("moment", f"use S/SP and integer order 0..{_MAX_MOMENT_ORDER}")
         key = f"INF_{kind}{order}"
         if key not in self.fields:
             raise self._error(key, "missing required moment")
         raw = self.fields[key]
-        if not isinstance(raw, np.ndarray) or raw.size != 2*self.n_groups**2 or not np.all(np.isfinite(raw)):
+        if (not isinstance(raw, np.ndarray) or raw.size != 2 * self.n_groups ** 2
+                or not np.all(np.isfinite(raw))):
             raise self._error(key, "expected G² finite signed mean/reported-error pairs")
-        return NativeMomentEstimate(raw[::2].reshape(self.n_groups,self.n_groups).copy(),
-                                    raw[1::2].reshape(self.n_groups,self.n_groups).copy())
+        return NativeMomentEstimate(raw[::2].reshape(self.n_groups, self.n_groups).copy(),
+                                    raw[1::2].reshape(self.n_groups, self.n_groups).copy())
 
     def _validate(self):
         super()._validate()
-        for order in range(1,8):
+        for order in range(1, _MAX_MOMENT_ORDER + 1):
             for kind in ("S", "SP"):
                 if order in self.required_orders or f"INF_{kind}{order}" in self.fields:
-                    self.moment_estimate(kind,order)
+                    self.moment_estimate(kind, order)
 
     def to_moment_material(self, *, orientation, orders=None):
         from .moment_materials import moment_material_from_record
@@ -411,8 +373,4 @@ def read_serpent_moment_results(path, *, required_orders=(0,1,2,3)):
 
 def read_serpent_moment_xs(path, *, universe=None, record_index=None, required_orders=(0,1,2,3)):
     records = read_serpent_moment_results(path, required_orders=required_orders)
-    selected = [r for r in records if (universe is None or r.universe == str(universe))
-                and (record_index is None or r.record_index == record_index)]
-    if len(selected) != 1:
-        raise ValueError(f"{Path(path).name}: selection matched {len(selected)} records")
-    return selected[0]
+    return _select_record(records, path, universe=universe, record_index=record_index)
