@@ -425,7 +425,7 @@ def test_full_fp32_transient_stays_in_fp32():
     assert result.precursors.dtype == np.float32
     assert np.all(np.isfinite(result.power))
     assert result.steady.converged
-    assert result.steady.balance_error < 64 * np.finfo(np.float32).eps
+    assert result.steady.raw.balance_error < 64 * np.finfo(np.float32).eps
 
 
 def test_full_fp32_transient_preserves_explicit_steady_accuracy():
