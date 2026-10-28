@@ -1,6 +1,6 @@
 """Reference-DF verification against an analytical heterogeneous slab.
 
-Run: PYTHONPATH=. python examples/adf_slab_reference.py --refinements 1 2 4 8
+Run: python examples/adf_slab_reference.py --refinements 1 2 4 8
 The reference is one-group diffusion, not particle transport. Full case
 specification and derivation: docs/adf_slab_reference.md.
 """

@@ -32,6 +32,9 @@ without a checkout).
 | `test_exponential_estimator_ramp.py` | state-driven history rejection on a smooth insertion, same-trial oracle failures, independent Radau error and accepted-half-step replay |
 | `test_exponential_twigl.py` | independent spatial generator vs kernel actions, augmented-exponential state/integral reference, ramp-corner continuity, conservative mesh restriction and all physical gates for six transient methods |
 | `test_linalg_krylov.py` | GMRES/BiCGStab options: match CG on SPD systems through every solver entry point; solve a convection-dominated non-symmetric system where CG provably diverges; the non-symmetric divergence-form cylindrical stencil (`symmetric_operator=False`) equals the SPD-weighted one |
+| `test_cartesian_adf.py` | Cartesian ADF face law vs independently assembled matrices (masks, transpose, currents, traces, factor scaling, invalid input); dense two-group forward/adjoint eigenpairs; ADF kernel-source edits; on a GPU, fused vs unfused vs CPU stencils and GPU vs CPU solves |
+| `test_adf_slab_reference.py`, `test_dallosso_adf_reference.py` | reference-factor equivalence against analytical heterogeneous one- and two-group slabs |
+| `test_colorset_adf.py` | C5G7 colorset ADF workflow: homogenized isolated assemblies keep k∞; symmetric library factors; node-level reference XS + DF reproduce the fine reference exactly, and inadmissible (negative-trace) nodes are reported |
 | `test_femffusion_io.py` | .xsec/XML readers vs the files' exact contents |
 | `test_conduction.py` | conduction vs the exact sinked-slab `cosh` solution (2nd order, Dirichlet and Robin, Cartesian and tri-prism); the discrete energy balance as an exact identity |
 | `test_power_density.py` | power normalizes to the rated watts; independent of the eigenvalue flux's arbitrary scale; kappa- vs nu-weighting; mixing |

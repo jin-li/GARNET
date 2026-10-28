@@ -1,17 +1,18 @@
 """Provisional Bernal et al. simple 3-D reactor; see docs/bernal_adf_benchmark.md.
 
-Usage: PYTHONPATH=. python examples/bernal_adf_benchmark.py --refinements 1 2
+Usage: python examples/bernal_adf_benchmark.py --refinements 1 2
 A replacement integer material map may be supplied with --map (NumPy .npy,
 shape (11,11,10), with 0 for excised cells and 1..6 for paper materials).
 """
 import argparse
 import json
+import time
 
 import numpy as np
 
 from garnet import DiffusionEigenSolver, Grid, Material
 from garnet.adf import assembly_face_factors
-from garnet.backend import asnumpy
+from garnet.backend import asnumpy, synchronize
 
 # Bernal et al. Table 1: D1, D2, absorption, production, downscatter, ADF.
 TABLE = np.array([
@@ -48,7 +49,13 @@ def provisional_map():
     return m
 
 
-def make_problem(base_map, refinement, adf_on, axial_factors=False, device='cpu'):
+def make_problem(base_map, refinement, adf_on, axial_factors=False, device='cpu',
+                 linear_solver=None, precond_degree=0, factor_exponent=1.0, node_factors=None):
+    """Build the solver. With ``adf_on``, Table 1 factors raised to
+    ``factor_exponent`` are applied (0 gives explicit unity factors), unless
+    ``node_factors`` (2, 1210, 6) supplies factors per base node and side.
+    The default solver is GMRES with ADFs and CG without.
+    """
     base_map = np.asarray(base_map)
     if base_map.shape != (11, 11, 10) or not np.issubdtype(base_map.dtype, np.integer):
         raise ValueError('material map must be an integer array with shape (11,11,10)')
@@ -70,9 +77,11 @@ def make_problem(base_map, refinement, adf_on, axial_factors=False, device='cpu'
     # Every original node is its own region, regardless of material number.
     regions = refine(np.arange(base_map.size).reshape(base_map.shape))
     side = np.ones((2, 6, *m.shape))
-    if adf_on:
+    if adf_on and node_factors is not None:
+        side = np.moveaxis(np.asarray(node_factors)[:, regions, :], -1, 1)
+    elif adf_on:
         for g in range(2):
-            cell_factor = TABLE[mmap, 7 + g]
+            cell_factor = TABLE[mmap, 7 + g] ** factor_exponent
             side[g, :4] = cell_factor
             if axial_factors:
                 side[g, 4:] = cell_factor
@@ -80,12 +89,17 @@ def make_problem(base_map, refinement, adf_on, axial_factors=False, device='cpu'
     grid = Grid(m.shape, (220., 220., 200.))
     solver = DiffusionEigenSolver(grid, materials, mmap, active=active,
         bc='zero-flux', mask_bc='zero-flux', device=device, adf=adf,
-        linear_solver='gmres' if adf_on else 'cg')
+        linear_solver=linear_solver or ('gmres' if adf_on else 'cg'),
+        precond_degree=precond_degree)
     return solver, m
 
 
-def run(base_map, refinement, adf_on, axial_factors=False, device='cpu'):
-    solver, m = make_problem(base_map, refinement, adf_on, axial_factors, device)
+def run(base_map, refinement, adf_on, axial_factors=False, device='cpu', **options):
+    """Solve one configuration; ``options`` are passed to make_problem."""
+    t0 = time.perf_counter()
+    solver, m = make_problem(base_map, refinement, adf_on, axial_factors, device, **options)
+    synchronize(solver.xp)
+    setup_seconds = time.perf_counter() - t0
     result = solver.solve(tol_k=1e-9, tol_source=1e-8, inner_rtol_floor=1e-11)
     if not result.converged:
         raise RuntimeError(f'benchmark failed to converge: {result}')
@@ -116,7 +130,8 @@ def run(base_map, refinement, adf_on, axial_factors=False, device='cpu'):
             'pcm_vs_parcs': 1e5 * (result.k_eff - PARCS) / PARCS,
             'relative_eigen_residual': relative_residual,
             'outer_iterations': result.outer_iterations, 'inner_iterations': result.inner_iterations,
-            'solve_seconds': result.solve_seconds, 'normalized_assembly_fission_production': assembly.tolist()}
+            'setup_seconds': setup_seconds, 'solve_seconds': result.solve_seconds,
+            'cells': int(m.size), 'active_cells': int(np.count_nonzero(m)), 'device': solver.device, 'normalized_assembly_fission_production': assembly.tolist()}
 
 
 def main():

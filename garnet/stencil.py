@@ -175,6 +175,7 @@ class GroupOperator:
         self.shape = grid.shape
         dx, dy, dz = grid.spacing
         self.spacing = grid.spacing
+        self._diffusion = D         # face_traces reconstructs half-cell drops
 
         # Cylindrical (r-z) grids: every term of the per-unit-volume Cartesian
         # stencil is scaled by its radial metric factor -- cell terms (removal,
@@ -475,4 +476,26 @@ class GroupOperator:
             lo[axis], hi[axis] = slice(None, -1), slice(1, None)
             result.append(self.spacing[axis] * (
                 low_weight * phi[tuple(lo)] - high_weight * phi[tuple(hi)]))
+        return tuple(result)
+
+    def face_traces(self, phi):
+        """Return the homogeneous surface-flux traces on both sides of each face.
+
+        For every interior face, ``(low, high)`` are the two-point
+        reconstructions ``phi_L - J h / (2 D_L)`` and ``phi_R + J h / (2 D_R)``
+        from the cell values and the current of :meth:`face_currents`. With
+        discontinuity factors the corrected traces agree,
+        ``f_L * low == f_R * high``; without them ``low == high``. On masked
+        faces the current is zero and both traces are the cell values.
+        Cartesian grids only.
+        """
+        D = self._diffusion
+        result = []
+        for axis, current in enumerate(self.face_currents(phi)):
+            lo, hi = [slice(None)] * 3, [slice(None)] * 3
+            lo[axis], hi[axis] = slice(None, -1), slice(1, None)
+            lo, hi = tuple(lo), tuple(hi)
+            half = 0.5 * self.spacing[axis]
+            result.append((phi[lo] - current * half / D[lo],
+                           phi[hi] + current * half / D[hi]))
         return tuple(result)
