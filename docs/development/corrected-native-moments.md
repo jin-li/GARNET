@@ -25,7 +25,9 @@ scalar flux and applies integrated native chi/NSF and the family source weights.
 There is no second off-group scattering RHS.
 
 Final sparse assembly copies each unique cell-to-cell `q` by `q` block into
-preallocated NumPy float64 block data and int32 block indices/row pointers.
+preallocated NumPy float64 block data and typed block indices/row pointers.
+Indices use int32 when the matrix dimension and expanded scalar entry count
+fit, and int64 otherwise, before allocating block storage.
 Sorted block columns form SciPy BSR, which is converted to the public CSR and
 has explicit scalar zeros removed. This avoids Python scalar COO coordinate
 and value lists; it does not change block accumulation, material caching,
@@ -90,8 +92,15 @@ off-group scattering is moved to the left.
 
 ## Bounds and numerical evidence
 
-The constructor rejects more than **20,000 unknowns before local dense material
-or patch allocation and sparse expansion**. It additionally rejects a squared
+By default the constructor rejects more than **20,000 unknowns before local
+dense material or patch allocation and sparse expansion**. An explicit
+`max_unknowns=<positive integer>` replaces that default numeric budget;
+`max_unknowns=None` retains the class default. Boolean, noninteger and
+nonpositive budgets are rejected. The selected budget is exposed as
+`op.max_unknowns` for callers to record in provenance. An override does not
+launch a calculation or establish that construction, an eigenproblem or a
+preconditioner fits in memory. Larger resource probes need separate process
+memory and time caps. The constructor additionally rejects a squared
 local gradient width `(q*dimension)^2` above 4,000,000 entries. These are basic
 prototype bounds, not memory/performance guarantees. Local patch SVD and Python
 block dictionaries can be expensive well below them; assembly-scale storage,
@@ -115,7 +124,8 @@ gradients, actions, fission actions, and face currents exactly with the immutabl
 and reflective/vacuum boundaries. It checks the snapshot manifest and unchanged
 shared helper hashes before loading the frozen operator. That local evidence
 test skips when its external snapshot is absent; independent numerical oracle
-tests remain available in source archives.
+tests remain available in source archives. Small fixtures also check default
+budget refusal, explicit budget replacement and early invalid-budget rejection.
 
 `CoupledMomentEigenSolver` explicitly admits this class, uses the volume
 accessor, preserves its scalar/power positivity and source/k/balance checks,

@@ -26,9 +26,14 @@ class CorrectedNativeMomentOperator:
     _values = CoupledMomentOperator._values
     scalar_flux = CoupledMomentOperator.scalar_flux
 
-    def __init__(self, grid, materials, *, family='sp3', bc=None, condition_limit=1e12):
+    def __init__(self, grid, materials, *, family='sp3', bc=None, condition_limit=1e12,
+                 max_unknowns=None):
         if not isinstance(grid, MeshGrid):
             raise ValueError('Explicit MeshGrid required')
+        limit = self.prototype_unknown_limit if max_unknowns is None else max_unknowns
+        if isinstance(limit, (bool, np.bool_)) or not isinstance(limit, (int, np.integer)) or limit <= 0:
+            raise ValueError('max_unknowns must be a positive integer')
+        self.max_unknowns = int(limit)
         materials = tuple(materials)
         if (not materials or len(materials) != grid.n_cells or
                 any(not isinstance(m, MomentMaterial) for m in materials)):
@@ -39,8 +44,8 @@ class CorrectedNativeMomentOperator:
         # Before material matrices, local dense patches or global sparse expansion.
         if g < 1:
             raise ValueError('Positive native group count required')
-        if self.size > self.prototype_unknown_limit:
-            raise ValueError('Small corrected-native prototype limited to 20000 unknowns')
+        if self.size > self.max_unknowns:
+            raise ValueError(f'Small corrected-native prototype limited to {self.max_unknowns} unknowns')
         if family not in ('sp3', 'sdp1'):
             raise ValueError('Use sp3 or sdp1')
         if not np.isfinite(condition_limit) or condition_limit <= 1:
@@ -148,9 +153,12 @@ class CorrectedNativeMomentOperator:
         # Each dictionary entry is already one unique q-by-q block. Keep its
         # indices at cell granularity rather than boxing q*q scalar COO triples.
         nblocks = sum(len(row) for row in rows)
+        # Include expanded CSR entries when selecting width, since an explicit
+        # unknown budget can exceed the default small-prototype bound.
+        index_dtype = np.int32 if max(self.size, nblocks*q*q) <= np.iinfo(np.int32).max else np.int64
         block_data = np.empty((nblocks,q,q), dtype=float)
-        block_indices = np.empty(nblocks, dtype=np.int32)
-        block_indptr = np.empty(self.n_cells+1, dtype=np.int32)
+        block_indices = np.empty(nblocks, dtype=index_dtype)
+        block_indptr = np.empty(self.n_cells+1, dtype=index_dtype)
         offset = 0
         block_indptr[0] = 0
         for i,row in enumerate(rows):

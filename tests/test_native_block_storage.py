@@ -66,3 +66,34 @@ def test_block_storage_frozen_noncommuting_skew(frozen_operator, family, bc):
         for actual, expected in zip(current.face_currents(state), frozen.face_currents(state)):
             np.testing.assert_array_equal(actual, expected)
         np.testing.assert_allclose(current.assembled @ state.ravel(), current.action(state).ravel(), atol=3e-14)
+
+
+def test_explicit_unknown_budget_replaces_default(monkeypatch):
+    grid = MeshGrid(mesh_grid(2, .41), 'vacuum')
+    materials = [material()] * grid.n_cells
+    reference = CorrectedNativeMomentOperator(grid, materials)
+    assert reference.max_unknowns == 20_000
+    # Lower the class default so testing the opt-in requires no large domain.
+    monkeypatch.setattr(CorrectedNativeMomentOperator, 'prototype_unknown_limit', reference.size - 1)
+    for kwargs in ({}, {'max_unknowns': None}, {'max_unknowns': reference.size - 1}):
+        with pytest.raises(ValueError, match=f'limited to {reference.size - 1} unknowns'):
+            CorrectedNativeMomentOperator(grid, materials, **kwargs)
+    for budget in (reference.size, np.int64(reference.size + 1)):
+        current = CorrectedNativeMomentOperator(grid, materials, max_unknowns=budget)
+        assert current.max_unknowns == budget
+        np.testing.assert_array_equal(current.assembled.toarray(), reference.assembled.toarray())
+        u = np.random.default_rng(20).normal(size=current.size)
+        np.testing.assert_array_equal(current.action(u), reference.action(u))
+
+
+@pytest.mark.parametrize('budget', [True, False, np.bool_(True), 0, -1, 16., .5, np.nan, np.inf, '16', [16]])
+def test_invalid_unknown_budget_rejected_before_geometry_or_material_matrices(monkeypatch, budget):
+    import garnet.corrected_native_moments as native
+    grid = MeshGrid(mesh_grid(2, .41), 'vacuum')
+    materials = [material()] * grid.n_cells
+    def forbidden(*args, **kwargs):
+        raise AssertionError('geometry validation or material matrix allocation must not run')
+    monkeypatch.setattr(native, '_validate_corrected_mesh', forbidden)
+    monkeypatch.setattr(CorrectedNativeMomentOperator, '_inverse', forbidden)
+    with pytest.raises(ValueError, match='max_unknowns must be a positive integer'):
+        CorrectedNativeMomentOperator(grid, materials, max_unknowns=budget)
