@@ -24,6 +24,15 @@ by the eigen driver's recomputed true residual. `fission_action` reconstructs
 scalar flux and applies integrated native chi/NSF and the family source weights.
 There is no second off-group scattering RHS.
 
+Final sparse assembly copies each unique cell-to-cell `q` by `q` block into
+preallocated NumPy float64 block data and int32 block indices/row pointers.
+Sorted block columns form SciPy BSR, which is converted to the public CSR and
+has explicit scalar zeros removed. This avoids Python scalar COO coordinate
+and value lists; it does not change block accumulation, material caching,
+gradient reconstruction, face currents, or the independent action path.
+Both the intermediate block array and final CSR can coexist during conversion.
+This storage change alone supplies no measured memory or scalability guarantee.
+
 ## Matrices and order
 
 With q=2G and native full loss matrices L, the diffusion and reaction are
@@ -99,6 +108,14 @@ independently assembled dense pencil. Partial-boundary affine patch fixtures
 satisfy all included boundary constraints; they are not complete reactor domains.
 The dense eigen oracle uses an orthogonal synthetic mesh and eliminates explicit
 face unknowns, rather than using the production harmonic/vacuum formulas.
+
+`tests/test_native_block_storage.py` additionally compares canonical CSR arrays,
+gradients, actions, fission actions, and face currents exactly with the immutable
+`c613ef7` source snapshot on noncommuting two-group skew meshes for both families
+and reflective/vacuum boundaries. It checks the snapshot manifest and unchanged
+shared helper hashes before loading the frozen operator. That local evidence
+test skips when its external snapshot is absent; independent numerical oracle
+tests remain available in source archives.
 
 `CoupledMomentEigenSolver` explicitly admits this class, uses the volume
 accessor, preserves its scalar/power positivity and source/k/balance checks,

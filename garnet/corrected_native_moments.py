@@ -145,12 +145,22 @@ class CorrectedNativeMomentOperator:
             accumulate(rows[i],row,identity); accumulate(rows[j],row,-identity)
         for i,K,t in boundary:
             accumulate(rows[i],trace(i,t),K)
-        rr,cc,data = [],[],[]
-        a,b = np.indices((q,q))
+        # Each dictionary entry is already one unique q-by-q block. Keep its
+        # indices at cell granularity rather than boxing q*q scalar COO triples.
+        nblocks = sum(len(row) for row in rows)
+        block_data = np.empty((nblocks,q,q), dtype=float)
+        block_indices = np.empty(nblocks, dtype=np.int32)
+        block_indptr = np.empty(self.n_cells+1, dtype=np.int32)
+        offset = 0
+        block_indptr[0] = 0
         for i,row in enumerate(rows):
-            for j,value in row.items():
-                rr.extend((q*i+a.ravel()).tolist()); cc.extend((q*j+b.ravel()).tolist()); data.extend(value.ravel().tolist())
-        self.assembled = sparse.coo_matrix((data,(rr,cc)),shape=(self.size,self.size)).tocsr()
+            for j in sorted(row):
+                block_indices[offset] = j
+                block_data[offset] = row[j]
+                offset += 1
+            block_indptr[i+1] = offset
+        self.assembled = sparse.bsr_matrix(
+            (block_data,block_indices,block_indptr), shape=(self.size,self.size)).tocsr()
         self.assembled.eliminate_zeros()
         if not np.all(np.isfinite(self.assembled.data)):
             raise ValueError('Nonfinite corrected native assembly')
