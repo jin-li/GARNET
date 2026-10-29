@@ -140,6 +140,20 @@ coefficients must be compared with statistical resolution visible. An
 inconclusive comparison is not a pass, and finite-interval coefficients do
 not by themselves establish a local derivative.
 
+Coefficient accuracy compares the predicted secant with the continuous-energy
+(CE) or other reference secant over identical physical endpoints, with the
+same fixed conditions and density path. Its relative tolerance is caller
+policy against that stated reference. Pointwise eigenvalue/power interpolation
+against an exact reconstructed solver and full-step/half-step convergence are
+separate checks; neither substitutes for same-interval coefficient accuracy.
+
+Nominal relative agreement does not establish that reference precision resolves
+the requested tolerance. Treating the prediction as deterministic while
+propagating native Monte Carlo endpoint errors gives only a conditional
+uncertainty screen: it excludes training-XS and ADF uncertainty. Retain an
+inconclusive precision assessment even when the nominal error meets the
+caller target; this screen does not establish application qualification.
+
 Rod libraries initially interpolate directly tallied, fixed-zone effective
 XS as a function of the declared bank position. They do not volume-average
 rodded/unrodded material data. The physical absorber tip and displaced water
