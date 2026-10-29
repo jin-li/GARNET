@@ -41,6 +41,51 @@ class _Gather:
         return self.xp.sum(self.values * u.reshape(-1)[self.indices], axis=1)
 
 
+def _validate_corrected_mesh(grid, D, removal, bc=None, face_df=None, boundary_df=None):
+    """Validate scalar materials and geometry without assembling an operator.
+
+    Return host coefficients, dimension, signed face distances, and boundary
+    specs for this construction only; material-dependent stencils stay local.
+    Removal may be signed (for example after a spectral shift).
+    """
+    mesh, n = grid.mesh, grid.n_cells
+    diffusion = np.asarray(asnumpy(D), dtype=float).reshape(-1)
+    removal = np.asarray(asnumpy(removal), dtype=float).reshape(-1)
+    if (diffusion.size != n or removal.size != n or
+            not np.all(np.isfinite(diffusion)) or np.any(diffusion <= 0) or
+            not np.all(np.isfinite(removal))):
+        raise ValueError("diffusion/removal require one finite value per cell; diffusion must be positive")
+    for value, shape, name in ((face_df, (len(mesh.faces), 2), "face_df"),
+                               (boundary_df, (len(mesh.bfaces),), "boundary_df")):
+        if np.any(_mesh_df(value, shape, name) != 1):
+            raise ValueError("corrected mesh discontinuity factors are not implemented")
+    if (mesh.centroid.ndim != 2 or mesh.centroid.shape[0] != n or
+            mesh.centroid.shape[1] not in (2, 3) or not np.all(np.isfinite(mesh.centroid))):
+        raise ValueError("corrected mesh requires finite 2D or 3D cell centroids")
+    dim = mesh.centroid.shape[1]
+    for name, count in (("face_centers", len(mesh.faces)), ("face_normals", len(mesh.faces)),
+                        ("bface_centers", len(mesh.bfaces)), ("bface_normals", len(mesh.bfaces))):
+        arr = np.asarray(getattr(mesh, name), dtype=float)
+        if arr.shape != (count, dim) or not np.all(np.isfinite(arr)):
+            raise ValueError(f"corrected mesh requires finite {name} with shape {(count, dim)}")
+    for normals in (mesh.face_normals, mesh.bface_normals):
+        if not np.allclose(np.linalg.norm(normals, axis=1), 1, rtol=1e-10, atol=1e-12):
+            raise ValueError("corrected mesh requires unit normals")
+    # Use signed geometric projections, rather than trusting legacy distances.
+    distances = []
+    for (i, j, _, _), center, normal in zip(mesh.faces, mesh.face_centers, mesh.face_normals):
+        distances.append((np.dot(center-mesh.centroid[i], normal),
+                          np.dot(mesh.centroid[j]-center, normal)))
+    distances = np.asarray(distances).reshape(-1, 2)
+    bd = np.array([np.dot(c-mesh.centroid[i], normal) for (i, _, _), c, normal
+                   in zip(mesh.bfaces, mesh.bface_centers, mesh.bface_normals)])
+    if (not np.all(np.isfinite(distances)) or not np.all(np.isfinite(bd)) or
+            np.any(distances <= 0) or np.any(bd <= 0)):
+        raise ValueError("corrected mesh requires positive signed normal distances")
+    specs = grid.classify_boundary(bc)
+    return diffusion, removal, dim, distances, bd, specs
+
+
 class CorrectedMeshGroupOperator:
     """Fixed linear conservative scalar FV stencil; use GMRES, not CG.
 
@@ -57,40 +102,8 @@ class CorrectedMeshGroupOperator:
             raise ValueError("corrected mesh active masks are unsupported")
         mesh, n = grid.mesh, grid.n_cells
         self.xp, self.grid, self.symmetric = xp, grid, False
-        diffusion = np.asarray(asnumpy(D), dtype=float).reshape(-1)
-        removal = np.asarray(asnumpy(removal), dtype=float).reshape(-1)
-        if (diffusion.size != n or removal.size != n or
-                not np.all(np.isfinite(diffusion)) or np.any(diffusion <= 0) or
-                not np.all(np.isfinite(removal))):
-            raise ValueError("diffusion/removal require one finite value per cell; diffusion must be positive")
-        for value, shape, name in ((face_df, (len(mesh.faces), 2), "face_df"),
-                                   (boundary_df, (len(mesh.bfaces),), "boundary_df")):
-            if np.any(_mesh_df(value, shape, name) != 1):
-                raise ValueError("corrected mesh discontinuity factors are not implemented")
-        if (mesh.centroid.ndim != 2 or mesh.centroid.shape[0] != n or
-                mesh.centroid.shape[1] not in (2, 3) or not np.all(np.isfinite(mesh.centroid))):
-            raise ValueError("corrected mesh requires finite 2D or 3D cell centroids")
-        dim = mesh.centroid.shape[1]
-        for name, count in (("face_centers", len(mesh.faces)), ("face_normals", len(mesh.faces)),
-                            ("bface_centers", len(mesh.bfaces)), ("bface_normals", len(mesh.bfaces))):
-            arr = np.asarray(getattr(mesh, name), dtype=float)
-            if arr.shape != (count, dim) or not np.all(np.isfinite(arr)):
-                raise ValueError(f"corrected mesh requires finite {name} with shape {(count, dim)}")
-        for normals in (mesh.face_normals, mesh.bface_normals):
-            if not np.allclose(np.linalg.norm(normals, axis=1), 1, rtol=1e-10, atol=1e-12):
-                raise ValueError("corrected mesh requires unit normals")
-        # Use signed geometric projections, rather than trusting legacy distances.
-        distances = []
-        for (i, j, _, _), center, normal in zip(mesh.faces, mesh.face_centers, mesh.face_normals):
-            distances.append((np.dot(center-mesh.centroid[i], normal),
-                              np.dot(mesh.centroid[j]-center, normal)))
-        distances = np.asarray(distances).reshape(-1, 2)
-        bd = np.array([np.dot(c-mesh.centroid[i], normal) for (i, _, _), c, normal
-                       in zip(mesh.bfaces, mesh.bface_centers, mesh.bface_normals)])
-        if (not np.all(np.isfinite(distances)) or not np.all(np.isfinite(bd)) or
-                np.any(distances <= 0) or np.any(bd <= 0)):
-            raise ValueError("corrected mesh requires positive signed normal distances")
-        specs = grid.classify_boundary(bc)
+        diffusion, removal, dim, distances, bd, specs = _validate_corrected_mesh(
+            grid, D, removal, bc, face_df, boundary_df)
         self.reconstruction_policy = reconstruction_policy
         if gradient_stencils is None:
             if reconstruction_policy != "scalar_boundary":

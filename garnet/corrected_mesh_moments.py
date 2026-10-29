@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 
 from .backend import asnumpy
-from .corrected_mesh import CorrectedMeshGroupOperator, _Gather, _sparse
+from .corrected_mesh import _Gather, _sparse, _validate_corrected_mesh
 from .spn import _SDPN_C, SDPNGroupOperator
 from .mesh import MeshGroupOperator
 from .stencil import face_alpha
@@ -46,12 +46,9 @@ class CorrectedMeshMomentOperator:
         if st.size != n or not np.all(np.isfinite(st)) or np.any(st <= 0):
             raise ValueError("sigma_t requires one finite positive value per cell")
         D = np.stack([np.asarray(asnumpy(D1), dtype=float).reshape(-1), 1/(7*st)])
-        # Reuse the scalar geometry/material validation, with reconstruction
-        # explicitly bypassed: the coupled equations below own all gradients.
-        CorrectedMeshGroupOperator(np, grid, D[0], rem, bc=bc,
-                                   reconstruction_policy="supplied",
-                                   gradient_stencils=[{} for _ in range(n)])
-        specs = grid.classify_boundary(bc)
+        # Validate without building a scalar stencil: coupled gradients below
+        # own the reconstruction and reuse these signed geometric distances.
+        _, rem, dim, distances, bd, specs = _validate_corrected_mesh(grid, D[0], rem, bc)
         c = np.asarray((coeffs if coeffs is not None else _SDPN_C)[order], dtype=float)
         self.src_weights = c[0, :, 0].tolist()
         self.phi0_weights = c[0, 0, :].tolist()
@@ -65,14 +62,6 @@ class CorrectedMeshMomentOperator:
         g = None if boundary_g is None else np.asarray(boundary_g, dtype=float)
         if g is not None and (g.shape != (2, 2) or not np.all(np.isfinite(g))):
             raise ValueError("boundary_g must be a finite 2 by 2 matrix")
-        dim = mesh.centroid.shape[1]
-        distances = np.asarray([(np.dot(center-mesh.centroid[i], normal),
-                                 np.dot(mesh.centroid[j]-center, normal))
-                                for (i, j, _, _), center, normal in
-                                zip(mesh.faces, mesh.face_centers, mesh.face_normals)]).reshape(-1, 2)
-        bd = np.asarray([np.dot(center-mesh.centroid[i], normal)
-                         for (i, _, _), center, normal in
-                         zip(mesh.bfaces, mesh.bface_centers, mesh.bface_normals)])
         equations = [[] for _ in range(n)]
         for (i, j, _, _), normal, (di, dj) in zip(mesh.faces, mesh.face_normals, distances):
             r = mesh.centroid[j]-mesh.centroid[i]
