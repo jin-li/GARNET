@@ -1,6 +1,6 @@
 """Small CPU full-matrix corrected FV experiment; no physical admission.
 
-Native cell-major states are (cells, 2, groups). Full loss matrices remain on
+Native cell-major states are (cells, moments, groups). Full loss matrices remain on
 one left-hand side. This deliberately bounded prototype is not reactor scalable.
 """
 import numpy as np
@@ -8,8 +8,7 @@ from scipy import sparse
 from .mesh import MeshGrid
 from .corrected_mesh import _validate_corrected_mesh
 from .moment_materials import MomentMaterial, _immutable
-from .coupled_moments import CoupledMomentOperator
-from .spn import _SPN_C, _SDPN_C, _SPN_G, _SDPN_G
+from .coupled_moments import CoupledMomentOperator, _family_tables
 
 
 class CorrectedNativeMomentOperator:
@@ -39,15 +38,16 @@ class CorrectedNativeMomentOperator:
                 any(not isinstance(m, MomentMaterial) for m in materials)):
             raise ValueError('One immutable MomentMaterial per cell required')
         self.n_cells, self.n_groups = grid.n_cells, materials[0].n_groups
-        g, q = self.n_groups, 2*self.n_groups
-        self.shape, self.size = (self.n_cells, 2, g), self.n_cells*q
+        coefficients, boundary_g = _family_tables(family)
+        self.n_moments = len(coefficients)
+        self.required_orders = tuple(range(2*self.n_moments))
+        g, q = self.n_groups, self.n_moments*self.n_groups
+        self.shape, self.size = (self.n_cells, self.n_moments, g), self.n_cells*q
         # Before material matrices, local dense patches or global sparse expansion.
         if g < 1:
             raise ValueError('Positive native group count required')
         if self.size > self.max_unknowns:
             raise ValueError(f'Small corrected-native prototype limited to {self.max_unknowns} unknowns')
-        if family not in ('sp3', 'sdp1'):
-            raise ValueError('Use sp3 or sdp1')
         if not np.isfinite(condition_limit) or condition_limit <= 1:
             raise ValueError('Invalid condition limit')
         self.condition_limit = condition_limit
@@ -62,9 +62,9 @@ class CorrectedNativeMomentOperator:
         if (q*dim)**2 > 4_000_000:
             raise ValueError('Small corrected-native prototype local matrix limit exceeded')
         self.volumes = _immutable(np.asarray(mesh.area))
-        c1, c2 = np.asarray((_SPN_C if family == 'sp3' else _SDPN_C)[1])
-        self.c1, self.c2 = _immutable(c1), _immutable(c2)
-        self.B = _immutable(np.kron((_SPN_G if family == 'sp3' else _SDPN_G)[1], np.eye(g)))
+        self.C = tuple(_immutable(c) for c in coefficients)
+        self.c1, self.c2 = self.C[:2]
+        self.B = _immutable(np.kron(boundary_g, np.eye(g)))
         reaction, diffusion, inverse_D, cache = [], [], [], {}
         for v, m in zip(self.volumes, materials):
             if m.n_groups != g or m.provenance.get('orientation_contract') not in ('from-major', 'to-major'):
@@ -73,15 +73,16 @@ class CorrectedNativeMomentOperator:
                 raise ValueError('Energy boundary identity differs')
             if any(a.shape != (g,) or not np.all(np.isfinite(a)) for a in (m.total, m.chi, m.nu_sigma_f, m.kappa_fission)):
                 raise ValueError('Invalid finite native material vectors')
-            if any(k not in m.loss for k in range(4)):
-                raise ValueError('Native losses 0..3 required')
-            if any(m.loss[k].shape != (g,g) or not np.all(np.isfinite(m.loss[k])) for k in range(4)):
+            if any(k not in m.loss for k in self.required_orders):
+                raise ValueError(f'Native losses 0..{self.required_orders[-1]} required')
+            if any(m.loss[k].shape != (g,g) or not np.all(np.isfinite(m.loss[k])) for k in self.required_orders):
                 raise ValueError('Invalid finite native loss matrices')
             if id(m) not in cache:
                 D = np.zeros((q,q))
-                D[:g,:g] = self._inverse(m.loss[1], 'L1')/3
-                D[g:,g:] = self._inverse(m.loss[3], 'L3')/7
-                R = np.kron(c1, m.loss[0])+np.kron(c2, m.loss[2])
+                for k in range(self.n_moments):
+                    s = slice(k*g,(k+1)*g)
+                    D[s,s] = self._inverse(m.loss[2*k+1], f'L{2*k+1}')/(4*k+3)
+                R = sum(np.kron(c, m.loss[2*k]) for k,c in enumerate(self.C))
                 cache[id(m)] = (_immutable(D), _immutable(self._inverse(D, 'D')), _immutable(R))
             D, inv, R = cache[id(m)]
             diffusion.append(D); inverse_D.append(inv); reaction.append(_immutable(v*R))
@@ -176,24 +177,24 @@ class CorrectedNativeMomentOperator:
     def gradients(self,u):
         x = self._values(u)
         return np.stack([sum((np.einsum('adk,k->ad',h,x[col]) for col,h in row.items()),
-                             np.zeros((2*self.n_groups,self.grid.mesh.centroid.shape[1])))
+                             np.zeros((self.n_moments*self.n_groups,self.grid.mesh.centroid.shape[1])))
                          for row in self.gradient_stencils])
 
     def face_currents(self,u):
-        """Integrated interior i->j and boundary outward currents, (faces,2,G)."""
+        """Integrated interior i->j and boundary outward currents, (faces,M,G)."""
         x, H = self._values(u), self.gradients(u)
-        q = 2*self.n_groups
+        q = self.n_moments*self.n_groups
         interior = np.array([T@(x[i]+H[i]@ti-x[j]-H[j]@tj) for i,j,T,ti,tj in self.faces]).reshape(-1,q)
         boundary = np.array([K@(x[i]+H[i]@t) for i,K,t in self.boundary]).reshape(-1,q)
-        return interior.reshape(-1,2,self.n_groups), boundary.reshape(-1,2,self.n_groups)
+        return interior.reshape(-1,self.n_moments,self.n_groups), boundary.reshape(-1,self.n_moments,self.n_groups)
 
     def action(self,u):
         x = self._values(u)
         out = np.stack([r@v for r,v in zip(self.reaction,x)])
         interior,boundary = self.face_currents(u)
-        for (i,j,*_),current in zip(self.faces,interior.reshape(-1,2*self.n_groups)):
+        for (i,j,*_),current in zip(self.faces,interior.reshape(-1,self.n_moments*self.n_groups)):
             out[i] += current; out[j] -= current
-        for (i,*_),current in zip(self.boundary,boundary.reshape(-1,2*self.n_groups)):
+        for (i,*_),current in zip(self.boundary,boundary.reshape(-1,self.n_moments*self.n_groups)):
             out[i] += current
         return out.reshape(np.shape(u))
 

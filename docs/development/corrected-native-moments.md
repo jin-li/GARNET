@@ -1,20 +1,25 @@
 # Experimental native full-matrix corrected moments
 
 `garnet.corrected_native_moments.CorrectedNativeMomentOperator` is an explicit,
-small CPU experiment for SP3 and SDP1 on a `MeshGrid`. It is separate from the
+CPU research implementation for SP3, SDP1 and SP5 on a `MeshGrid`. It is separate from the
 legacy per-group corrected scalar/moment dispatch. It makes no reactor
 scalability, angular-transport consistency, or physical-accuracy claim. No
 assembly calculation or native-data solve is part of this implementation.
 
 Construct with one immutable `MomentMaterial` reference per cell and an explicit
-`family='sp3'` or `'sdp1'`. Boundaries come from the grid (or the optional `bc`
+`family='sp3'`, `'sdp1'` or `'sp5'`. Boundaries come from the grid (or the optional `bc`
 argument), and must be homogeneous `vacuum` or `reflective`. No active mask,
-discontinuity factor, fitted boundary source or GPU path is provided. States have native **cell-major** shape `(n_cells, 2, n_groups)` or
-its flattened equivalent. The two moments are `U=(phi0+2*phi2, 3*phi2)`;
-`scalar_flux(U)` reconstructs `U0-2*U1/3`. `action`/`apply` preserve input shape;
-`face_currents` returns integrated currents with shapes `(n_faces, 2, n_groups)`
-and `(n_boundary_faces, 2, n_groups)`, directed i-to-j and outward respectively.
-`gradients` returns `(n_cells, 2*n_groups, dimension)`.
+discontinuity factor, fitted boundary source or GPU path is provided. States have native **cell-major** shape `(n_cells, M, n_groups)` or
+its flattened equivalent. SP3/SDP1 use `M=2`, with
+`U=(phi0+2*phi2, 3*phi2)` and scalar flux `U0-2*U1/3`. SP5 uses `M=3`, with
+`U=(phi0+2*phi2, 3*phi2+4*phi4, 5*phi4)` and scalar flux
+`U0-2*U1/3+8*U2/15`. Signed higher moments are retained.
+`action`/`apply` preserve input shape; `face_currents` returns integrated
+currents shaped `(n_faces, M, n_groups)` and `(n_boundary_faces, M, n_groups)`,
+directed i-to-j and outward respectively. `gradients` returns
+`(n_cells, M*n_groups, dimension)`. `n_moments` and `required_orders` expose the
+selected layout and native loss orders; `C` contains all reaction coefficient
+matrices, while `c1`/`c2` retain their existing meanings.
 
 The `volumes` accessor supplies frozen cell measures for the native CPU eigen
 driver, since `MeshGrid` stores them as `grid.mesh.area`. `assembled` is host
@@ -37,17 +42,21 @@ This storage change alone supplies no measured memory or scalability guarantee.
 
 ## Matrices and order
 
-With q=2G and native full loss matrices L, the diffusion and reaction are
+With q=MG and native full loss matrices L, the diffusion and reaction are
 
 ```
-D_i = block_diag(inv(L1_i)/3, inv(L3_i)/7)
-R_i = volume_i * (C1 kron L0_i + C2 kron L2_i)
+D_i = block_diag(inv(L_(2m+1),i)/(4m+3) for m=0..M-1)
+R_i = volume_i * sum(C[m] kron L_(2m),i for m=0..M-1)
 B   = G_family kron I_G
 ```
 
-All matrices retain their nonsymmetry and signed entries. Finite L0 and L2 are
-sufficient: neither reaction nor removal needs to be invertible or positive.
-L1, L3 and the actual elimination matrices must pass the finite condition gate
+SP5 requires explicit native orders 0 through 5; SP3/SDP1 require 0 through 3.
+Pass `required_orders=tuple(range(6))` to the native Serpent reader for SP5,
+then construct moment materials with the established orientation. Missing orders
+are refused; no scalar transport correction or synthesized high moment is used.
+All matrices retain their nonsymmetry and signed entries. Finite even-order losses
+are sufficient: reaction/removal matrices need not be invertible or positive.
+Odd-order losses and actual elimination matrices must pass the finite condition gate
 (default 1e12); there is no symmetric-positive-definite gate, clipping or
 regularization. The material matrix cache reuses only identical immutable
 material objects. Material-dependent gradient patches remain cell-specific.
@@ -122,7 +131,8 @@ face unknowns, rather than using the production harmonic/vacuum formulas.
 gradients, actions, fission actions, and face currents exactly with the immutable
 `c613ef7` source snapshot on noncommuting two-group skew meshes for both families
 and reflective/vacuum boundaries. It checks the snapshot manifest and unchanged
-shared helper hashes before loading the frozen operator. That local evidence
+unchanged shared type/helper hashes before loading the frozen operator and its
+frozen coupled-moment helper in an isolated namespace. That local evidence
 test skips when its external snapshot is absent; independent numerical oracle
 tests remain available in source archives. Small fixtures also check default
 budget refusal, explicit budget replacement and early invalid-budget rejection.
@@ -165,9 +175,10 @@ checks do not establish convergence on reactor geometry or native data.
 ### Optional fixed CPU energy-group ILU
 
 `solve(preconditioner='group_ilu')` uses fixed block Jacobi across energy
-groups. For every group `g`, it extracts both moments for **all cells** from the
-native `(cells, 2, G)` layout, in ascending cell order with moments 0 then 1:
-`[2*G*i+g, 2*G*i+G+g]` for each cell `i`. This is a `2*cells` square diagonal
+groups. For every group `g`, it extracts every moment for **all cells** from the
+native `(cells, M, G)` layout, using indices `M*G*i+G*m+g` in ascending cell,
+then moment order. For SP3/SDP1 this remains `[2*G*i+g, 2*G*i+G+g]`.
+This is an `M*cells` square diagonal
 group block, including all its spatial and moment couplings. Each block is
 copied to CSC and factored exactly once with `spilu(drop_tol=1e-6,
 fill_factor=20)`. Group solves gather and scatter those same indices for every
@@ -202,3 +213,26 @@ angular estimators for deterministic physical use. Native balance/precision,
 higher-moment estimator consistency and binary/library identity remain separate
 questions. This experiment is a separate numerical route, not an assumed fix
 for the previously observed reactor discrepancy.
+
+## Experimental SP5 validation and resource scope
+
+`tests/test_native_sp5.py` derives the transformed SP5 reaction and outward
+Marshak boundary coefficients independently using exact fractions, the explicit
+U-transform and half-range Legendre integrals. It checks dense face-unknown
+elimination, third-moment-only scalar/fission reconstruction, homogeneous
+reflective k-infinity, a compatible orthogonal scalar-SP5 reduction, noncommuting
+skew affine transmission, vacuum current identities, energy permutations,
+three-moment group ILU and true-residual rejection of corrupted assembled matrices.
+The existing corrected scalar mesh operator supports only two moments; it does
+not provide a nonorthogonal SP5 reference.
+
+An SP5 construction or one successful group factorization does not establish
+full-solve memory feasibility. A resource probe must include all group factors,
+a GMRES solve, independent action and result creation. Record family, moment
+count, required orders and implementation hashes with resource evidence. An SP3
+construction receipt cannot qualify SP5 resources. Public default unknown limits
+are unchanged; large trials require explicit process memory/time caps.
+
+These checks establish computational behavior on their stated fixtures. They do
+not establish improved reactor accuracy, higher-moment estimator consistency,
+statistical precision or full-core feasibility.

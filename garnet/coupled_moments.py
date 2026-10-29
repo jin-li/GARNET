@@ -1,6 +1,6 @@
-"""Tiny CPU full-energy SP3/SDP1 orthogonal integrated TPFA operators.
+"""Tiny CPU full-energy SP3/SDP1/SP5 orthogonal integrated TPFA operators.
 
-Cell-major unknowns have shape (cells, 2, groups), U=(phi0+2phi2,3phi2).
+Cell-major unknowns have shape (cells, moments, groups).
 No eigenvalue driver, GPU, DF, regularization or physical admission is supplied.
 """
 from dataclasses import dataclass
@@ -49,6 +49,15 @@ def _positive(value):
     return np.isfinite(value) and value>0
 
 
+def _family_tables(family):
+    """Bounded native families; no implicit higher-order fallback."""
+    if family not in ('sp3', 'sdp1', 'sp5'):
+        raise ValueError('Use sp3, sdp1 or sp5')
+    order = 2 if family == 'sp5' else 1
+    return (np.asarray((_SDPN_C if family == 'sdp1' else _SPN_C)[order], dtype=float),
+            np.asarray((_SDPN_G if family == 'sdp1' else _SPN_G)[order], dtype=float))
+
+
 def _geometry(mesh):
     v,c=mesh.volumes,mesh.centroids
     if v.ndim!=1 or not v.size or c.ndim!=2 or c.shape[0]!=v.size or c.shape[1] not in (1,2,3) or not np.all(np.isfinite(c)) or not np.all(np.isfinite(v)) or np.any(v<=0):
@@ -78,7 +87,7 @@ def _geometry(mesh):
 
 
 class CoupledMomentOperator:
-    """Integrated nonsymmetric operator; scalar reconstruction U0-2U1/3.
+    """Integrated nonsymmetric operator with transformed scalar reconstruction.
 
     All inversions reject finite condition numbers above condition_limit.
     Sparse assembly and matrix-free actions use the same frozen face blocks;
@@ -89,32 +98,33 @@ class CoupledMomentOperator:
     def __init__(self,mesh,materials,*,family='sp3',condition_limit=1e12):
         if not isinstance(mesh,OrthogonalMesh):raise ValueError('Explicit OrthogonalMesh required')
         _geometry(mesh)
-        if family not in ('sp3','sdp1'):raise ValueError('Use sp3 or sdp1')
+        coefficients, boundary_g = _family_tables(family)
         if not np.isfinite(condition_limit) or condition_limit<=1:raise ValueError('Invalid condition limit')
         materials=tuple(materials)
         if len(materials)!=len(mesh.volumes) or not materials or any(not isinstance(m,MomentMaterial) for m in materials):raise ValueError('One immutable MomentMaterial per cell required')
         self.n_groups=materials[0].n_groups;self.n_cells=len(materials);g=self.n_groups
         if any(m.n_groups!=g or m.provenance.get('orientation_contract') not in ('from-major','to-major') for m in materials):raise ValueError('Group/orientation identity differs')
         self.mesh=mesh;self.materials=materials;self.family=family
-        self.shape=(self.n_cells,2,g);self.size=self.n_cells*2*g
+        self.n_moments=len(coefficients);self.required_orders=tuple(range(2*self.n_moments))
+        self.shape=(self.n_cells,self.n_moments,g);self.size=self.n_cells*self.n_moments*g
         self.condition_limit=condition_limit
-        c1,c2=np.asarray((_SPN_C if family=='sp3' else _SDPN_C)[1],dtype=float)
-        self.c1=_immutable(c1);self.c2=_immutable(c2)
-        self.B=_immutable(np.kron(np.asarray((_SPN_G if family=='sp3' else _SDPN_G)[1]),np.eye(g)))
+        self.C=tuple(_immutable(c) for c in coefficients)
+        self.c1,self.c2=self.C[:2]
+        self.B=_immutable(np.kron(boundary_g,np.eye(g)))
         reaction=[];diffusion=[]
         for v,m in zip(mesh.volumes,materials):
             if any(a.shape!=(g,) or not np.all(np.isfinite(a)) for a in (m.total,m.chi,m.nu_sigma_f,m.kappa_fission)):
                 raise ValueError('Invalid finite native material vectors')
             if not np.array_equal(m.provenance.get('energy_bounds_mev'),materials[0].provenance.get('energy_bounds_mev')):
                 raise ValueError('Energy boundary identity differs')
-            if any(order not in m.loss for order in range(4)):raise ValueError('Native losses 0..3 required')
-            for order in range(4):
-                if m.loss[order].shape!=(g,g):raise ValueError('Invalid group loss shape')
-                self._inverse(m.loss[order],f'Sigma{order}')
-            reaction.append(v*(np.kron(c1,m.loss[0])+np.kron(c2,m.loss[2])))
-            D=np.zeros((2*g,2*g))
-            D[:g,:g]=self._inverse(m.loss[1],'Sigma1')/3
-            D[g:,g:]=self._inverse(m.loss[3],'Sigma3')/7
+            if any(order not in m.loss for order in self.required_orders):raise ValueError(f'Native losses 0..{self.required_orders[-1]} required')
+            for order in self.required_orders:
+                if m.loss[order].shape!=(g,g) or not np.all(np.isfinite(m.loss[order])):raise ValueError('Invalid finite group loss matrix')
+            reaction.append(v*sum(np.kron(c,m.loss[2*k]) for k,c in enumerate(self.C)))
+            D=np.zeros((self.n_moments*g,self.n_moments*g))
+            for k in range(self.n_moments):
+                s=slice(k*g,(k+1)*g)
+                D[s,s]=self._inverse(m.loss[2*k+1],f'Sigma{2*k+1}')/(4*k+3)
             diffusion.append(D)
             if not np.all(np.isfinite(reaction[-1])):
                 raise ValueError('Nonfinite integrated reaction')
@@ -132,7 +142,7 @@ class CoupledMomentOperator:
         if any(not np.all(np.isfinite(a)) for _,_,a in faces) or any(not np.all(np.isfinite(a)) for _,a in boundary):
             raise ValueError('Nonfinite integrated face block')
         self.faces=tuple(faces);self.boundary=tuple(boundary)
-        rows=[];cols=[];data=[];q=2*g
+        rows=[];cols=[];data=[];q=self.n_moments*g
         def block(i,j,a):
             rr,cc=np.indices(a.shape)
             rows.extend((i*q+rr.ravel()).tolist());cols.extend((j*q+cc.ravel()).tolist());data.extend(a.ravel().tolist())
@@ -152,7 +162,7 @@ class CoupledMomentOperator:
     def _values(self,u):
         u=np.asarray(u,dtype=float)
         if u.shape not in (self.shape,(self.size,)) or not np.all(np.isfinite(u)):raise ValueError('Invalid finite moment unknowns')
-        return u.reshape(self.n_cells,2*self.n_groups)
+        return u.reshape(self.n_cells,self.n_moments*self.n_groups)
 
     def action(self,u):
         x=self._values(u);out=np.stack([a@v for a,v in zip(self.reaction,x)])
@@ -163,7 +173,9 @@ class CoupledMomentOperator:
 
     def scalar_flux(self,u):
         x=self._values(u).reshape(self.shape)
-        return x[:,0,:]-2*x[:,1,:]/3
+        scalar=x[:,0,:]-2*x[:,1,:]/3
+        if self.n_moments==3:scalar=scalar+8*x[:,2,:]/15
+        return scalar
 
     def fission_action(self,u):
         phi=self.scalar_flux(u)

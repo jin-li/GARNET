@@ -1,8 +1,11 @@
 """Storage regression against the immutable c613ef7 numerical implementation."""
 import hashlib
+import importlib
 import importlib.util
 import json
 from pathlib import Path
+import sys
+from types import ModuleType
 
 import numpy as np
 import pytest
@@ -24,19 +27,38 @@ def frozen_operator():
         pytest.skip('local immutable c613ef7 evidence snapshot unavailable')
     manifest = json.loads((snapshot / 'manifest.json').read_text())
     assert manifest['commit'] == 'c613ef7d3380c6c1b6c86427dc1cc7d63e2ffb21'
-    source = snapshot / 'garnet/corrected_native_moments.py'
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == manifest['files'][
-        'garnet/corrected_native_moments.py']
-    # The frozen module uses the live package's shared types/helpers. Verify
-    # those sources are identical to the snapshot before comparing operators.
+    # Freeze both operators together: the old corrected operator must retain
+    # its original coupled value/scalar helpers when the live layout evolves.
+    for name in ('coupled_moments.py', 'corrected_native_moments.py'):
+        assert hashlib.sha256((snapshot / 'garnet' / name).read_bytes()).hexdigest() == manifest['files']['garnet/' + name]
+    # Only unchanged, hash-verified helpers share live identities. In particular
+    # MeshGrid/MomentMaterial must be the same types for isinstance contracts.
     package = Path(__file__).resolve().parents[1] / 'garnet'
-    for name in ('mesh.py', 'corrected_mesh.py', 'moment_materials.py',
-                 'coupled_moments.py', 'spn.py'):
+    helpers = ('mesh.py', 'corrected_mesh.py', 'moment_materials.py', 'spn.py')
+    for name in helpers:
         assert hashlib.sha256((package / name).read_bytes()).hexdigest() == manifest['files']['garnet/' + name]
-    spec = importlib.util.spec_from_file_location('garnet._frozen_c613ef7_native', source)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.CorrectedNativeMomentOperator
+    private_name = '_garnet_frozen_c613ef7_storage'
+    private = ModuleType(private_name)
+    private.__package__ = private_name
+    private.__path__ = [str(snapshot / 'garnet')]
+    private.__spec__ = importlib.util.spec_from_loader(private_name, loader=None, is_package=True)
+    # Restore sys.modules after this module-scoped fixture, including on failure.
+    with pytest.MonkeyPatch.context() as aliases:
+        aliases.setitem(sys.modules, private_name, private)
+        for filename in helpers:
+            name = filename[:-3]
+            module = importlib.import_module('garnet.' + name)
+            aliases.setitem(sys.modules, private_name + '.' + name, module)
+            setattr(private, name, module)
+        for name in ('coupled_moments', 'corrected_native_moments'):
+            fullname = private_name + '.' + name
+            source = snapshot / 'garnet' / (name + '.py')
+            spec = importlib.util.spec_from_file_location(fullname, source)
+            module = importlib.util.module_from_spec(spec)
+            aliases.setitem(sys.modules, fullname, module)
+            spec.loader.exec_module(module)
+            setattr(private, name, module)
+        yield module.CorrectedNativeMomentOperator
 
 
 @pytest.mark.parametrize('family', ['sp3', 'sdp1'])
