@@ -44,6 +44,9 @@ class CoupledMomentEigenSolver:
     roundoff-sized negatives relative to max(1, max absolute field).
     preconditioner='ilu' freezes a CSC copy and factors it once per solve with
     drop_tol=1e-6 and fill_factor=20. Setup failure raises; no fallback occurs.
+    preconditioner='group_ilu' instead freezes one two-moment, all-cell block
+    per energy group and applies their factors as fixed block Jacobi. GMRES
+    retains the full assembled matrix, including every off-group coefficient.
     """
     def __init__(self,operator):
         if not isinstance(operator,(CoupledMomentOperator,CorrectedNativeMomentOperator)):
@@ -54,8 +57,8 @@ class CoupledMomentEigenSolver:
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12,preconditioner='none'):
         op=self.operator
-        if preconditioner not in ('none','ilu'):
-            raise ValueError("preconditioner must be 'none' or 'ilu'")
+        if preconditioner not in ('none','ilu','group_ilu'):
+            raise ValueError("preconditioner must be 'none', 'ilu' or 'group_ilu'")
         # Corrected MeshGrid volumes are exposed explicitly by the operator.
         volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
@@ -93,6 +96,37 @@ class CoupledMomentEigenSolver:
             preconditioner_metadata.update(setup_seconds=perf_counter()-started,
                 matrix_nnz=int(solve_matrix.nnz),drop_tol=1e-6,fill_factor=20,
                 superlu_nnz=int(factor.nnz),
+                superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
+        elif preconditioner=='group_ilu':
+            started=perf_counter()
+            cells,_,groups=op.shape
+            group_factors=[];group_stats=[]
+            for group in range(groups):
+                group_started=perf_counter()
+                # Native layout is (cells, 2, G): adjacent entries in this
+                # block are the two moments of one cell, not two groups.
+                indices=(2*groups*np.arange(cells)[:,None]+np.array([group,groups+group])).ravel()
+                block=solve_matrix[indices,:][:,indices].tocsc(copy=True)
+                try:
+                    factor=spilu(block,drop_tol=1e-6,fill_factor=20)
+                except (RuntimeError,ValueError) as exc:
+                    raise RuntimeError(f'Group ILU factorization failed for group {group}; no solver fallback') from exc
+                group_factors.append((indices,factor))
+                group_stats.append(dict(group=group,dimension=int(block.shape[0]),
+                    matrix_nnz=int(block.nnz),superlu_nnz=int(factor.nnz),
+                    setup_seconds=perf_counter()-group_started))
+            # Close over the factors once: neither later matrix mutation nor
+            # outer iterations rebuild or update the preconditioner.
+            group_factors=tuple(group_factors)
+            def group_solve(rhs):
+                result=np.empty(op.size,dtype=solve_matrix.dtype)
+                for indices,factor in group_factors:
+                    result[indices]=factor.solve(np.asarray(rhs).reshape(-1)[indices])
+                return result
+            M=LinearOperator(solve_matrix.shape,matvec=group_solve,dtype=solve_matrix.dtype)
+            preconditioner_metadata.update(setup_seconds=perf_counter()-started,
+                drop_tol=1e-6,fill_factor=20,groups=group_stats,
+                group_cell_ordering='ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]',
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
         k=1.;history=[];reason='outer_iteration_limit';numerical=False;full=float('inf')
         # Keep the linear operator independent from the mutable assembled sparse

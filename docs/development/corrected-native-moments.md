@@ -162,6 +162,40 @@ reject corrupted CSR even when its ILU solve succeeds, check one factorization
 without L/U materialization, and check explicit failure without fallback. These
 checks do not establish convergence on reactor geometry or native data.
 
+### Optional fixed CPU energy-group ILU
+
+`solve(preconditioner='group_ilu')` uses fixed block Jacobi across energy
+groups. For every group `g`, it extracts both moments for **all cells** from the
+native `(cells, 2, G)` layout, in ascending cell order with moments 0 then 1:
+`[2*G*i+g, 2*G*i+G+g]` for each cell `i`. This is a `2*cells` square diagonal
+group block, including all its spatial and moment couplings. Each block is
+copied to CSC and factored exactly once with `spilu(drop_tol=1e-6,
+fill_factor=20)`. Group solves gather and scatter those same indices for every
+GMRES application; factors remain frozen throughout the solve. SuperLU's other
+options retain their defaults. Setup failures identify the group and raise
+with their original cause; there is no solver fallback.
+
+GMRES continues to use the original full CSR, retaining every off-group
+coefficient. Only the preconditioner omits off-group coupling. This mode does
+not make a full-matrix CSC snapshot; it freezes only the extracted factors.
+As with the existing modes, callers must not mutate the assembled matrix
+during a solve. No equations, independent `op.action` linear/outer/final
+residual checks, convergence tolerances or positivity criteria change.
+Both admitted native CPU operator classes support this option.
+
+The common metadata records total setup time and full `matrix_nnz`, plus
+`drop_tol`, `fill_factor`, `group_cell_ordering`, and a `groups` sequence. Each
+group entry records its zero-based `group`, block `dimension`, `matrix_nnz`,
+`superlu_nnz` and `setup_seconds`. Per-group setup time includes extraction,
+CSC conversion and factorization. The `superlu_nnz_caveat` has the same meaning
+as in monolithic ILU: reported internal storage, with no L/U materialization.
+`tests/test_native_group_ilu.py` checks distinct permuted blocks, index
+gather/scatter and frozen factors, exactly G setup calls across outer
+iterations, one-group equivalence to monolithic ILU, small corrected SP3/SDP1
+eigenpairs against an independent dense pencil, and rejection of corrupted
+assembly by true action. These synthetic checks supply no native-data physical
+admission, reactor convergence, runtime or memory guarantee.
+
 The existing raw native-data audit found order-1/3 invertibility with condition
 numbers at most about 308. That algebraic observation does not qualify higher
 angular estimators for deterministic physical use. Native balance/precision,
