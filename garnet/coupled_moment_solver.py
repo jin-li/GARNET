@@ -10,6 +10,7 @@ import numpy as np
 import scipy
 from scipy.sparse.linalg import gmres
 from .coupled_moments import CoupledMomentOperator
+from .corrected_native_moments import CorrectedNativeMomentOperator
 from .moment_materials import _immutable
 
 
@@ -42,13 +43,16 @@ class CoupledMomentEigenSolver:
     roundoff-sized negatives relative to max(1, max absolute field).
     """
     def __init__(self,operator):
-        if not isinstance(operator,CoupledMomentOperator):raise ValueError('CoupledMomentOperator required')
+        if not isinstance(operator,(CoupledMomentOperator,CorrectedNativeMomentOperator)):
+            raise ValueError('Explicit native coupled or corrected-native operator required')
         self.operator=operator
 
     def solve(self,*,initial=None,max_inner=1000,max_outer=200,inner_tolerance=1e-11,
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12):
         op=self.operator
+        # Corrected MeshGrid volumes are exposed explicitly by the operator.
+        volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
             raise ValueError('Positive integer iteration budgets required')
         tolerances=(inner_tolerance,k_tolerance,source_tolerance,residual_tolerance,positivity_tolerance)
@@ -61,7 +65,7 @@ class CoupledMomentEigenSolver:
         u=u.reshape(-1)
         def source_size(x):
             phi=op.scalar_flux(x)
-            return float(sum(v*np.dot(m.nu_sigma_f,p) for v,m,p in zip(op.mesh.volumes,op.materials,phi)))
+            return float(sum(v*np.dot(m.nu_sigma_f,p) for v,m,p in zip(volumes,op.materials,phi)))
         def nonnegative(x):
             return bool(np.all(np.isfinite(x)) and np.min(x)>=-positivity_tolerance*max(1.,float(np.max(np.abs(x)))))
         scalar=op.scalar_flux(u)
@@ -106,6 +110,9 @@ class CoupledMomentEigenSolver:
         full=float(np.linalg.norm(op.action(u)-rhs)/np.linalg.norm(rhs))
         numerical=numerical and np.isfinite(full) and full<=residual_tolerance
         files=(Path(__file__),Path(__file__).with_name('coupled_moments.py'),Path(__file__).with_name('moment_materials.py'),Path(__file__).with_name('spn.py'))
+        if isinstance(op,CorrectedNativeMomentOperator):
+            files += tuple(Path(__file__).with_name(name) for name in
+                           ('corrected_native_moments.py','corrected_mesh.py','mesh.py'))
         provenance=dict(physical_admission=False,computational_only=True,solver='CPU scipy GMRES + source-normalized power iteration',
             numpy_version=np.__version__,scipy_version=scipy.__version__,family=op.family,material_provenance=[dict(m.provenance) for m in op.materials],
             implementation_sha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
