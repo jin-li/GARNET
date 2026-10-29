@@ -1340,8 +1340,11 @@ class _MeshSolverMixin:
             raise ValueError("mesh_preconditioner is only available for corrected meshes")
         if self.mesh_discretization == "corrected":
             self.mesh_preconditioner_model = self.mesh_preconditioner_model or "tpfa_ilu"
-            if self.mesh_preconditioner_model not in ("tpfa_ilu", "corrected_ilu", "tpfa_neumann"):
-                raise ValueError("mesh_preconditioner must be 'tpfa_ilu', 'corrected_ilu', or 'tpfa_neumann'")
+            if self.mesh_preconditioner_model not in ("tpfa_ilu", "corrected_ilu", "corrected_block_ilu", "tpfa_neumann"):
+                raise ValueError("mesh_preconditioner must be 'tpfa_ilu', 'corrected_ilu', 'corrected_block_ilu', or 'tpfa_neumann'")
+            if self.mesh_preconditioner_model == "corrected_block_ilu" and (
+                    not isinstance(self, SDPNEigenSolver) or self._order != 1):
+                raise ValueError("corrected_block_ilu supports only order-1 mesh SP3/SDP1")
         if self.mesh_discretization not in ("tpfa", "corrected"):
             raise ValueError("mesh_discretization must be 'tpfa' or 'corrected'")
         if self.mesh_discretization == "corrected":
@@ -1421,6 +1424,12 @@ class _MeshSolverMixin:
                 from .mesh_preconditioner import build_corrected_ilu
                 self.preconds = [build_corrected_ilu(op.host_matrix, op.diag.shape, self.xp)
                                  for op in self.ops]
+            elif self.mesh_preconditioner_model == "corrected_block_ilu":
+                from .mesh_preconditioner import build_corrected_block_ilu
+                self.preconds = [build_corrected_block_ilu(op.host_matrix, op.diag.shape, self.xp)
+                                 for op in self.ops]
+                for group, precondition in enumerate(self.preconds):
+                    precondition.group = group
             else:
                 self.preconds = [neumann_preconditioner(op.tpfa_apply, op.tpfa_inv_diag,
                                                         2) for op in self.ops]

@@ -89,6 +89,27 @@ or convergence tolerances. Matrix/factor nonzero counts and setup seconds are
 available on each preconditioner; corrected fill can require more memory.
 Small skew heterogeneous CPU tests check both families against direct solves
 and true GMRES residuals. GPU use of this new option remains unverified.
+
+Opt-in `mesh_preconditioner="corrected_block_ilu"` uses a fixed lower-triangular
+moment approximation for order-1 SP3/SDP1. Slice `A00`, `A11`, and the full
+sparse `A10` directly from the corrected `host_matrix` in its moment-major
+U-form layout `[U0, U1]`, where `phi0 = U0 - 2/3 U1`. No new volume weighting,
+diagonal scaling, clipping, or positivity/SPD gate is applied. Build scalar
+ILUs of the two diagonal blocks sequentially with `drop_tol=1e-6` and
+`fill_factor=20`; application is `z0=B00(r0)`, `z1=B11(r1-A10 z0)`.
+Off-cell Marshak entries in `A10` are retained. Setup errors identify the
+failing block and propagate without fallback. CPU factors use internal
+`lu.solve` and `lu.nnz`, avoiding explicit L/U extraction for both blocks.
+`block_stats` provides block names, setup seconds, matrix and factor counts;
+the callable also provides group index, total setup seconds, total factor
+count, original matrix count, and retained coupling count. Counts use the
+`superlu_reported_not_explicit_csc_count` convention. Independent tests cover
+nonsymmetric off-cell coupling, row/column permutations, linearity, singular
+blocks, backend/shape rejection, and both moment families on skew reflective
+and Marshak meshes with direct comparisons and true GMRES residuals. CuPy
+uses the existing device triangular solves; GPU execution and large-model
+memory/convergence have not been validated for this option.
+
 Actual AMD validation covers the synthetic two-group sheared
 mesh with coupled vacuum boundaries, with fusion enabled and disabled; CPU
 and GPU eigenvalues and scalar fluxes agree to double-precision roundoff.

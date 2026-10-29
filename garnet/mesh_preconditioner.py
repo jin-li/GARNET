@@ -90,6 +90,58 @@ def build_corrected_ilu(matrix, shape, xp):
     return _build_ilu(matrix, shape, xp)
 
 
+def build_corrected_block_ilu(matrix, shape, xp):
+    """Fixed lower-block ILU for corrected order-1 moment-major U states.
+
+    Slice the unscaled corrected matrix in the actual ``[U0, U1]`` layout
+    (scalar flux is ``U0 - 2/3 U1``). Apply ``z0=B00(r0)`` followed by
+    ``z1=B11(r1-A10 z0)``. The full sparse A10 includes off-cell Marshak
+    coupling. Each diagonal block uses the scalar ILU tolerances below.
+    """
+    start = perf_counter()
+    shape = tuple(shape)
+    if len(shape) < 2 or shape[0] != 2 or any(n <= 0 for n in shape):
+        raise ValueError("corrected block ILU requires a two-moment state shape")
+    n = int(np.prod(shape[1:]))
+    if matrix.shape != (2*n, 2*n):
+        raise ValueError("ILU matrix dimensions must match the state shape")
+    if xp is not np and getattr(xp, "__name__", None) != "cupy":
+        raise TypeError("corrected block ILU backend must be NumPy or CuPy")
+    matrix = matrix.tocsr()
+    blocks = []
+    for moment in range(2):
+        sl = slice(moment*n, (moment+1)*n)
+        try:
+            blocks.append(_build_ilu(matrix[sl, sl], shape[1:], xp))
+        except RuntimeError as exc:
+            raise RuntimeError(f"corrected block ILU A{moment}{moment}: {exc}") from exc
+    a10 = matrix[n:, :n].tocsr()
+    if xp is not np:
+        from cupyx.scipy import sparse
+        a10 = sparse.csr_matrix(a10)
+
+    def precondition(r):
+        if not isinstance(r, xp.ndarray):
+            raise TypeError("ILU residual must use the configured array backend")
+        if r.shape != shape:
+            raise ValueError(f"ILU residual shape {r.shape} != {shape}")
+        z0 = blocks[0](r[0])
+        z1 = blocks[1](r[1] - (a10 @ z0.reshape(-1)).reshape(shape[1:]))
+        return xp.stack((z0, z1))
+
+    precondition.setup_seconds = perf_counter() - start
+    precondition.nnz = sum(block.nnz for block in blocks)
+    precondition.nnz_kind = blocks[0].nnz_kind
+    precondition.matrix_nnz = matrix.nnz
+    precondition.coupling_nnz = a10.nnz
+    precondition.shape = shape
+    precondition.block_stats = tuple(
+        dict(block=f"A{i}{i}", setup_seconds=block.setup_seconds,
+             matrix_nnz=block.matrix_nnz, nnz=block.nnz, nnz_kind=block.nnz_kind)
+        for i, block in enumerate(blocks))
+    return precondition
+
+
 def _build_ilu(matrix, shape, xp):
     """Factor a host sparse matrix once and preserve its state layout."""
     from scipy.sparse.linalg import spilu

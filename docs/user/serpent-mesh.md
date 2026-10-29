@@ -136,12 +136,25 @@ otherwise retains its stricter default. Independent equation/current balance and
 convergence remain necessary before interpreting a reactor comparison.
 
 The corrected path accepts `mesh_preconditioner="tpfa_ilu"` (default),
-`"corrected_ilu"`, or `"tpfa_neumann"` (two fixed Jacobi sweeps).
+`"corrected_ilu"`, `"corrected_block_ilu"`, or `"tpfa_neumann"` (two fixed Jacobi sweeps).
 `"corrected_ilu"` factors the actual corrected FV matrix instead of its TPFA
 approximation. It changes neither the equations nor the stopping criteria;
 convergence still requires the true residual checks. Small CPU tests cover
 scalar and moment operators; this option does not establish reactor accuracy
 or GPU validation. Its setup and factor memory can exceed the TPFA option.
+For order-1 SP3/SDP1, `"corrected_block_ilu"` instead factors the two corrected
+diagonal moment blocks sequentially. In the actual U-form state `[U0, U1]`
+(scalar flux `phi0 = U0 - 2/3 U1`), its fixed linear application is
+`z0 = ILU(A00)^-1 r0`, then `z1 = ILU(A11)^-1 (r1 - A10 z0)`.
+It retains the full sparse corrected `A10`, including off-cell Marshak terms,
+and adds no scaling or volume weighting. Scalar and other moment orders are
+rejected. Both blocks use `drop_tol=1e-6`, `fill_factor=20`; singular factors
+fail explicitly without clipping or fallback. CPU setup avoids extracting
+explicit L/U copies. Each callable exposes `group`, `shape`, `setup_seconds`,
+`matrix_nnz`, `nnz`, `nnz_kind`, `coupling_nnz`, and `block_stats` with per-block
+timings and counts. Factor counts are SuperLU-reported counts rather than
+explicit CSC counts. Small CPU tests cover reflective and coupled Marshak
+boundaries; large-model memory/convergence and GPU execution remain unverified.
 ILU uses SciPy setup; on CuPy its
 triangular factors and permutations stay on the GPU. Factorization/backend
 failures propagate. The weaker polynomial option may fail on thin high-contrast
