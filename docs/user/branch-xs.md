@@ -24,9 +24,10 @@ Native Serpent `MICRO_NG`/`MICRO_E` fields identify the intermediate micro-group
 structure separately from the final `MACRO_NG`/`MACRO_E` structure. GARNET
 validates this optional pair and derives immutable `state.microgroup_identity`
 from all retained native records, including older saved libraries. Every
-printed micro-group boundary must match exactly across a library; equal counts
+printed micro-group boundary must match exactly across interpolation vertices; equal counts
 or macro groups are insufficient. A Serpent version compatibility policy cannot
-waive this check. Known and unknown micro-grids cannot be mixed. Wholly unknown
+waive this check. Known and unknown micro-grids cannot be mixed in an interpolation element.
+Unrelated states may share an archive for exact selection. Wholly unknown
 synthetic/legacy states remain usable with an explicit `status: unknown`
 identity; this does not establish scientific compatibility. Caller metadata
 cannot override the identity recovered from retained native fields. Native-free

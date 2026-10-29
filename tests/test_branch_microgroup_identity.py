@@ -40,14 +40,15 @@ def test_library_rejects_same_count_different_edges_or_known_unknown(other):
     a = known()
     b = state('b', t=900., native=native(other))
     with pytest.raises(ValueError, match='incompatible microgroup'):
-        BranchLibrary([a, b])
+        line(a, b)
 
 
 def test_versions_cannot_waive_70_versus_168_native_grid():
     a = known(bounds=tuple(np.geomspace(20., 1e-11, 71)), metadata={'serpent_version': '2.2.0'})
     b = known('b', tuple(np.geomspace(20., 1e-11, 169)), t=900., metadata={'serpent_version': '2.2.2'})
     with pytest.raises(ValueError, match='incompatible microgroup'):
-        BranchLibrary([a, b], compatible_serpent_versions=('2.2.0', '2.2.2'))
+        BranchLibrary([a, b], axes=('fuel_temperature',), simplices=[('a', 'b')],
+                      compatible_serpent_versions=('2.2.0', '2.2.2'))
 
 
 @pytest.mark.parametrize('bad', [
@@ -181,3 +182,19 @@ def test_legacy_reload_rejects_different_native_grids(tmp_path):
     path.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match='incompatible microgroup'):
         BranchLibrary.load(path)
+
+
+@pytest.mark.parametrize('other', [(20., .5, 1e-11), None])
+def test_unrelated_archive_exact_selection_allowed_but_mixed_vertices_rejected(other):
+    a = known(t=400., metadata={'serpent_version': '2.2.0'})
+    b = state('b', t=900., native=native(other), metadata={'serpent_version': '2.2.2'})
+    library = BranchLibrary([a, b], axes=('fuel_temperature',),
+                            compatible_serpent_versions=('2.2.0', '2.2.2'))
+    assert library.select('a').microgroup_identity == a.microgroup_identity
+    assert library.evaluate(b.conditions).microgroup_identity == b.microgroup_identity
+    with pytest.raises(ValueError, match='incompatible microgroup'):
+        library._compatible([a, b])
+    # Recheck the selected vertices even if a caller changes the domain later.
+    library.simplices = (('a', 'b'),)
+    with pytest.raises(ValueError, match='incompatible microgroup'):
+        library.evaluate({**dict(a.conditions), 'fuel_temperature': 625.})

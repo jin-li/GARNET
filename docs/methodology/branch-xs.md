@@ -313,8 +313,9 @@ retained native record. Partial pairs, differing universe grids and mixtures
 of known and unknown universe grids are rejected. This also recovers identity
 from older JSON files that retained the raw fields without derived metadata.
 Conflicting caller declarations fail; replacing other metadata cannot hide a
-native grid. A library requires identical effective identities, independently
-of its Serpent version policy. Exact selection, interpolation and JSON
+native grid. Interpolation vertices require identical effective identities,
+independently of the Serpent version policy. Heterogeneous archives remain
+permitted for exact selection; explicit mixed-grid simplices are rejected. Exact selection, interpolation and JSON
 save/load carry the identity. A wholly unknown collection remains supported
 for backward compatibility and synthetic calculations, visibly marked unknown.
 Native-free manually authored states may declare the reserved identity explicitly;

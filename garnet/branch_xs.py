@@ -259,8 +259,6 @@ class BranchLibrary:
             raise ValueError('nonempty original BranchState collection required; evaluated states cannot be table inputs')
         if len({s.state_id for s in states}) != len(states):
             raise ValueError('duplicate state IDs')
-        if any(s.microgroup_identity != states[0].microgroup_identity for s in states[1:]):
-            raise ValueError('incompatible microgroup identities (including known/unknown structures)')
         self.states = MappingProxyType({s.state_id:s for s in states})
         self.axes = tuple(axes)
         if len(self.axes) not in (1,2) or len(set(self.axes)) != len(self.axes):
@@ -302,6 +300,8 @@ class BranchLibrary:
     def _compatible(self, vertices):
         first=vertices[0]
         for s in vertices[1:]:
+            if s.microgroup_identity != first.microgroup_identity:
+                raise ValueError('incompatible microgroup identities (including known/unknown structures)')
             if self._fixed(s.conditions) != self._fixed(first.conditions):
                 raise ValueError('simplex mixes fixed conditions/configurations/families')
             if s.region_ids != first.region_ids or not np.array_equal(s.energy_bounds_mev,first.energy_bounds_mev) or not np.array_equal(s.exterior_mask,first.exterior_mask):
@@ -366,6 +366,7 @@ class BranchLibrary:
             # Reject true extrapolation, permit only floating-point boundary noise.
             if np.any(weights < -1e-12) or np.any(weights > 1+1e-12):
                 continue
+            self._compatible(vertices)
             weights = np.maximum(weights, 0)
             weights /= weights.sum()
             data=_arguments(vertices[0])
