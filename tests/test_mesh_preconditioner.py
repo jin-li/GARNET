@@ -12,6 +12,35 @@ from garnet.mesh import _MeshGroupOperator
 from garnet.mesh_preconditioner import _assemble_tpfa, build_tpfa_ilu
 
 
+def test_cpu_statistics_do_not_extract_explicit_factors(monkeypatch):
+    """CPU application needs internal LU, not potentially huge CSC copies."""
+    import scipy.sparse.linalg
+    from garnet.mesh_preconditioner import build_corrected_ilu
+    matrix = csc_matrix([[4., -1.], [-2., 3.]])
+    factor = spilu(matrix, drop_tol=1e-6, fill_factor=20)
+
+    class InternalFactorOnly:
+        nnz = factor.nnz
+
+        def solve(self, rhs):
+            return factor.solve(rhs)
+
+        @property
+        def L(self):
+            raise AssertionError('CPU statistics must not materialize L')
+
+        @property
+        def U(self):
+            raise AssertionError('CPU statistics must not materialize U')
+
+    monkeypatch.setattr(scipy.sparse.linalg, 'spilu', lambda *a, **k: InternalFactorOnly())
+    precondition = build_corrected_ilu(matrix, (2, 1, 1), np)
+    rhs = np.array([1., 2.]).reshape(2, 1, 1)
+    np.testing.assert_allclose(matrix @ precondition(rhs).ravel(), rhs.ravel(), atol=1e-14)
+    assert precondition.nnz == factor.nnz
+    assert precondition.nnz_kind == 'superlu_reported_not_explicit_csc_count'
+
+
 @pytest.fixture(params=["cpu", "gpu"])
 def xp(request):
     if request.param == "cpu":

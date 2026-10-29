@@ -122,6 +122,10 @@ SuperLU drop tolerance (1e-6), fill factor (20), permutations, and GPU triangula
 solve path, with no fallback on factorization failure. The returned callable
 exposes `matrix_nnz`, factor `nnz`, state `shape`, and `setup_seconds` for matrix
 conversion, factorization, and backend setup (TPFA assembly is excluded).
+`nnz` is SuperLU's reported count (`nnz_kind` identifies this convention),
+which can differ from the number of entries in extracted CSC factors.
+CPU statistics do not materialize `L` and `U`; those additional copies can
+exhaust memory even when the internal factorization itself fits.
 Corrected-matrix fill and memory can exceed TPFA. Small skew heterogeneous CPU
 checks compare matrix action, direct solutions, and true GMRES residuals for
 scalar, SP3, and SDP1 operators; this option has not been GPU validated or

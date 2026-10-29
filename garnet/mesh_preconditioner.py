@@ -128,7 +128,11 @@ def _build_ilu(matrix, shape, xp):
         return solve(r)
 
     precondition.setup_seconds = perf_counter() - start
-    precondition.nnz = lu.L.nnz + lu.U.nnz
+    # Accessing L/U materializes explicit CSC copies, which CPU lu.solve does
+    # not need. On large problems even statistics alone can exhaust memory.
+    # SuperLU's reported count can differ from the extracted CSC entry count.
+    precondition.nnz = int(lu.nnz)
+    precondition.nnz_kind = "superlu_reported_not_explicit_csc_count"
     precondition.matrix_nnz = matrix.nnz
     precondition.shape = shape
     return precondition
