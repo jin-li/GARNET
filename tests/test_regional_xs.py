@@ -111,11 +111,16 @@ def test_bad_shape_and_negative_native_production_or_reduced_absorption(key, val
         adapt(native)
 
 
-def test_negative_effective_diagonal_rejected_without_clipping():
+def test_negative_effective_diagonal_retained_without_clipping():
     native = record()
     native.fields["TRC_DIFFCOEF"] = paired([10., 10.])
-    with pytest.raises(ValueError, match="negative effective production"):
-        adapt(native)
+    result = adapt(native)
+    assert np.all(np.diag(result.production) < 0)
+    np.testing.assert_allclose(result.production,
+        native.estimate("INF_SP0").mean.reshape(2, 2)
+        - np.diag(native.estimate("INF_TOT").mean - result.total))
+    with pytest.raises(ValueError, match="non-negative"):
+        result.as_material()
 
 
 def test_balance_accepts_only_declared_raw_error_envelope():

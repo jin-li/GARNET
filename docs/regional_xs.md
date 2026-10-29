@@ -50,9 +50,11 @@ chi remain unchanged; kappa-fission is `INF_FISS * INF_KAPPA` when both exist.
 There is no chi renormalization or substitute spectrum. The effective loss
 matrix equals the physical-total/native-production loss matrix. Reduced
 absorption is not a physical absorption tally. Missing TRC, invalid dimensions,
-nonpositive diffusion, negative effective production (including the diagonal),
-and negative reduced absorption are errors. No clipping, fitting, coefficient
-averaging, or fallback is performed.
+nonpositive diffusion or effective total, negative native production, negative
+off-diagonal effective production, and negative reduced absorption are errors.
+Only the transport-corrected effective production diagonal may be signed; the
+immutable regional snapshot and manifest retain those signed values. No
+clipping, fitting, coefficient averaging, or fallback is performed.
 
 The independent diagnostic mode `physical-isotropic` retains physical total
 and native production and uses `D = 1 / (3 T)`. It needs no curve evidence.
@@ -89,15 +91,28 @@ samples can produce a zero printed XS error. Increasing particles per processing
 batch and increasing the number of batches address different sampling concerns.
 Their adequacy requires evidence from the calculation, beyond adapter admission.
 
-The transformed diagonal must also satisfy
-`1/(3 D[g]) >= T[g] - P[g,g]`. Raw balance acceptance does not imply this
-condition. If it fails, the adapter refuses the constants rather than adjusting
-the row. The caller remains responsible for qualifying the native estimates,
-correction curve and physical closure for the intended calculation.
+The identity `diag(T_eff) - P_eff.T = diag(T) - P.T` holds even
+when the admitted raw balance residual is nonzero. The existing FV operator
+instead uses `INF_RABSXS` plus off-diagonal out-scatter as removal. Eliminating
+within-group production preserves that existing FV operator exactly, including
+its raw balance residual; it does not repair the residual or force equality
+with the physical-total loss matrix.
 
-`region.as_material()` copies effective arrays into the solver's `Material`
-interface. As in the original scalar adapter, this conversion normalizes a
-nonzero chi and gives an all-zero nonfissile spectrum a benign first-group
+`region.as_fv_material()` eliminates **all** effective production diagonal
+entries algebraically, whether positive or negative, and copies the remaining
+arrays into a `Material` marked `fv_only=True`. Generic `Material` validation
+remains nonnegative. `Material.replace()` retains this flag; SN, triangular SN
+and both hybrid SN solvers reject these materials before reconstructing
+within-group scattering. Corrected FV diffusion, SP3 and SDP1 retain their
+existing operators. SP3/SDP1 still use an isotropic TRC closure; this adapter
+does not supply native anisotropic scattering moments or qualify that closure.
+The caller remains responsible for qualifying the native estimates, correction
+curve and physical closure for the intended calculation.
+
+`region.as_material()` retains its strict legacy behavior: it copies effective
+arrays into the solver's `Material` interface and rejects signed negative
+production. As in the original scalar adapter, both conversions normalize a
+nonzero chi and give an all-zero nonfissile spectrum a benign first-group
 spectrum. Fissile all-zero chi is rejected. Native chi remains unchanged in the
 regional snapshot.
 

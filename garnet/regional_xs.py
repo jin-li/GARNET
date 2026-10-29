@@ -108,8 +108,13 @@ class RegionalXS:
                 raise ValueError(f"invalid {name} shape/values")
         if g < 1 or np.any(self.total <= 0) or np.any(self.diffusion <= 0):
             raise ValueError("total and diffusion must be positive")
-        if self.production.shape != (g, g) or not np.all(np.isfinite(self.production)) or np.any(self.production < 0):
-            raise ValueError("negative or invalid effective production")
+        if self.production.shape != (g, g) or not np.all(np.isfinite(self.production)):
+            raise ValueError("invalid effective production shape/values")
+        checked = self.production.copy()
+        if self.mode == "transport-corrected":
+            np.fill_diagonal(checked, 0.)
+        if np.any(checked < 0):
+            raise ValueError("negative effective production outside transport-corrected diagonal")
         if self.kappa_fission is not None and (self.kappa_fission.shape != (g,)
                 or not np.all(np.isfinite(self.kappa_fission)) or np.any(self.kappa_fission < 0)):
             raise ValueError("invalid kappa_fission")
@@ -119,13 +124,30 @@ class RegionalXS:
         _sha(self.provenance["source_sha256"])
 
     def as_material(self):
-        """Copy effective arrays into the existing diffusion Material interface.
+        """Copy effective arrays into the strict legacy Material interface.
+
+        Negative corrected diagonals are rejected by Material validation.
 
         Normalize native nonzero chi as the scalar adapter does. An all-zero
         fissile chi is rejected; an all-zero nonfissile chi gets group zero.
         Native chi in this immutable snapshot remains unchanged.
         """
+        return self._as_material(fv_only=False)
+
+    def as_fv_material(self):
+        """Copy into an FV-only Material after algebraic diagonal elimination.
+
+        All within-group production cancels in the existing RABS-based FV
+        operator. This preserves that operator, including any admitted raw
+        balance residual; it does not repair the residual or qualify closure.
+        """
+        return self._as_material(fv_only=True)
+
+    def _as_material(self, *, fv_only):
         from .materials import Material
+        production = self.production.copy()
+        if fv_only:
+            np.fill_diagonal(production, 0.)
         chi = self.chi.copy()
         if chi.sum() == 0:
             if np.any(self.nu_sigma_f > 0):
@@ -134,10 +156,11 @@ class RegionalXS:
         else:
             chi /= chi.sum()
         return Material(diffusion=self.diffusion.copy(), sigma_a=self.reduced_absorption.copy(),
-                        nu_sigma_f=self.nu_sigma_f.copy(), sigma_s=self.production.copy(),
+                        nu_sigma_f=self.nu_sigma_f.copy(), sigma_s=production,
                         chi=chi, total=self.total.copy(),
                         kappa_fission=None if self.kappa_fission is None else self.kappa_fission.copy(),
-                        name=f"Experimental regional {self.mapping.region_id} ({self.mode})")
+                        name=f"Experimental regional {self.mapping.region_id} ({self.mode})",
+                        fv_only=fv_only)
 
 
 def regional_material_from_record(record, *, mapping, mode,
@@ -188,8 +211,6 @@ def regional_material_from_record(record, *, mapping, mode,
     else:
         effective_total = total.copy()
         diffusion = 1. / (3. * total)
-    if np.any(production < 0):
-        raise ValueError("negative effective production; no clipping or fallback")
     chi = means.get("INF_CHIT", np.zeros(g))
     kappa = (means["INF_FISS"] * means["INF_KAPPA"] if "INF_FISS" in means else None)
     provenance = dict(source=str(record.source), source_sha256=record.source_sha256,
