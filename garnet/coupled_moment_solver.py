@@ -6,9 +6,10 @@ regularization, scattering RHS, or alternate solver fallback.
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
+from time import perf_counter
 import numpy as np
 import scipy
-from scipy.sparse.linalg import gmres
+from scipy.sparse.linalg import LinearOperator, gmres, spilu
 from .coupled_moments import CoupledMomentOperator
 from .corrected_native_moments import CorrectedNativeMomentOperator
 from .moment_materials import _immutable
@@ -35,12 +36,14 @@ class CoupledMomentResult:
 
 
 class CoupledMomentEigenSolver:
-    """Fresh source-normalized U iteration using explicit unpreconditioned GMRES.
+    """Fresh source-normalized U iteration with CPU GMRES and optional fixed ILU.
 
     max_inner counts GMRES inner iterations (callback_type='legacy'), not restart
     cycles. Each linear residual is recomputed with matrix-free operator action.
     Returned raw scalar/power are never clipped; positivity_tolerance admits only
     roundoff-sized negatives relative to max(1, max absolute field).
+    preconditioner='ilu' freezes a CSC copy and factors it once per solve with
+    drop_tol=1e-6 and fill_factor=20. Setup failure raises; no fallback occurs.
     """
     def __init__(self,operator):
         if not isinstance(operator,(CoupledMomentOperator,CorrectedNativeMomentOperator)):
@@ -49,8 +52,10 @@ class CoupledMomentEigenSolver:
 
     def solve(self,*,initial=None,max_inner=1000,max_outer=200,inner_tolerance=1e-11,
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
-              positivity_tolerance=1e-12):
+              positivity_tolerance=1e-12,preconditioner='none'):
         op=self.operator
+        if preconditioner not in ('none','ilu'):
+            raise ValueError("preconditioner must be 'none' or 'ilu'")
         # Corrected MeshGrid volumes are exposed explicitly by the operator.
         volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
@@ -75,12 +80,26 @@ class CoupledMomentEigenSolver:
         u/=source
         if not np.isfinite(np.linalg.norm(op.fission_action(u))) or np.linalg.norm(op.fission_action(u))==0:
             raise ValueError('Nonzero finite fission action required')
+        solve_matrix=op.assembled;M=None
+        preconditioner_metadata=dict(setup_seconds=0.,matrix_nnz=int(op.assembled.nnz))
+        if preconditioner=='ilu':
+            started=perf_counter()
+            solve_matrix=op.assembled.tocsc(copy=True)
+            try:
+                factor=spilu(solve_matrix,drop_tol=1e-6,fill_factor=20)
+            except (RuntimeError,ValueError) as exc:
+                raise RuntimeError('ILU factorization failed; no solver fallback') from exc
+            M=LinearOperator(solve_matrix.shape,matvec=factor.solve,dtype=solve_matrix.dtype)
+            preconditioner_metadata.update(setup_seconds=perf_counter()-started,
+                matrix_nnz=int(solve_matrix.nnz),drop_tol=1e-6,fill_factor=20,
+                superlu_nnz=int(factor.nnz),
+                superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
         k=1.;history=[];reason='outer_iteration_limit';numerical=False;full=float('inf')
         # Keep the linear operator independent from the mutable assembled sparse
         # matrix so post-GMRES residual checks detect any assembly inconsistency.
         for outer in range(1,max_outer+1):
             rhs=op.fission_action(u);steps=[]
-            y,info=gmres(op.assembled,rhs,x0=None,rtol=inner_tolerance,atol=0,
+            y,info=gmres(solve_matrix,rhs,x0=None,rtol=inner_tolerance,atol=0,M=M,
                          restart=min(40,op.size),maxiter=max_inner,callback=steps.append,callback_type='legacy')
             linear=float(np.linalg.norm(op.action(y)-rhs)/np.linalg.norm(rhs))
             record=dict(outer=outer,inner_iterations=len(steps),gmres_info=int(info),linear_residual=linear)
@@ -119,6 +138,7 @@ class CoupledMomentEigenSolver:
             max_inner=max_inner,max_outer=max_outer,inner_tolerance=inner_tolerance,k_tolerance=k_tolerance,
             source_tolerance=source_tolerance,residual_tolerance=residual_tolerance,positivity_tolerance=positivity_tolerance,
             source_normalization='sum(cell_volume * NSF dot reconstructed phi0) = 1',
-            initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False)
+            initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
+            preconditioner=preconditioner,preconditioner_metadata=preconditioner_metadata)
         return CoupledMomentResult(k,u.reshape(op.shape),phi,power,numerical and positive,numerical,positive,
                                    len(history),reason,full,tuple(history),provenance)

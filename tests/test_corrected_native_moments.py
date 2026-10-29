@@ -170,7 +170,8 @@ def test_signed_singular_reaction_leakage_and_explicit_failures():
 
 
 @pytest.mark.parametrize('family',['sp3','sdp1'])
-def test_small_eigenvalue_independent_dense_pencil_and_provenance(family):
+@pytest.mark.parametrize('preconditioner',['none','ilu'])
+def test_small_eigenvalue_independent_dense_pencil_and_provenance(family,preconditioner):
     mesh=mesh_grid(2,0);mats=[material(isotropic=True)]*mesh.n_cells;a=op(mesh,mats,family)
     A=oracle(orthogonal(mesh),mats,family)
     # Independently build integrated fission from explicit state reconstruction.
@@ -180,13 +181,62 @@ def test_small_eigenvalue_independent_dense_pencil_and_provenance(family):
         block=np.kron(c1[:,0,None]@np.array([[1.,-2/3]]),np.outer(m.chi,m.nu_sigma_f))*v
         F[i*4:i*4+4,i*4:i*4+4]=block
     expected=max(eigvals(F,A).real)
-    result=CoupledMomentEigenSolver(a).solve(max_inner=1000)
+    result=CoupledMomentEigenSolver(a).solve(max_inner=1000,preconditioner=preconditioner)
     assert result.converged and result.reconstructed_nonnegative
     assert result.k_eff==pytest.approx(expected,rel=2e-9)
     assert result.full_residual<1e-9
     assert not result.provenance['physical_admission'] and not result.provenance['scattering_RHS']
+    assert result.provenance['preconditioner']==preconditioner
+    metadata=result.provenance['preconditioner_metadata']
+    assert metadata['matrix_nnz']==a.assembled.nnz
+    assert metadata['setup_seconds']>=0
+    if preconditioner=='ilu':
+        assert metadata['drop_tol']==1e-6 and metadata['fill_factor']==20
+        assert metadata['superlu_nnz']>0 and 'not an explicit' in metadata['superlu_nnz_caveat']
+        default=CoupledMomentEigenSolver(a).solve()
+        assert default.provenance['preconditioner']=='none'
+        assert default.converged
+        np.testing.assert_allclose(result.moments,default.moments,rtol=2e-8,atol=1e-10)
+        assert result.k_eff==pytest.approx(default.k_eff,rel=2e-9)
     hashes=result.provenance['implementation_sha256']
     assert {'corrected_native_moments.py','corrected_mesh.py','mesh.py'}<=hashes.keys()
     a.assembled=a.assembled*1.1
-    failed=CoupledMomentEigenSolver(a).solve()
+    failed=CoupledMomentEigenSolver(a).solve(preconditioner=preconditioner)
     assert not failed.converged and failed.reason=='inner_failure_or_full_linear_residual'
+
+
+def test_ilu_factor_once_without_explicit_lu_materialization(monkeypatch):
+    import garnet.coupled_moment_solver as driver
+    a=op(mesh_grid(2,0),[material(isotropic=True)]*4)
+    original=driver.spilu;calls=[]
+    class Factor:
+        def __init__(self,factor):self.factor=factor
+        @property
+        def nnz(self):return self.factor.nnz
+        def solve(self,x):return self.factor.solve(x)
+        @property
+        def L(self):raise AssertionError('L must not be materialized')
+        @property
+        def U(self):raise AssertionError('U must not be materialized')
+    def factor(matrix,**kwargs):
+        calls.append((matrix,kwargs))
+        assert matrix.format=='csc' and not np.shares_memory(matrix.data,a.assembled.data)
+        return Factor(original(matrix,**kwargs))
+    monkeypatch.setattr(driver,'spilu',factor)
+    result=driver.CoupledMomentEigenSolver(a).solve(preconditioner='ilu')
+    assert result.converged and result.iterations>1
+    assert len(calls)==1
+    assert calls[0][1]==dict(drop_tol=1e-6,fill_factor=20)
+
+
+def test_unknown_preconditioner_and_ilu_factor_failure_no_fallback(monkeypatch):
+    import garnet.coupled_moment_solver as driver
+    a=op(mesh_grid(2,0),[material(isotropic=True)]*4)
+    solver=driver.CoupledMomentEigenSolver(a)
+    with pytest.raises(ValueError,match='preconditioner'):solver.solve(preconditioner='automatic')
+    def fail(*args,**kwargs):raise RuntimeError('synthetic singular factor')
+    def forbidden(*args,**kwargs):raise AssertionError('GMRES must not run after factor failure')
+    monkeypatch.setattr(driver,'spilu',fail);monkeypatch.setattr(driver,'gmres',forbidden)
+    with pytest.raises(RuntimeError,match='ILU factorization failed; no solver fallback') as caught:
+        solver.solve(preconditioner='ilu')
+    assert 'synthetic singular factor' in str(caught.value.__cause__)
