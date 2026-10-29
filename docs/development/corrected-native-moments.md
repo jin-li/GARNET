@@ -172,6 +172,34 @@ reject corrupted CSR even when its ILU solve succeeds, check one factorization
 without L/U materialization, and check explicit failure without fallback. These
 checks do not establish convergence on reactor geometry or native data.
 
+### Optional iteration progress
+
+`solve(iteration_callback=callback)` calls `callback(event)` with a fresh
+dictionary containing only scalar values. The default `None` retains the
+existing numerical path. This is useful for observing long native assembly
+solves without exposing mutable solver arrays or preconditioner factors.
+
+The `phase` field identifies four events:
+
+- `inner_start`: outer iteration, inner budget, restart length and tolerance.
+- `inner_iteration`: outer iteration, one-based inner iteration and
+  `scipy_preconditioned_residual_norm`. This is SciPy's monitored preconditioned
+  relative residual; `used_for_acceptance=False` makes its role explicit.
+- `inner_complete`: iteration count, GMRES status,
+  `true_action_relative_residual` and `accepted_linear`. Acceptance still
+  requires successful GMRES and the independently evaluated true action
+  residual to satisfy the requested inner tolerance.
+- `outer_complete`: eigenvalue, eigenvalue/source changes, full residual,
+  reconstructed-field positivity, convergence flag and stopping reason.
+
+An inner failure emits no outer completion event. An outer event is emitted
+only after the source normalization and physical-field checks are reached.
+Callback exceptions propagate to the caller; they do not trigger a numerical
+fallback. The callback changes neither the cold inner initial guess nor the
+restart, budgets, residual checks or positivity criteria. Tests compare
+observed and default SP3/SP5 runs bitwise and distinguish the monitored
+residual from true-action acceptance.
+
 ### Optional fixed CPU energy-group ILU
 
 `solve(preconditioner='group_ilu')` uses fixed block Jacobi across energy

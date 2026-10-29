@@ -101,6 +101,8 @@ class CoupledMomentEigenSolver:
     retains the full assembled matrix, including every off-group coefficient.
     group_ilu_fill_factor explicitly budgets only group ILU (default 20);
     group_ilu_setup_callback receives copied setup statistics, never factors.
+    iteration_callback receives scalar progress snapshots. SciPy's monitored
+    preconditioned relative residual is not the true action acceptance residual.
     """
     def __init__(self,operator):
         if not isinstance(operator,(CoupledMomentOperator,CorrectedNativeMomentOperator)):
@@ -110,7 +112,7 @@ class CoupledMomentEigenSolver:
     def solve(self,*,initial=None,max_inner=1000,max_outer=200,inner_tolerance=1e-11,
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
-              group_ilu_setup_callback=None):
+              group_ilu_setup_callback=None,iteration_callback=None):
         op=self.operator
         if preconditioner not in ('none','ilu','group_ilu'):
             raise ValueError("preconditioner must be 'none', 'ilu' or 'group_ilu'")
@@ -124,6 +126,8 @@ class CoupledMomentEigenSolver:
             raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1')
         if group_ilu_setup_callback is not None and not callable(group_ilu_setup_callback):
             raise ValueError('group_ilu_setup_callback must be callable or None')
+        if iteration_callback is not None and not callable(iteration_callback):
+            raise ValueError('iteration_callback must be callable or None')
         # Corrected MeshGrid volumes are exposed explicitly by the operator.
         volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
@@ -227,10 +231,22 @@ class CoupledMomentEigenSolver:
         # matrix so post-GMRES residual checks detect any assembly inconsistency.
         for outer in range(1,max_outer+1):
             rhs=op.fission_action(u);steps=[]
+            callback=steps.append
+            if iteration_callback is not None:
+                iteration_callback(dict(phase='inner_start',outer=outer,max_inner=max_inner,
+                    restart=min(40,op.size),inner_tolerance=float(inner_tolerance)))
+                def callback(value):
+                    steps.append(value)
+                    iteration_callback(dict(phase='inner_iteration',outer=outer,inner_iteration=len(steps),
+                        scipy_preconditioned_residual_norm=float(value),
+                        residual_kind='scipy_preconditioned_relative_residual_monitor_only',used_for_acceptance=False))
             y,info=gmres(solve_matrix,rhs,x0=None,rtol=inner_tolerance,atol=0,M=M,
-                         restart=min(40,op.size),maxiter=max_inner,callback=steps.append,callback_type='legacy')
+                         restart=min(40,op.size),maxiter=max_inner,callback=callback,callback_type='legacy')
             linear=float(np.linalg.norm(op.action(y)-rhs)/np.linalg.norm(rhs))
             record=dict(outer=outer,inner_iterations=len(steps),gmres_info=int(info),linear_residual=linear)
+            if iteration_callback is not None:
+                iteration_callback(dict(phase='inner_complete',outer=outer,count=len(steps),gmres_info=int(info),
+                    true_action_relative_residual=linear,accepted_linear=bool(info==0 and np.isfinite(linear) and linear<=inner_tolerance)))
             if info!=0 or not np.isfinite(linear) or linear>inner_tolerance:
                 history.append(record);reason='inner_failure_or_full_linear_residual';break
             next_k=source_size(y)
@@ -247,9 +263,16 @@ class CoupledMomentEigenSolver:
             history.append(record);u=candidate;k=next_k
             phi=op.scalar_flux(u)
             power=np.stack([m.kappa_fission*p for m,p in zip(op.materials,phi)])
-            if not nonnegative(phi) or not nonnegative(power):reason='negative_reconstructed_scalar_or_power';break
+            def outer_event(positive,converged,event_reason):
+                if iteration_callback is not None:
+                    iteration_callback(dict(phase='outer_complete',outer=outer,k_eff=float(next_k),k_change=float(k_error),
+                        source_change=source_error,full_residual=full,reconstructed_nonnegative=positive,
+                        converged=converged,reason=event_reason))
+            if not nonnegative(phi) or not nonnegative(power):
+                reason='negative_reconstructed_scalar_or_power';outer_event(False,False,reason);break
             if k_error<=k_tolerance and source_error<=source_tolerance and full<=residual_tolerance:
-                numerical=True;reason='converged';break
+                numerical=True;reason='converged';outer_event(True,True,reason);break
+            outer_event(True,False,'outer_iteration_limit' if outer==max_outer else 'continue')
         phi=op.scalar_flux(u);power=np.stack([m.kappa_fission*p for m,p in zip(op.materials,phi)])
         positive=nonnegative(phi) and nonnegative(power)
         # Recheck the returned pair, including on failed iterations.
