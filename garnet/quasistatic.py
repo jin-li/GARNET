@@ -201,13 +201,13 @@ def _shape_time_importance(solver, forward, adjoint, kinetics: Kinetics) -> floa
     xp = solver.xp
     groups = solver.n_groups
     shape = tuple(solver.grid.shape)
-    phi = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
-    star = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
+    forward_flux = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
+    adjoint_flux = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
     weight = _source_weight(solver)
     inv_velocity, _ = _mapped_kinetics(solver, kinetics)
     value = 0.0
     for g in range(groups):
-        value = value + xp.sum(star[g] * weight * inv_velocity[g] * phi[g])
+        value = value + xp.sum(adjoint_flux[g] * weight * inv_velocity[g] * forward_flux[g])
     value = float(value)
     if not np.isfinite(value) or value <= 0.0:
         raise ValueError("forward/adjoint shapes have non-positive time importance")
@@ -241,25 +241,25 @@ def project_effective_kinetics(solver, forward, adjoint, kinetics: Kinetics,
     xp = solver.xp
     groups = solver.n_groups
     shape = tuple(solver.grid.shape)
-    phi = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
-    star = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
+    forward_flux = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
+    adjoint_flux = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
     weight = _source_weight(solver)
     inv_velocity, beta_fields = _mapped_kinetics(solver, kinetics)
 
-    fission_source = solver.nu_sigma_f[0] * phi[0]
+    fission_source = solver.nu_sigma_f[0] * forward_flux[0]
     for g in range(1, groups):
-        fission_source = fission_source + solver.nu_sigma_f[g] * phi[g]
+        fission_source = fission_source + solver.nu_sigma_f[g] * forward_flux[g]
 
-    loss = _loss_apply(solver, phi)
+    loss = _loss_apply(solver, forward_flux)
     loss_importance = 0.0
     fission_importance = 0.0
     time_importance = 0.0
     for g in range(groups):
-        loss_importance = loss_importance + xp.sum(star[g] * loss[g])
+        loss_importance = loss_importance + xp.sum(adjoint_flux[g] * loss[g])
         fission_importance = fission_importance + xp.sum(
-            star[g] * weight * solver.chi[g] * fission_source)
+            adjoint_flux[g] * weight * solver.chi[g] * fission_source)
         time_importance = time_importance + xp.sum(
-            star[g] * weight * inv_velocity[g] * phi[g])
+            adjoint_flux[g] * weight * inv_velocity[g] * forward_flux[g])
     loss_importance = float(loss_importance)
     fission_importance = float(fission_importance)
     time_importance = float(time_importance)
@@ -278,7 +278,7 @@ def project_effective_kinetics(solver, forward, adjoint, kinetics: Kinetics,
             else:
                 spectrum = float(chi_delayed[i, g])
             delayed_importance = delayed_importance + xp.sum(
-                star[g] * weight * spectrum * beta_i * fission_source)
+                adjoint_flux[g] * weight * spectrum * beta_i * fission_source)
         beta_eff.append(float(delayed_importance) / fission_importance)
 
     rho = 1.0 - k0 * loss_importance / fission_importance
@@ -301,18 +301,18 @@ def projected_shape_residual(solver, forward, adjoint) -> float:
     xp = solver.xp
     groups = solver.n_groups
     shape = tuple(solver.grid.shape)
-    phi = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
-    star = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
+    forward_flux = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
+    adjoint_flux = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
     weight = _source_weight(solver)
-    loss = _loss_apply(solver, phi)
-    fission_source = solver.nu_sigma_f[0] * phi[0]
+    loss = _loss_apply(solver, forward_flux)
+    fission_source = solver.nu_sigma_f[0] * forward_flux[0]
     for g in range(1, groups):
-        fission_source = fission_source + solver.nu_sigma_f[g] * phi[g]
+        fission_source = fission_source + solver.nu_sigma_f[g] * forward_flux[g]
     fission = [weight * solver.chi[g] * fission_source
                for g in range(groups)]
-    loss_importance = sum(xp.sum(star[g] * loss[g]) for g in range(groups))
+    loss_importance = sum(xp.sum(adjoint_flux[g] * loss[g]) for g in range(groups))
     fission_importance = sum(
-        xp.sum(star[g] * fission[g]) for g in range(groups))
+        xp.sum(adjoint_flux[g] * fission[g]) for g in range(groups))
     fission_importance = float(fission_importance)
     if fission_importance <= 0.0:
         raise ValueError("forward/adjoint shapes have non-positive importance")
@@ -342,18 +342,18 @@ def projected_adjoint_residual(solver, forward, adjoint) -> float:
     xp = solver.xp
     groups = solver.n_groups
     shape = tuple(solver.grid.shape)
-    phi = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
-    star = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
+    forward_flux = _flux_array(forward, "forward flux", groups, shape, xp, solver.dtype)
+    adjoint_flux = _flux_array(adjoint, "adjoint flux", groups, shape, xp, solver.dtype)
     weight = _source_weight(solver)
-    loss = _loss_apply(solver, star, adjoint=True)
-    importance_source = solver.chi[0] * star[0]
+    loss = _loss_apply(solver, adjoint_flux, adjoint=True)
+    importance_source = solver.chi[0] * adjoint_flux[0]
     for g in range(1, groups):
-        importance_source = importance_source + solver.chi[g] * star[g]
+        importance_source = importance_source + solver.chi[g] * adjoint_flux[g]
     fission = [weight * solver.nu_sigma_f[g] * importance_source
                for g in range(groups)]
-    loss_importance = sum(xp.sum(phi[g] * loss[g]) for g in range(groups))
+    loss_importance = sum(xp.sum(forward_flux[g] * loss[g]) for g in range(groups))
     fission_importance = sum(
-        xp.sum(phi[g] * fission[g]) for g in range(groups))
+        xp.sum(forward_flux[g] * fission[g]) for g in range(groups))
     fission_importance = float(fission_importance)
     if fission_importance <= 0.0:
         raise ValueError("forward/adjoint shapes have non-positive importance")

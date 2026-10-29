@@ -177,17 +177,30 @@ def test_complex_adf_input_is_rejected_before_any_real_cast(imaginary_part):
                                   adf=adf, linear_solver='gmres')
 
 
-def test_two_group_eigenvalue_against_dense_independent_system():
+def two_group_case():
     grid = Grid((2, 1, 1), (6., 1., 1.))
     mats = [Material([1., .4], [.01, .05], [.01, .08], [[0, .02], [0, 0]]),
             Material([.8, .2], [.02, .07], [.015, .11], [[0, .03], [0, 0]])]
     adf = faces(grid.shape, 2)
     adf[0][0][:, 0, 0, 0] = [.8, 1.5]
     adf[0][1][:, 0, 0, 0] = [1.2, .7]
-    s = DiffusionEigenSolver(grid, mats, np.array([0, 1]).reshape(grid.shape),
-                             bc='reflective', device='cpu', adf=adf, linear_solver='gmres',
-                             precond_degree=1)
-    result = s.solve(tol_k=1e-11, tol_source=1e-10, inner_rtol_floor=1e-12)
+    return grid, mats, adf
+
+
+def two_group_solver(device):
+    grid, mats, adf = two_group_case()
+    return DiffusionEigenSolver(grid, mats, np.array([0, 1]).reshape(grid.shape),
+                                bc='reflective', device=device, adf=adf, linear_solver='gmres',
+                                precond_degree=1)
+
+
+TIGHT = dict(tol_k=1e-11, tol_source=1e-10, inner_rtol_floor=1e-12)
+
+
+def test_two_group_eigenvalue_against_dense_independent_system():
+    grid, mats, adf = two_group_case()
+    s = two_group_solver('cpu')
+    result = s.solve(**TIGHT)
     assert result.converged
     loss = np.zeros((4, 4))
     for g in range(2):
@@ -202,7 +215,7 @@ def test_two_group_eigenvalue_against_dense_independent_system():
     fiss[:2, 2:] = np.diag([m.nu_sigma_f[1] for m in mats])
     k = max(scipy.linalg.eigvals(fiss, loss).real)
     assert result.k_eff == pytest.approx(k, rel=1e-8)
-    adjoint = s.solve(adjoint=True, tol_k=1e-11, tol_source=1e-10, inner_rtol_floor=1e-12)
+    adjoint = s.solve(adjoint=True, **TIGHT)
     assert adjoint.converged
     assert adjoint.k_eff == pytest.approx(k, rel=1e-8)
     psi = adjoint.flux_numpy.ravel()
@@ -276,7 +289,104 @@ def test_bernal_case_setup_and_base_solve():
     assert result['relative_eigen_residual'] < 1e-7
 
 
-def test_gpu_adf_fused_matches_unfused_if_available():
+
+
+def test_adf_kernel_source_edits_must_match_exactly_once():
+    from garnet import kernels
+    assert kernels._stencil7_adf_src().count('_hi[') == 3
+    broken = kernels._STENCIL7_SRC.replace('wz[wzb + k]     * phi[i + 1]', 'wz[wzb + k] * phi[i + 1]')
+    with pytest.raises(RuntimeError, match='exactly once'):
+        kernels._stencil7_adf_src(broken)
+
+
+def test_face_traces_reconstruct_both_sides():
+    grid = Grid((2, 1, 1), (4., 1., 1.))
+    D = np.array([2., 0.5]).reshape(grid.shape)
+    phi = np.array([3., 1.]).reshape(grid.shape)
+    adf = faces(grid.shape)
+    adf[0][0][:] = 0.8
+    adf[0][1][:] = 1.5
+    op = GroupOperator(np, grid, D, np.zeros(grid.shape), bc='reflective', adf=single_group(adf))
+    current = (0.8 * 3 - 1.5 * 1) / (0.8 * 1 / 2 + 1.5 * 1 / 0.5)
+    low, high = op.face_traces(phi)[0]
+    assert low.ravel() == pytest.approx([3 - current / 2])
+    assert high.ravel() == pytest.approx([1 + current / 0.5])
+    assert 0.8 * low.ravel() == pytest.approx(1.5 * high.ravel())
+    plain = GroupOperator(np, grid, D, np.zeros(grid.shape), bc='reflective')
+    for low, high in plain.face_traces(np.random.default_rng(3).random(grid.shape)):
+        assert low == pytest.approx(high)
+
+
+def test_region_side_traces_and_factor_expansion():
+    from garnet.adf import expand_region_side_factors, region_side_traces
+    rng = np.random.default_rng(5)
+    shape = (4, 3, 2)
+    grid = Grid(shape, (4., 6., 2.))
+    regions = np.zeros(shape, dtype=int)
+    regions[2:] = 1
+    side = np.ones((2, 2, 6))
+    side[:, 0, 1] = [.9, 1.3]
+    side[:, 1, 0] = [1.1, .6]
+    cell_side = expand_region_side_factors(regions, side)
+    assert cell_side.shape == (2, 6, *shape)
+    assert np.all(cell_side[1, 0, 2:] == .6) and np.all(cell_side[0, 1, :2] == .9)
+    adf = assembly_face_factors(regions, cell_side)
+    D = .5 + rng.random((2, *shape))
+    ops = [GroupOperator(np, grid, D[g], .1 + rng.random(shape), bc='reflective',
+                         adf=tuple((lo[g], hi[g]) for lo, hi in adf)) for g in range(2)]
+    flux = rng.random((2, *shape))
+    trace, current, area = region_side_traces(ops, flux, regions)
+    assert area[0, 1] == area[1, 0] == pytest.approx(3 * 2 * (2. * 1.))  # 3x2 faces, 2 cm x 1 cm
+    assert np.isnan(trace[:, 0, 0]).all() and np.all(current[:, 0, 0] == 0)
+    assert current[:, 0, 1] == pytest.approx(-current[:, 1, 0])
+    # Corrected surface flux is continuous across the region interface.
+    assert side[:, 0, 1] * trace[:, 0, 1] == pytest.approx(side[:, 1, 0] * trace[:, 1, 0])
+    for g, op in enumerate(ops):
+        j = op.face_currents(flux[g])[0][1]
+        assert current[g, 0, 1] == pytest.approx(j.sum() * 2.)
+
+
+@pytest.mark.parametrize('axis', range(3))
+@pytest.mark.parametrize('with_adf', [False, True])
+def test_region_side_traces_excludes_masked_interfaces(axis, with_adf):
+    from garnet.adf import region_side_traces
+    shape = (2, 2, 2)
+    spacing = (3., 2., 5.)
+    grid = Grid(shape, tuple(2 * h for h in spacing))
+    regions = np.indices(shape)[axis]
+    active = np.ones(shape, dtype=bool)
+    # Remove one low cell, one high cell, and both cells of a third face.
+    transverse = [a for a in range(3) if a != axis]
+    for low_high, first, second in [(0, 0, 0), (1, 0, 1), (0, 1, 0), (1, 1, 0)]:
+        index = [0, 0, 0]
+        index[axis] = low_high
+        index[transverse[0]], index[transverse[1]] = first, second
+        active[tuple(index)] = False
+    adf = faces(shape)
+    adf[axis][0][:] = .8
+    adf[axis][1][:] = 1.5
+    op = GroupOperator(np, grid, np.ones(shape), np.full(shape, .1),
+                       active=active, bc='reflective', mask_bc='reflective',
+                       adf=single_group(adf) if with_adf else None)
+    phi = np.where(regions == 0, 2., 4.)
+    phi[~active] = 1000.
+    trace, current, area = region_side_traces([op], phi[None], regions)
+    face_area = np.prod([spacing[a] for a in transverse])
+    lo, hi = (.8, 1.5) if with_adf else (1., 1.)
+    j = (lo * 2 - hi * 4) / (.5 * spacing[axis] * (lo + hi))
+    expected_area = np.zeros((2, 6))
+    expected_area[0, 2 * axis + 1] = expected_area[1, 2 * axis] = face_area
+    np.testing.assert_allclose(area, expected_area)
+    assert trace[0, 0, 2 * axis + 1] == pytest.approx(2 - j * spacing[axis] / 2)
+    assert trace[0, 1, 2 * axis] == pytest.approx(4 + j * spacing[axis] / 2)
+    assert current[0, 0, 2 * axis + 1] == pytest.approx(j * face_area)
+    assert current[0, 1, 2 * axis] == pytest.approx(-j * face_area)
+    assert np.isnan(trace[0][area == 0]).all()
+    assert np.all(current[0][area == 0] == 0)
+
+
+@pytest.fixture
+def cuda():
     try:
         import cupy as cp
     except ImportError as exc:
@@ -286,26 +396,69 @@ def test_gpu_adf_fused_matches_unfused_if_available():
             pytest.skip('no CUDA device')
     except cp.cuda.runtime.CUDARuntimeError:
         pytest.skip('no CUDA runtime')
+    return cp
+
+
+@pytest.mark.parametrize('shape', [(4, 3, 2), (17, 13, 11), (1, 9, 7)])
+@pytest.mark.parametrize('dtype', [np.float64, np.float32])
+@pytest.mark.parametrize('masked', [False, True])
+def test_gpu_adf_fused_matches_unfused(cuda, shape, dtype, masked):
+    cp = cuda
     from garnet import kernels
     rng = np.random.default_rng(19)
-    shape = (4, 3, 2)
-    grid = Grid(shape, (4., 6., 6.))
+    grid = Grid(shape, tuple(2. * n for n in shape))
     adf = faces(shape)
     for lo, hi in adf:
         lo[:] = .5 + rng.random(lo.shape)
         hi[:] = .5 + rng.random(hi.shape)
-    D = cp.asarray(.5 + rng.random(shape))
-    removal = cp.asarray(.1 + rng.random(shape))
-    op = GroupOperator(cp, grid, D, removal, adf=single_group(adf))
-    phi = cp.asarray(rng.random(shape))
+    active = cp.asarray(rng.random(shape) > .2) if masked else None
+    D = cp.asarray(.5 + rng.random(shape), dtype=dtype)
+    removal = cp.asarray(.1 + rng.random(shape), dtype=dtype)
+    op = GroupOperator(cp, grid, D, removal, active=active, adf=single_group(adf))
+    phi = cp.asarray(rng.random(shape), dtype=dtype)
+    tol = 2e-6 if dtype == np.float32 else 1e-13
     previous = kernels.set_fused(True)
     try:
-        fused = cp.asnumpy(op.apply(phi))
-        fused_transpose = cp.asnumpy(op.apply_transpose(phi))
-        kernels.set_fused(False)
-        unfused = cp.asnumpy(op.apply(phi))
-        unfused_transpose = cp.asnumpy(op.apply_transpose(phi))
+        for apply in (op.apply, op.apply_transpose):
+            fused = apply(phi)
+            assert fused.dtype == dtype
+            out = cp.full_like(phi, cp.nan)
+            assert apply(phi, out=out) is out
+            kernels.set_fused(False)
+            unfused = cp.asnumpy(apply(phi))
+            kernels.set_fused(True)
+            scale = np.abs(unfused).max()
+            np.testing.assert_allclose(cp.asnumpy(fused), unfused, rtol=tol, atol=tol * scale)
+            np.testing.assert_allclose(cp.asnumpy(out), unfused, rtol=tol, atol=tol * scale)
     finally:
         kernels.set_fused(previous)
-    np.testing.assert_allclose(fused, unfused, rtol=1e-13, atol=1e-13)
-    np.testing.assert_allclose(fused_transpose, unfused_transpose, rtol=1e-13, atol=1e-13)
+    # The CPU operator is an independent reference for the GPU arithmetic.
+    cpu = GroupOperator(np, grid, cp.asnumpy(D), cp.asnumpy(removal),
+                        active=None if active is None else cp.asnumpy(active),
+                        adf=single_group(adf))
+    reference = cpu.apply(cp.asnumpy(phi))
+    np.testing.assert_allclose(cp.asnumpy(op.apply(phi)), reference,
+                               rtol=tol, atol=tol * np.abs(reference).max())
+
+
+def test_gpu_two_group_adf_solve_matches_cpu(cuda):
+    cpu, gpu = two_group_solver('cpu'), two_group_solver('gpu')
+    assert gpu.device != 'cpu'
+    fwd = {d: s.solve(**TIGHT) for d, s in (('cpu', cpu), ('gpu', gpu))}
+    adj = {d: s.solve(adjoint=True, **TIGHT) for d, s in (('cpu', cpu), ('gpu', gpu))}
+    for results in (fwd, adj):
+        assert all(r.converged for r in results.values())
+        assert results['gpu'].k_eff == pytest.approx(results['cpu'].k_eff, abs=1e-9)
+        a, b = (results[d].flux_numpy for d in ('cpu', 'gpu'))
+        np.testing.assert_allclose(b / np.linalg.norm(b), a / np.linalg.norm(a), atol=1e-7)
+    assert projected_shape_residual(gpu, fwd['gpu'], adj['gpu']) < 1e-9
+    assert projected_adjoint_residual(gpu, fwd['gpu'], adj['gpu']) < 1e-9
+
+
+def test_gpu_bernal_base_case_matches_cpu(cuda):
+    from examples.bernal_adf_benchmark import provisional_map, run
+    base = provisional_map()
+    cpu, gpu = run(base, 1, True), run(base, 1, True, device='gpu')
+    assert gpu['k_eff'] == pytest.approx(cpu['k_eff'], abs=1e-8)
+    np.testing.assert_allclose(gpu['normalized_assembly_fission_production'],
+                               cpu['normalized_assembly_fission_production'], atol=1e-7)

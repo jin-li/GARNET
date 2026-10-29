@@ -177,14 +177,32 @@ def stencil7_apply(xp, phi, diag, wx, wy, wz, row_scale, out=None):
     return out
 
 
+# The directed (ADF) stencil is _STENCIL7_SRC with the three high-side
+# neighbour terms switched to the high-side weights. Each edit must match
+# exactly once: a silent miss would leave a symmetric kernel behind.
+_STENCIL7_ADF_EDITS = (
+    ("wx[i]      * phi[i + yz]", "wx_hi[i]      * phi[i + yz]"),
+    ("wy[wyb + j * nz]       * phi[i + nz]", "wy_hi[wyb + j * nz]       * phi[i + nz]"),
+    ("wz[wzb + k]     * phi[i + 1]", "wz_hi[wzb + k]     * phi[i + 1]"),
+)
+
+
+def _stencil7_adf_src(base=None):
+    src = _STENCIL7_SRC if base is None else base
+    for old, new in _STENCIL7_ADF_EDITS:
+        if src.count(old) != 1:
+            raise RuntimeError("ADF stencil edit does not match the base kernel "
+                               f"exactly once: {old!r}")
+        src = src.replace(old, new)
+    return src
+
+
 def stencil7_adf_apply(xp, phi, diag, wx, wy, wz, wx_hi, wy_hi, wz_hi, out=None):
     """Fused Cartesian stencil with one coefficient per side of each face."""
     key = ("stencil7_adf",)
     if key not in _kernels:
         import cupy
-        src = _STENCIL7_SRC.replace("wx[i]      * phi[i + yz]", "wx_hi[i]      * phi[i + yz]")
-        src = src.replace("wy[wyb + j * nz]", "wy_hi[wyb + j * nz]")
-        src = src.replace("wz[wzb + k]", "wz_hi[wzb + k]")
+        src = _stencil7_adf_src()
         params = ("raw T phi, raw T diag, raw T wx, raw T wy, raw T wz, "
                   "raw T wx_hi, raw T wy_hi, raw T wz_hi, int32 nx, int32 ny, int32 nz")
         _kernels[key] = cupy.ElementwiseKernel(params, "T out", src, "garnet_stencil7_adf")

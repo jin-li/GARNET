@@ -134,10 +134,8 @@ class TriGroupOperator:
         #   per FACE, a 6-tuple (fL, fR) x (hyp, v, h) of arrays matching each
         #     face family -- one factor per ORDERED region pair, which is what
         #     classical GET actually specifies.
-        # The per-cell form cannot satisfy per-surface reference currents: a
-        # region touching n neighbours gets n conditions but one unknown, and
-        # least squares drives it to its bound (measured on HP-MR: cost stalled
-        # at 0.678 with every drum factor pegged at exp(+-1.2)).
+        # Per-face factors provide independent unknowns for the reference
+        # current on each region surface.
         if isinstance(df, tuple):
             if len(df) != 6:
                 raise ValueError("per-face df must be a 6-tuple "
@@ -166,13 +164,8 @@ class TriGroupOperator:
         self.h = h
         self.alpha_edge = alpha_edge
         self.j_scale = (_SQRT3 / 4.0) * h
-        # Face area, so partial currents can be reported edge-INTEGRATED. The
-        # S_N reference (aggregate_partial_currents) already folds the edge
-        # length in, so a per-unit-area coarse current is inconsistent with it by
-        # a factor h. That used to cancel in an all-row gauge; once the gauge is
-        # read off the flux rows only it is a real offset, and it showed up as
-        # the coarse/reference ratio splitting into distinct clusters (flux ~31,
-        # interface ~10, boundary ~5) where one common value was required.
+        # Reference currents are face-integrated, so coarse currents must
+        # include this face area too.
         self.face_area = h * dz
         self.D_cell = D
         if not hasattr(self, "bcf_arr"):
@@ -199,9 +192,12 @@ class TriGroupOperator:
             ad, au = act[:, :, 0], act[:, :, 1]
             m_hyp, m_v = ad & au, ad[1:, :] & au[:-1, :]
             m_h = ad[:, 1:] & au[:, :-1]
-            a_hyp = xp.where(m_hyp, a_hyp, 0.0); b_hyp = xp.where(m_hyp, b_hyp, 0.0)
-            a_v = xp.where(m_v, a_v, 0.0); b_v = xp.where(m_v, b_v, 0.0)
-            a_h = xp.where(m_h, a_h, 0.0); b_h = xp.where(m_h, b_h, 0.0)
+            a_hyp = xp.where(m_hyp, a_hyp, 0.0)
+            b_hyp = xp.where(m_hyp, b_hyp, 0.0)
+            a_v = xp.where(m_v, a_v, 0.0)
+            b_v = xp.where(m_v, b_v, 0.0)
+            a_h = xp.where(m_h, a_h, 0.0)
+            b_h = xp.where(m_h, b_h, 0.0)
             w_hyp, w_v, w_h = a_hyp, a_v, a_h
             if wz is not None:
                 wz = xp.where(act[..., :-1] & act[..., 1:], wz, 0.0)
@@ -211,11 +207,15 @@ class TriGroupOperator:
         self.a_h, self.b_h = a_h, b_h
 
         diag = removal.copy()
-        diag[:, :, 0] += a_hyp; diag[:, :, 1] += b_hyp
-        diag[1:, :, 0] += a_v;  diag[:-1, :, 1] += b_v
-        diag[:, 1:, 0] += a_h;  diag[:, :-1, 1] += b_h
+        diag[:, :, 0] += a_hyp
+        diag[:, :, 1] += b_hyp
+        diag[1:, :, 0] += a_v
+        diag[:-1, :, 1] += b_v
+        diag[:, 1:, 0] += a_h
+        diag[:, :-1, 1] += b_h
         if wz is not None:
-            diag[..., :-1] += wz; diag[..., 1:] += wz
+            diag[..., :-1] += wz
+            diag[..., 1:] += wz
 
         # Robin faces: an active cell whose neighbour across an edge is inactive
         # (or off-array, via the required void border). Each triangle has three
@@ -233,12 +233,8 @@ class TriGroupOperator:
             # boundary -- where a leaky core's equivalence error actually lives
             # -- has no free parameter at all. bcf = 1 leaves it untouched.
             bcf_arr = None if bcf is None else xp.asarray(bcf)
-            # Kept so tri_partial_currents can reproduce the operator's ACTUAL
-            # boundary leakage. It previously used a bare phi/4, which carries no
-            # dependence on D, alpha or bcf -- so the boundary condition it
-            # matched was disconnected from the leakage the operator applies, and
-            # the fit could drive the residual to machine zero (measured 1.2e-28)
-            # with k still 350 pcm off.
+            # Partial-current reconstruction must use this same boundary law
+            # to keep its leakage consistent with the operator.
             self.bcf_arr = bcf_arr
 
             def add(diag_sl, self_act, nbr_act, D_sl):
@@ -488,8 +484,10 @@ def tri_partial_currents(op, phi, region_map, active=None):
     interfaces, boundaries = {}, {}
     for k, (t, di, dj, tn, _n) in enumerate(_EDGES):
         a_w, b_w, sl, f_s, t_s = W[k]
-        a_w = np.asarray(asnumpy(a_w)); b_w = np.asarray(asnumpy(b_w))
-        f_s = np.asarray(asnumpy(f_s)); t_s = np.asarray(asnumpy(t_s))
+        a_w = np.asarray(asnumpy(a_w))
+        b_w = np.asarray(asnumpy(b_w))
+        f_s = np.asarray(asnumpy(f_s))
+        t_s = np.asarray(asnumpy(t_s))
         for i in range(nr):
             ii = i + di
             for j in range(nc):
@@ -523,8 +521,10 @@ def tri_partial_currents(op, phi, region_map, active=None):
                 ri = i - (sl[0].start or 0)
                 cj = j - (sl[1].start or 0)
                 try:
-                    wa = float(a_w[ri, cj]); wb = float(b_w[ri, cj])
-                    fs = float(f_s[ri, cj]); ts = float(t_s[ri, cj])
+                    wa = float(a_w[ri, cj])
+                    wb = float(b_w[ri, cj])
+                    fs = float(f_s[ri, cj])
+                    ts = float(t_s[ri, cj])
                 except (IndexError, ValueError):
                     continue
                 pR = float(phi[ii, jj, tn])

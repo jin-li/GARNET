@@ -47,8 +47,8 @@ class CongruentSDPNOperator:
                  theta=None):
         if getattr(grid, "geometry", None) == "mesh":
             raise ValueError("mesh symmetrizing congruence lacks integrated reaction/source weighting")
-        tr = _congruence_transform(order, coeffs)
-        if tr is None:
+        transform = _congruence_transform(order, coeffs)
+        if transform is None:
             raise ValueError(f"order-{order} tables admit no symmetrizing "
                              "congruence")
         if getattr(grid, "cylindrical_metrics", lambda: None)() is not None:
@@ -72,20 +72,20 @@ class CongruentSDPNOperator:
         self.symmetric = True
         self.marshak = None
         self.rhs_weight = None
-        self.src_weights = [float(w) for w in tr["src"]]
-        self.phi0_weights = [float(w) for w in tr["phi0"]]
-        self.time_weights = [[float(tr["tau"][i][j]) for j in range(M)]
+        self.src_weights = [float(moment_weights) for moment_weights in transform["src"]]
+        self.phi0_weights = [float(moment_weights) for moment_weights in transform["phi0"]]
+        self.time_weights = [[float(transform["tau"][i][j]) for j in range(M)]
                              for i in range(M)]
         zero = xp.zeros(grid.shape, dtype=D1.dtype)
         # Projected scalar leakage operators: (weights w, op on lam*field).
         self._proj = []
-        for field, pairs in ((D1, tr["grad_tr"]),
-                             (1.0 / sigma_t, tr["grad_t"])):
-            for lam, w in pairs:
-                L = op_cls(xp, grid, lam * field, zero, bc=bc_n,
+        for field, pairs in ((D1, transform["grad_tr"]),
+                             (1.0 / sigma_t, transform["grad_t"])):
+            for eigenvalue, moment_weights in pairs:
+                leakage_operator = op_cls(xp, grid, eigenvalue * field, zero, bc=bc_n,
                            active=active, mask_bc=mask_bc)
-                self._proj.append(([float(x) for x in w], L))
-        c1, ct = tr["c1"], tr["ct"]
+                self._proj.append(([float(x) for x in moment_weights], leakage_operator))
+        c1, ct = transform["c1"], transform["ct"]
         # Pre-combined per-pair reaction fields: apply adds R_ij * u_j with
         # R_ij = c1_ij removal + ct_ij sigma_t (+ theta tau_ij) -- one fused
         # multiply-add per (i, j) instead of two or three (measurably cheaper:
@@ -99,10 +99,10 @@ class CongruentSDPNOperator:
                     continue
                 self._react[(i, j)] = a * removal + b * sigma_t + t
         diag = xp.zeros((M,) + grid.shape, dtype=D1.dtype)
-        for w, L in self._proj:
+        for moment_weights, leakage_operator in self._proj:
             for i in range(M):
-                if w[i] != 0.0:
-                    diag[i] += (w[i] * w[i]) * L.diag
+                if moment_weights[i] != 0.0:
+                    diag[i] += (moment_weights[i] * moment_weights[i]) * leakage_operator.diag
         for i in range(M):
             if (i, i) in self._react:
                 diag[i] += self._react[(i, i)]
@@ -119,7 +119,10 @@ class CongruentSDPNOperator:
         """
         if self._react_stack is None:
             xp, M = self.xp, self.M
-            self._proj_w = [xp.asarray(w, dtype=u.dtype) for w, _ in self._proj]
+            self._proj_w = [xp.asarray(
+                moment_weights,
+                dtype=u.dtype,
+            ) for moment_weights, _ in self._proj]
             self._react_stack = kernels.stack_pairs(
                 xp, self._react, M, u.shape[1:], u.dtype)
         return self._proj_w, self._react_stack
@@ -135,14 +138,23 @@ class CongruentSDPNOperator:
         out = xp.zeros_like(u)
         if kernels.use_fused(xp, "block"):
             proj_w, react = self._fused_tables(u)
-            s = xp.empty(u.shape[1:], dtype=u.dtype)
-            for wd, (_, L) in zip(proj_w, self._proj):
-                kernels.moment_gather(xp, u, wd, out=s)
-                kernels.moment_scatter_add(xp, out, L.apply(s), wd)
+            projected_flux = xp.empty(u.shape[1:], dtype=u.dtype)
+            for device_weights, (_, leakage_operator) in zip(proj_w, self._proj):
+                kernels.moment_gather(xp, u, device_weights, out=projected_flux)
+                kernels.moment_scatter_add(
+                    xp,
+                    out,
+                    leakage_operator.apply(projected_flux),
+                    device_weights,
+                )
             return kernels.dense_react_add(xp, out, u, react, self._react)
-        for w, L in self._proj:
+        for moment_weights, leakage_operator in self._proj:
             kernels.moment_scatter_add(
-                xp, out, L.apply(kernels.moment_gather(xp, u, w)), w)
+                xp, out, leakage_operator.apply(kernels.moment_gather(
+                    xp,
+                    u,
+                    moment_weights,
+                )), moment_weights)
         return kernels.dense_react_add(xp, out, u, None, self._react)
 
 
@@ -329,50 +341,65 @@ def _congruence_transform(order, coeffs=None):
     c = (coeffs if coeffs is not None else _SDPN_C)[order]
     M = order + 1
     c1 = np.array(c[0], float)
-    Ct = sum(np.array(cm, float) for cm in c[1:])
-    kap = np.diag([0.0] + [1.0 / (4 * (i + 1) - 1) for i in range(1, M)])
-    e11 = np.zeros((M, M)); e11[0, 0] = 1.0
-    Q = e11 + kap
-    pieces = [e11, kap, c1, Ct]
-    Ts = [P @ np.linalg.inv(Q) for P in pieces]
-    # solve H T = T^T H over symmetric H (linear; null space by SVD)
-    idx = [(i, j) for i in range(M) for j in range(i, M)]
-    A = np.zeros((len(Ts) * (M * (M - 1) // 2), len(idx)))
-    for a, (i, j) in enumerate(idx):
-        Hb = np.zeros((M, M)); Hb[i, j] = Hb[j, i] = 1.0
-        r = 0
-        for T in Ts:
-            C = Hb @ T - T.T @ Hb
-            A[r:r + M * (M - 1) // 2, a] = C[np.triu_indices(M, 1)]
-            r += M * (M - 1) // 2
-    _, sv, vt = np.linalg.svd(A)
-    nnull = len(idx) - int(np.sum(sv > 1e-12 * max(sv[0], 1.0)))
+    total_reaction_coefficients = sum(np.array(cm, float) for cm in c[1:])
+    higher_moment_gradient = np.diag([0.0] + [1.0 / (4 * (i + 1) - 1) for i in range(1, M)])
+    e11 = np.zeros((M, M))
+    e11[0, 0] = 1.0
+    Q = e11 + higher_moment_gradient
+    pieces = [e11, higher_moment_gradient, c1, total_reaction_coefficients]
+    anchored_pieces = [P @ np.linalg.inv(Q) for P in pieces]
+    # Construct H T = T^T H constraints over symmetric H, then find their null space.
+    symmetric_indices = [(i, j) for i in range(M) for j in range(i, M)]
+    constraints_per_piece = M * (M - 1) // 2
+    symmetry_constraints = np.zeros(
+        (len(anchored_pieces) * constraints_per_piece, len(symmetric_indices)))
+    for a, (i, j) in enumerate(symmetric_indices):
+        symmetric_basis = np.zeros((M, M))
+        symmetric_basis[i, j] = symmetric_basis[j, i] = 1.0
+        constraint_offset = 0
+        for T in anchored_pieces:
+            symmetry_defect = symmetric_basis @ T - T.T @ symmetric_basis
+            rows = slice(constraint_offset, constraint_offset + constraints_per_piece)
+            symmetry_constraints[rows, a] = symmetry_defect[np.triu_indices(M, 1)]
+            constraint_offset += constraints_per_piece
+    _, singular_values, right_singular_vectors = np.linalg.svd(symmetry_constraints)
+    nullspace_tolerance = 1e-12 * max(singular_values[0], 1.0)
+    nullity = len(symmetric_indices) - int(np.sum(singular_values > nullspace_tolerance))
     result = None
-    for v in (vt[-nnull:] if nnull else []):
+    for v in (right_singular_vectors[-nullity:] if nullity else []):
         H = np.zeros((M, M))
-        for a, (i, j) in enumerate(idx):
+        for a, (i, j) in enumerate(symmetric_indices):
             H[i, j] = H[j, i] = v[a]
-        ev = np.linalg.eigvalsh(H)
-        if ev[-1] < 0:
-            H, ev = -H, -ev[::-1]
-        if ev[0] <= 1e-10 * ev[-1]:
+        eigenvalues = np.linalg.eigvalsh(H)
+        if eigenvalues[-1] < 0:
+            H, eigenvalues = -H, -eigenvalues[::-1]
+        positive_definite_tolerance = 1e-10 * eigenvalues[-1]
+        if eigenvalues[0] <= positive_definite_tolerance:
             continue                                  # not definite
         lam, W = np.linalg.eigh(H)
         R = W @ np.diag(np.sqrt(lam)) @ W.T
         S = np.linalg.inv(Q) @ (W @ np.diag(1.0 / np.sqrt(lam)) @ W.T)
+        # R acts on equation rows; S maps transformed unknowns back to moments.
         sym = lambda P: 0.5 * ((R @ P @ S) + (R @ P @ S).T)
-        M1, M2, C1p, Ctp = sym(e11), sym(kap), sym(c1), sym(Ct)
-        if min(np.linalg.eigvalsh(P)[0] for P in (M1, M2, C1p, Ctp)) < -1e-10:
+        transport_gradient = sym(e11)
+        total_gradient = sym(higher_moment_gradient)
+        removal_reaction = sym(c1)
+        total_reaction = sym(total_reaction_coefficients)
+        transformed_pieces = (transport_gradient, total_gradient,
+                              removal_reaction, total_reaction)
+        positive_semidefinite_tolerance = 1e-10
+        if min(np.linalg.eigvalsh(P)[0] for P in transformed_pieces) < -positive_semidefinite_tolerance:
             continue                                  # needs PSD pieces
         def eigpairs(P):
             lam_p, W_p = np.linalg.eigh(P)
-            keep = lam_p > 1e-12 * max(lam_p.max(), 1.0)
+            retained_mode_tolerance = 1e-12 * max(lam_p.max(), 1.0)
+            keep = lam_p > retained_mode_tolerance
             return [(float(l), W_p[:, k].copy())
                     for k, l in enumerate(lam_p) if keep[k]]
         result = {
-            "grad_tr": eigpairs(M1),      # pairs (lambda, w) on the D1 field
-            "grad_t": eigpairs(M2),       # pairs on the 1/Sigma_t field
-            "c1": C1p, "ct": Ctp, "tau": C1p + Ctp,
+            "grad_tr": eigpairs(transport_gradient),      # pairs (lambda, w) on the D1 field
+            "grad_t": eigpairs(total_gradient),       # pairs on the 1/Sigma_t field
+            "c1": removal_reaction, "ct": total_reaction, "tau": removal_reaction + total_reaction,
             "src": R @ c1[:, 0], "phi0": S.T @ c1[0],
             "R": R, "S": S,
         }

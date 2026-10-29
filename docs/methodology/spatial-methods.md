@@ -79,6 +79,14 @@ transport-generated factors, or the fork's mesh/NEM prescriptions. The
 [implementation audit](../qa/adf_audit_2026-10-27.md) separates CPU algebraic
 checks from the remaining real-GPU evidence.
 
+The [isolated-library colorset study](../c5g7_colorset_adf.md) adds a different
+test: factors generated in isolated assemblies are transferred to other
+arrangements. Its reference-refinement series shows that apparent improvements
+can change as the heterogeneous diffusion reference is refined. Regional trace
+collection uses face-area weights and opposite outward-current signs on the
+two sides. Exterior and inactive interfaces are excluded; absence of an
+interior score is reported as a NaN trace rather than a constructed factor.
+
 ## SPH
 
 Superhomogenization adjusts homogenized constants until selected regional reaction-rate or flux constraints match a reference calculation. `sph_correct`, `sph_correct_monolithic` and `sph_get_correct` provide explicit reference/coarse iterations; `flux_weighted_homogenize` and `region_average` support the reduction. A successful correction reproduces the declared target and state. It does not establish prediction after temperature, control geometry, energy partition or transport closure changes.

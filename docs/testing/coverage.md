@@ -89,6 +89,14 @@ Independent source/balance gates, failure states and runnable synthetic workflow
 
 Representative modules in `tests/verification/` include:
 
+- `test_colorset_adf.py` and `test_cartesian_adf.py`: isolated-library transfer,
+  region-side expansion, interface traces/current conservation and optional GPU
+  algebra checks. `tools/assess_adf_gpu.py` compares separately collected CPU/GPU
+  runs; the staged GH200 campaign is not a default-suite performance result.
+- `test_delayed_spectra.py`: shared and family-specific delayed spectra in
+  diffusion transients, with independent matrix-exponential references and
+  group-sweep/monolithic comparisons.
+
 - `test_diffusion_analytic.py`, `test_cylindrical.py`, `test_sp3_analytic.py` and
   `test_tri_prisms.py`: analytic eigenvalues, refinement order and geometric
   limits. `test_neutron_balance.py` and `test_conduction.py` check conservation

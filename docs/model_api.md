@@ -245,6 +245,25 @@ its materials. Return cached `Material` objects while nothing changes so the
 solver reuses its operators. Omit it for an unperturbed run. Pass a `Kinetics`
 object directly with `model.set_kinetics(kinetics)` if it is already available.
 
+Delayed neutrons can have a spectrum distinct from the material's fission
+spectrum. Pass `chi_delayed=[...]` for one shared spectrum, or a table with
+shape `(precursor_families, energy_groups)` for family-specific spectra:
+
+```python
+model.set_kinetics(
+    velocities=[1e7, 3e5], beta=[0.004, 0.0025], decay=[0.08, 0.3],
+    chi_delayed=[[0.95, 0.05], [0.85, 0.15]],
+)
+```
+
+Each delayed spectrum is normalized on construction. `Material.chi` denotes
+the total equilibrium fission spectrum; the diffusion transient derives
+prompt production as `chi - sum_i beta_i * chi_delayed[i]` and adds delayed
+emission from the evolving precursor inventories. Omitting `chi_delayed`
+uses each material's `chi` for delayed emission as well. This applies to
+Cartesian, cylindrical, and triangular diffusion transients, including the
+monolithic and group-sweep solution methods.
+
 For moving assignments, `state_at(t)` returns cached `Model` frames with the
 same dimensions, physical size and boundaries. The `at=` escape hatch still
 takes a raw `t → (materials, material_map)` callback. Only one of these three

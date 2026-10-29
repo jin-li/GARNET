@@ -20,6 +20,16 @@ assert np.allclose(run.power, 1.0, atol=1e-5)
 Lengths use cm, velocities cm/s, decay constants s$^{-1}$ and all schedule
 widths/times seconds. Delayed fractions are dimensionless.
 
+Diffusion transients accept `chi_delayed` as a shared `(G,)` spectrum or a
+family-specific `(I,G)` table through `set_kinetics`. Each spectrum is normalized
+on construction. `Material.chi` is the total equilibrium fission spectrum;
+prompt production subtracts the delayed fractions with their own spectra.
+Omitting `chi_delayed` uses each material's `chi` for delayed emission. This
+contract applies to Cartesian, cylindrical and triangular diffusion, including
+group-sweep and monolithic stepping. It does not change the separate static NEM
+raw delayed-production matrix interface. See the
+[kinetics example](../model_api.md) for the array layout.
+
 Initialization defaults account for the arithmetic precision:
 `tol_k=max(1e-8,8*eps(dtype))` and
 `tol_source=max(1e-7,64*eps(dtype))`, with the solver's matching default

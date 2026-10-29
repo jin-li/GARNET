@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # Stage the GARNET checkout into shared scratch and submit the CPU benchmark
-# from there. This avoids running batch jobs directly from AFS.
+# from there, so queued jobs are unaffected by later edits to the checkout.
 
 set -euo pipefail
 
-src_root="/afs/psi.ch/project/stars/workspace/RND/SB-RND-ACT-011-24/WP2/PM41/GARNET"
+src_root="${GARNET_SRC_ROOT:-$HOME/GARNET}"
 stage_root="/data/scratch/shared/poncet_m/garnet-stage"
 
 mkdir -p "$stage_root"

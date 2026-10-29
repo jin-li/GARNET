@@ -6,7 +6,8 @@ running natively on CUDA GPUs via CuPy with a NumPy CPU fallback.
 
 from .analytic import (geometric_buckling_box, k_bare_box, k_bare_box_sp3,
                        k_from_buckling, k_from_buckling_sp3, k_infinite)
-from .adf import assembly_face_factors
+from .adf import (assembly_face_factors, expand_region_side_factors,
+                  region_side_traces)
 from .backend import asnumpy, device_name, get_backend
 from .femffusion import read_material_xml, read_xsec
 from .griffin_xs import (read_library as read_griffin_library,
@@ -83,6 +84,8 @@ __all__ = [
     "MeshSPNEigenSolver", "MeshSDPNEigenSolver", "MeshSP1EigenSolver",
     "MeshSP3EigenSolver", "MeshSDP1EigenSolver",
     "assembly_face_factors",
+    "expand_region_side_factors",
+    "region_side_traces",
     "Model",
     "CylindricalModel",
     "MeshModel",
