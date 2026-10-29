@@ -101,6 +101,8 @@ class CoupledMomentEigenSolver:
     retains the full assembled matrix, including every off-group coefficient.
     group_ilu_fill_factor explicitly budgets only group ILU (default 20);
     group_ilu_setup_callback receives copied setup statistics, never factors.
+    preconditioner='group_ilu_coarse' adds a fixed connected-aggregate native
+    correction to those same group factors; no default or acceptance changes.
     iteration_callback receives scalar progress snapshots. SciPy's monitored
     preconditioned relative residual is not the true action acceptance residual.
     """
@@ -114,8 +116,8 @@ class CoupledMomentEigenSolver:
               positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
               group_ilu_setup_callback=None,iteration_callback=None):
         op=self.operator
-        if preconditioner not in ('none','ilu','group_ilu'):
-            raise ValueError("preconditioner must be 'none', 'ilu' or 'group_ilu'")
+        if preconditioner not in ('none','ilu','group_ilu','group_ilu_coarse'):
+            raise ValueError("preconditioner must be 'none', 'ilu', 'group_ilu' or 'group_ilu_coarse'")
         if isinstance(group_ilu_fill_factor,(bool,np.bool_)) or not isinstance(group_ilu_fill_factor,Real):
             raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1')
         try:
@@ -166,7 +168,7 @@ class CoupledMomentEigenSolver:
                 matrix_nnz=int(solve_matrix.nnz),drop_tol=1e-6,fill_factor=20,
                 superlu_nnz=int(factor.nnz),
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
-        elif preconditioner=='group_ilu':
+        elif preconditioner in ('group_ilu','group_ilu_coarse'):
             started=perf_counter()
             cells,moments,groups=op.shape
             group_factors=[];group_stats=[]
@@ -226,6 +228,12 @@ class CoupledMomentEigenSolver:
                 group_cell_ordering=('ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]' if moments==2 else
                                      f'ascending cells; moments 0..{moments-1} per cell; flat indices M*G*i+G*m+g for every m'),
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
+            if preconditioner=='group_ilu_coarse':
+                from .native_coarse import NativeCoarsePreconditioner
+                coarse_preconditioner=NativeCoarsePreconditioner.from_operator(op,M)
+                M=coarse_preconditioner.linear_operator
+                preconditioner_metadata['coarse']=coarse_preconditioner.metadata
+                preconditioner_metadata['setup_seconds']=perf_counter()-started
         k=1.;history=[];reason='outer_iteration_limit';numerical=False;full=float('inf')
         # Keep the linear operator independent from the mutable assembled sparse
         # matrix so post-GMRES residual checks detect any assembly inconsistency.
@@ -283,13 +291,16 @@ class CoupledMomentEigenSolver:
         if isinstance(op,CorrectedNativeMomentOperator):
             files += tuple(Path(__file__).with_name(name) for name in
                            ('corrected_native_moments.py','corrected_mesh.py','mesh.py'))
+        if preconditioner=='group_ilu_coarse':
+            files += (Path(__file__).with_name('native_coarse.py'),)
+            preconditioner_metadata['coarse']=coarse_preconditioner.metadata
         provenance=dict(physical_admission=False,computational_only=True,solver='CPU scipy GMRES + source-normalized power iteration',
             numpy_version=np.__version__,scipy_version=scipy.__version__,family=op.family,moments_per_cell=op.n_moments,
             required_orders=op.required_orders,material_provenance=[dict(m.provenance) for m in op.materials],
             implementation_sha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
             max_inner=max_inner,max_outer=max_outer,inner_tolerance=inner_tolerance,k_tolerance=k_tolerance,
             source_tolerance=source_tolerance,residual_tolerance=residual_tolerance,positivity_tolerance=positivity_tolerance,
-            group_ilu_fill_factor=group_fill if preconditioner=='group_ilu' else None,
+            group_ilu_fill_factor=group_fill if preconditioner in ('group_ilu','group_ilu_coarse') else None,
             source_normalization='sum(cell_volume * NSF dot reconstructed phi0) = 1',
             initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
             preconditioner=preconditioner,preconditioner_metadata=preconditioner_metadata)

@@ -212,7 +212,7 @@ copied to CSC and factored exactly once with `spilu(drop_tol=1e-6,
 fill_factor=group_ilu_fill_factor)`. The explicit
 `solve(group_ilu_fill_factor=20)` default preserves the original budget; a
 finite real value at least one is required, and booleans are rejected. This
-parameter applies only to `group_ilu`; ordinary `ilu` retains its fixed value
+parameter applies to the group ILU modes; ordinary `ilu` retains its fixed value
 of 20. A smaller value can reduce factor storage but can also cause breakdown,
 slower convergence or stagnation. It is not a total-memory cap or an automatic
 fallback. Group solves gather and scatter those same indices for every
@@ -272,6 +272,92 @@ angular estimators for deterministic physical use. Native balance/precision,
 higher-moment estimator consistency and binary/library identity remain separate
 questions. This experiment is a separate numerical route, not an assumed fix
 for the previously observed reactor discrepancy.
+
+### Experimental fixed native two-level correction
+
+`solve(preconditioner='group_ilu_coarse', group_ilu_fill_factor=10)` explicitly
+adds a coarse correction to the original fixed group ILU. This is a bounded
+implementation experiment, not an established fix for assembly-scale SP5
+stagnation. Select `group_ilu` to return to the original path. Defaults, group
+factor extraction/options, full GMRES matrix identity, callbacks, and independent
+`op.action` linear/outer/final acceptance remain unchanged. In particular this
+option does not change the general solver tolerances; a research harness must
+explicitly select its inner `1e-7`, k `1e-6` and source/balance `1e-5` gates.
+
+For a fixed group smoother M and implicit piecewise-constant transfer P:
+
+```
+Ac = P.T A P
+Q r = P solve(Ac, P.T r)
+M2 r = Q r + M(r - A Q r)
+```
+
+Every aggregate retains all M*G native components, in coarse index
+`(M*G)*aggregate + G*moment + group`. Restriction is a **sum of integrated
+balances**, never volume averaging. Aggregates may cross material identities
+only inside this preconditioner; no material, equation or fine matrix changes.
+Each application uses one dense coarse LU solve, one additional original CSR
+matvec and one application of the unchanged group factors. There are no adaptive
+factors, aggregate-count tuning, shifts, regularization or fallback.
+
+The geometry map has exactly `min(n_cells,128)` aggregates. It first seeds every
+mesh connected component at its smallest cell index, in component order; more
+than 128 components are refused. Remaining seeds maximize minimum squared
+Euclidean centroid distance, with smallest-index ties. Multisource graph
+Dijkstra uses interior-face adjacency and finite positive centroid edge
+lengths, with lexicographic `(distance, seed ordinal, predecessor cell)` ties.
+Nonempty coverage and connectivity of each aggregate are checked afterwards.
+Corrected operators use `grid.mesh.centroid` and interior `faces`; orthogonal
+operators use their actual `mesh.centroids` and `interior` owners, with no
+inferred index-space geometry.
+
+Coarse assembly scans bounded CSR chunks (at most 4096 rows and 1,000,000
+entries, except a single larger indivisible row), accumulates every duplicate
+coarse pair in `longdouble`, and casts once to float64 before nonsymmetric dense
+LU. Platforms without wider `longdouble` are refused. It never forms AP, a full
+fine transfer, a full sparse matrix copy, or abs(full fine A). The fine matrix
+and caller-owned smoother must stay fixed for the object's lifetime.
+
+`NativeCoarsePreconditioner.from_operator(op, smoother)` in
+`garnet.native_coarse` accepts an already-built fixed linear callable or
+`LinearOperator`, so a diagnostic can reuse its group factors. The lower-level
+constructor accepts `(matrix, shape, aggregate_ids, smoother)` for small known
+layout fixtures; callers supplying a map own its geometric connectivity check.
+`prolong`, `restrict`, `coarse_action`, `apply` and `linear_operator` expose the
+fixed algebra for external audits. Tests compare `coarse_action(z)` with
+`restrict(op.action(prolong(z)))` independently, and check `M2(A P z)` against
+`P z`. A production research harness should audit its own fixed vectors before
+GMRES; no costly native action is hidden inside coarse setup/application.
+
+Singular/nonfinite LU, invalid LAPACK `gecon` reciprocal condition estimates,
+and failed coarse solves raise without adjustment. One deterministic setup
+solve and every application use the fixed componentwise diagnostic
+`abs(Ac*x-r) <= beta*(abs(Ac)*abs(x)+abs(r))`, where
+`beta=2*d*u/(1-2*d*u)`, `d=dim(Ac)` and `u=eps64/2`. Zero scale requires exactly
+zero residual; nonfinite quantities fail. Absolute coarse coefficients are
+processed in dense row chunks. This is a backward-consistency diagnostic,
+not a proven forward-error bound for LU or the native computational graph.
+Maximum observed forward relative coarse residual and componentwise bound ratio
+are recorded separately. No roundoff allowance enters true action acceptance.
+
+Metadata under `preconditioner_metadata['coarse']` reports exact aggregate and
+coarse-matrix SHA256 hashes, layout, fixed budget/dimension, setup/mapping and
+accumulation times, CSR chunk/entry counts, `gecon` condition estimate, retained
+and workspace array bytes, and process lifetime peak RSS (not isolated setup
+memory). The LU/pivot and dense coarse arrays are retained; array counts exclude
+Python/SciPy temporaries and the caller-owned fine matrix/factors. Setup solves,
+application coarse solves and extra A matvecs have separate counters. Only the
+opt-in mode adds `native_coarse.py` to implementation provenance.
+
+`tests/test_native_coarse.py` covers deterministic ties, disconnected/invalid
+geometry, connected coverage, native transfer/adjoint layout, duplicate-safe
+bounded accumulation and explicit small P.T A P, independent SP3/SP5 action,
+coarse-space inverse identity, linearity/repeatability, fixed-factor reuse,
+fail-closed behavior and integrated true-residual rejection. Optional local
+actual-data tiny SP3/SP5 checks read the audited derivative named by
+`NDGPU_NATIVE_COARSE_TEST_XS`, compare a direct solve and independent residual,
+and skip when that external input is unavailable. These checks supply no
+assembly convergence, runtime, transport accuracy or physical admission claim.
 
 ## Experimental SP5 validation and resource scope
 
