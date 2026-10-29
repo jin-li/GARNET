@@ -97,3 +97,52 @@ orthogonal meshes, where the correction is zero. See the
 [spatial methodology](../methodology/spatial-methods.md) for the discretization
 and evidence limits. This diffusion option does not qualify the native moment
 transport pathway or add the correction to its separate `MeshGrid` operators.
+Before using regional data, inspect energy-group flux support and scattering
+transfer errors as well as the declared balance check. A balance pass can
+reflect a wide statistical tolerance. Printed zero errors do not prove
+exactness, and a 100% relative error does not identify a particle-event count.
+For sparse Serpent 2.2.2 group-constant batches, increasing particles per batch
+may need investigation separately from adding cycles. Retain native errors,
+source histories and correction provenance; the adapter does not replace the
+study's statistical or physical qualification.
+
+Gmsh 2.2 ASCII imports can retain physical material and boundary tags. See the
+[fitted mesh geometry contract](../development/subpin-mesh-geometry.md). Map each
+boundary tag explicitly to a supported boundary condition; a physical label
+alone does not impose a reflective or vacuum boundary. Face geometry metadata
+does not add nonorthogonal correction to the existing two-point operator.
+
+Two-dimensional cell areas are evaluated in local coordinates to avoid
+subtracting large global-coordinate products for thin fitted cells. Check
+material-region areas against the intended geometry separately; this numerical
+stabilization does not remove polygonal approximation of curved interfaces.
+
+
+## Corrected fitted-mesh solves (experimental)
+
+Pass `mesh_discretization="corrected"` to `MeshDiffusionEigenSolver`,
+`MeshSP3EigenSolver`, or `MeshSDP1EigenSolver` to use the fixed linear
+nonorthogonal reconstruction. The solver selects GMRES and, by default, a fixed TPFA incomplete-LU
+preconditioner, with CPU factorization and backend-resident application. CG and moment symmetrization are unsupported.
+For moment solvers use `marshak_vacuum=True` to select coupled vacuum traces.
+Existing default solves retain the two-point operator. The corrected path
+requires oriented face geometry, a full-rank reconstruction patch, and unity
+discontinuity factors; higher-order mesh moment models are not supported.
+
+Use `tol_k=1e-6`, `tol_source=1e-5`, `tol_balance=1e-5`,
+`tol_fixed_source=1e-6`, and `inner_rtol_floor=1e-7` for explicit
+production-like iteration criteria. The separate fixed-source tolerance
+otherwise retains its stricter default. Independent equation/current balance and spatial
+convergence remain necessary before interpreting a reactor comparison.
+
+The corrected path accepts `mesh_preconditioner="tpfa_ilu"` (default),
+`"corrected_ilu"`, or `"tpfa_neumann"` (two fixed Jacobi sweeps).
+`"corrected_ilu"` factors the actual corrected FV matrix instead of its TPFA
+approximation. It changes neither the equations nor the stopping criteria;
+convergence still requires the true residual checks. Small CPU tests cover
+scalar and moment operators; this option does not establish reactor accuracy
+or GPU validation. Its setup and factor memory can exceed the TPFA option.
+ILU uses SciPy setup; on CuPy its
+triangular factors and permutations stay on the GPU. Factorization/backend
+failures propagate. The weaker polynomial option may fail on thin high-contrast
+material layers. Measure construction/factor memory before a large model.

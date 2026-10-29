@@ -1340,8 +1340,8 @@ class _MeshSolverMixin:
             raise ValueError("mesh_preconditioner is only available for corrected meshes")
         if self.mesh_discretization == "corrected":
             self.mesh_preconditioner_model = self.mesh_preconditioner_model or "tpfa_ilu"
-            if self.mesh_preconditioner_model not in ("tpfa_ilu", "tpfa_neumann"):
-                raise ValueError("mesh_preconditioner must be 'tpfa_ilu' or 'tpfa_neumann'")
+            if self.mesh_preconditioner_model not in ("tpfa_ilu", "corrected_ilu", "tpfa_neumann"):
+                raise ValueError("mesh_preconditioner must be 'tpfa_ilu', 'corrected_ilu', or 'tpfa_neumann'")
         if self.mesh_discretization not in ("tpfa", "corrected"):
             raise ValueError("mesh_discretization must be 'tpfa' or 'corrected'")
         if self.mesh_discretization == "corrected":
@@ -1417,6 +1417,10 @@ class _MeshSolverMixin:
             if self.mesh_preconditioner_model == "tpfa_ilu":
                 from .mesh_preconditioner import build_tpfa_ilu
                 self.preconds = [build_tpfa_ilu(op._tpfa, self.xp) for op in self.ops]
+            elif self.mesh_preconditioner_model == "corrected_ilu":
+                from .mesh_preconditioner import build_corrected_ilu
+                self.preconds = [build_corrected_ilu(op.host_matrix, op.diag.shape, self.xp)
+                                 for op in self.ops]
             else:
                 self.preconds = [neumann_preconditioner(op.tpfa_apply, op.tpfa_inv_diag,
                                                         2) for op in self.ops]

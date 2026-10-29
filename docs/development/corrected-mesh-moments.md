@@ -80,7 +80,16 @@ transport-reference accuracy.
 
 The public common-mesh eigen drivers select this closure with
 `mesh_discretization="corrected"` and use GMRES with fixed TPFA incomplete-LU
-preconditioning. Actual AMD validation covers the synthetic two-group sheared
+preconditioning by default. Opt-in `mesh_preconditioner="corrected_ilu"`
+factors the exact coupled corrected host matrix, including reaction and Marshak
+boundary blocks. It preserves moment-major ordering and cell-volume weights,
+uses the same ILU settings, and propagates setup failure without fallback.
+This is a numerical preconditioner choice, with no change to the moment closure
+or convergence tolerances. Matrix/factor nonzero counts and setup seconds are
+available on each preconditioner; corrected fill can require more memory.
+Small skew heterogeneous CPU tests check both families against direct solves
+and true GMRES residuals. GPU use of this new option remains unverified.
+Actual AMD validation covers the synthetic two-group sheared
 mesh with coupled vacuum boundaries, with fusion enabled and disabled; CPU
 and GPU eigenvalues and scalar fluxes agree to double-precision roundoff.
 That evidence does not qualify a large fitted reactor mesh or its XS.

@@ -1,9 +1,11 @@
-"""Fixed ILU preconditioning of assembled two-point-flux mesh operators.
+"""Fixed ILU preconditioning of assembled mesh operators.
 
 Assembly and incomplete factorization happen on the CPU once. GPU application
 uses device-resident sparse triangular solves, including SuperLU permutations.
 Factorization and backend errors propagate; there is no fallback preconditioner.
 """
+
+from time import perf_counter
 
 import numpy as np
 
@@ -75,9 +77,27 @@ def build_tpfa_ilu(operator, xp):
     and ``fill_factor=20``. Only construction copies GPU data to the host.
     The callable requires the original state shape and matching array backend.
     """
+    matrix, shape = _assemble_tpfa(operator)
+    return _build_ilu(matrix, shape, xp)
+
+
+def build_corrected_ilu(matrix, shape, xp):
+    """Build fixed ILU of the exact corrected ``host_matrix`` without scaling.
+
+    ``shape`` is the corrected operator's ``diag.shape``. Factorization,
+    permutations, backend application, and tolerances match TPFA ILU.
+    """
+    return _build_ilu(matrix, shape, xp)
+
+
+def _build_ilu(matrix, shape, xp):
+    """Factor a host sparse matrix once and preserve its state layout."""
     from scipy.sparse.linalg import spilu
 
-    matrix, shape = _assemble_tpfa(operator)
+    start = perf_counter()
+    shape = tuple(shape)
+    if matrix.shape != (int(np.prod(shape)),) * 2:
+        raise ValueError("ILU matrix dimensions must match the state shape")
     lu = spilu(matrix.tocsc(), drop_tol=1e-6, fill_factor=20)
     if xp is np:
         def solve(r):
@@ -102,11 +122,12 @@ def build_tpfa_ilu(operator, xp):
 
     def precondition(r):
         if not isinstance(r, xp.ndarray):
-            raise TypeError("TPFA ILU residual must use the configured array backend")
+            raise TypeError("ILU residual must use the configured array backend")
         if r.shape != shape:
-            raise ValueError(f"TPFA ILU residual shape {r.shape} != {shape}")
+            raise ValueError(f"ILU residual shape {r.shape} != {shape}")
         return solve(r)
 
+    precondition.setup_seconds = perf_counter() - start
     precondition.nnz = lu.L.nnz + lu.U.nnz
     precondition.matrix_nnz = matrix.nnz
     precondition.shape = shape

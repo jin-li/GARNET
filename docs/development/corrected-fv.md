@@ -114,6 +114,19 @@ triangular factors and explicit permutations. A two-sweep TPFA Neumann option
 is retained for comparisons, but failed on the fitted thin-gap pin. The separate
 [order-1 moment operator](corrected-mesh-moments.md) implements genuine coupled
 Marshak reconstruction; the scalar supplied-gradient hook is not that coupling.
+Set `mesh_preconditioner="corrected_ilu"` to factor the exact corrected
+`host_matrix` instead. This opt-in numerical option changes only the fixed
+preconditioner; it does not change the operator, physics, state ordering, cell
+volume weighting, Krylov tolerances, or the default `"tpfa_ilu"`. It uses the same
+SuperLU drop tolerance (1e-6), fill factor (20), permutations, and GPU triangular
+solve path, with no fallback on factorization failure. The returned callable
+exposes `matrix_nnz`, factor `nnz`, state `shape`, and `setup_seconds` for matrix
+conversion, factorization, and backend setup (TPFA assembly is excluded).
+Corrected-matrix fill and memory can exceed TPFA. Small skew heterogeneous CPU
+checks compare matrix action, direct solutions, and true GMRES residuals for
+scalar, SP3, and SDP1 operators; this option has not been GPU validated or
+qualified for large reactor convergence.
+
 Actual AMD checks of the synthetic two-group sheared problem agree with CPU
 in both fused settings. These checks establish numerical backend consistency,
 not reactor accuracy or performance.
