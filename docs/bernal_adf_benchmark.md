@@ -43,7 +43,9 @@ values in the operator dtype raise an error.
 GMRES and BiCGStab are available. Cartesian ADFs are not wired into the model
 API, transient, SPN, triangular/hexagonal, unstructured, or cylindrical solvers. The existing no-ADF stencil and fused kernel remain in use
 when `adf` is omitted. A separate fused GPU kernel is provided for directed
-face weights, but has not been run on a GPU in this environment.
+face weights. It has not yet run on a GPU; the GH200 verification and
+benchmark jobs are prepared in
+[benchmark-results/adf-gh200](https://github.com/jin-li/GARNET/tree/main/benchmark-results/adf-gh200).
 
 ## Reconstructing the example
 
@@ -117,3 +119,16 @@ work.
 `GroupOperator.face_currents(phi)` returns oriented interior current densities
 for Cartesian grids, with zero on masked faces. Multiply by face area for
 integrated current. Physical and mask-boundary currents are not included.
+
+`GroupOperator.face_traces(phi)` returns, for each interior face, the two
+homogeneous surface-flux reconstructions `phi_L - J h/(2 D_L)` and
+`phi_R + J h/(2 D_R)`; with factors, `f_L * low == f_R * high`.
+`garnet.region_side_traces(ops, flux, regions)` averages traces and integrates
+net currents per region side. `garnet.expand_region_side_factors(regions,
+factors)` turns a (G, R, 6) per-region library into the cell array taken by
+`assembly_face_factors`.
+
+`make_problem` and `run` in the example accept `linear_solver`,
+`precond_degree`, `factor_exponent` (0 gives explicit unity factors) and
+`node_factors`. `tools/assess_adf_gpu.py` uses these for its solver-separated
+and factor-contrast GPU studies.

@@ -29,11 +29,12 @@
 set -euo pipefail
 
 if [[ "$(uname -m)" == "aarch64" ]]; then
-    unset PMODULES_ENV
-    module purge
-    module use Spack unstable
-    module load gcc/12.3 cuda/12.6.0-wak5 python/3.13.5-xbg5
     default_python="/data/scratch/shared/poncet_m/garnet-gh-py313-v1/bin/python"
+    # The CUDA 12.6 runtime libraries come from the environment's nvidia-* wheels.
+    for lib in "$(dirname "$(dirname "${GARNET_PYTHON_BIN:-$default_python}")")"/lib/python3.13/site-packages/nvidia/*/lib; do
+        LD_LIBRARY_PATH="$lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    done
+    export LD_LIBRARY_PATH
 else
     default_python="/opt/psi/conda-envs/x86_64/ra-standard_py312/bin/python"
 fi

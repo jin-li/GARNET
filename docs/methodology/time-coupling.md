@@ -16,6 +16,18 @@ Here $A$ includes spatial loss and intergroup scattering. The exact input capabi
 
 A transient initialized from an arbitrary eigenstate uses the documented critical adjustment: fission is divided by its initial $k_0$ so an unchanged equilibrium stays stationary. This is a deliberate transient reference model. It differs from evolving an unadjusted off-critical physical reactor.
 
+For the diffusion transient's equilibrium-spectrum convention, the prompt
+emission weight in group $g$ is
+$\chi_g-\sum_i\beta_i\chi_{d,i,g}$, while delayed emission is
+$\sum_i\chi_{d,i,g}\lambda_i C_i$. The delayed spectrum can be shared by all
+families or supplied per family. The shared `DelayedEmission` implementation
+applies this same split in group sweeps and the monolithic endpoint solve.
+`MonolithicDiffusionStep` separates that linear endpoint solve from step
+acceptance and history management; transformed history weights remain distinct
+from diagonal time shifts. The
+[implementation notes](../numerical_implementation_notes.md) retain historical
+performance investigations rather than new measurements for this revision.
+
 Backward Euler is the baseline implicit scheme. BDF pathways extend the history approximation, with startup/restart and optional adaptive controllers. Abrupt state changes require aligned time points and restart controls where appropriate. Decreasing a linear tolerance does not remove time error. Compare time refinements and inspect rejected steps, startup order and discontinuity handling. Coupled drivers may impose stronger schedule restrictions than a standalone transient solver.
 
 ## Experimental exponential time integration

@@ -40,6 +40,7 @@ Optional FEMFFUSION reader and other dependency checks skip when unavailable.
 | `test_tri_prisms.py` | tri-z extrusion: slab limit, order, extruded-2D = 3D |
 | `test_unstructured_mesh.py` | unstructured FV ≡ structured FV on the same mesh |
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
+| `test_delayed_spectra.py` | shared and family-specific delayed spectra vs independently assembled two-group neutron/precursor equations, with BDF1/BDF2 and both diffusion step solvers |
 | `test_transient_model_api.py` | shared Cartesian/r-z/triangular histories, event schedules, accepted-step callbacks, initial-state compatibility and cylindrical coupling |
 | `test_exponential_damping.py` | damped transformed BDF2, independent kinetics/stiff-mode references, six precursor families, unequal widths, event/fallback guards and coupled API regression |
 | `test_exponential_adaptive.py` | physical-state FTM error control, complete trial rollback, volume/mask norms, events, six-family Radau and localized multigroup matrix-exponential references |
@@ -48,6 +49,9 @@ Optional FEMFFUSION reader and other dependency checks skip when unavailable.
 | `test_exponential_estimator_ramp.py` | state-driven history rejection on a smooth insertion, same-trial oracle failures, independent Radau error and accepted-half-step replay |
 | `test_exponential_twigl.py` | independent spatial generator vs kernel actions, augmented-exponential state/integral reference, ramp-corner continuity, conservative mesh restriction and all physical gates for six transient methods |
 | `test_linalg_krylov.py` | GMRES/BiCGStab options: match CG on SPD systems through every solver entry point; solve a convection-dominated non-symmetric system where CG provably diverges; the non-symmetric divergence-form cylindrical stencil (`symmetric_operator=False`) equals the SPD-weighted one |
+| `test_cartesian_adf.py` | Cartesian ADF face law vs independently assembled matrices (masks, transpose, currents, traces, factor scaling, invalid input); dense two-group forward/adjoint eigenpairs; ADF kernel-source edits; on a GPU, fused vs unfused vs CPU stencils and GPU vs CPU solves |
+| `test_adf_slab_reference.py`, `test_dallosso_adf_reference.py` | reference-factor equivalence against analytical heterogeneous one- and two-group slabs |
+| `test_colorset_adf.py` | C5G7 colorset ADF workflow: homogenized isolated assemblies keep k∞; symmetric library factors; node-level reference XS + DF reproduce the fine reference exactly, and inadmissible (negative-trace) nodes are reported |
 | `test_femffusion_io.py` | .xsec/XML readers vs the files' exact contents |
 | `test_conduction.py` | conduction vs the exact sinked-slab `cosh` solution (2nd order, Dirichlet and Robin, Cartesian and tri-prism); the discrete energy balance as an exact identity |
 | `test_power_density.py` | power normalizes to the rated watts; independent of the eigenvalue flux's arbitrary scale; kappa- vs nu-weighting; mixing |

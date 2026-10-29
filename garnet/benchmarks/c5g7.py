@@ -144,7 +144,7 @@ class C5G7Problem:
     mix_weight: np.ndarray = None     # pin-resolved: fuel-covered area fraction
 
 
-def _pin_coverage(s: int, sub: int = 16) -> np.ndarray:
+def pin_coverage(s: int, sub: int = 16) -> np.ndarray:
     """Fraction of each of the s x s sub-cells of a pin covered by the centred
     r = 0.54 cm fuel cylinder (identical for every pin). Sub-sampled sub x sub."""
     R = PIN_RADIUS / PIN_PITCH
@@ -215,7 +215,7 @@ def build_c5g7_2d(cells_per_pin: int = 2,
         # the pi r^2 / pitch^2 fuel loading at *any* resolution -- a plain
         # in/out raster does not, and its fuel area (hence k) swings wildly with
         # cells_per_pin.
-        frac = np.tile(_pin_coverage(s), (n, n))           # covered fraction
+        frac = np.tile(pin_coverage(s), (n, n))            # covered fraction
         frac[expanded == water_idx] = 0.0                  # water pins: no fuel
         eps = 1e-9
         full = frac >= 1.0 - eps

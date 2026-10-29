@@ -71,6 +71,8 @@ downloads where needed for provenance.
 
 adf_slab_reference
 bernal_adf_benchmark
+c5g7_colorset_adf
+numerical_implementation_notes
 dallosso_1d_reference
 qa/adf_audit_2026-10-27
 exponential_literature_review_2026-10-26

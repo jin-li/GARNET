@@ -68,49 +68,53 @@ def power_density(flux, materials, material_map=None, *, total_power=None,
     active       : bool mask; excised cells produce no power.
     """
     flux = asnumpy(flux)
-    G = flux.shape[0]
+    groups = flux.shape[0]
     table, _ = fission_energy_xs(materials)
-    if table.shape[1] != G:
-        raise ValueError(f"flux has {G} groups, materials have {table.shape[1]}")
+    if table.shape[1] != groups:
+        raise ValueError(f"flux has {groups} groups, materials have {table.shape[1]}")
 
     if material_map is None:
         if len(table) > 1:
             raise ValueError("material_map is required with multiple materials")
-        xs = np.broadcast_to(table[0].reshape(G, *([1] * (flux.ndim - 1))),
+        energy_release_xs = np.broadcast_to(table[0].reshape(groups, *([1] * (flux.ndim - 1))),
                              flux.shape)
     else:
-        mmap = np.asarray(material_map)
-        if mmap.shape != flux.shape[1:]:
-            raise ValueError(f"material_map shape {mmap.shape} != flux cell "
+        material_indices = np.asarray(material_map)
+        if material_indices.shape != flux.shape[1:]:
+            raise ValueError(f"material_map shape {material_indices.shape} != flux cell "
                              f"shape {flux.shape[1:]}")
-        xs = np.stack([table[:, g][mmap] for g in range(G)])
+        energy_release_xs = np.stack([table[:, g][material_indices] for g in range(groups)])
         if mix_material is not None:
-            mm2 = np.asarray(mix_material)
-            w = np.asarray(mix_weight, dtype=float)
-            has = mm2 >= 0
-            base = np.maximum(mm2, 0)
-            for g in range(G):
-                other = table[:, g][base]
-                xs[g] = np.where(has, (1.0 - w) * xs[g] + w * other, xs[g])
+            mixed_material = np.asarray(mix_material)
+            mixed_weight = np.asarray(mix_weight, dtype=float)
+            has_mixture = mixed_material >= 0
+            safe_mixed_material = np.maximum(mixed_material, 0)
+            for g in range(groups):
+                mixed_xs = table[:, g][safe_mixed_material]
+                energy_release_xs[g] = np.where(
+                    has_mixture,
+                    (1.0 - mixed_weight) * energy_release_xs[g] + mixed_weight * mixed_xs,
+                    energy_release_xs[g],
+                )
 
-    dens = (xs * flux).sum(axis=0)
+    power_density_field = (energy_release_xs * flux).sum(axis=0)
     if active is not None:
-        dens = np.where(np.asarray(active).astype(bool), dens, 0.0)
+        power_density_field = np.where(np.asarray(active).astype(bool), power_density_field, 0.0)
     if total_power is None:
-        return dens
+        return power_density_field
 
-    vol = np.asarray(asnumpy(cell_volume), dtype=float)
+    cell_volumes = np.asarray(asnumpy(cell_volume), dtype=float)
     if volume_weight is not None:
-        vol = vol * asnumpy(volume_weight)
+        cell_volumes = cell_volumes * asnumpy(volume_weight)
     try:
-        vol = np.broadcast_to(vol, dens.shape)
+        cell_volumes = np.broadcast_to(cell_volumes, power_density_field.shape)
     except ValueError as exc:
         raise ValueError("cell volumes must broadcast to the flux cell shape") from exc
-    if not np.all(np.isfinite(vol)) or np.any(vol <= 0.0):
+    if not np.all(np.isfinite(cell_volumes)) or np.any(cell_volumes <= 0.0):
         raise ValueError("cell volumes must be finite and positive")
-    integral = float(np.sum(dens * vol))
+    integral = float(np.sum(power_density_field * cell_volumes))
     if integral <= 0.0:
         raise ValueError("no fission power in the flux: cannot normalize to "
                          "a rated power (is the flux zero, or the material "
                          "map missing its fuel?)")
-    return dens * (float(total_power) / integral)
+    return power_density_field * (float(total_power) / integral)
