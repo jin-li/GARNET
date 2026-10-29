@@ -323,9 +323,12 @@ that declaration is validated but is caller evidence, not native provenance.
 This check changes no cross sections, factors or interpolation formulas.
 
 The [Serpent manual](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation)
-describes collapsing intermediate micro-group constants to the final macro
-groups, including for infinite-spectrum constants. It states that micro-grid
-choice has virtually no effect on infinite-spectrum results apart from limited
-floating-point precision. Comparing processing identities therefore records a
-compatibility condition, rather than proving a physical explanation for any
-observed difference or establishing nuclear-data equivalence.
+describes collapsing intermediate micro-group constants to macro groups.
+Ordinary infinite-spectrum reaction constants use direct Monte Carlo spectrum
+weighting, so their micro-grid dependence is negligible apart from rounding.
+The [diffusion formulations](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#diffusion-coefficients)
+use the micro-group structure, including the calculation of `INF_DIFFCOEF`;
+changing that structure can therefore affect D. This distinction does not
+establish a causal explanation for any observed result difference. Comparing
+processing identities records a compatibility condition and does not establish
+nuclear-data equivalence.

@@ -34,12 +34,15 @@ cannot override the identity recovered from retained native fields. Native-free
 manual states may explicitly declare the validated identity as caller evidence.
 The identity also records the current `inf` diffusion formulation.
 
-Serpent uses intermediate micro-group constants when collapsing to macro groups.
-Its manual explains that, for infinite-spectrum constants, choosing the
-micro-group structure has virtually no effect beyond floating-point precision.
-This identity guard conservatively records the processing structure; it does
-not assert that a grid difference causes a significant physics bias. See the
-[Serpent group-constant generation guide](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation).
+Serpent collapses intermediate micro-group constants to macro groups. Its
+[manual](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation)
+explains that ordinary infinite-spectrum reaction constants use direct Monte
+Carlo spectrum weighting, with virtually no micro-grid effect beyond rounding.
+The [diffusion-coefficient calculation](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#diffusion-coefficients)
+also uses the micro-group structure: changes can affect `INF_DIFFCOEF` and thus
+D. This distinction does not prove the cause of any observed result difference.
+The guard records processing compatibility without establishing nuclear-data
+equivalence.
 
 ADFs must travel with the same spatial-reference and receiving-solver closure
 and reflector mask used to derive them. Record `transverse_leakage_identity`,
