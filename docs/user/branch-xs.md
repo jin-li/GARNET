@@ -145,6 +145,21 @@ report = compare_reconstruction_chain(
 assert report["status"] == "descriptive"
 ```
 
+Keep three checks separate: pointwise eigenvalue and power interpolation
+against the exact reconstructed solver; predicted coefficient accuracy against
+continuous-energy (CE) transport or another reference over the same physical
+endpoint interval; and full-step versus half-step coefficient convergence.
+A relative target for coefficient accuracy is caller policy and must name its
+reference. Agreement with the exact reconstructed solver, or convergence as
+the interval shrinks, does not establish accuracy against CE over that interval.
+Finite-interval coefficients are secants, not local derivatives.
+
+Nominal agreement with a reference can coexist with inconclusive reference
+precision. A screen that treats the prediction as deterministic and propagates
+only native Monte Carlo endpoint errors is conditional: it omits uncertainty
+in training XS and ADFs. Report that scope and unresolved precision separately
+from nominal relative error; neither establishes application qualification.
+
 The chain forwards `power_target` to the interpolated-versus-exact power
 comparison. Transport comparisons remain descriptive. A requested metric with
 no threshold prevents an overall pass; a failed assessed metric still fails.
