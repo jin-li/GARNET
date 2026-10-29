@@ -19,6 +19,27 @@ regions, energy boundaries and material arrays. Face factors use
 `(region, emitted_group, source_group)`. Record the reaction convention,
 diffusion prescription, geometry, nuclear data and factor method in metadata.
 
+
+Native Serpent `MICRO_NG`/`MICRO_E` fields identify the intermediate micro-group
+structure separately from the final `MACRO_NG`/`MACRO_E` structure. GARNET
+validates this optional pair and derives immutable `state.microgroup_identity`
+from all retained native records, including older saved libraries. Every
+printed micro-group boundary must match exactly across a library; equal counts
+or macro groups are insufficient. A Serpent version compatibility policy cannot
+waive this check. Known and unknown micro-grids cannot be mixed. Wholly unknown
+synthetic/legacy states remain usable with an explicit `status: unknown`
+identity; this does not establish scientific compatibility. Caller metadata
+cannot override the identity recovered from retained native fields. Native-free
+manual states may explicitly declare the validated identity as caller evidence.
+The identity also records the current `inf` diffusion formulation.
+
+Serpent uses intermediate micro-group constants when collapsing to macro groups.
+Its manual explains that, for infinite-spectrum constants, choosing the
+micro-group structure has virtually no effect beyond floating-point precision.
+This identity guard conservatively records the processing structure; it does
+not assert that a grid difference causes a significant physics bias. See the
+[Serpent group-constant generation guide](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation).
+
 ADFs must travel with the same spatial-reference and receiving-solver closure
 and reflector mask used to derive them. Record `transverse_leakage_identity`,
 `reflector_mask_sha256`, `leakage_boundary` and

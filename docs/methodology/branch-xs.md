@@ -297,3 +297,34 @@ with the source library and prediction snapshot. Existing development cases
 must remain identified as such; introducing this evaluator does not turn a
 retrospective comparison into blind validation. No PRATIC, full-rod or
 differential-worth qualification is implied by this software interface.
+
+
+## Native micro-group processing identity
+
+The optional native `MICRO_NG`/`MICRO_E` pair is validated independently of the
+macro-group structure: one positive integral count and exactly count-plus-one
+finite, nonnegative, strictly descending boundaries in MeV. The outer micro-
+and macro-group boundaries need not be identical. The identity includes the current `inf` diffusion formulation, so it cannot
+be reused silently by a future formulation. No tolerance, resampling or
+normalization is applied to the printed numeric micro-grid.
+
+Each `BranchState` derives its reserved `microgroup_identity` from every
+retained native record. Partial pairs, differing universe grids and mixtures
+of known and unknown universe grids are rejected. This also recovers identity
+from older JSON files that retained the raw fields without derived metadata.
+Conflicting caller declarations fail; replacing other metadata cannot hide a
+native grid. A library requires identical effective identities, independently
+of its Serpent version policy. Exact selection, interpolation and JSON
+save/load carry the identity. A wholly unknown collection remains supported
+for backward compatibility and synthetic calculations, visibly marked unknown.
+Native-free manually authored states may declare the reserved identity explicitly;
+that declaration is validated but is caller evidence, not native provenance.
+This check changes no cross sections, factors or interpolation formulas.
+
+The [Serpent manual](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation)
+describes collapsing intermediate micro-group constants to the final macro
+groups, including for infinite-spectrum constants. It states that micro-grid
+choice has virtually no effect on infinite-spectrum results apart from limited
+floating-point precision. Comparing processing identities therefore records a
+compatibility condition, rather than proving a physical explanation for any
+observed difference or establishing nuclear-data equivalence.

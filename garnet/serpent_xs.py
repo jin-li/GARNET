@@ -16,6 +16,7 @@ import re
 import numpy as np
 
 from .materials import Material
+from ._microgroup_identity import microgroup_bounds
 # Preserve historical private names for callers that used the scalar parser.
 from ._serpent_literals import _ASSIGNMENT, _COUNTER, _NUMBER, _literal, _statements
 
@@ -40,7 +41,7 @@ _REQUIRED = {
     "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_FLX",
     "INF_S0", "INF_SP0",
 }
-_KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS
+_KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS | {"MICRO_NG", "MICRO_E"}
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,18 @@ class SerpentXSRecord:
     @property
     def energy_bounds_mev(self):
         return self.fields["MACRO_E"].copy()
+
+    @property
+    def micro_energy_bounds_mev(self):
+        """Optional printed micro-group boundaries, separate from macro groups."""
+        bounds = microgroup_bounds(self.fields)
+        return None if bounds is None else np.array(bounds)
+
+    @property
+    def n_micro_groups(self):
+        """Optional micro-group count; None denotes unknown structure."""
+        bounds = microgroup_bounds(self.fields)
+        return None if bounds is None else len(bounds) - 1
 
     @property
     def n_surfaces(self):
@@ -138,6 +151,10 @@ class SerpentXSRecord:
                 or not np.all(np.isfinite(edges)) or np.any(edges < 0)
                 or not np.all(np.diff(edges) < 0)):
             raise self._error("MACRO_E", "expected G+1 finite nonnegative descending boundaries in MeV")
+        try:
+            microgroup_bounds(self.fields)
+        except ValueError as exc:
+            raise self._error("MICRO_NG/MICRO_E", str(exc)) from exc
         if "DF_N_SURF" in self.fields:
             ns = self.fields["DF_N_SURF"]
             if (not isinstance(ns, np.ndarray) or ns.size != 1
