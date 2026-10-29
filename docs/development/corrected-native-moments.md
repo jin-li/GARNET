@@ -181,7 +181,13 @@ then moment order. For SP3/SDP1 this remains `[2*G*i+g, 2*G*i+G+g]`.
 This is an `M*cells` square diagonal
 group block, including all its spatial and moment couplings. Each block is
 copied to CSC and factored exactly once with `spilu(drop_tol=1e-6,
-fill_factor=20)`. Group solves gather and scatter those same indices for every
+fill_factor=group_ilu_fill_factor)`. The explicit
+`solve(group_ilu_fill_factor=20)` default preserves the original budget; a
+finite real value at least one is required, and booleans are rejected. This
+parameter applies only to `group_ilu`; ordinary `ilu` retains its fixed value
+of 20. A smaller value can reduce factor storage but can also cause breakdown,
+slower convergence or stagnation. It is not a total-memory cap or an automatic
+fallback. Group solves gather and scatter those same indices for every
 GMRES application; factors remain frozen throughout the solve. SuperLU's other
 options retain their defaults. Setup failures identify the group and raise
 with their original cause; there is no solver fallback.
@@ -222,6 +228,15 @@ assembly resource probe is still required. Tests compare the extracted sparse
 arrays with direct SciPy slicing, including empty rows and wider index arrays,
 and check native SP3/SP5 group solves. The full GMRES matrix, incomplete-LU
 parameters and independent residual checks are unchanged.
+
+An optional `group_ilu_setup_callback` receives metadata-only events before
+extraction, before factorization, after each completed factor and on setup
+failure. Events identify the group, effective fill budget and completed factor
+statistics. A research driver can persist them alongside process memory
+measurements without materializing the factors' L and U matrices. Failed setup
+raises with its original cause and completed-group evidence; it does not try
+another fill budget. Callback errors also propagate. The effective group fill
+budget is recorded in returned provenance and preconditioner metadata.
 
 The existing raw native-data audit found order-1/3 invertibility with condition
 numbers at most about 308. That algebraic observation does not qualify higher

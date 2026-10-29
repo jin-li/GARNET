@@ -5,6 +5,7 @@ regularization, scattering RHS, or alternate solver fallback.
 """
 from dataclasses import dataclass
 import hashlib
+from numbers import Real
 from pathlib import Path
 from time import perf_counter
 import numpy as np
@@ -98,6 +99,8 @@ class CoupledMomentEigenSolver:
     preconditioner='group_ilu' instead freezes one all-moment, all-cell block
     per energy group and applies their factors as fixed block Jacobi. GMRES
     retains the full assembled matrix, including every off-group coefficient.
+    group_ilu_fill_factor explicitly budgets only group ILU (default 20);
+    group_ilu_setup_callback receives copied setup statistics, never factors.
     """
     def __init__(self,operator):
         if not isinstance(operator,(CoupledMomentOperator,CorrectedNativeMomentOperator)):
@@ -106,10 +109,21 @@ class CoupledMomentEigenSolver:
 
     def solve(self,*,initial=None,max_inner=1000,max_outer=200,inner_tolerance=1e-11,
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
-              positivity_tolerance=1e-12,preconditioner='none'):
+              positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
+              group_ilu_setup_callback=None):
         op=self.operator
         if preconditioner not in ('none','ilu','group_ilu'):
             raise ValueError("preconditioner must be 'none', 'ilu' or 'group_ilu'")
+        if isinstance(group_ilu_fill_factor,(bool,np.bool_)) or not isinstance(group_ilu_fill_factor,Real):
+            raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1')
+        try:
+            group_fill=float(group_ilu_fill_factor)
+        except OverflowError as exc:
+            raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1') from exc
+        if not np.isfinite(group_fill) or group_fill<1:
+            raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1')
+        if group_ilu_setup_callback is not None and not callable(group_ilu_setup_callback):
+            raise ValueError('group_ilu_setup_callback must be callable or None')
         # Corrected MeshGrid volumes are exposed explicitly by the operator.
         volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
@@ -152,26 +166,47 @@ class CoupledMomentEigenSolver:
             started=perf_counter()
             cells,moments,groups=op.shape
             group_factors=[];group_stats=[]
+            def setup_event(phase,group,**details):
+                if group_ilu_setup_callback is not None:
+                    group_ilu_setup_callback(dict(phase=phase,group=group,fill_factor=group_fill,
+                        completed_groups=[dict(stat) for stat in group_stats],**details))
+            def setup_failure(group,phase,exc,current=None):
+                details=dict(failed_phase=phase,error_type=type(exc).__name__,error=str(exc))
+                if current is not None:details['current_group_stats']=dict(current)
+                if isinstance(exc,MemoryError):
+                    failure=MemoryError(f'Group ILU {"block extraction" if phase=="extraction" else phase} failed for group {group} after {len(group_factors)} completed factors; no solver fallback')
+                else:
+                    failure=RuntimeError(f'Group ILU {"block extraction" if phase=="extraction" else phase} failed for group {group}; no solver fallback')
+                failure.args=(str(failure)+f'; fill_factor={group_fill}; completed_groups={group_stats}',)
+                failure.group=group;failure.fill_factor=group_fill
+                failure.completed_groups=[dict(stat) for stat in group_stats]
+                try:
+                    setup_event('failure',group,**details)
+                except Exception as callback_exc:
+                    # A failed logger must not replace the numerical cause.
+                    failure.callback_error=str(callback_exc)
+                return failure
             for group in range(groups):
                 group_started=perf_counter()
                 # Native layout is (cells, M, G): each group block retains
                 # every moment of each cell, including SP5's third moment.
-                indices=(moments*groups*np.arange(cells)[:,None]+groups*np.arange(moments)[None,:]+group).ravel()
+                setup_event('before_extraction',group)
                 try:
+                    indices=(moments*groups*np.arange(cells)[:,None]+groups*np.arange(moments)[None,:]+group).ravel()
                     block=_group_principal_block(solve_matrix,groups,group).tocsc(copy=True)
-                except MemoryError as exc:
-                    raise MemoryError(f'Group ILU block extraction failed for group {group} after {len(group_factors)} completed factors; no solver fallback') from exc
+                except (MemoryError,RuntimeError,ValueError) as exc:
+                    raise setup_failure(group,'extraction',exc) from exc
+                current=dict(group=group,dimension=int(block.shape[0]),matrix_nnz=int(block.nnz))
+                setup_event('before_factorization',group,current_group_stats=dict(current))
                 try:
-                    factor=spilu(block,drop_tol=1e-6,fill_factor=20)
-                except MemoryError as exc:
-                    raise MemoryError(f'Group ILU factorization failed for group {group} after {len(group_factors)} completed factors; no solver fallback') from exc
-                except (RuntimeError,ValueError) as exc:
-                    raise RuntimeError(f'Group ILU factorization failed for group {group}; no solver fallback') from exc
+                    factor=spilu(block,drop_tol=1e-6,fill_factor=group_fill)
+                except (MemoryError,RuntimeError,ValueError) as exc:
+                    raise setup_failure(group,'factorization',exc,current) from exc
                 group_factors.append((indices,factor))
-                group_stats.append(dict(group=group,dimension=int(block.shape[0]),
-                    matrix_nnz=int(block.nnz),superlu_nnz=int(factor.nnz),
-                    setup_seconds=perf_counter()-group_started))
+                current.update(superlu_nnz=int(factor.nnz),setup_seconds=perf_counter()-group_started)
+                group_stats.append(current)
                 del block
+                setup_event('after_factorization',group,current_group_stats=dict(current))
             # Close over the factors once: neither later matrix mutation nor
             # outer iterations rebuild or update the preconditioner.
             group_factors=tuple(group_factors)
@@ -182,7 +217,7 @@ class CoupledMomentEigenSolver:
                 return result
             M=LinearOperator(solve_matrix.shape,matvec=group_solve,dtype=solve_matrix.dtype)
             preconditioner_metadata.update(setup_seconds=perf_counter()-started,
-                drop_tol=1e-6,fill_factor=20,groups=group_stats,
+                drop_tol=1e-6,fill_factor=group_fill,group_ilu_fill_factor=group_fill,groups=group_stats,
                 group_block_extraction='two-pass bounded CSR rows; at most 4096 rows and 1000000 source entries per chunk, except one larger row',
                 group_cell_ordering=('ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]' if moments==2 else
                                      f'ascending cells; moments 0..{moments-1} per cell; flat indices M*G*i+G*m+g for every m'),
@@ -231,6 +266,7 @@ class CoupledMomentEigenSolver:
             implementation_sha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
             max_inner=max_inner,max_outer=max_outer,inner_tolerance=inner_tolerance,k_tolerance=k_tolerance,
             source_tolerance=source_tolerance,residual_tolerance=residual_tolerance,positivity_tolerance=positivity_tolerance,
+            group_ilu_fill_factor=group_fill if preconditioner=='group_ilu' else None,
             source_normalization='sum(cell_volume * NSF dot reconstructed phi0) = 1',
             initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
             preconditioner=preconditioner,preconditioner_metadata=preconditioner_metadata)
