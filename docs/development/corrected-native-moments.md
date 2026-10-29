@@ -207,6 +207,22 @@ eigenpairs against an independent dense pencil, and rejection of corrupted
 assembly by true action. These synthetic checks supply no native-data physical
 admission, reactor convergence, runtime or memory guarantee.
 
+Group-block extraction uses two passes over bounded row chunks instead of
+materializing every selected row across all energy groups. Each chunk contains
+at most 4,096 selected rows and 1,000,000 source entries, except that one larger
+indivisible row is allowed. The first pass counts retained entries; the second
+fills the final CSR allocation. Column selection and remapping preserve the
+entries, explicit zeros, duplicates and their order. The resulting CSC block
+is the same principal submatrix used by the original extraction. Transient
+blocks are released after factorization; all seven factors remain available
+to the preconditioner in a seven-group calculation.
+
+This bounds extraction workspace, not total operator or factor storage. An
+assembly resource probe is still required. Tests compare the extracted sparse
+arrays with direct SciPy slicing, including empty rows and wider index arrays,
+and check native SP3/SP5 group solves. The full GMRES matrix, incomplete-LU
+parameters and independent residual checks are unchanged.
+
 The existing raw native-data audit found order-1/3 invertibility with condition
 numbers at most about 308. That algebraic observation does not qualify higher
 angular estimators for deterministic physical use. Native balance/precision,

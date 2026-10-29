@@ -15,6 +15,57 @@ from .corrected_native_moments import CorrectedNativeMomentOperator
 from .moment_materials import _immutable
 
 
+def _group_principal_block(matrix, groups, group, *, max_rows=4096, max_nnz=1_000_000):
+    """Copy one native energy group's principal block with bounded workspace.
+
+    Native flat indices for a group are ``G*k+g`` for all cell/moment pairs k.
+    Slice at most max_rows selected rows and max_nnz source entries at once
+    (one indivisible larger row is allowed). Count first, then fill the exact
+    final CSR allocation; never retain selected rows across all source columns.
+    Explicit zeros, duplicates and within-row entry order are preserved.
+    """
+    for value, label in ((groups,'groups'), (max_rows,'max_rows'), (max_nnz,'max_nnz')):
+        if isinstance(value,(bool,np.bool_)) or not isinstance(value,(int,np.integer)) or value<1:
+            raise ValueError(label+' must be a positive integer')
+    if isinstance(group,(bool,np.bool_)) or not isinstance(group,(int,np.integer)) or not 0<=group<groups:
+        raise ValueError('group must be an integer in [0, groups)')
+    if not scipy.sparse.isspmatrix_csr(matrix) or matrix.shape[0]!=matrix.shape[1] or matrix.shape[0]%groups:
+        raise ValueError('Square native CSR matrix with size divisible by groups required')
+    rows=np.arange(group,matrix.shape[0],groups,dtype=np.int64)
+    dimension=len(rows)
+    def chunks():
+        start=0
+        while start<dimension:
+            stop=min(start+max_rows,dimension)
+            selected=rows[start:stop]
+            counts=matrix.indptr[selected+1]-matrix.indptr[selected]
+            cumulative=np.cumsum(counts,dtype=np.int64)
+            count=max(1,int(np.searchsorted(cumulative,max_nnz,side='right')))
+            stop=start+count
+            yield start,stop,matrix[rows[start:stop],:]
+            start=stop
+    # int64 counts prevent overflow before choosing the final CSR index width.
+    indptr=np.empty(dimension+1,dtype=np.int64);indptr[0]=0
+    for start,stop,chunk in chunks():
+        keep=chunk.indices%groups==group
+        cumulative=np.empty(chunk.nnz+1,dtype=np.int64);cumulative[0]=0
+        np.cumsum(keep,dtype=np.int64,out=cumulative[1:])
+        indptr[start+1:stop+1]=indptr[start]+cumulative[chunk.indptr[1:]]
+        del chunk,keep,cumulative
+    nnz=int(indptr[-1])
+    index_dtype=np.int32 if max(dimension,nnz)<=np.iinfo(np.int32).max else np.int64
+    indices=np.empty(nnz,dtype=index_dtype)
+    data=np.empty(nnz,dtype=matrix.dtype)
+    for start,stop,chunk in chunks():
+        keep=chunk.indices%groups==group
+        lo,hi=int(indptr[start]),int(indptr[stop])
+        indices[lo:hi]=chunk.indices[keep]//groups
+        data[lo:hi]=chunk.data[keep]
+        del chunk,keep
+    return scipy.sparse.csr_matrix((data,indices,indptr.astype(index_dtype,copy=False)),
+                                   shape=(dimension,dimension),copy=False)
+
+
 @dataclass(frozen=True)
 class CoupledMomentResult:
     k_eff: float
@@ -106,15 +157,21 @@ class CoupledMomentEigenSolver:
                 # Native layout is (cells, M, G): each group block retains
                 # every moment of each cell, including SP5's third moment.
                 indices=(moments*groups*np.arange(cells)[:,None]+groups*np.arange(moments)[None,:]+group).ravel()
-                block=solve_matrix[indices,:][:,indices].tocsc(copy=True)
+                try:
+                    block=_group_principal_block(solve_matrix,groups,group).tocsc(copy=True)
+                except MemoryError as exc:
+                    raise MemoryError(f'Group ILU block extraction failed for group {group} after {len(group_factors)} completed factors; no solver fallback') from exc
                 try:
                     factor=spilu(block,drop_tol=1e-6,fill_factor=20)
+                except MemoryError as exc:
+                    raise MemoryError(f'Group ILU factorization failed for group {group} after {len(group_factors)} completed factors; no solver fallback') from exc
                 except (RuntimeError,ValueError) as exc:
                     raise RuntimeError(f'Group ILU factorization failed for group {group}; no solver fallback') from exc
                 group_factors.append((indices,factor))
                 group_stats.append(dict(group=group,dimension=int(block.shape[0]),
                     matrix_nnz=int(block.nnz),superlu_nnz=int(factor.nnz),
                     setup_seconds=perf_counter()-group_started))
+                del block
             # Close over the factors once: neither later matrix mutation nor
             # outer iterations rebuild or update the preconditioner.
             group_factors=tuple(group_factors)
@@ -126,6 +183,7 @@ class CoupledMomentEigenSolver:
             M=LinearOperator(solve_matrix.shape,matvec=group_solve,dtype=solve_matrix.dtype)
             preconditioner_metadata.update(setup_seconds=perf_counter()-started,
                 drop_tol=1e-6,fill_factor=20,groups=group_stats,
+                group_block_extraction='two-pass bounded CSR rows; at most 4096 rows and 1000000 source entries per chunk, except one larger row',
                 group_cell_ordering=('ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]' if moments==2 else
                                      f'ascending cells; moments 0..{moments-1} per cell; flat indices M*G*i+G*m+g for every m'),
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
