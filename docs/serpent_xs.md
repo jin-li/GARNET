@@ -86,6 +86,17 @@ not be interpreted as a physical absorption tally. `balance_diagnostics()`
 reports collision and production closure discrepancies from printed constants;
 it does not alter or fit the data.
 
+Reduced absorption can be negative when extra neutron production in `(n,xn)`
+reactions exceeds physical absorption. The reader preserves finite signed
+`INF_RABSXS` means and still requires finite, nonnegative reported relative
+errors. Physical absorption, total cross sections and diffusion coefficients
+retain their separate sign checks. The scalar diffusion adapter cannot represent
+negative reduced absorption in `Material.sigma_a` and reports this limitation
+explicitly. The native moment adapter instead constructs losses from total minus
+production scattering, retaining reduced absorption for provenance and balance
+diagnostics. Neither adapter clamps these values or treats a reported zero error
+as proof of adequate Monte Carlo precision.
+
 See the [Serpent group-constant documentation](https://serpent.vtt.fi/docs/user_guide/gc_generation.html)
 and [standard-output documentation](https://serpent.vtt.fi/docs/user_guide/standard_output.html)
 for definitions and generation options.
