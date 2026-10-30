@@ -103,6 +103,10 @@ class CoupledMomentEigenSolver:
     group_ilu_setup_callback receives copied setup statistics, never factors.
     preconditioner='group_ilu_coarse' adds a fixed connected-aggregate native
     correction to those same group factors; no default or acceptance changes.
+    inner_warm_start=True keeps the first linear solve cold, then starts at
+    k*u using the previous source-normalized candidate and current eigenvalue.
+    accepted_outer_state_callback receives copied linear/native states only
+    after linear acceptance and candidate positivity; it may stop by raising.
     iteration_callback receives scalar progress snapshots. SciPy's monitored
     preconditioned relative residual is not the true action acceptance residual.
     """
@@ -114,8 +118,11 @@ class CoupledMomentEigenSolver:
     def solve(self,*,initial=None,max_inner=1000,max_outer=200,inner_tolerance=1e-11,
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
-              group_ilu_setup_callback=None,iteration_callback=None):
+              group_ilu_setup_callback=None,iteration_callback=None,inner_warm_start=False,
+              accepted_outer_state_callback=None):
         op=self.operator
+        if type(inner_warm_start) is not bool:
+            raise ValueError('inner_warm_start must be a bool')
         if preconditioner not in ('none','ilu','group_ilu','group_ilu_coarse'):
             raise ValueError("preconditioner must be 'none', 'ilu', 'group_ilu' or 'group_ilu_coarse'")
         if isinstance(group_ilu_fill_factor,(bool,np.bool_)) or not isinstance(group_ilu_fill_factor,Real):
@@ -130,6 +137,8 @@ class CoupledMomentEigenSolver:
             raise ValueError('group_ilu_setup_callback must be callable or None')
         if iteration_callback is not None and not callable(iteration_callback):
             raise ValueError('iteration_callback must be callable or None')
+        if accepted_outer_state_callback is not None and not callable(accepted_outer_state_callback):
+            raise ValueError('accepted_outer_state_callback must be callable or None')
         # Corrected MeshGrid volumes are exposed explicitly by the operator.
         volumes=op.volumes if isinstance(op,CorrectedNativeMomentOperator) else op.mesh.volumes
         if any(type(n) is not int or n<1 for n in (max_inner,max_outer)):
@@ -235,26 +244,47 @@ class CoupledMomentEigenSolver:
                 preconditioner_metadata['coarse']=coarse_preconditioner.metadata
                 preconditioner_metadata['setup_seconds']=perf_counter()-started
         k=1.;history=[];reason='outer_iteration_limit';numerical=False;full=float('inf')
+        inner_warm_start_reuses=0
+        def coarse_monitor():
+            if accepted_outer_state_callback is None or preconditioner!='group_ilu_coarse':
+                return {}
+            metadata=coarse_preconditioner.metadata
+            return dict(coarse_aggregate_sha256=metadata['aggregate_sha256'],
+                coarse_aggregate_count=metadata['aggregate_count'],coarse_dimension=metadata['coarse_dimension'],
+                coarse_applications=metadata['applications'],coarse_solves=metadata['coarse_solves'],
+                coarse_extra_a_matvecs=metadata['extra_a_matvecs'],
+                coarse_setup_coarse_solves=metadata['setup_coarse_solves'])
         # Keep the linear operator independent from the mutable assembled sparse
         # matrix so post-GMRES residual checks detect any assembly inconsistency.
         for outer in range(1,max_outer+1):
             rhs=op.fission_action(u);steps=[]
+            reuse_inner=inner_warm_start and outer>1
+            # Multiplication allocates a separate initial guess: a solver may
+            # mutate x0 without changing the normalized outer candidate.
+            inner_initial=k*u if reuse_inner else None
+            if reuse_inner:inner_warm_start_reuses+=1
+            warm_record=(dict(inner_warm_start=True,inner_initial_guess_reused=reuse_inner,
+                             inner_initial_guess='k*u' if reuse_inner else 'zero',
+                             restart=min(40,op.size)) if inner_warm_start else {})
             callback=steps.append
             if iteration_callback is not None:
                 iteration_callback(dict(phase='inner_start',outer=outer,max_inner=max_inner,
-                    restart=min(40,op.size),inner_tolerance=float(inner_tolerance)))
+                    restart=min(40,op.size),inner_tolerance=float(inner_tolerance),
+                    **{key:value for key,value in warm_record.items() if key!='restart'},**coarse_monitor()))
                 def callback(value):
                     steps.append(value)
                     iteration_callback(dict(phase='inner_iteration',outer=outer,inner_iteration=len(steps),
                         scipy_preconditioned_residual_norm=float(value),
                         residual_kind='scipy_preconditioned_relative_residual_monitor_only',used_for_acceptance=False))
-            y,info=gmres(solve_matrix,rhs,x0=None,rtol=inner_tolerance,atol=0,M=M,
+            y,info=gmres(solve_matrix,rhs,x0=inner_initial,rtol=inner_tolerance,atol=0,M=M,
                          restart=min(40,op.size),maxiter=max_inner,callback=callback,callback_type='legacy')
             linear=float(np.linalg.norm(op.action(y)-rhs)/np.linalg.norm(rhs))
             record=dict(outer=outer,inner_iterations=len(steps),gmres_info=int(info),linear_residual=linear)
+            record.update(warm_record)
             if iteration_callback is not None:
                 iteration_callback(dict(phase='inner_complete',outer=outer,count=len(steps),gmres_info=int(info),
-                    true_action_relative_residual=linear,accepted_linear=bool(info==0 and np.isfinite(linear) and linear<=inner_tolerance)))
+                    true_action_relative_residual=linear,accepted_linear=bool(info==0 and np.isfinite(linear) and linear<=inner_tolerance),
+                    **warm_record,**coarse_monitor()))
             if info!=0 or not np.isfinite(linear) or linear>inner_tolerance:
                 history.append(record);reason='inner_failure_or_full_linear_residual';break
             next_k=source_size(y)
@@ -278,7 +308,12 @@ class CoupledMomentEigenSolver:
                         converged=converged,reason=event_reason))
             if not nonnegative(phi) or not nonnegative(power):
                 reason='negative_reconstructed_scalar_or_power';outer_event(False,False,reason);break
-            if k_error<=k_tolerance and source_error<=source_tolerance and full<=residual_tolerance:
+            candidate_converged=k_error<=k_tolerance and source_error<=source_tolerance and full<=residual_tolerance
+            if accepted_outer_state_callback is not None:
+                accepted_outer_state_callback(dict(record,linear_solution=np.array(y,copy=True),
+                    rhs=np.array(rhs,copy=True),native_state=np.array(u,copy=True),converged=bool(candidate_converged),
+                    **coarse_monitor()))
+            if candidate_converged:
                 numerical=True;reason='converged';outer_event(True,True,reason);break
             outer_event(True,False,'outer_iteration_limit' if outer==max_outer else 'continue')
         phi=op.scalar_flux(u);power=np.stack([m.kappa_fission*p for m,p in zip(op.materials,phi)])
@@ -302,7 +337,10 @@ class CoupledMomentEigenSolver:
             source_tolerance=source_tolerance,residual_tolerance=residual_tolerance,positivity_tolerance=positivity_tolerance,
             group_ilu_fill_factor=group_fill if preconditioner in ('group_ilu','group_ilu_coarse') else None,
             source_normalization='sum(cell_volume * NSF dot reconstructed phi0) = 1',
+            inner_warm_start=inner_warm_start,inner_initial_guess_reuse_count=inner_warm_start_reuses,
             initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
             preconditioner=preconditioner,preconditioner_metadata=preconditioner_metadata)
+        if inner_warm_start:
+            provenance['initial_guess_source']='previous source-normalized outer state scaled by k'
         return CoupledMomentResult(k,u.reshape(op.shape),phi,power,numerical and positive,numerical,positive,
                                    len(history),reason,full,tuple(history),provenance)

@@ -195,10 +195,81 @@ The `phase` field identifies four events:
 An inner failure emits no outer completion event. An outer event is emitted
 only after the source normalization and physical-field checks are reached.
 Callback exceptions propagate to the caller; they do not trigger a numerical
-fallback. The callback changes neither the cold inner initial guess nor the
+fallback. The callback changes neither the selected inner initial guess nor the
 restart, budgets, residual checks or positivity criteria. Tests compare
 observed and default SP3/SP5 runs bitwise and distinguish the monitored
 residual from true-action acceptance.
+
+### Optional inner warm start
+
+`solve(inner_warm_start=True)` explicitly enables a fixed initial-guess policy
+for the existing inner GMRES calls. The option requires a Python `bool` and
+defaults to `False`; default histories, callback records and numerical results
+retain the original cold path. The **first outer solve is always cold**
+(`x0=None`), including when the caller supplies an outer `initial` state.
+Subsequent outer solves start from a newly allocated `x0=k*u`, using the latest
+eigenvalue and previous source-normalized outer candidate. This reconstructs
+the preceding linear solution up to normalization roundoff and approximates
+the solution of the next equation. The eigen-relation `A*(k*u)=F*u` motivates
+that scaling at convergence; it is not an exact identity for the new RHS
+before convergence. The normalized state is never passed as mutable GMRES
+workspace, and the RHS remains exactly `op.fission_action(u)`.
+
+This policy changes only the initial guess. It preserves the frozen A and M,
+restart length, iteration/resource budgets, tolerances, source normalization,
+positivity, and independently recomputed `op.action` acceptance. A warm solve
+with nonzero GMRES status or a failed independent residual is still rejected.
+There is no restart-budget reinterpretation, retry, or fallback.
+
+Provenance records `inner_warm_start` and the actual
+`inner_initial_guess_reuse_count`; the opt-in mode also records
+`initial_guess_source='previous source-normalized outer state scaled by k'`.
+The legacy `initial_state_reused=False` field retains its existing meaning;
+it does not describe this newly explicit within-solve inner-guess policy.
+When enabled, each history entry and `inner_start`/`inner_complete` callback
+record includes the requested mode, actual `inner_initial_guess_reused`,
+`inner_initial_guess` (`zero` or `k*u`) and restart length. Thus an enabled
+one-outer call truthfully records zero actual reuse. Callbacks remain scalar
+metadata only and do not expose iterates.
+
+For research checkpoints, the separate optional
+`accepted_outer_state_callback(payload)` runs once per valid outer candidate,
+after successful GMRES/independent linear acceptance, positive source
+normalization and scalar/power positivity, before convergence exit or the next
+outer solve. A valid candidate is not necessarily an accepted final eigenpair.
+Its payload contains independent flat array copies named `linear_solution`
+(raw y), `rhs` and `native_state` (normalized u), plus fresh scalar history
+fields `outer`, `inner_iterations`, `gmres_info`, `linear_residual`, `k_eff`,
+`k_change`, `source_change`, `full_residual`, the current convergence-gate flag
+`converged`, and the opt-in warm/restart fields when enabled. No phi/power
+arrays are copied. Mutating the payload cannot alter solver state or later
+warm starts. Callback exceptions propagate immediately, allowing a harness to
+save a checkpoint and stop before another GMRES call. No callback runs for a
+failed linear solve or a candidate that fails positivity. The default `None`
+adds no state-array copies and retains the numerical path. Checkpoint policy,
+disk writes and resource headroom checks belong to the caller.
+
+When this state hook is provided together with `group_ilu_coarse`, the
+`inner_start`, `inner_complete` and candidate payloads also include fresh
+scalar monitor fields: `coarse_aggregate_sha256`, `coarse_aggregate_count`,
+`coarse_dimension`, `coarse_applications`, `coarse_solves`,
+`coarse_extra_a_matvecs` and `coarse_setup_coarse_solves`. This permits a mapping
+guard before the first GMRES and preserves actual counters in a checkpoint
+before a callback raises. No arrays or factors enter the progress callback.
+Existing progress payloads are unchanged when the state hook is absent.
+
+`tests/test_native_inner_warm_start.py` checks the first cold solve, later
+`k*u` scaling and unchanged source normalization/RHS, separate initial-guess
+allocation, fixed matrix/preconditioner, failure rejection, strict flag
+validation, and bitwise default comparisons with frozen `70c399c` SP3/SP5
+solves for every preconditioner. Optional tiny actual-data SP3/SP5 cases use
+`NDGPU_NATIVE_COARSE_TEST_XS` and compare warm/cold eigenpairs, independent
+residuals, normalized source and positivity. These small tests do not qualify
+assembly-scale convergence or transport accuracy. The next assembly research
+gate is only a bounded two-outer qualification: one accepted cold solve, then
+one warm RHS with the existing 1000-inner-step budget and externally enforced
+one-CPU, 96-GiB, 3600-second caps. This option does not launch that experiment
+or establish that it will succeed.
 
 ### Optional fixed CPU energy-group ILU
 
