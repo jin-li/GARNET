@@ -19,6 +19,31 @@ regions, energy boundaries and material arrays. Face factors use
 `(region, emitted_group, source_group)`. Record the reaction convention,
 diffusion prescription, geometry, nuclear data and factor method in metadata.
 
+
+Native Serpent `MICRO_NG`/`MICRO_E` fields identify the intermediate micro-group
+structure separately from the final `MACRO_NG`/`MACRO_E` structure. GARNET
+validates this optional pair and derives immutable `state.microgroup_identity`
+from all retained native records, including older saved libraries. Every
+printed micro-group boundary must match exactly across interpolation vertices; equal counts
+or macro groups are insufficient. A Serpent version compatibility policy cannot
+waive this check. Known and unknown micro-grids cannot be mixed in an interpolation element.
+Unrelated states may share an archive for exact selection. Wholly unknown
+synthetic/legacy states remain usable with an explicit `status: unknown`
+identity; this does not establish scientific compatibility. Caller metadata
+cannot override the identity recovered from retained native fields. Native-free
+manual states may explicitly declare the validated identity as caller evidence.
+The identity also records the current `inf` diffusion formulation.
+
+Serpent collapses intermediate micro-group constants to macro groups. Its
+[manual](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation)
+explains that ordinary infinite-spectrum reaction constants use direct Monte
+Carlo spectrum weighting, with virtually no micro-grid effect beyond rounding.
+The [diffusion-coefficient calculation](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#diffusion-coefficients)
+also uses the micro-group structure: changes can affect `INF_DIFFCOEF` and thus
+D. This distinction does not prove the cause of any observed result difference.
+The guard records processing compatibility without establishing nuclear-data
+equivalence.
+
 ADFs must travel with the same spatial-reference and receiving-solver closure
 and reflector mask used to derive them. Record `transverse_leakage_identity`,
 `reflector_mask_sha256`, `leakage_boundary` and

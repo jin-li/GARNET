@@ -297,3 +297,38 @@ with the source library and prediction snapshot. Existing development cases
 must remain identified as such; introducing this evaluator does not turn a
 retrospective comparison into blind validation. No PRATIC, full-rod or
 differential-worth qualification is implied by this software interface.
+
+
+## Native micro-group processing identity
+
+The optional native `MICRO_NG`/`MICRO_E` pair is validated independently of the
+macro-group structure: one positive integral count and exactly count-plus-one
+finite, nonnegative, strictly descending boundaries in MeV. The outer micro-
+and macro-group boundaries need not be identical. The identity includes the current `inf` diffusion formulation, so it cannot
+be reused silently by a future formulation. No tolerance, resampling or
+normalization is applied to the printed numeric micro-grid.
+
+Each `BranchState` derives its reserved `microgroup_identity` from every
+retained native record. Partial pairs, differing universe grids and mixtures
+of known and unknown universe grids are rejected. This also recovers identity
+from older JSON files that retained the raw fields without derived metadata.
+Conflicting caller declarations fail; replacing other metadata cannot hide a
+native grid. Interpolation vertices require identical effective identities,
+independently of the Serpent version policy. Heterogeneous archives remain
+permitted for exact selection; explicit mixed-grid simplices are rejected. Exact selection, interpolation and JSON
+save/load carry the identity. A wholly unknown collection remains supported
+for backward compatibility and synthetic calculations, visibly marked unknown.
+Native-free manually authored states may declare the reserved identity explicitly;
+that declaration is validated but is caller evidence, not native provenance.
+This check changes no cross sections, factors or interpolation formulas.
+
+The [Serpent manual](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#infinite-and-critical-spectrum-calculation)
+describes collapsing intermediate micro-group constants to macro groups.
+Ordinary infinite-spectrum reaction constants use direct Monte Carlo spectrum
+weighting, so their micro-grid dependence is negligible apart from rounding.
+The [diffusion formulations](https://serpent.vtt.fi/docs/user_guide/gc_generation.html#diffusion-coefficients)
+use the micro-group structure, including the calculation of `INF_DIFFCOEF`;
+changing that structure can therefore affect D. This distinction does not
+establish a causal explanation for any observed result difference. Comparing
+processing identities records a compatibility condition and does not establish
+nuclear-data equivalence.
