@@ -1,4 +1,8 @@
-"""Storage regression against the immutable c613ef7 numerical implementation."""
+"""Vacuum storage oracle plus reflective runtime invariants.
+
+The old reflective gradient metric intentionally differs after reflection folding
+was corrected; test_native_reflection_folding checks its replacement invariant.
+"""
 import hashlib
 import importlib
 import importlib.util
@@ -78,15 +82,31 @@ def test_block_storage_frozen_noncommuting_skew(frozen_operator, family, bc):
     assert current.assembled.format == 'csr'
     assert current.assembled.has_canonical_format
     assert not np.any(current.assembled.data == 0)
-    for name in ('indptr', 'indices', 'data'):
-        np.testing.assert_array_equal(getattr(current.assembled, name), getattr(frozen.assembled, name))
+    if bc == 'vacuum':
+        for name in ('indptr', 'indices', 'data'):
+            np.testing.assert_array_equal(getattr(current.assembled, name), getattr(frozen.assembled, name))
+    for name in ('diffusion','reaction'):
+        for actual,expected in zip(getattr(current,name),getattr(frozen,name)):
+            np.testing.assert_array_equal(actual,expected)
     u = np.random.default_rng(613).normal(size=current.shape)
     for state in (u, u.ravel()):
-        np.testing.assert_array_equal(current.action(state), frozen.action(state))
         np.testing.assert_array_equal(current.fission_action(state), frozen.fission_action(state))
-        np.testing.assert_array_equal(current.gradients(state), frozen.gradients(state))
-        for actual, expected in zip(current.face_currents(state), frozen.face_currents(state)):
-            np.testing.assert_array_equal(actual, expected)
+        if bc == 'vacuum':
+            np.testing.assert_array_equal(current.action(state), frozen.action(state))
+            np.testing.assert_array_equal(current.gradients(state), frozen.gradients(state))
+            for actual, expected in zip(current.face_currents(state), frozen.face_currents(state)):
+                np.testing.assert_array_equal(actual, expected)
+        else:
+            gradients=current.gradients(state)
+            assert gradients.shape==(mesh.n_cells,4,2) and np.all(np.isfinite(gradients))
+            interior,boundary=current.face_currents(state)
+            np.testing.assert_array_equal(boundary,0)
+            reaction=np.stack([r@u for r,u in zip(current.reaction,state.reshape(mesh.n_cells,4))])
+            independent=reaction.copy()
+            for (i,j,*_),flux in zip(mesh.faces,interior.reshape(-1,4)):
+                independent[i]+=flux;independent[j]-=flux
+            np.testing.assert_array_equal(current.action(state).reshape(mesh.n_cells,4),independent)
+            np.testing.assert_allclose((independent-reaction).sum(axis=0),0,atol=3e-14)
         np.testing.assert_allclose(current.assembled @ state.ravel(), current.action(state).ravel(), atol=3e-14)
 
 

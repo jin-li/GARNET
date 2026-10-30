@@ -8,7 +8,8 @@ assembly calculation or native-data solve is part of this implementation.
 
 Construct with one immutable `MomentMaterial` reference per cell and an explicit
 `family='sp3'`, `'sdp1'` or `'sp5'`. Boundaries come from the grid (or the optional `bc`
-argument), and must be homogeneous `vacuum` or `reflective`. No active mask,
+argument); each must be homogeneous `vacuum` or `reflective`, and mixed classes
+are supported. No active mask,
 discontinuity factor, fitted boundary source or GPU path is provided. States have native **cell-major** shape `(n_cells, M, n_groups)` or
 its flattened equivalent. SP3/SDP1 use `M=2`, with
 `U=(phi0+2*phi2, 3*phi2)` and scalar flux `U0-2*U1/3`. SP5 uses `M=3`, with
@@ -74,12 +75,25 @@ H_i r + d_j * (inv(D_j) @ D_i - I) @ H_i @ n = U_j - U_i
 
 The opposite patch reverses indices and orientation. The inverse diffusion
 must stay on the left in `inv(D_j) @ D_i`. Boundary patch equations are
-`D_i @ H_i @ n = 0` for reflection and
+`H_i @ n = 0` for reflection and
 `D_i @ H_i @ n + B @ H_i @ (x_f-x_i) = -B @ U_i` for vacuum.
 Each individual scalar equation is divided by its entire Euclidean row norm,
 and its RHS by the same norm. Full-rank fixed SVD least squares rejects singular
 value ratios at or below `max(1e-12, 1/condition_limit)`; it does not truncate and
 accept deficient patches. This row scaling matters for non-affine fields.
+
+The reflective row uses `I*n`, with zero RHS, to match a same-material mirrored
+neighbor: `inv(D_neighbor) @ D_i - I = 0` and centroid separation `r=2*d*n`
+reduce its normalized neighbor equation to `H_i @ n=0`. Although multiplying
+this exact constraint by invertible D gives the same continuous Neumann
+condition, it changes the metric of an overdetermined row-normalized least
+squares fit for coupled groups. The former `D_i @ H_i @ n=0` rows therefore
+failed exact discrete reflection folding on a skew non-affine fixture with
+native non-diagonal D. Only reflective gradient rows change; the vacuum rows,
+interior transmission/current formulas and exactly zero reflective boundary
+current remain unchanged. This is still a soft least squares row, not a demand
+that arbitrary non-affine reconstructed gradients satisfy `H_i @ n=0` exactly.
+Rank/conditioning thresholds, clipping policy and solver acceptance do not change.
 
 With tangential offsets `t_i=x_f-x_i-d_i*n` and
 `t_j=x_f-x_j+d_j*n`, currents use the following exact multiplication order:
@@ -129,9 +143,18 @@ face unknowns, rather than using the production harmonic/vacuum formulas.
 
 `tests/test_native_block_storage.py` additionally compares canonical CSR arrays,
 gradients, actions, fission actions, and face currents exactly with the immutable
-`c613ef7` source snapshot on noncommuting two-group skew meshes for both families
-and reflective/vacuum boundaries. It checks the snapshot manifest and unchanged
-unchanged shared type/helper hashes before loading the frozen operator and its
+`c613ef7` source snapshot on noncommuting two-group skew vacuum meshes for both
+families. Reflective cases retain exact legacy fission/material checks and
+current CSR/action/face-conservation checks; their gradient/action equality
+against the old reflective metric is intentionally replaced by the folding
+invariant in `tests/test_native_reflection_folding.py`. That test checks the
+full matrix `S A_full E = A_half`, every basis gradient/current map, zero cut
+flux and rotation covariance on four skew half-domain cells mirrored into
+eight full-domain cells. It uses heterogeneous noncommuting off-diagonal D,
+SP3/SDP1/SP5 and oblique reflective cuts with mirrored vacuum exteriors.
+These synthetic tests do not copy reactor XS or qualify a reactor calculation.
+The storage oracle checks the snapshot manifest and unchanged
+shared type/helper hashes before loading the frozen operator and its
 frozen coupled-moment helper in an isolated namespace. That local evidence
 test skips when its external snapshot is absent; independent numerical oracle
 tests remain available in source archives. Small fixtures also check default

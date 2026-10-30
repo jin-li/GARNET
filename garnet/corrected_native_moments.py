@@ -107,7 +107,11 @@ class CorrectedNativeMomentOperator:
         for (i,area,_), center, normal, d, spec in zip(mesh.bfaces,mesh.bface_centers,mesh.bface_normals,bd,specs):
             r = center-mesh.centroid[i]
             B = self.B if spec == 'vacuum' else np.zeros((q,q))
-            A = gradient_equation([normal[k]*diffusion[i]+r[k]*B for k in range(dim)])
+            # A same-material mirrored neighbor has jump=0 and r=2*d*n,
+            # hence row normalization gives I*H*n=0. Multiplying by D before
+            # the overdetermined fit changes its metric for coupled groups.
+            A = gradient_equation([normal[k]*diffusion[i]+r[k]*B for k in range(dim)]
+                                  if spec == 'vacuum' else [normal[k]*identity for k in range(dim)])
             equations[i].append((A, {i: -B}))
             if spec == 'vacuum':
                 C = diffusion[i]/d
