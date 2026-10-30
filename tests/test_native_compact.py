@@ -181,7 +181,8 @@ def test_allocation_contract_and_immutability(monkeypatch):
     accounting = a.compact.payload_accounting()
     assert accounting['total_array_bytes'] == sum(v for k, v in accounting.items() if k != 'total_array_bytes')
     assert accounting['gradient_bytes'] > 0
-    assert a.compact.provenance['solver_integration'] is False
+    assert a.compact.provenance['solver_integration'] is True
+    assert a.compact.provenance['coarse_integration'] is True
     with pytest.raises(TypeError): a.compact.provenance['storage'] = 'assembled'
 
 

@@ -143,9 +143,13 @@ class NativeCoarsePreconditioner:
     ``aggregate_ids`` is a known connected mapping for small algebraic fixtures;
     production callers should use ``from_operator`` for geometry validation.
     Matrix and smoother must remain unchanged for the lifetime of this object.
+    For deferred storage, supply a float64 LinearOperator and a callable
+    ``block_iterator`` yielding bounded (cell rows, cell columns, q-by-q blocks).
+    Entries may repeat and are summed before one final float64 cast. The matrix
+    action, including every group coupling, supplies the correction residual.
     """
     def __init__(self, matrix, shape, aggregate_ids, smoother, *, max_rows=4096,
-                 max_nnz=1_000_000):
+                 max_nnz=1_000_000, block_iterator=None):
         started = perf_counter()
         if (len(shape) != 3 or any(isinstance(x, (bool, np.bool_)) or
                 not isinstance(x, (int, np.integer)) or x < 1 for x in shape)):
@@ -154,7 +158,12 @@ class NativeCoarsePreconditioner:
         cells, moments, groups = self.shape
         self.q = moments*groups
         self.size = cells*self.q
-        if (not sparse.isspmatrix_csr(matrix) or matrix.shape != (self.size, self.size) or
+        streamed = block_iterator is not None
+        if streamed:
+            if (not callable(block_iterator) or not isinstance(matrix, LinearOperator) or
+                    matrix.shape != (self.size, self.size) or matrix.dtype != np.dtype('float64')):
+                raise ValueError('Native float64 LinearOperator and callable full block iterator required')
+        elif (not sparse.isspmatrix_csr(matrix) or matrix.shape != (self.size, self.size) or
                 matrix.dtype != np.dtype('float64')):
             raise ValueError('Native float64 square CSR matrix required')
         for value in (max_rows, max_nnz):
@@ -178,28 +187,60 @@ class NativeCoarsePreconditioner:
             raise ValueError('Extended precision longdouble accumulation required on this platform')
         coarse = np.zeros((self.dimension, self.dimension), dtype=np.longdouble)
         chunks = 0; largest_nnz = 0; workspace = 0
-        start = 0
-        while start < self.size:
-            stop = min(start + max_rows, self.size)
-            counts = np.diff(matrix.indptr[start:stop+1]).astype(np.int64)
-            cumulative = np.cumsum(counts, dtype=np.int64)
-            stop = start + max(1, int(np.searchsorted(cumulative, max_nnz, side='right')))
-            lo, hi = int(matrix.indptr[start]), int(matrix.indptr[stop])
-            columns = matrix.indices[lo:hi]
-            values = matrix.data[lo:hi].astype(np.longdouble)
-            if not np.all(np.isfinite(values)):
-                raise ValueError('Nonfinite fine matrix coefficients')
-            rows = np.repeat(np.arange(start, stop, dtype=np.int64), np.diff(matrix.indptr[start:stop+1]))
-            coarse_rows = self.q*self.aggregate_ids[rows//self.q] + rows % self.q
-            coarse_columns = self.q*self.aggregate_ids[columns//self.q] + columns % self.q
-            # add.at preserves every duplicate, including repeated coarse pairs
-            # within a row/chunk. Cast only after all extended precision sums.
-            np.add.at(coarse, (coarse_rows, coarse_columns), values)
-            chunks += 1; largest_nnz = max(largest_nnz, hi-lo)
-            workspace = max(workspace, sum(a.nbytes for a in
-                (counts, cumulative, values, rows, coarse_rows, coarse_columns)))
-            start = stop
-        del counts, cumulative, values, rows, coarse_rows, coarse_columns, columns
+        fine_entries = 0
+        if streamed:
+            # Stream uncoalesced full-q blocks. Every duplicate pair contributes
+            # in extended precision, including cancellation across batches.
+            limit = max(1, min(max_rows//self.q, max_nnz//(self.q*self.q)))
+            components = np.arange(self.q, dtype=np.int64)
+            for cell_rows, cell_columns, blocks in block_iterator():
+                cell_rows, cell_columns = np.asarray(cell_rows), np.asarray(cell_columns)
+                blocks = np.asarray(blocks)
+                if (cell_rows.ndim != 1 or cell_columns.shape != cell_rows.shape or
+                        cell_rows.dtype.kind not in 'iu' or cell_columns.dtype.kind not in 'iu' or
+                        blocks.shape != (len(cell_rows), self.q, self.q) or
+                        np.any(cell_rows < 0) or np.any(cell_rows >= cells) or
+                        np.any(cell_columns < 0) or np.any(cell_columns >= cells)):
+                    raise ValueError('Invalid native full block stream')
+                for start in range(0, len(cell_rows), limit):
+                    stop = min(start+limit, len(cell_rows))
+                    values = blocks[start:stop].astype(np.longdouble)
+                    if not np.all(np.isfinite(values)):
+                        raise ValueError('Nonfinite fine matrix coefficients')
+                    coarse_rows = self.q*self.aggregate_ids[cell_rows[start:stop], None, None]+components[None, :, None]
+                    coarse_columns = self.q*self.aggregate_ids[cell_columns[start:stop], None, None]+components[None, None, :]
+                    np.add.at(coarse, (coarse_rows, coarse_columns), values)
+                    count = values.size
+                    fine_entries += count
+                    chunks += 1; largest_nnz = max(largest_nnz, count)
+                    workspace = max(workspace, sum(a.nbytes for a in
+                        (cell_rows, cell_columns, blocks, values, coarse_rows, coarse_columns, components)))
+            # The iterator owns bounded source batches; no fine matrix or global
+            # row dictionary is retained by coarse construction.
+        else:
+            start = 0
+            while start < self.size:
+                stop = min(start + max_rows, self.size)
+                counts = np.diff(matrix.indptr[start:stop+1]).astype(np.int64)
+                cumulative = np.cumsum(counts, dtype=np.int64)
+                stop = start + max(1, int(np.searchsorted(cumulative, max_nnz, side='right')))
+                lo, hi = int(matrix.indptr[start]), int(matrix.indptr[stop])
+                columns = matrix.indices[lo:hi]
+                values = matrix.data[lo:hi].astype(np.longdouble)
+                if not np.all(np.isfinite(values)):
+                    raise ValueError('Nonfinite fine matrix coefficients')
+                rows = np.repeat(np.arange(start, stop, dtype=np.int64), np.diff(matrix.indptr[start:stop+1]))
+                coarse_rows = self.q*self.aggregate_ids[rows//self.q] + rows % self.q
+                coarse_columns = self.q*self.aggregate_ids[columns//self.q] + columns % self.q
+                # add.at preserves every duplicate, including repeated coarse pairs
+                # within a row/chunk. Cast only after all extended precision sums.
+                np.add.at(coarse, (coarse_rows, coarse_columns), values)
+                chunks += 1; largest_nnz = max(largest_nnz, hi-lo)
+                workspace = max(workspace, sum(a.nbytes for a in
+                    (counts, cumulative, values, rows, coarse_rows, coarse_columns)))
+                start = stop
+            del counts, cumulative, values, rows, coarse_rows, coarse_columns, columns
+            fine_entries = int(matrix.nnz)
         extended_bytes = coarse.nbytes
         self.coarse_matrix = np.array(coarse, dtype=np.float64, order='F')
         del coarse
@@ -233,16 +274,19 @@ class NativeCoarsePreconditioner:
             coarse_sha256=hashlib.sha256(self.coarse_matrix.tobytes(order='C')).hexdigest(),
             restriction='sum integrated balances; no volume averaging',
             coarse_layout='(M*G)*aggregate + G*moment + group',
-            accumulation='bounded CSR chunks, duplicate-safe longdouble; one float64 cast',
-            accumulation_dtype=str(np.dtype(np.longdouble)), csr_chunks=chunks,
-            fine_entries_accumulated=int(matrix.nnz), coarse_nnz=int(np.count_nonzero(self.coarse_matrix)),
+            accumulation=('bounded full block stream, duplicate-safe longdouble; one float64 cast' if streamed else
+                          'bounded CSR chunks, duplicate-safe longdouble; one float64 cast'),
+            accumulation_dtype=str(np.dtype(np.longdouble)), csr_chunks=0 if streamed else chunks,
+            full_block_chunks=chunks if streamed else 0,
+            fine_entries_accumulated=fine_entries, coarse_nnz=int(np.count_nonzero(self.coarse_matrix)),
             accumulation_seconds=accumulation_seconds,
             largest_chunk_nnz=largest_nnz, max_rows=int(max_rows), max_nnz=int(max_nnz),
             chunk_workspace_array_bytes=workspace, extended_coarse_array_bytes=extended_bytes,
             retained_array_bytes=sum(a.nbytes for a in (self.aggregate_ids, self.coarse_matrix, self._lu, self._piv)),
             coarse_matrix_array_bytes=self.coarse_matrix.nbytes, lu_array_bytes=self._lu.nbytes,
             setup_process_peak_rss_bytes=int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)*(1 if sys.platform == 'darwin' else 1024),
-            memory_caveat='array bytes exclude Python/SciPy workspaces and caller-owned fine matrix/smoother; RSS is process lifetime high-water mark',
+            memory_caveat=('array bytes include bounded source block batches and accumulation arrays; exclude Python/SciPy workspaces and caller-owned action/smoother; RSS is process lifetime high-water mark' if streamed else
+                'array bytes exclude Python/SciPy workspaces and caller-owned fine matrix/smoother; RSS is process lifetime high-water mark'),
             condition_estimate_1=float(1/rcond), reciprocal_condition_estimate_1=float(rcond),
             coarse_solve_check='componentwise |Ac*x-r| <= beta*(|Ac|*|x|+|r|), beta=2*d*u/(1-2*d*u), u=eps64/2; zero scale requires zero residual',
             setup_seconds=perf_counter()-started)
@@ -253,7 +297,11 @@ class NativeCoarsePreconditioner:
         started = perf_counter()
         aggregates = operator_aggregates(operator)
         mapping_seconds = perf_counter()-started
-        result = cls(operator.assembled, operator.shape, aggregates, smoother, **kwargs)
+        if getattr(operator, 'storage', 'assembled') == 'deferred':
+            result = cls(operator.linear_operator(), operator.shape, aggregates, smoother,
+                         block_iterator=operator.iter_full_blocks, **kwargs)
+        else:
+            result = cls(operator.assembled, operator.shape, aggregates, smoother, **kwargs)
         result._metadata['mapping_seconds'] = mapping_seconds
         result._metadata['setup_seconds'] += mapping_seconds
         result._metadata['mapping'] = 'component-seeded farthest Euclidean, graph Dijkstra lexicographic ties'

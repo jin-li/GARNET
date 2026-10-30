@@ -98,7 +98,9 @@ class CoupledMomentEigenSolver:
     drop_tol=1e-6 and fill_factor=20. Setup failure raises; no fallback occurs.
     preconditioner='group_ilu' instead freezes one all-moment, all-cell block
     per energy group and applies their factors as fixed block Jacobi. GMRES
-    retains the full assembled matrix, including every off-group coefficient.
+    retains every off-group coefficient in the full operator action. Deferred
+    corrected-native storage uses explicit LinearOperator GMRES and exact group
+    block providers; global ILU requires assembled storage.
     group_ilu_fill_factor explicitly budgets only group ILU (default 20);
     group_ilu_setup_callback receives copied setup statistics, never factors.
     preconditioner='group_ilu_coarse' adds a fixed connected-aggregate native
@@ -121,10 +123,13 @@ class CoupledMomentEigenSolver:
               group_ilu_setup_callback=None,iteration_callback=None,inner_warm_start=False,
               accepted_outer_state_callback=None):
         op=self.operator
+        deferred=isinstance(op,CorrectedNativeMomentOperator) and op.storage=='deferred'
         if type(inner_warm_start) is not bool:
             raise ValueError('inner_warm_start must be a bool')
         if preconditioner not in ('none','ilu','group_ilu','group_ilu_coarse'):
             raise ValueError("preconditioner must be 'none', 'ilu', 'group_ilu' or 'group_ilu_coarse'")
+        if deferred and preconditioner=='ilu':
+            raise ValueError('Global ILU is unsupported with deferred storage; use group_ilu or group_ilu_coarse')
         if isinstance(group_ilu_fill_factor,(bool,np.bool_)) or not isinstance(group_ilu_fill_factor,Real):
             raise ValueError('group_ilu_fill_factor must be finite numeric and at least 1')
         try:
@@ -163,8 +168,10 @@ class CoupledMomentEigenSolver:
         u/=source
         if not np.isfinite(np.linalg.norm(op.fission_action(u))) or np.linalg.norm(op.fission_action(u))==0:
             raise ValueError('Nonzero finite fission action required')
-        solve_matrix=op.assembled;M=None
-        preconditioner_metadata=dict(setup_seconds=0.,matrix_nnz=int(op.assembled.nnz))
+        solve_matrix=op.linear_operator() if deferred else op.assembled;M=None
+        preconditioner_metadata=dict(setup_seconds=0.,matrix_nnz=None if deferred else int(op.assembled.nnz))
+        if deferred:
+            preconditioner_metadata.update(operator_storage='deferred',global_matrix_materialized=False)
         if preconditioner=='ilu':
             started=perf_counter()
             solve_matrix=op.assembled.tocsc(copy=True)
@@ -208,7 +215,8 @@ class CoupledMomentEigenSolver:
                 setup_event('before_extraction',group)
                 try:
                     indices=(moments*groups*np.arange(cells)[:,None]+groups*np.arange(moments)[None,:]+group).ravel()
-                    block=_group_principal_block(solve_matrix,groups,group).tocsc(copy=True)
+                    block=(op.group_principal_block(group).tocsc(copy=False) if deferred else
+                           _group_principal_block(solve_matrix,groups,group).tocsc(copy=True))
                 except (MemoryError,RuntimeError,ValueError) as exc:
                     raise setup_failure(group,'extraction',exc) from exc
                 current=dict(group=group,dimension=int(block.shape[0]),matrix_nnz=int(block.nnz))
@@ -233,7 +241,8 @@ class CoupledMomentEigenSolver:
             M=LinearOperator(solve_matrix.shape,matvec=group_solve,dtype=solve_matrix.dtype)
             preconditioner_metadata.update(setup_seconds=perf_counter()-started,
                 drop_tol=1e-6,fill_factor=group_fill,group_ilu_fill_factor=group_fill,groups=group_stats,
-                group_block_extraction='two-pass bounded CSR rows; at most 4096 rows and 1000000 source entries per chunk, except one larger row',
+                group_block_extraction=('deferred exact principal block provider; full internal cross-group contractions before selection' if deferred else
+                    'two-pass bounded CSR rows; at most 4096 rows and 1000000 source entries per chunk, except one larger row'),
                 group_cell_ordering=('ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]' if moments==2 else
                                      f'ascending cells; moments 0..{moments-1} per cell; flat indices M*G*i+G*m+g for every m'),
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
@@ -326,6 +335,8 @@ class CoupledMomentEigenSolver:
         if isinstance(op,CorrectedNativeMomentOperator):
             files += tuple(Path(__file__).with_name(name) for name in
                            ('corrected_native_moments.py','corrected_mesh.py','mesh.py'))
+        if deferred:
+            files += (Path(__file__).with_name('native_compact.py'),)
         if preconditioner=='group_ilu_coarse':
             files += (Path(__file__).with_name('native_coarse.py'),)
             preconditioner_metadata['coarse']=coarse_preconditioner.metadata
@@ -340,6 +351,9 @@ class CoupledMomentEigenSolver:
             inner_warm_start=inner_warm_start,inner_initial_guess_reuse_count=inner_warm_start_reuses,
             initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
             preconditioner=preconditioner,preconditioner_metadata=preconditioner_metadata)
+        if deferred:
+            provenance['operator_storage']='deferred'
+            provenance['operator_payload_accounting']=op.compact.payload_accounting()
         if inner_warm_start:
             provenance['initial_guess_source']='previous source-normalized outer state scaled by k'
         return CoupledMomentResult(k,u.reshape(op.shape),phi,power,numerical and positive,numerical,positive,

@@ -496,16 +496,35 @@ The prototype exposes:
   the assembled path; nonzero coefficients are never thresholded.
 - `iter_full_blocks()`: bounded batches of `(cell_rows, cell_columns, blocks)`.
   Contributions can repeat, so consumers must sum duplicates. This is an
-  interface for future coarse projection, not an integrated coarse solver.
+  interface used by the native coarse projection without a global matrix.
 - `compact.payload_accounting()`: retained NumPy array bytes, excluding Python
   containers, source geometry/materials, action workspaces, construction
   temporaries and requested group matrices. This is not a process RSS estimate.
 
 Accessing `.assembled` in deferred mode raises `NotImplementedError`; it never
-silently allocates a global matrix. The current eigenvalue driver and coarse
-preconditioner still require assembled storage. Deferred operator tests do not
-authorize a production eigensolve: driver integration, fixed-factor retention,
-coarse projection and true-residual convergence remain separate work.
+silently allocates a global matrix. The CPU eigenvalue driver supports deferred
+storage with `preconditioner="none"`, `"group_ilu"`, or `"group_ilu_coarse"`.
+Global `"ilu"` rejects deferred storage explicitly. GMRES retains all coupled
+terms through the full action. The driver creates and releases one exact group
+source block at a time and retains the fixed factors for the entire solve.
+True inner residuals are recomputed with `op.action`; source, eigenvalue,
+full-residual and positivity criteria retain their existing meanings.
+
+For `group_ilu_coarse`, the connected mapping and transfers are unchanged.
+`NativeCoarsePreconditioner` streams full blocks and sums their contributions
+to `P.T @ A @ P` in extended precision, then casts once to float64. The coarse
+correction uses the full deferred action. Streaming and assembled construction
+have different floating-point accumulation orders; matrix hashes and factor
+patterns need not be identical. Reported workspace bytes include the source
+batch and accumulation arrays, but not Python/SciPy temporaries.
+
+`tests/test_native_compact_solver.py` checks assembled/deferred SP3/SP5 solve
+and coarse-action equivalence, fixed-factor reuse, source-block release and
+absence of assembled access. It tests true-inner acceptance on either side of
+`1e-7` and rejection by each outer criterion at the campaign settings
+(`k=1e-6`, source/full `1e-5`). Those settings are explicit solve arguments;
+public defaults remain unchanged. A bounded assembly resource and convergence
+pilot remains necessary before larger calculations.
 
 `tests/test_native_compact.py` compares SP3/SP5 actions, currents, gradients,
 fission and principal blocks with the assembled implementation and an
@@ -519,5 +538,5 @@ Deferred group construction currently retains moment-only row dictionaries
 followed by BSR/CSR conversion for the requested group. Setup also retains
 topological adjacency and individual reaction/face arrays. These costs, batched
 stacking and scatter throughput require an actual bounded resource pilot.
-Successful small-problem parity establishes the operator interface only; it
-does not establish full-core memory fit, runtime or physical accuracy.
+Successful small-problem parity establishes the tested computational behavior;
+it does not establish full-core memory fit, runtime or physical accuracy.

@@ -223,7 +223,7 @@ class CorrectedNativeMomentOperator:
         """Yield bounded (cell rows, cell columns, full q-by-q blocks) batches.
 
         Entries may repeat: consumers must sum them. Deferred only; no global
-        matrix is constructed. Intended for a future coarse projection adapter.
+        matrix is constructed. The native coarse adapter sums these contributions.
         """
         if self.storage != 'deferred':
             raise NotImplementedError('Block streaming requires deferred storage')

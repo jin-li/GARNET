@@ -1,4 +1,4 @@
-"""Bounded deferred corrected-native prototype; no solver/coarse integration.
+"""Bounded deferred corrected-native storage with opt-in CPU solver integration.
 
 Gradient blocks have shape (q*dimension, q). Only one cell's normalized SVD
 patch and one bounded chunk's mutable coefficients exist during construction.
@@ -109,7 +109,7 @@ class CompactNativeStorage:
         self.provenance = MappingProxyType(dict(storage='deferred', physical_admission=False,
             gradient_format='rectangular BSR', gradient_chunk_cells=chunk_cells,
             batch_size=batch_size, global_matrix_materialized=False,
-            solver_integration=False, coarse_integration=False, pruning=False))
+            solver_integration=True, coarse_integration=True, pruning=False))
 
     def payload_accounting(self):
         """Retained NumPy payload, with shared material arrays counted once.
