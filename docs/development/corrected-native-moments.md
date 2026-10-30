@@ -475,3 +475,49 @@ are unchanged; large trials require explicit process memory/time caps.
 These checks establish computational behavior on their stated fixtures. They do
 not establish improved reactor accuracy, higher-moment estimator consistency,
 statistical precision or full-core feasibility.
+
+## Experimental deferred operator storage
+
+`CorrectedNativeMomentOperator(..., storage="deferred")` provides an opt-in
+operator prototype. The default remains `storage="assembled"`. Deferred storage
+uses the same material losses, normalized local SVD equations, boundary
+conditions and conservative face currents. It constructs one cell's gradient
+patch at a time and stores its coefficients in immutable rectangular BSR
+chunks. `gradient_chunk_cells` and `batch_size` are positive integer controls,
+both defaulting to 128. They bound gradient construction and action batches;
+they are not limits on total process memory.
+
+The prototype exposes:
+
+- `linear_operator()`: the full coupled action through SciPy's `LinearOperator`.
+- `group_principal_block(group)`: one CSR principal block, ordered by cell and
+  retained moment. Full internal cross-group products are evaluated before the
+  requested group rows and columns are selected. Exact zeros are removed, as in
+  the assembled path; nonzero coefficients are never thresholded.
+- `iter_full_blocks()`: bounded batches of `(cell_rows, cell_columns, blocks)`.
+  Contributions can repeat, so consumers must sum duplicates. This is an
+  interface for future coarse projection, not an integrated coarse solver.
+- `compact.payload_accounting()`: retained NumPy array bytes, excluding Python
+  containers, source geometry/materials, action workspaces, construction
+  temporaries and requested group matrices. This is not a process RSS estimate.
+
+Accessing `.assembled` in deferred mode raises `NotImplementedError`; it never
+silently allocates a global matrix. The current eigenvalue driver and coarse
+preconditioner still require assembled storage. Deferred operator tests do not
+authorize a production eigensolve: driver integration, fixed-factor retention,
+coarse projection and true-residual convergence remain separate work.
+
+`tests/test_native_compact.py` compares SP3/SP5 actions, currents, gradients,
+fission and principal blocks with the assembled implementation and an
+independent local least-squares action. It covers noncommuting group losses,
+mixed boundaries, multiple geometric faces joining a cell pair, energy-group
+permutations, 3D geometry, invalid/rank-deficient inputs and allocation guards.
+Numerical parity assertions use explicit `rtol=1e-12`, with the stated absolute
+tolerance; exact sparse zero removal has a separate pattern regression.
+
+Deferred group construction currently retains moment-only row dictionaries
+followed by BSR/CSR conversion for the requested group. Setup also retains
+topological adjacency and individual reaction/face arrays. These costs, batched
+stacking and scatter throughput require an actual bounded resource pilot.
+Successful small-problem parity establishes the operator interface only; it
+does not establish full-core memory fit, runtime or physical accuracy.

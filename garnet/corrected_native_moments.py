@@ -15,6 +15,12 @@ class CorrectedNativeMomentOperator:
     """Fixed row-normalized coupled patches, signed distances, full currents.
 
     ``volumes`` is the integrated-volume accessor used by the native CPU driver.
+    ``storage='assembled'`` preserves the default global CSR. Explicit
+    ``storage='deferred'`` retains bounded gradient chunks and supplies actions
+    and exact group blocks, without solver/coarse integration or global assembly.
+    ``gradient_chunk_cells`` bounds cell rows per gradient BSR chunk;
+    ``batch_size`` bounds reaction/face batches and streamed full block batches.
+    Deferred provenance and retained array accounting are available on ``compact``.
     Only homogeneous vacuum and reflective boundaries are supported. Local SVD
     rejects rank loss or condition above condition_limit; no regularization,
     positivity clipping, symmetric-part admission, or reaction inversion occurs.
@@ -26,7 +32,13 @@ class CorrectedNativeMomentOperator:
     scalar_flux = CoupledMomentOperator.scalar_flux
 
     def __init__(self, grid, materials, *, family='sp3', bc=None, condition_limit=1e12,
-                 max_unknowns=None):
+                 max_unknowns=None, storage='assembled', gradient_chunk_cells=128, batch_size=128):
+        if storage not in ('assembled', 'deferred'):
+            raise ValueError('storage must be assembled or deferred')
+        for name, value in (('gradient_chunk_cells', gradient_chunk_cells), ('batch_size', batch_size)):
+            if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)) or value <= 0:
+                raise ValueError(f'{name} must be a positive integer')
+        self.storage = storage
         if not isinstance(grid, MeshGrid):
             raise ValueError('Explicit MeshGrid required')
         limit = self.prototype_unknown_limit if max_unknowns is None else max_unknowns
@@ -89,6 +101,11 @@ class CorrectedNativeMomentOperator:
         if any(not np.all(np.isfinite(r)) for r in reaction):
             raise ValueError('Nonfinite integrated reaction')
         self.diffusion, self.reaction = tuple(diffusion), tuple(reaction)
+        if storage == 'deferred':
+            from .native_compact import CompactNativeStorage
+            self.compact = CompactNativeStorage(self, inverse_D, distances, bd, specs,
+                                                int(gradient_chunk_cells), int(batch_size))
+            return
         identity = np.eye(q)
         equations = [[] for _ in materials]
         interior, boundary = [], []
@@ -178,7 +195,43 @@ class CorrectedNativeMomentOperator:
         if not np.all(np.isfinite(self.assembled.data)):
             raise ValueError('Nonfinite corrected native assembly')
 
+    @property
+    def assembled(self):
+        if self.storage == 'deferred':
+            raise NotImplementedError('Global assembled matrix is unsupported with deferred storage')
+        return self._assembled
+
+    @assembled.setter
+    def assembled(self, value):
+        if self.storage == 'deferred':
+            raise NotImplementedError('Global assembled matrix is unsupported with deferred storage')
+        self._assembled = value
+
+    def linear_operator(self):
+        from scipy.sparse.linalg import LinearOperator
+        return LinearOperator((self.size, self.size), matvec=self.action, dtype=float)
+
+    def group_principal_block(self, group):
+        if self.storage == 'deferred':
+            return self.compact.group_principal_block(group)
+        from .native_compact import validate_group
+        validate_group(group, self.n_groups)
+        indices = np.arange(self.size).reshape(self.shape)[:, :, group].ravel()
+        return self.assembled[indices][:, indices].tocsr()
+
+    def iter_full_blocks(self):
+        """Yield bounded (cell rows, cell columns, full q-by-q blocks) batches.
+
+        Entries may repeat: consumers must sum them. Deferred only; no global
+        matrix is constructed. Intended for a future coarse projection adapter.
+        """
+        if self.storage != 'deferred':
+            raise NotImplementedError('Block streaming requires deferred storage')
+        return self.compact.iter_full_blocks()
+
     def gradients(self,u):
+        if self.storage == 'deferred':
+            return self.compact.gradients(self._values(u))
         x = self._values(u)
         return np.stack([sum((np.einsum('adk,k->ad',h,x[col]) for col,h in row.items()),
                              np.zeros((self.n_moments*self.n_groups,self.grid.mesh.centroid.shape[1])))
@@ -186,6 +239,8 @@ class CorrectedNativeMomentOperator:
 
     def face_currents(self,u):
         """Integrated interior i->j and boundary outward currents, (faces,M,G)."""
+        if self.storage == 'deferred':
+            return self.compact.face_currents(self._values(u))
         x, H = self._values(u), self.gradients(u)
         q = self.n_moments*self.n_groups
         interior = np.array([T@(x[i]+H[i]@ti-x[j]-H[j]@tj) for i,j,T,ti,tj in self.faces]).reshape(-1,q)
@@ -193,6 +248,8 @@ class CorrectedNativeMomentOperator:
         return interior.reshape(-1,self.n_moments,self.n_groups), boundary.reshape(-1,self.n_moments,self.n_groups)
 
     def action(self,u):
+        if self.storage == 'deferred':
+            return self.compact.action(self._values(u)).reshape(np.shape(u))
         x = self._values(u)
         out = np.stack([r@v for r,v in zip(self.reaction,x)])
         interior,boundary = self.face_currents(u)
