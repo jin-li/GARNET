@@ -213,15 +213,43 @@ class CompactNativeStorage:
         if data:
             yield np.asarray(rows), np.asarray(cols), np.asarray(data)
 
+    def _group_contributions(self, select):
+        """Stream only selected outer axes, retaining all internal channels.
+
+        A corrected face contributes (T @ H)[select, select]. Selecting the
+        internal group axis as well would discard off-group-mediated coupling.
+        Contract the displacement only for selected input columns, then multiply
+        all q internal channels into the selected output rows. Contribution and
+        accumulation order matches _contributions, including reflected faces.
+        """
+        outer = np.ix_(select, select)
+        for i, R in enumerate(self.op.reaction):
+            yield i, i, R[outer]
+        for i, j, T, ti, tj in self.faces:
+            selected_T = T[select, :]
+            for cell, t, sign in ((i, ti, 1), (j, tj, -1)):
+                direct = sign*T[outer]
+                yield i, cell, direct
+                yield j, cell, -direct
+                for col, H in self._gradient_row(cell):
+                    projected = np.einsum('adk,d->ak', H[:, :, select], t)
+                    value = (sign*selected_T)@projected
+                    yield i, col, value
+                    yield j, col, -value
+        for i, K, t in self.boundary:
+            yield i, i, K[outer]
+            selected_K = K[select, :]
+            for col, H in self._gradient_row(i):
+                projected = np.einsum('adk,d->ak', H[:, :, select], t)
+                yield i, col, selected_K@projected
+
     def group_principal_block(self, group):
         validate_group(group, self.op.n_groups)
         select = np.arange(group, self.q, self.op.n_groups)
         # Only the requested moment-by-moment group blocks are retained here.
         rows = [{} for _ in range(self.op.n_cells)]
-        for ii, jj, blocks in self.iter_full_blocks():
-            for i, j, block in zip(ii, jj, blocks):
-                value = block[np.ix_(select, select)]
-                rows[i][j] = rows[i].get(j, 0)+value
+        for i, j, value in self._group_contributions(select):
+            rows[i][j] = rows[i].get(j, 0)+value
         data, indices, indptr = [], [], [0]
         for row in rows:
             for col in sorted(row):
