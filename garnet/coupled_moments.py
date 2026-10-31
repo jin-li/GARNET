@@ -1,4 +1,4 @@
-"""Tiny CPU full-energy SP3/SDP1/SP5 orthogonal integrated TPFA operators.
+"""Tiny CPU full-energy SP3/SDP1/SP5/SP7 orthogonal integrated TPFA operators.
 
 Cell-major unknowns have shape (cells, moments, groups).
 No eigenvalue driver, GPU, DF, regularization or physical admission is supplied.
@@ -51,9 +51,9 @@ def _positive(value):
 
 def _family_tables(family):
     """Bounded native families; no implicit higher-order fallback."""
-    if family not in ('sp3', 'sdp1', 'sp5'):
-        raise ValueError('Use sp3, sdp1 or sp5')
-    order = 2 if family == 'sp5' else 1
+    if family not in ('sp3', 'sdp1', 'sp5', 'sp7'):
+        raise ValueError('Use sp3, sdp1, sp5 or sp7')
+    order = 3 if family == 'sp7' else (2 if family == 'sp5' else 1)
     return (np.asarray((_SDPN_C if family == 'sdp1' else _SPN_C)[order], dtype=float),
             np.asarray((_SDPN_G if family == 'sdp1' else _SPN_G)[order], dtype=float))
 
@@ -174,7 +174,8 @@ class CoupledMomentOperator:
     def scalar_flux(self,u):
         x=self._values(u).reshape(self.shape)
         scalar=x[:,0,:]-2*x[:,1,:]/3
-        if self.n_moments==3:scalar=scalar+8*x[:,2,:]/15
+        if self.n_moments>=3:scalar=scalar+8*x[:,2,:]/15
+        if self.n_moments==4:scalar=scalar-16*x[:,3,:]/35
         return scalar
 
     def fission_action(self,u):
