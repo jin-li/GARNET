@@ -101,6 +101,55 @@ See the [Serpent group-constant documentation](https://serpent.vtt.fi/docs/user_
 and [standard-output documentation](https://serpent.vtt.fi/docs/user_guide/standard_output.html)
 for definitions and generation options.
 
+## Explicit native energy aggregation
+
+`garnet.moment_energy_homogenization.collapse_native_energy_coefficients`
+creates a derived `MomentMaterial` from native **mean arrays**, an explicitly
+supplied volume-integrated scalar flux, energy boundaries, and a contiguous
+partition of the original groups. It keeps every spatial region separate.
+This is an optional transformation; the raw reader still rejects a zero total
+cross section and does not fill missing fine-group estimates.
+
+For aggregate group `I`, the supplied fluxes give
+`Phi_I = sum(Phi_g for g in I)` and
+`Sigma_I = sum(Phi_g * Sigma_g for g in I) / Phi_I`.
+For a from-major scattering matrix, sum the flux-weighted numerator over both
+incoming groups in `I` and outgoing groups in `J`, then divide by `Phi_I`.
+Apply this separately to every `S_l` and `SP_l`. Sum outgoing `CHIT`
+probabilities without renormalization. Pool the power coefficient directly
+from `Phi * FISS * KAPPA`; `KAPPA` itself needs fission-rate weights.
+
+```python
+from garnet.moment_energy_homogenization import collapse_native_energy_coefficients
+
+# Example: 23 descending energy groups, merging only the two lowest bins.
+partition = tuple((g,) for g in range(21)) + ((21, 22),)
+material = collapse_native_energy_coefficients(
+    fields, integrated_flux, energy_bounds_mev, partition,
+    source_provenance={"raw_results_sha256": source_hash},
+)
+```
+
+`fields` must contain `INF_TOT`, `INF_NSF`, `INF_FISS`, `INF_KAPPA`,
+`INF_RABSXS`, `INF_CHIT`, and matching `INF_S0`/`INF_SP0` through consecutive
+order `L <= 7`; `INF_ABS` is optional. Matrices have incoming groups on rows.
+All values must be finite; physical means are nonnegative, while reduced
+absorption and higher scattering moments retain their signs. Every aggregate
+must have positive flux and total XS. A fine group with zero flux and zero
+total can contribute zero observed numerator to a supported aggregate; this
+does not recover or qualify its missing fine-group cross section. No volume
+factor is applied again to the supplied integrated flux.
+
+The result has immutable arrays and provenance, with empty `reported_errors`:
+aggregate covariance and errors are unknown. Original group errors are never
+assigned to the derived means. The direct power coefficient remains defined
+when fission is zero; the optional effective raw `INF_KAPPA` vector is omitted
+unless division by the aggregated `INF_FISS` is supported in every group.
+The method preserves scalar-reference reaction and loss numerators. Serpent's
+higher-moment estimator limitations remain; this algebra does not establish
+angular-moment-rate preservation or deterministic transport accuracy. See the
+[formal Serpent definitions](https://serpent.vtt.fi/docs/user_guide/gc_generation.html).
+
 ## Point-reactor validation
 
 The [example runner](https://github.com/jin-li/GARNET/blob/main/examples/serpent-xs/point-reactor/README.md) compares
