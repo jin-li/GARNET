@@ -314,6 +314,21 @@ GMRES application; factors remain frozen throughout the solve. SuperLU's other
 options retain their defaults. Setup failures identify the group and raise
 with their original cause; there is no solver fallback.
 
+`solve(group_ilu_storage='packed_cpu')` explicitly selects compact CPU factor
+storage for `group_ilu` or `group_ilu_coarse`. The default is `'superlu'`.
+Each original factor is copied into owned CSC triangular arrays and permutations,
+then released before the next group. No factor entries are dropped. The private
+triangular representation normalizes upper-factor columns once and scales the
+solution afterward; applications agree with the original factor to roundoff,
+rather than bitwise. Unsupported encodings, including lost nonzero entries,
+raise instead of falling back. This experimental backend requires exactly
+SciPy 1.18.1 and its private `gstrs` interface. Packing temporarily retains both
+representations, so its peak memory must be measured on the target problem.
+Metadata distinguishes the original `superlu_nnz` from `packed_nnz`,
+`packed_payload_nbytes`, and `packing_seconds`. Compact storage changes neither
+the ILU drop/fill settings nor the native equations, coarse space, or acceptance
+criteria. Passing a setup probe does not establish enough memory for GMRES.
+
 GMRES continues to use the original full CSR, retaining every off-group
 coefficient. Only the preconditioner omits off-group coupling. This mode does
 not make a full-matrix CSC snapshot; it freezes only the extracted factors.

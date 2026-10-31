@@ -103,6 +103,11 @@ class CoupledMomentEigenSolver:
     block providers; global ILU requires assembled storage.
     group_ilu_fill_factor explicitly budgets only group ILU (default 20);
     group_ilu_setup_callback receives copied setup statistics, never factors.
+    group_ilu_storage='packed_cpu' explicitly replaces each SuperLU factor with
+    owned packed arrays immediately after factorization. This CPU-only option
+    requires SciPy 1.18.1's private ABI, supports group ILU modes only, and adds
+    diagonal-normalization roundoff. The default 'superlu' path is unchanged.
+    Packing failure raises with its original cause; no fallback occurs.
     preconditioner='group_ilu_coarse' adds a fixed connected-aggregate native
     correction to those same group factors; no default or acceptance changes.
     inner_warm_start=True keeps the first linear solve cold, then starts at
@@ -121,13 +126,25 @@ class CoupledMomentEigenSolver:
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
               group_ilu_setup_callback=None,iteration_callback=None,inner_warm_start=False,
-              accepted_outer_state_callback=None):
+              accepted_outer_state_callback=None,group_ilu_storage='superlu'):
         op=self.operator
         deferred=isinstance(op,CorrectedNativeMomentOperator) and op.storage=='deferred'
         if type(inner_warm_start) is not bool:
             raise ValueError('inner_warm_start must be a bool')
         if preconditioner not in ('none','ilu','group_ilu','group_ilu_coarse'):
             raise ValueError("preconditioner must be 'none', 'ilu', 'group_ilu' or 'group_ilu_coarse'")
+        if not isinstance(group_ilu_storage,str) or group_ilu_storage not in ('superlu','packed_cpu'):
+            raise ValueError("group_ilu_storage must be 'superlu' or 'packed_cpu'")
+        if group_ilu_storage=='packed_cpu':
+            if preconditioner not in ('group_ilu','group_ilu_coarse'):
+                raise ValueError("group_ilu_storage='packed_cpu' requires group_ilu or group_ilu_coarse")
+            # Reject an unsupported private ABI before initial-state actions,
+            # assembly access, or group setup can allocate substantial storage.
+            try:
+                from .packed_superlu import PackedSuperLU, _check_backend
+                _check_backend()
+            except (ImportError,RuntimeError) as exc:
+                raise RuntimeError('Packed CPU group ILU backend unavailable; no solver fallback') from exc
         if deferred and preconditioner=='ilu':
             raise ValueError('Global ILU is unsupported with deferred storage; use group_ilu or group_ilu_coarse')
         if isinstance(group_ilu_fill_factor,(bool,np.bool_)) or not isinstance(group_ilu_fill_factor,Real):
@@ -225,8 +242,22 @@ class CoupledMomentEigenSolver:
                     factor=spilu(block,drop_tol=1e-6,fill_factor=group_fill)
                 except (MemoryError,RuntimeError,ValueError) as exc:
                     raise setup_failure(group,'factorization',exc,current) from exc
+                current.update(superlu_nnz=int(factor.nnz))
+                if group_ilu_storage=='packed_cpu':
+                    packing_started=perf_counter()
+                    try:
+                        packed=PackedSuperLU.from_superlu(factor)
+                    except Exception as exc:
+                        raise setup_failure(group,'packing',exc,current) from exc
+                    # Release original capacity before retaining the packed
+                    # factor or beginning extraction of the next group.
+                    del factor
+                    factor=packed
+                    del packed
+                    current.update(packed_nnz=int(factor.nnz),packed_payload_nbytes=int(factor.payload_nbytes),
+                        packing_seconds=perf_counter()-packing_started)
                 group_factors.append((indices,factor))
-                current.update(superlu_nnz=int(factor.nnz),setup_seconds=perf_counter()-group_started)
+                current.update(setup_seconds=perf_counter()-group_started)
                 group_stats.append(current)
                 del block
                 setup_event('after_factorization',group,current_group_stats=dict(current))
@@ -241,6 +272,7 @@ class CoupledMomentEigenSolver:
             M=LinearOperator(solve_matrix.shape,matvec=group_solve,dtype=solve_matrix.dtype)
             preconditioner_metadata.update(setup_seconds=perf_counter()-started,
                 drop_tol=1e-6,fill_factor=group_fill,group_ilu_fill_factor=group_fill,groups=group_stats,
+                group_ilu_storage=group_ilu_storage,
                 group_block_extraction=('deferred exact principal block provider; full internal cross-group contractions before selection' if deferred else
                     'two-pass bounded CSR rows; at most 4096 rows and 1000000 source entries per chunk, except one larger row'),
                 group_cell_ordering=('ascending cells; moments 0,1 per cell; flat indices [2*G*i+g, 2*G*i+G+g]' if moments==2 else
@@ -340,6 +372,8 @@ class CoupledMomentEigenSolver:
         if preconditioner=='group_ilu_coarse':
             files += (Path(__file__).with_name('native_coarse.py'),)
             preconditioner_metadata['coarse']=coarse_preconditioner.metadata
+        if group_ilu_storage=='packed_cpu':
+            files += (Path(__file__).with_name('packed_superlu.py'),)
         provenance=dict(physical_admission=False,computational_only=True,solver='CPU scipy GMRES + source-normalized power iteration',
             numpy_version=np.__version__,scipy_version=scipy.__version__,family=op.family,moments_per_cell=op.n_moments,
             required_orders=op.required_orders,material_provenance=[dict(m.provenance) for m in op.materials],
@@ -347,6 +381,7 @@ class CoupledMomentEigenSolver:
             max_inner=max_inner,max_outer=max_outer,inner_tolerance=inner_tolerance,k_tolerance=k_tolerance,
             source_tolerance=source_tolerance,residual_tolerance=residual_tolerance,positivity_tolerance=positivity_tolerance,
             group_ilu_fill_factor=group_fill if preconditioner in ('group_ilu','group_ilu_coarse') else None,
+            group_ilu_storage=group_ilu_storage if preconditioner in ('group_ilu','group_ilu_coarse') else None,
             source_normalization='sum(cell_volume * NSF dot reconstructed phi0) = 1',
             inner_warm_start=inner_warm_start,inner_initial_guess_reuse_count=inner_warm_start_reuses,
             initial_state_reused=False,regularization=False,fallback=False,scattering_RHS=False,
