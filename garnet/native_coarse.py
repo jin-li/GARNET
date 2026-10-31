@@ -261,6 +261,9 @@ class NativeCoarsePreconditioner:
             raise ValueError('Invalid or singular coarse condition estimate')
         self.coarse_solves = 0
         self.extra_a_matvecs = 0
+        self.cached_ap_matvecs = 0
+        self.native_action_seconds = 0.
+        self.prolongation_action_cache = None
         self.applications = 0
         self.setup_coarse_solves = 0
         self.max_coarse_solve_relative_residual = 0.
@@ -293,23 +296,48 @@ class NativeCoarsePreconditioner:
         self.linear_operator = LinearOperator(matrix.shape, matvec=self.apply, dtype=matrix.dtype)
 
     @classmethod
-    def from_operator(cls, operator, smoother, **kwargs):
+    def from_operator(cls, operator, smoother, *, cache_prolongation_action=False,
+                      cache_max_bytes=None, **kwargs):
         started = perf_counter()
+        if not isinstance(cache_prolongation_action, (bool, np.bool_)):
+            raise ValueError("cache_prolongation_action must be boolean")
+        cache = None
+        if cache_prolongation_action:
+            from .corrected_native_moments import CorrectedNativeMomentOperator
+            from .native_coarse_action_cache import validate_budget
+            validate_budget(cache_max_bytes)
+            if (not isinstance(operator, CorrectedNativeMomentOperator) or
+                    operator.storage != "deferred"):
+                raise ValueError("A P cache requires deferred corrected-native storage; no fallback")
         aggregates = operator_aggregates(operator)
         mapping_seconds = perf_counter()-started
         if getattr(operator, 'storage', 'assembled') == 'deferred':
+            iterator = operator.iter_full_blocks
+            if cache_prolongation_action:
+                from .native_coarse_action_cache import ProlongationActionCache
+                cache = ProlongationActionCache(operator, aggregates, cache_max_bytes)
+                iterator = cache.wrap(iterator)
             result = cls(operator.linear_operator(), operator.shape, aggregates, smoother,
-                         block_iterator=operator.iter_full_blocks, **kwargs)
+                         block_iterator=iterator, **kwargs)
+            if cache is not None:
+                cache.finalize()
+                result.prolongation_action_cache = cache
         else:
             result = cls(operator.assembled, operator.shape, aggregates, smoother, **kwargs)
         result._metadata['mapping_seconds'] = mapping_seconds
         result._metadata['setup_seconds'] += mapping_seconds
         result._metadata['mapping'] = 'component-seeded farthest Euclidean, graph Dijkstra lexicographic ties'
+        if cache is not None:
+            result._metadata['setup_seconds'] = perf_counter()-started
         return result
 
     @property
     def metadata(self):
-        return dict(self._metadata, coarse_solves=self.coarse_solves,
+        return dict(self._metadata,
+                    prolongation_action_cache=(self.prolongation_action_cache.metadata
+                        if self.prolongation_action_cache is not None else dict(enabled=False)),
+                    cached_ap_matvecs=self.cached_ap_matvecs, native_action_seconds=self.native_action_seconds,
+                    coarse_solves=self.coarse_solves,
                     setup_coarse_solves=self.setup_coarse_solves, extra_a_matvecs=self.extra_a_matvecs,
                     applications=self.applications,
                     max_coarse_solve_relative_residual=self.max_coarse_solve_relative_residual,
@@ -359,9 +387,17 @@ class NativeCoarsePreconditioner:
         if not np.all(np.isfinite(rhs)):
             raise ValueError('Finite preconditioner RHS required')
         self.applications += 1
-        correction = self.prolong(self._solve_coarse(self.restrict(rhs)))
-        self.extra_a_matvecs += 1
-        remainder = rhs-self.matrix@correction
+        coarse = self._solve_coarse(self.restrict(rhs))
+        correction = self.prolong(coarse)
+        if self.prolongation_action_cache is None:
+            self.extra_a_matvecs += 1
+            started = perf_counter()
+            action = self.matrix@correction
+            self.native_action_seconds += perf_counter()-started
+            remainder = rhs-action
+        else:
+            self.cached_ap_matvecs += 1
+            remainder = rhs-self.prolongation_action_cache.action(coarse)
         smooth = self.smoother@remainder if isinstance(self.smoother, LinearOperator) else self.smoother(remainder)
         result = correction+np.asarray(smooth).reshape(self.size)
         if not np.all(np.isfinite(result)):

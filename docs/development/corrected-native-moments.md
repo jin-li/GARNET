@@ -555,3 +555,55 @@ topological adjacency and individual reaction/face arrays. These costs, batched
 stacking and scatter throughput require an actual bounded resource pilot.
 Successful small-problem parity establishes the tested computational behavior;
 it does not establish full-core memory fit, runtime or physical accuracy.
+
+The coarse preconditioner also exposes an experimental, explicit opt-in:
+`NativeCoarsePreconditioner.from_operator(op, smoother,
+cache_prolongation_action=True, cache_max_bytes=<positive integer bytes>)`.
+It currently requires corrected-native `storage='deferred'`; unsupported modes
+and insufficient budgets raise errors without fallback. The default remains the
+native correction residual. Solver acceptance must continue to use the native
+operator regardless of this option.
+
+The cache stores rectangular BSR `B = A @ P`, with shape
+`(cells*q, aggregates*q)` and `q = moments*groups`. Its sorted structural slots
+include self and two-hop face adjacency, conservatively covering gradient
+support at both face endpoints. Construction checks actual compact gradient
+columns against self/face-neighbor support and rejects unexpected streamed
+slots. It retains all structural zero blocks and tiny signed coefficients;
+there is no zero or tolerance pruning and no global fine matrix. Each original
+stream batch is accumulated separately into longdouble cache blocks and passed
+unchanged to the existing coarse constructor. `P.T @ A @ P`, its accumulation
+order and chunking, LU and pivots are unchanged; the cache never supplies the
+coarse matrix. Each cache coefficient is cast once to float64, after all
+batches. Owned arrays and their NumPy backing arrays are frozen without an
+additional immutable-bytes payload copy.
+
+Application keeps the coarse coefficients `z`, forms `P @ z`, then gives the
+same fixed smoother `rhs - B @ z`. Metadata distinguishes `extra_a_matvecs`
+(native preconditioner actions) from `cached_ap_matvecs` and reports native and
+cached action times, cache setup time, slots, pattern hash, payload, actual
+retained array bytes and estimated cache array peak. Setup/action timing permits
+measuring break-even against an otherwise identical uncached setup; small
+fixture timings do not predict campaign performance.
+
+Before numerical cache allocation, the budget check includes the longdouble
+accumulator, final float64 payload, a conservative possible float64 payload copy,
+and twice the int64 pattern arrays. On a platform with 16-byte longdouble this
+is four float64 payloads plus two pattern arrays. It excludes Python topology,
+caller-owned operator/smoother, coarse factorization and solver workspaces; a
+separate total-process bound and an actual bounded setup probe are required.
+The current topology-only estimate (185678 cells, q=44, 128 aggregates) has
+217459 structural blocks and a 3368004992-byte float64 payload. This is an
+estimate, not a completed cache construction or convergence claim.
+
+`tests/test_native_coarse_action_cache.py` checks SP3/SP5 noncommuting materials,
+mixed reflective/vacuum boundaries, repeated faces, batch sizes 1/7/128,
+signed random, impulse, constant, adjacent-contrast and tiny signed vectors
+against the native `LinearOperator @ prolong(z)`. It compares complete
+preconditioner actions with the same coupled smoother and verifies exact
+aggregate/coarse/LU/pivot bytes. Both normwise and scaled componentwise errors
+must be below `5e-13`; componentwise scales include absolute native contributions
+(and both preconditioner paths) so cancellation near zero is treated explicitly.
+Separate checks preserve `1e16 + 1 - 1e16` across batches, retain `1e-300`,
+reject insufficient budgets before coefficient allocation, check frozen backing
+arrays, and spy on avoidance of the extra native action.
