@@ -226,6 +226,14 @@ class NativeMeshTransport:
             result[cell] = self.chi[material]*production[cell]/(4*np.pi)
         return s._finite(result)
 
+    def precondition(self, residual):
+        """Apply the default fixed streaming/collision diagonal inverse."""
+        return residual/self.diagonal
+
+    def preconditioner_provenance(self):
+        """Subclass hook; the default solver's provenance remains unchanged."""
+        return dict(preconditioner='diagonal_streaming_collision')
+
     def fixed_source(self, rhs):
         """Solve A y=rhs from exactly zero; bound actual inner steps, not cycles.
 
@@ -244,7 +252,8 @@ class NativeMeshTransport:
             return FixedSourceResult(zero, False, 'zero_streaming_diagonal', -1, 0, None)
         size = rhs.size
         operator = LinearOperator((size, size), matvec=lambda x: self.action(x.reshape(shape)).ravel(), dtype=float)
-        preconditioner = LinearOperator((size, size), matvec=lambda x: x/self.diagonal.ravel(), dtype=float)
+        preconditioner = LinearOperator((size, size),
+                                        matvec=lambda x: self.precondition(x.reshape(shape)).ravel(), dtype=float)
         steps = 0
 
         def count_step(_):
@@ -308,6 +317,7 @@ class NativeMeshTransport:
                           power_quantity='cell_integrated_kappa_fission_heat',
                           memory_estimate_bytes=self.memory_estimate_bytes, max_bytes=self.max_bytes,
                           energy_bounds_mev=tuple(s.source.energy_bounds_mev))
+        provenance.update(self.preconditioner_provenance())
         return TransportResult(flux, scalar, k, converged, reason, tuple(history), diagnostics, provenance)
 
     def solve(self):
