@@ -1,20 +1,22 @@
 # Experimental native full-matrix corrected moments
 
 `garnet.corrected_native_moments.CorrectedNativeMomentOperator` is an explicit,
-CPU research implementation for SP3, SDP1 and SP5 on a `MeshGrid`. It is separate from the
+CPU research implementation for SP3, SDP1, SP5 and SP7 on a `MeshGrid`. It is separate from the
 legacy per-group corrected scalar/moment dispatch. It makes no reactor
 scalability, angular-transport consistency, or physical-accuracy claim. No
 assembly calculation or native-data solve is part of this implementation.
 
 Construct with one immutable `MomentMaterial` reference per cell and an explicit
-`family='sp3'`, `'sdp1'` or `'sp5'`. Boundaries come from the grid (or the optional `bc`
+`family='sp3'`, `'sdp1'`, `'sp5'` or `'sp7'`. Boundaries come from the grid (or the optional `bc`
 argument); each must be homogeneous `vacuum` or `reflective`, and mixed classes
 are supported. No active mask,
 discontinuity factor, fitted boundary source or GPU path is provided. States have native **cell-major** shape `(n_cells, M, n_groups)` or
 its flattened equivalent. SP3/SDP1 use `M=2`, with
 `U=(phi0+2*phi2, 3*phi2)` and scalar flux `U0-2*U1/3`. SP5 uses `M=3`, with
 `U=(phi0+2*phi2, 3*phi2+4*phi4, 5*phi4)` and scalar flux
-`U0-2*U1/3+8*U2/15`. Signed higher moments are retained.
+`U0-2*U1/3+8*U2/15`. SP7 uses `M=4`, with
+`U=(phi0+2*phi2, 3*phi2+4*phi4, 5*phi4+6*phi6, 7*phi6)` and scalar flux
+`U0-2*U1/3+8*U2/15-16*U3/35`. Signed higher moments are retained.
 `action`/`apply` preserve input shape; `face_currents` returns integrated
 currents shaped `(n_faces, M, n_groups)` and `(n_boundary_faces, M, n_groups)`,
 directed i-to-j and outward respectively. `gradients` returns
@@ -51,10 +53,17 @@ R_i = volume_i * sum(C[m] kron L_(2m),i for m=0..M-1)
 B   = G_family kron I_G
 ```
 
-SP5 requires explicit native orders 0 through 5; SP3/SDP1 require 0 through 3.
-Pass `required_orders=tuple(range(6))` to the native Serpent reader for SP5,
+SP7 requires explicit native orders 0 through 7; SP5 requires 0 through 5;
+SP3/SDP1 require 0 through 3.
+Pass `required_orders=tuple(range(8))` to the native Serpent reader for SP7
+(or `tuple(range(6))` for SP5),
 then construct moment materials with the established orientation. Missing orders
 are refused; no scalar transport correction or synthesized high moment is used.
+The default family and unknown-count limit are unchanged. SP7 verification in
+`tests/test_native_sp7.py` covers scalar reconstruction, homogeneous reflective
+analytic eigenvalues, full anisotropic group coupling, interface currents and
+physical neutron balance. Raising SP order alone does not establish transport
+accuracy or the consistency of scalar-flux-weighted Serpent moment data.
 All matrices retain their nonsymmetry and signed entries. Finite even-order losses
 are sufficient: reaction/removal matrices need not be invertible or positive.
 Odd-order losses and actual elimination matrices must pass the finite condition gate
