@@ -607,3 +607,23 @@ must be below `5e-13`; componentwise scales include absolute native contribution
 Separate checks preserve `1e16 + 1 - 1e16` across batches, retain `1e-300`,
 reject insufficient budgets before coefficient allocation, check frozen backing
 arrays, and spy on avoidance of the extra native action.
+
+The experimental CPU solver hook is also explicit and defaults off:
+`solve(preconditioner='group_ilu_coarse', coarse_cache_prolongation_action=True,
+coarse_cache_max_bytes=<positive integer bytes>)`. It accepts only deferred
+corrected-native operators and requires a strict Boolean switch. A supplied
+budget while the switch is off raises an error instead of being ignored.
+Invalid option types, budgets and unsupported modes are rejected before
+operator actions or group factorization. The cache's structural peak budget
+check still occurs during coarse setup, after group factors are available.
+The hook works with either existing SuperLU factors or explicit `packed_cpu`
+factors; it does not change their settings or construction.
+
+With caching enabled, history and accepted-state/progress records expose
+`coarse_cached_ap_matvecs`; coarse metadata separately reports native and cached
+counts, and implementation provenance hashes `native_coarse_action_cache.py`.
+Default-off factory calls and numerical history retain their original form.
+Every true inner, outer and returned-pair residual continues to use the native
+operator action; source normalization, warm starts, positivity checks and
+convergence thresholds are unchanged. The hook is preparation for separately
+admitted diagnostics, not an accuracy or convergence qualification.

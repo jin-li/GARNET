@@ -110,6 +110,9 @@ class CoupledMomentEigenSolver:
     Packing failure raises with its original cause; no fallback occurs.
     preconditioner='group_ilu_coarse' adds a fixed connected-aggregate native
     correction to those same group factors; no default or acceptance changes.
+    coarse_cache_prolongation_action=True explicitly caches A P only for deferred
+    corrected-native group_ilu_coarse, with a positive coarse_cache_max_bytes
+    cache array budget. Native actions still enforce every residual gate.
     inner_warm_start=True keeps the first linear solve cold, then starts at
     k*u using the previous source-normalized candidate and current eigenvalue.
     accepted_outer_state_callback receives copied linear/native states only
@@ -126,9 +129,19 @@ class CoupledMomentEigenSolver:
               k_tolerance=1e-10,source_tolerance=1e-9,residual_tolerance=1e-9,
               positivity_tolerance=1e-12,preconditioner='none',group_ilu_fill_factor=20,
               group_ilu_setup_callback=None,iteration_callback=None,inner_warm_start=False,
-              accepted_outer_state_callback=None,group_ilu_storage='superlu'):
+              accepted_outer_state_callback=None,group_ilu_storage='superlu',
+              coarse_cache_prolongation_action=False,coarse_cache_max_bytes=None):
         op=self.operator
         deferred=isinstance(op,CorrectedNativeMomentOperator) and op.storage=='deferred'
+        if type(coarse_cache_prolongation_action) is not bool:
+            raise ValueError('coarse_cache_prolongation_action must be a bool')
+        if coarse_cache_prolongation_action:
+            if preconditioner!='group_ilu_coarse' or not deferred:
+                raise ValueError('Coarse action cache requires deferred corrected-native group_ilu_coarse; no fallback')
+            from .native_coarse_action_cache import validate_budget
+            validate_budget(coarse_cache_max_bytes)
+        elif coarse_cache_max_bytes is not None:
+            raise ValueError('coarse_cache_max_bytes requires coarse_cache_prolongation_action=True')
         if type(inner_warm_start) is not bool:
             raise ValueError('inner_warm_start must be a bool')
         if preconditioner not in ('none','ilu','group_ilu','group_ilu_coarse'):
@@ -280,21 +293,28 @@ class CoupledMomentEigenSolver:
                 superlu_nnz_caveat='SuperLU.nnz reports internal factor storage, not an explicit L/U CSC entry count')
             if preconditioner=='group_ilu_coarse':
                 from .native_coarse import NativeCoarsePreconditioner
-                coarse_preconditioner=NativeCoarsePreconditioner.from_operator(op,M)
+                if coarse_cache_prolongation_action:
+                    coarse_preconditioner=NativeCoarsePreconditioner.from_operator(op,M,
+                        cache_prolongation_action=True,cache_max_bytes=coarse_cache_max_bytes)
+                else:
+                    coarse_preconditioner=NativeCoarsePreconditioner.from_operator(op,M)
                 M=coarse_preconditioner.linear_operator
                 preconditioner_metadata['coarse']=coarse_preconditioner.metadata
                 preconditioner_metadata['setup_seconds']=perf_counter()-started
         k=1.;history=[];reason='outer_iteration_limit';numerical=False;full=float('inf')
         inner_warm_start_reuses=0
         def coarse_monitor():
-            if accepted_outer_state_callback is None or preconditioner!='group_ilu_coarse':
+            if preconditioner!='group_ilu_coarse' or (accepted_outer_state_callback is None and
+                                                     not coarse_cache_prolongation_action):
                 return {}
             metadata=coarse_preconditioner.metadata
+            cached_record=(dict(coarse_cached_ap_matvecs=metadata['cached_ap_matvecs'])
+                           if coarse_cache_prolongation_action else {})
             return dict(coarse_aggregate_sha256=metadata['aggregate_sha256'],
                 coarse_aggregate_count=metadata['aggregate_count'],coarse_dimension=metadata['coarse_dimension'],
                 coarse_applications=metadata['applications'],coarse_solves=metadata['coarse_solves'],
                 coarse_extra_a_matvecs=metadata['extra_a_matvecs'],
-                coarse_setup_coarse_solves=metadata['setup_coarse_solves'])
+                coarse_setup_coarse_solves=metadata['setup_coarse_solves'],**cached_record)
         # Keep the linear operator independent from the mutable assembled sparse
         # matrix so post-GMRES residual checks detect any assembly inconsistency.
         for outer in range(1,max_outer+1):
@@ -322,6 +342,8 @@ class CoupledMomentEigenSolver:
             linear=float(np.linalg.norm(op.action(y)-rhs)/np.linalg.norm(rhs))
             record=dict(outer=outer,inner_iterations=len(steps),gmres_info=int(info),linear_residual=linear)
             record.update(warm_record)
+            if coarse_cache_prolongation_action:
+                record['coarse_cached_ap_matvecs']=coarse_preconditioner.cached_ap_matvecs
             if iteration_callback is not None:
                 iteration_callback(dict(phase='inner_complete',outer=outer,count=len(steps),gmres_info=int(info),
                     true_action_relative_residual=linear,accepted_linear=bool(info==0 and np.isfinite(linear) and linear<=inner_tolerance),
@@ -372,6 +394,8 @@ class CoupledMomentEigenSolver:
         if preconditioner=='group_ilu_coarse':
             files += (Path(__file__).with_name('native_coarse.py'),)
             preconditioner_metadata['coarse']=coarse_preconditioner.metadata
+            if coarse_cache_prolongation_action:
+                files += (Path(__file__).with_name('native_coarse_action_cache.py'),)
         if group_ilu_storage=='packed_cpu':
             files += (Path(__file__).with_name('packed_superlu.py'),)
         provenance=dict(physical_admission=False,computational_only=True,solver='CPU scipy GMRES + source-normalized power iteration',
@@ -389,6 +413,9 @@ class CoupledMomentEigenSolver:
         if deferred:
             provenance['operator_storage']='deferred'
             provenance['operator_payload_accounting']=op.compact.payload_accounting()
+        if coarse_cache_prolongation_action:
+            provenance['coarse_cache_prolongation_action']=True
+            provenance['coarse_cache_max_bytes']=int(coarse_cache_max_bytes)
         if inner_warm_start:
             provenance['initial_guess_source']='previous source-normalized outer state scaled by k'
         return CoupledMomentResult(k,u.reshape(op.shape),phi,power,numerical and positive,numerical,positive,
