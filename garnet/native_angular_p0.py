@@ -26,6 +26,57 @@ def _sparse_bytes(matrix):
     return sum(getattr(matrix, name).nbytes for name in ('data', 'indices', 'indptr'))
 
 
+def _validate_factor_storage(storage):
+    if storage not in ('superlu', 'packed'):
+        raise ValueError("factor_storage must be 'superlu' or 'packed'")
+    if storage == 'packed':
+        from .packed_superlu import _check_backend
+        _check_backend()
+
+
+def _pack_factor(factor, *, reserved_bytes, max_bytes, source_array_bytes):
+    """Guard conversion, verify the original action, and retain only owned arrays."""
+    from .packed_superlu import PackedSuperLU
+    size = factor.shape[0]
+    # Explicit L/U, packed copies, inverse/permutations, normalization scratch,
+    # and bounded probe vectors coexist with the original opaque factor. The
+    # caller reserves its original factor allowance; native overhead still
+    # requires an external process memory cap.
+    packing_workspace = 3*source_array_bytes+256*size
+    _budget(reserved_bytes+packing_workspace, max_bytes)
+    packed = PackedSuperLU.from_superlu(factor)
+    comparison = 0.
+    for signed in (False, True):
+        rhs = 1.+np.arange(size, dtype=float)/size
+        if signed:
+            rhs[::2] *= -1
+        reference, actual = factor.solve(rhs), packed.solve(rhs)
+        scale = float(np.max(np.abs(reference)))
+        error = float(np.max(np.abs(actual-reference)))
+        relative = error/scale if scale else error
+        if (not np.all(np.isfinite(actual)) or not np.all(np.isfinite(reference))
+                or not np.isfinite(relative) or relative > 1e-12):
+            raise ValueError('packed factor action comparison exceeds 1e-12 or is nonfinite')
+        comparison = max(comparison, relative)
+    digest = hashlib.sha256()
+    for array in packed.owned_arrays:
+        digest.update(str(array.shape).encode('ascii'))
+        digest.update(array.dtype.str.encode('ascii'))
+        digest.update(memoryview(array).cast('B'))
+    return packed, dict(
+        factor_storage='packed', factor_backend='cpu_scipy_private_superlu_gstrs',
+        factor_backend_abi='scipy-1.18.1:_superlu.gstrs',
+        packed_payload_array_bytes=packed.payload_nbytes,
+        packed_payload_sha256=digest.hexdigest(), packed_payload_nnz=int(packed.nnz),
+        packed_action_probe_count=2, packed_action_relative_error=comparison,
+        packing_workspace_estimate_bytes=packing_workspace,
+        packing_peak_estimate_bytes=reserved_bytes+packing_workspace,
+        packed_implementation_sha256=hashlib.sha256(
+            Path(__file__).with_name('packed_superlu.py').read_bytes()).hexdigest(),
+        original_superlu_retained=False, private_gstrs_workspace_bounded=False,
+        external_hard_memory_cap_required=True)
+
+
 def _half_range(quadrature, area, normal):
     speed = quadrature.directions[:, :2] @ normal
     positive = float(area*np.dot(quadrature.weights, np.maximum(speed, 0))/(4*np.pi))
@@ -45,14 +96,18 @@ class P0GalerkinTransport(NativeMeshTransport):
     R psi=sum_n w_n psi_n, P phi=phi/(4*pi), Ac=R A P. Factor Ac once;
     z=P*ILU^-1*R*r, M^-1*r=z+D_stream^-1*(r-A*z). No fission in Ac.
     Constructor/factor failures raise ValueError with no fallback or shift.
+    factor_storage='packed' explicitly selects SciPy 1.18.1's private CPU
+    triangular application after roundoff checks; unsupported ABIs fail closed.
     """
     ilu_drop_tolerance: float = 1e-6
     ilu_fill_factor: float = 20.
+    factor_storage: str = field(default='superlu', kw_only=True)
     _coarse: object = field(init=False, repr=False, compare=False)
     _factor: object = field(init=False, repr=False, compare=False)
     _p0_provenance: object = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
+        _validate_factor_storage(self.factor_storage)
         super().__post_init__()
         drop = _positive(self.ilu_drop_tolerance, 'ilu_drop_tolerance')
         fill = _positive(self.ilu_fill_factor, 'ilu_fill_factor')
@@ -126,6 +181,13 @@ class P0GalerkinTransport(NativeMeshTransport):
                         + factor.perm_r.nbytes+factor.perm_c.nbytes)
         total_estimate = base_estimate+other_extra+max(factor_estimate, actual_bytes)
         _budget(total_estimate, self.max_bytes)
+        packed_config = {}
+        if self.factor_storage == 'packed':
+            factor, packed_config = _pack_factor(
+                factor, reserved_bytes=total_estimate, max_bytes=self.max_bytes,
+                source_array_bytes=actual_bytes)
+            actual_bytes = factor.payload_nbytes
+            total_estimate = max(total_estimate, packed_config['packing_peak_estimate_bytes'])
         object.__setattr__(self, 'memory_estimate_bytes', total_estimate)
         object.__setattr__(self, '_coarse', _freeze_sparse(coarse))
         object.__setattr__(self, '_factor', factor)
@@ -150,6 +212,7 @@ class P0GalerkinTransport(NativeMeshTransport):
                       scipy_version=scipy.__version__, numpy_version=np.__version__,
                       implementation_sha256=tuple(implementations), physical_admission=False,
                       regularization=False, fallback=False, adaptive=False)
+        config.update(packed_config)
         object.__setattr__(self, '_p0_provenance', MappingProxyType(config))
 
     @property

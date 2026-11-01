@@ -16,7 +16,8 @@ import scipy
 from scipy.sparse import isspmatrix_csc
 from scipy.sparse.linalg import splu
 
-from .native_angular_p0 import P0GalerkinTransport, _freeze_sparse, _sparse_bytes
+from .native_angular_p0 import (P0GalerkinTransport, _freeze_sparse, _sparse_bytes,
+                                _pack_factor, _validate_factor_storage)
 from .native_angular_source import _budget, _integer
 from .native_mesh_streaming import NativeMeshStreaming
 from .native_mesh_transport import _positive
@@ -100,7 +101,7 @@ class StreamingBlockFactor:
 
 
 def factor_streaming_block(matrix, *, max_bytes=256*1024**2, reserved_bytes=0,
-                           fill_estimate=20.):
+                           fill_estimate=20., factor_storage='superlu'):
     """Factor ONE canonical CSC from build_streaming_block for setup/cost gates.
 
     No shift, retry, fallback, or physics repair is applied. fill_estimate is an
@@ -108,7 +109,10 @@ def factor_streaming_block(matrix, *, max_bytes=256*1024**2, reserved_bytes=0,
     reserved_bytes excludes this matrix and includes all other caller live state.
     Retained charging includes matrix arrays, twice materialized L/U arrays and
     permutations; transient copies, vectors and estimated fill are also guarded.
+    Explicit factor_storage='packed' instead retains one owned packed payload
+    plus the matrix; conversion and action comparison are separately guarded.
     """
+    _validate_factor_storage(factor_storage)
     reserved_bytes = _integer(reserved_bytes, 'reserved_bytes')
     fill_estimate = _positive(fill_estimate, 'fill_estimate')
     if fill_estimate < 1:
@@ -154,22 +158,38 @@ def factor_streaming_block(matrix, *, max_bytes=256*1024**2, reserved_bytes=0,
     relative_residual = error/scale if scale else error
     if not np.all(np.isfinite(solution)) or not np.isfinite(relative_residual) or relative_residual > 1e-10:
         raise ValueError('streaming block verification residual exceeds 1e-10 or is nonfinite')
-    provenance = MappingProxyType(dict(
+    packed_config = {}
+    peak = reserved_bytes+workspace+max(estimated_factors, retained)
+    if factor_storage == 'packed':
+        factor, packed_config = _pack_factor(
+            factor, reserved_bytes=peak, max_bytes=max_bytes,
+            source_array_bytes=factor_bytes+permutation_bytes)
+        retained = matrix_bytes+factor.payload_nbytes
+        peak = max(peak, packed_config['packing_peak_estimate_bytes'])
+        solution = factor.solve(rhs)
+        packed_residual = float(np.max(np.abs(canonical @ solution-rhs)))
+        packed_residual = packed_residual/scale if scale else packed_residual
+        if (not np.all(np.isfinite(solution)) or not np.isfinite(packed_residual)
+                or packed_residual > 1e-10):
+            raise ValueError('packed streaming block verification residual exceeds 1e-10 or is nonfinite')
+        packed_config['packed_verification_relative_residual'] = packed_residual
+    config = dict(
         matrix_csc_sha256=_matrix_sha256(canonical), matrix_shape=canonical.shape,
         matrix_nnz=int(canonical.nnz), matrix_array_bytes=matrix_bytes,
         factor_lower_nnz=int(lower.nnz), factor_upper_nnz=int(upper.nnz),
         materialized_lu_array_bytes=factor_bytes, permutation_array_bytes=permutation_bytes,
         retained_charge_bytes=retained, reserved_bytes=reserved_bytes,
         transient_workspace_estimate_bytes=workspace, factor_preflight_estimate_bytes=estimated_factors,
-        peak_estimate_bytes=reserved_bytes+workspace+max(estimated_factors, retained),
+        peak_estimate_bytes=peak,
         verification_relative_residual=relative_residual,
         permc_spec='COLAMD', diag_pivot_thresh=1., equil=False,
         fill_estimate=fill_estimate, fill_estimate_is_not_allocation_cap=True,
         opaque_superlu_workspace_bounded=False, external_hard_memory_cap_required=True,
         scipy_version=scipy.__version__, numpy_version=np.__version__,
         implementation_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        regularization=False, fallback=False, adaptive=False, physical_admission=False))
-    return StreamingBlockFactor(canonical, factor, provenance)
+        regularization=False, fallback=False, adaptive=False, physical_admission=False)
+    config.update(packed_config)
+    return StreamingBlockFactor(canonical, factor, MappingProxyType(config))
 
 
 @dataclass(frozen=True)
@@ -214,7 +234,8 @@ class StreamingBlockP0Transport(P0GalerkinTransport):
                                if same_csc(matrix, unique[index]._matrix)), None)
                 if shared is None:
                     block = factor_streaming_block(matrix, max_bytes=self.max_bytes,
-                                                   reserved_bytes=reserved, fill_estimate=fill)
+                                                   reserved_bytes=reserved, fill_estimate=fill,
+                                                   factor_storage=self.factor_storage)
                     shared = len(unique)
                     unique.append(block)
                     candidates.setdefault(key, []).append(shared)

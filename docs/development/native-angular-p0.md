@@ -161,6 +161,39 @@ values and dtypes. A digest only finds candidates; equal planar directions
 alone do not authorize reuse. The natural block map is `[angle][group]` and
 angular arrays retain `[cell,angle,group]` order.
 
+### Optional packed factor storage
+
+Both preconditioner classes accept the keyword-only option
+`factor_storage="packed"`; `factor_streaming_block` accepts the same keyword.
+The default is `"superlu"`, preserving the existing factor application and
+provenance. For example:
+
+```python
+solver = StreamingBlockP0Transport(
+    streaming, boundary_conditions,
+    factor_storage="packed", max_bytes=memory_budget_bytes,
+)
+```
+
+The packed option uses the existing `PackedSuperLU` adapter for the coarse ILU
+and each distinct streaming LU. It copies explicit triangular factors and
+permutations, then releases the original SuperLU object. It changes factor
+storage and triangular application; the coarse matrix, ILU parameters, native
+angular loss and fission equations stay unchanged. No factor entries are
+dropped during packing. Two deterministic right-hand sides, including a signed
+one, must reproduce the original inverse action within `1e-12` relative maximum
+error. Streaming factors must also retain their `1e-10` matrix-residual check.
+These are floating-point equivalence checks, not bitwise equality.
+
+This experimental CPU option requires SciPy 1.18.1's private `_superlu.gstrs`
+ABI. Unsupported versions or failed comparisons stop construction without a
+backend fallback. Packing temporarily holds both representations; allocation
+guards include conversion workspace. Provenance adds owned payload bytes and
+fingerprints, action-comparison errors and backend identity. The payload has
+no reference to the original SuperLU object, but private triangular-solve and
+allocator overhead still require an external process memory limit. Successful
+small tests do not establish that a complete assembly setup fits or converges.
+
 Memory accounting retains the inherited Krylov/coarse estimates and reserves
 additional angular vectors, sparse assembly/conversion workspace and existing
 unique factors before every new block. The measured retained charge includes
