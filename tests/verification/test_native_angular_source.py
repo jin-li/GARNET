@@ -152,3 +152,60 @@ def test_invalid_flux_and_allocation_budgets():
                                np.array([0]), max_bytes=50)
     with pytest.raises(ValueError, match='allocation estimate'):
         small.scatter(np.ones((1, 2, 1)))
+
+
+def direct_quadrature_source(op, flux):
+    """Independent angular-kernel oracle, without harmonic projection."""
+    q = op.quadrature
+    cosine = q.directions @ q.directions.T
+    result = np.zeros_like(flux)
+    for material_id, production in enumerate(op.production):
+        selected = op.cell_material_ids == material_id
+        for l, matrix in enumerate(production):
+            kernel = (2*l+1)*eval_legendre(l, cosine)/(4*np.pi)
+            result[selected] += np.einsum('mn,cng,tg,n->cmt', kernel,
+                                          flux[selected], matrix, q.weights)
+    return result
+
+
+@pytest.mark.parametrize('cells', [255, 256, 257, 771])
+def test_batched_multimaterial_noncontiguous_flux_against_direct_quadrature(cells):
+    rng = np.random.default_rng(721)
+    q = ProductQuadrature(2)
+    matrices = [rng.uniform(-.4, .5, (3, 3, 3)) for _ in range(4)]
+    materials = tuple(material(p, orientation, edges=(20., 2., 1., 0.))
+                      for p, orientation in zip(matrices, ('to-major', 'from-major')*2))
+    # Interleaved identities also put each used material across a batch boundary
+    # at 771 cells; the fourth material deliberately has no cells.
+    ids = np.arange(cells, dtype=np.int64) % 3
+    op = NativeAngularSource(q, materials, ids)
+    storage = rng.normal(size=(cells, q.n_angles, 6))
+    flux = storage[:, ::-1, ::2]
+    flux.setflags(write=False)
+    original = storage.copy()
+    production = tuple(p.copy() for p in op.production)
+    expected_moments = np.zeros((cells, 9, 3))
+    for angle in range(q.n_angles):
+        expected_moments += (q.weights[angle]*q.harmonics[angle][None, :, None]
+                             * flux[:, angle, None, :])
+    np.testing.assert_allclose(op.moments(flux), expected_moments, atol=1e-12, rtol=1e-12)
+    np.testing.assert_allclose(op.scatter(flux), direct_quadrature_source(op, flux),
+                               atol=1e-12, rtol=1e-12)
+    np.testing.assert_array_equal(storage, original)
+    np.testing.assert_array_equal(op.cell_material_ids, ids)
+    for before, after in zip(production, op.production):
+        np.testing.assert_array_equal(after, before)
+        assert not after.flags.writeable
+
+
+def test_small_workspace_budget_preserves_direct_quadrature_result():
+    rng = np.random.default_rng(94)
+    q = ProductQuadrature(2)
+    materials = (material(rng.uniform(-1, 1, (3, 2, 2))),)
+    ids = np.zeros(37, dtype=np.int64)
+    # This budget holds the full arrays but only a few cells of workspace,
+    # exercising adaptive batching and a final partial batch.
+    op = NativeAngularSource(q, materials, ids, max_bytes=35_000)
+    flux = rng.normal(size=(37, q.n_angles, 2))
+    np.testing.assert_allclose(op.scatter(flux), direct_quadrature_source(op, flux),
+                               atol=1e-12, rtol=1e-12)

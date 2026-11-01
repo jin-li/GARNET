@@ -8,6 +8,7 @@ from scipy.special import lpmv
 from .moment_materials import MomentMaterial
 
 _DEFAULT_BYTES = 256 * 1024**2
+_BATCH_CELLS = 256
 
 
 def _integer(value, name, minimum=0):
@@ -181,17 +182,26 @@ class NativeAngularSource:
         object.__setattr__(self, 'n_groups', groups)
         object.__setattr__(self, 'energy_bounds_mev', _readonly(bounds))
 
+    def _batch_size(self):
+        cells = self.cell_material_ids.size
+        angles = self.quadrature.n_angles
+        groups = self.n_groups
+        harmonics = (self.quadrature.lmax+1)**2
+        # Reserve converted input, output, all moments, weighted basis, and
+        # material index/mask storage. Chunk work covers contiguous BLAS input
+        # and output copies, including gathered moments and order-block copies.
+        fixed = 8*(2*cells*angles*groups + cells*harmonics*groups +
+                   angles*harmonics + 2*cells)
+        per_cell = 8*(2*angles*groups + 4*harmonics*groups)
+        _budget(fixed + per_cell, self.max_bytes)
+        return min(cells, _BATCH_CELLS, (int(self.max_bytes)-fixed)//per_cell)
+
     def _flux(self, angular_flux):
         flux = np.asarray(angular_flux)
         expected = (self.cell_material_ids.size, self.quadrature.n_angles, self.n_groups)
         if flux.shape != expected or flux.dtype.kind not in 'fiu':
             raise ValueError(f'angular_flux must have real shape {expected}')
-        cells, angles, groups = expected
-        harmonics = (self.quadrature.lmax+1)**2
-        # Conservative live workspace: converted input, output, all moments,
-        # one cell's transformed moments and weighted projection basis.
-        _budget(8*(2*cells*angles*groups + cells*harmonics*groups +
-                   2*harmonics*groups + angles*harmonics), self.max_bytes)
+        self._batch_size()  # Check the complete live workspace before conversion.
         flux = np.asarray(flux, dtype=np.float64)
         if not np.all(np.isfinite(flux)):
             raise ValueError('angular_flux must be finite')
@@ -201,7 +211,16 @@ class NativeAngularSource:
         """phi[c,a,g] = sum_n w[n] H[n,a] psi[c,n,g]."""
         flux = self._flux(angular_flux)
         q = self.quadrature
-        result = np.einsum('na,cng->cag', q.weights[:, None]*q.harmonics, flux, optimize=False)
+        batch = self._batch_size()
+        harmonics = q.harmonics.shape[1]
+        weighted = q.weights[:, None]*q.harmonics
+        result = np.empty((len(flux), harmonics, self.n_groups))
+        for start in range(0, len(flux), batch):
+            stop = min(start+batch, len(flux))
+            rows = np.ascontiguousarray(flux[start:stop].transpose(0, 2, 1))
+            projected = rows.reshape(-1, q.n_angles) @ weighted
+            result[start:stop] = projected.reshape(stop-start, self.n_groups, harmonics).transpose(0, 2, 1)
+            del rows, projected
         if not np.all(np.isfinite(result)):
             raise ValueError('nonfinite angular moments (overflow)')
         return result
@@ -210,13 +229,31 @@ class NativeAngularSource:
         """q[c,n,to] = sum_a H[n,a] (SP_l[a] @ phi[c,a])[to]/(4*pi)."""
         moments = self.moments(angular_flux)
         q = self.quadrature
-        result = np.empty((len(self.cell_material_ids), q.n_angles, self.n_groups))
-        for cell, material_id in enumerate(self.cell_material_ids):
-            transformed = np.empty_like(moments[cell])
-            for l in range(q.lmax+1):
-                indices = slice(l*l, (l+1)**2)
-                transformed[indices] = moments[cell, indices] @ self.production[material_id][l].T
-            result[cell] = q.harmonics @ transformed / (4*np.pi)
+        batch = self._batch_size()
+        # Gather only a bounded set of cells sharing the same material. Each
+        # order is one matrix product across all their harmonic/group rows.
+        for material_id, production in enumerate(self.production):
+            cells = np.flatnonzero(self.cell_material_ids == material_id)
+            for start in range(0, len(cells), batch):
+                selected = cells[start:start+batch]
+                transformed = moments[selected]
+                for l in range(q.lmax+1):
+                    indices = slice(l*l, (l+1)**2)
+                    rows = np.ascontiguousarray(transformed[:, indices, :])
+                    scattered = rows.reshape(-1, self.n_groups) @ production[l].T
+                    transformed[:, indices, :] = scattered.reshape(len(selected), 2*l+1, self.n_groups)
+                    del rows, scattered
+                moments[selected] = transformed
+                del transformed, selected
+            del cells
+        result = np.empty((len(moments), q.n_angles, self.n_groups))
+        for start in range(0, len(moments), batch):
+            stop = min(start+batch, len(moments))
+            rows = np.ascontiguousarray(moments[start:stop].transpose(0, 2, 1))
+            reconstructed = rows.reshape(-1, q.harmonics.shape[1]) @ q.harmonics.T
+            reconstructed /= 4*np.pi
+            result[start:stop] = reconstructed.reshape(stop-start, self.n_groups, q.n_angles).transpose(0, 2, 1)
+            del rows, reconstructed
         if not np.all(np.isfinite(result)):
             raise ValueError('nonfinite scattering source (overflow)')
         return result
