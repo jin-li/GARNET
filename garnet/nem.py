@@ -74,6 +74,11 @@ class NEMDiffusionSolver:
     removal includes absorption plus OFF-diagonal outgoing scatter only.
     Optional fission_matrix (N,G,G), emitted/source order, replaces chi*nu_sigma_f.
     It must be nonnegative with column sums nu_sigma_f; chi remains metadata.
+    Explicit paired native_total/native_scattering_production keywords select
+    unqualified native-P0 input instead: sigma_a/sigma_s must both be None.
+    R=diag(native_total)-native_SP0.T, including self-scattering, with positive
+    diagonal. sigma_a then holds a signed compatibility diagnostic, also exposed
+    as signed_reduced_absorption; it is not reported ABS or RABSXS.
     Positive node_face_factors use (N,6,G), sides x-,y-,x+,y+,z-,z+;
     factors on external faces must equal one. Interior continuity is
     f_low*b_low_plus=f_high*b_high_minus. Currents are positive in global axes.
@@ -86,7 +91,7 @@ class NEMDiffusionSolver:
 
     def __init__(self, grid, D, sigma_a, sigma_s, nu_sigma_f, chi,
                  node_face_factors=None, *, rtol=1e-10, condition_limit=1e12,
-                 fission_matrix=None):
+                 fission_matrix=None, native_total=None, native_scattering_production=None):
         if not isinstance(grid, CuboidNodalGrid):
             raise TypeError('grid must be a CuboidNodalGrid')
         self.grid = grid
@@ -98,11 +103,35 @@ class NEMDiffusionSolver:
             raise ValueError('D must be a nonempty group vector or node/group array')
         self.n_groups = G = raw.shape[-1]
         self.D = _field(raw, 'D', (N,G))
-        self.sigma_a = _field(sigma_a, 'sigma_a', (N,G))
-        self.sigma_s = _field(sigma_s, 'sigma_s', (N,G,G))
+        native_mode = native_total is not None or native_scattering_production is not None
+        self.reaction_mode = 'native_p0_unqualified' if native_mode else 'absorption_scattering'
+        self.native_total = self.native_scattering_production = self.signed_reduced_absorption = None
+        if native_mode:
+            if native_total is None or native_scattering_production is None:
+                raise ValueError('native_total and native_scattering_production must be supplied together')
+            if sigma_a is not None or sigma_s is not None:
+                raise ValueError('sigma_a and sigma_s must be None in native P0 mode')
+            total = _field(native_total, 'native_total', (N,G))
+            production = _field(native_scattering_production, 'native_scattering_production', (N,G,G))
+            if np.any(total <= 0) or np.any(production < 0):
+                raise ValueError('native_total must be positive; native_scattering_production nonnegative')
+            # Immutable snapshots cannot be made writable again by callers.
+            self.native_total = np.frombuffer(total.tobytes(), dtype=float).reshape(total.shape)
+            self.native_scattering_production = np.frombuffer(production.tobytes(), dtype=float).reshape(production.shape)
+            reduced = total-production.sum(axis=2)
+            if not np.all(np.isfinite(reduced)):
+                raise ValueError('nonfinite signed reduced absorption diagnostic')
+            self.signed_reduced_absorption = np.frombuffer(reduced.tobytes(), dtype=float).reshape(reduced.shape)
+            self.sigma_a = self.signed_reduced_absorption
+            self.sigma_s = production.copy()
+            self.sigma_s[:,np.arange(G),np.arange(G)] = 0
+        else:
+            self.sigma_a = _field(sigma_a, 'sigma_a', (N,G))
+            self.sigma_s = _field(sigma_s, 'sigma_s', (N,G,G))
         self.nu_sigma_f = _field(nu_sigma_f, 'nu_sigma_f', (N,G))
         self.chi = _field(chi, 'chi', (N,G))
-        if np.any(self.D <= 0) or any(np.any(x < 0) for x in (self.sigma_a,self.sigma_s,self.nu_sigma_f,self.chi)):
+        nonnegative = (self.sigma_s,self.nu_sigma_f,self.chi) if native_mode else (self.sigma_a,self.sigma_s,self.nu_sigma_f,self.chi)
+        if np.any(self.D <= 0) or any(np.any(x < 0) for x in nonnegative):
             raise ValueError('D must be positive; all cross sections and chi nonnegative')
         fuel = np.any(self.nu_sigma_f > 0, axis=1)
         if np.any(abs(self.chi.sum(axis=1)[fuel]-1) > 1e-12):
@@ -119,10 +148,18 @@ class NEMDiffusionSolver:
             raise ValueError('node_face_factors must be positive')
         if np.any(self.node_face_factors[grid.boundary_nodes,grid.boundary_sides] != 1):
             raise ValueError('external node_face_factors must equal one')
-        scatter = self.sigma_s.copy()
-        scatter[:,np.arange(G),np.arange(G)] = 0
-        self.R = -scatter.transpose(0,2,1)
-        self.R[:,np.arange(G),np.arange(G)] += self.sigma_a+scatter.sum(axis=2)
+        if native_mode:
+            # Native SP0 is source-row/from-major, including self-scattering.
+            # Build R directly, avoiding cancellation through reduced absorption.
+            self.R = -self.native_scattering_production.transpose(0,2,1).copy()
+            self.R[:,np.arange(G),np.arange(G)] += self.native_total
+            if not np.all(np.isfinite(self.R)) or np.any(self.R[:,np.arange(G),np.arange(G)] <= 0):
+                raise ValueError('native P0 loss diagonal must be finite positive')
+        else:
+            scatter = self.sigma_s.copy()
+            scatter[:,np.arange(G),np.arange(G)] = 0
+            self.R = -scatter.transpose(0,2,1)
+            self.R[:,np.arange(G),np.arange(G)] += self.sigma_a+scatter.sum(axis=2)
         self.fission = (self.chi[:,:,None]*self.nu_sigma_f[:,None,:]
                         if fission_matrix is None else
                         _field(fission_matrix, 'fission_matrix', (N,G,G)))
@@ -267,7 +304,12 @@ class NEMDiffusionSolver:
         self._row_scale,self._column_scale,self._scaled_matrix = row,column,matrix
         evidence = dict(backend='NumPy/SciPy CPU',unknowns=size,loss_matrix_nnz=int(matrix.nnz),
                         maximum_local_loss_condition_2_scaled=local_condition,
-                        condition_estimate_is_certified_upper_bound=False)
+                        condition_estimate_is_certified_upper_bound=False,
+                        reaction_mode=self.reaction_mode, native_total=self.native_total,
+                        native_scattering_production=self.native_scattering_production,
+                        signed_reduced_absorption=self.signed_reduced_absorption,
+                        reduced_absorption_semantics='native total minus source-row SP0 sum; not physical ABS nor the reported Serpent RABSXS'
+                            if self.reaction_mode == 'native_p0_unqualified' else None)
         try:
             self._lu = splu(matrix,permc_spec='MMD_AT_PLUS_A')
             inverse = LinearOperator(matrix.shape,matvec=self._lu.solve,
@@ -286,6 +328,8 @@ class NEMDiffusionSolver:
         digest = sha256()
         arrays = [self.D,self.sigma_a,self.sigma_s,self.nu_sigma_f,self.chi,
                   self.node_face_factors,self.R,self.fission]
+        arrays += [array for array in (self.native_total,self.native_scattering_production,
+                                      self.signed_reduced_absorption) if array is not None]
         arrays += [getattr(self.grid,name) for name in (
             'bounds','widths','volumes','face_nodes','face_axes','face_areas',
             'node_faces','neighbors','boundary_faces','boundary_nodes',
@@ -294,7 +338,10 @@ class NEMDiffusionSolver:
             for axis in range(3):
                 arrays.extend(self.grid.leakage_weights(node,axis))
         digest.update(str((self.grid.n_nodes,self.n_nodes,self.n_faces,self.n_groups,
-                           self.rtol,self.condition_limit,self.grid.leakage_boundary,self.n_moments)).encode())
+                           self.rtol,self.condition_limit,self.grid.leakage_boundary,self.n_moments,
+                           self.reaction_mode,self.native_total is not None,
+                           self.native_scattering_production is not None,
+                           self.signed_reduced_absorption is not None)).encode())
         for array in arrays:
             digest.update(str((array.shape,array.dtype.str)).encode())
             digest.update(array.tobytes())
