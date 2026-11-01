@@ -118,3 +118,66 @@ isolated physical eigenpair invariance under both default and weak ILU settings.
 Failure and allocation guards are exercised without actual pin data. Passing
 these tests does not qualify upwind spatial convergence, angular convergence,
 physical positivity of a signed native P7 kernel, or pin accuracy.
+
+## Streaming block correction
+
+`garnet.native_angular_sweep.StreamingBlockP0Transport` is another explicit
+preconditioner choice. It uses the same coarse matrix and ILU, replacing the
+last diagonal correction with fixed streaming/collision block solves:
+
+```text
+z = P * ILU(Ac)^-1 * R * r
+M^-1 r = z + L0^-1 * (r - A*z)
+```
+
+For each angle and energy group, `L0` retains native total collision, interior
+upwind streaming, and original boundary outflow. Incoming reflected coupling
+is omitted from this auxiliary operator and remains in `A`, including in
+`r-A*z`. Scattering and fission are absent from `L0`. Incoming reflection is
+not replaced by a diagonal loss or same-angle reflection. Geometry, source
+normalization, native signed moments, cold starts and convergence checks are
+inherited unchanged.
+
+```python
+from garnet.native_angular_sweep import (
+    build_streaming_block, factor_streaming_block, StreamingBlockP0Transport,
+)
+
+# Before constructing every factor, profile individual representative blocks.
+block = build_streaming_block(streaming, angle=0, group=0,
+                              max_bytes=memory_budget_bytes)
+factor = factor_streaming_block(block, max_bytes=memory_budget_bytes)
+# This constructor builds all required blocks; use measured setup/resource gates.
+solver = StreamingBlockP0Transport(streaming, boundary_conditions,
+                                  max_bytes=memory_budget_bytes)
+```
+
+Each block is canonical CSC and is factored once with SuperLU `splu`, COLAMD,
+pivot threshold one, and equilibration disabled. Zero/nonfinite pivots,
+factorization errors, and a verification-solve residual above `1e-10` stop
+construction. No shift, fallback or coefficient replacement is attempted.
+Factor sharing requires complete equality of CSC shape, indices, pointers,
+values and dtypes. A digest only finds candidates; equal planar directions
+alone do not authorize reuse. The natural block map is `[angle][group]` and
+angular arrays retain `[cell,angle,group]` order.
+
+Memory accounting retains the inherited Krylov/coarse estimates and reserves
+additional angular vectors, sparse assembly/conversion workspace and existing
+unique factors before every new block. The measured retained charge includes
+matrix arrays, twice the materialized L/U arrays, and row/column permutations.
+`streaming_fill_estimate` defaults to 20 and is only a preflight allowance;
+it does not cap SuperLU fill or opaque workspace. Enforce an external job
+memory limit throughout setup and solves. A failed setup is not permission to
+raise the budget or select another preconditioner automatically.
+
+Provenance records every unique factor's matrix fingerprint, nnz, retained
+charge, verification residual, library versions and factor options, along
+with the complete block map. The fixed correction is nonsymmetric and uses
+the same GMRES left-preconditioning convention and unpreconditioned true
+residual as the base solver. Small dense-operator tests check reflection,
+tangencies, packing, the complete multiplicative formula, unchanged A/F,
+linearity, repeatability, cache identity and failure/resource guards.
+These tests do not establish assembly convergence, full-space mode dominance,
+or physical accuracy. Test individual blocks and full setup before a changed
+cold-RHS trial; require independent original-operator validation before an
+eigenvalue calculation.

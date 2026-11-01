@@ -78,3 +78,17 @@ projection, an analytic two-group P0/P1 oracle, orientation equivalence, signed
 higher moments, heterogeneous material selection, particle production balance,
 reflection, immutability, malformed data, and allocation guards. These checks
 establish the angular algebra only; they do not validate a transport solution.
+
+## Bounded contractions
+
+Projection and reconstruction use BLAS matrix products over batches of at most
+256 cells. Scattering groups cells by their existing material identity and
+applies each signed production-moment matrix without changing its orientation
+or values. The allocation check reserves input/output, all moments, the
+weighted harmonic basis, index storage and bounded contiguous BLAS workspaces
+before converting input data. The available byte budget may reduce the batch
+size; an insufficient budget fails before allocation. No global cache or
+mutable physics state is introduced. Direct Legendre-kernel tests cover
+multiple materials, mixed declared orientations, noncontiguous read-only input,
+batch boundaries and small workspace budgets. Different reduction order can
+change floating-point last bits; native matrices and equations are unchanged.
