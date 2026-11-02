@@ -106,6 +106,40 @@ def test_bdf_predictor_is_exact_for_nonuniform_polynomial_history():
     assert predicted == pytest.approx(value(times[-1] + target_width), abs=2e-13)
 
 
+@pytest.mark.parametrize("order", [1, 2, 3, 4, 5])
+def test_bdf_error_constants_are_exact_on_nonuniform_nodes(order):
+    """Audit O15: automatic order selection scores each candidate with these
+    constants. Equal widths give the textbook K_c = beta_0/(q+1); on any grid
+    the degree-q predictor misses t**(q+1) by K_p Y and the order-q corrector
+    by -K_c Y, Y = dt**(q+1) (q+1)!, exactly."""
+    from math import factorial
+    equal = BDF(6)
+    equal._dt_history = [1.0] * 6
+    k_p, k_c = equal.error_constants(1.0, order)
+    beta_0 = 1.0 / sum(1.0 / j for j in range(1, order + 1))
+    assert k_p == pytest.approx(1.0, rel=1e-12)
+    assert k_c == pytest.approx(beta_0 / (order + 1), rel=1e-10)
+
+    widths = [0.8, 1.7, 0.6, 1.2, 2.0, 0.9]
+    dt = 1.3
+    scheme = BDF(6)
+    scheme._dt_history = list(widths)
+    k_p, k_c = scheme.error_constants(dt, order)
+    times = np.concatenate(([0.0, -dt], -dt - np.cumsum(widths)))
+    exact = times ** (order + 1)            # new time at 0, where y = 0
+    big_y = dt ** (order + 1) * factorial(order + 1)
+    past = times[1:order + 2]
+    predicted = sum(exact[1 + j] * np.prod([(0.0 - x) / (past[j] - x)
+                                            for x in np.delete(past, j)])
+                    for j in range(order + 1))
+    nodes = times[:order + 1] / dt
+    vandermonde = np.array([[x ** m for x in nodes] for m in range(order + 1)])
+    a = np.linalg.solve(vandermonde, np.eye(order + 1)[1])
+    corrected = -np.dot(a[1:], exact[1:order + 1]) / a[0]   # y'(0) = 0
+    assert -predicted / big_y == pytest.approx(k_p, rel=1e-10)
+    assert corrected / big_y == pytest.approx(k_c, rel=1e-10)
+
+
 def test_bdf_predictor_retains_extra_state_for_degree_max_order():
     scheme = BDF(5)
     times = [0.0, 0.02, 0.07, 0.11, 0.20, 0.31]
@@ -226,6 +260,23 @@ def test_bdf_controller_selects_largest_width_with_hysteresis():
     order, _ = controller.choose_order(
         0.01, {2: 0.2, 3: 0.2}, 2, hysteresis=100.0)
     assert order == 2
+
+
+def test_bdf_controller_ranks_orders_by_defect_once_the_width_is_capped():
+    """Audit O15: at max_dt both orders take the same width, so the smaller
+    defect there wins, not a marginally larger proposal that cannot be used
+    (the step at max_dt kept order one: 0.39 -> x1.29 beat 0.26 -> x1.25)."""
+    controller = BDFStepController()
+    errors = {1: 0.39, 2: 0.26}
+    assert controller.choose_order(0.005, errors, 1)[0] == 1
+    assert controller.choose_order(0.005, errors, 1, max_width=0.005)[0] == 2
+    # Below the cap the widest proposal still decides.
+    assert controller.choose_order(0.005, errors, 1, max_width=1.0)[0] == 1
+    # Only orders that reach the cap compete on defect, and the hysteresis
+    # still protects the current order.
+    order, _ = controller.choose_order(0.005, {1: 0.39, 2: 0.37}, 1,
+                                       max_width=0.005, hysteresis=1.2)
+    assert order == 1
 
 
 @pytest.mark.parametrize("kwargs", [

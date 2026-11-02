@@ -243,8 +243,11 @@ history on the step leaving the event (`restart_steps` in
 carried field holds the `(1 − w) Fⁿ` half of the trapezoid. At a restart,
 `ThetaMethod.start(u, increment=...)` re-seeds it from the post-event fields;
 `Ψ = u` alone measured order 0.94. Fixed-step BDF3–6 stay second order
-because of their full-width startup (audit item O1; graded steps measured
-3.25). The adaptive controller's first step after t=0 or a restart uses
+because of their full-width startup. For BDF3 and BDF4, `bdf_startup="graded"`
+replaces it with the steps of `graded_bdf_widths` (audit item O1; measured
+orders 2.97 and 4.19, and 3.14 for BDF3 across an interior restart). BDF5 and
+BDF6 diverge on those growing steps (errors up to 1e2 for BDF6 at growth
+ratios from 1.5 down to 1.1) and keep the cap. The adaptive controller's first step after t=0 or a restart uses
 `startup_rates`, an explicit-Euler prediction evaluated with
 `problem_at(t + 1e-6·dt)` and the accepted feedback state. This costs one
 field and operator setup per startup.

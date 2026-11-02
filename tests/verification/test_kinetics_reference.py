@@ -23,7 +23,10 @@ import pytest
 from scipy.integrate import solve_ivp
 from scipy.linalg import expm
 
-from garnet import Grid, Kinetics, Material, TransientSNSolver, TransientSolver
+from garnet import (Grid, Kinetics, Material, TransientSDP1Solver,
+                    TransientSDPNSolver, TransientSNSolver, TransientSolver,
+                    TransientSPNSolver)
+from garnet.timescheme import graded_bdf_widths
 
 # Four cells are enough: the solution is flat, and the reflective problem has
 # no spatial discretisation error at all.
@@ -333,32 +336,110 @@ def test_crank_nicolson_restart_is_second_order_across_a_step_event():
     assert _observed_order(errors) >= 1.8, errors
 
 
-def _graded_widths(n_steps, order, ratio=1.5):
-    """Startup widths from h*sqrt(h/T)**(order-1) growing to h, then uniform."""
-    h = T_END / n_steps
-    width, widths = h * (h / T_END) ** ((order - 1) / 2), []
-    while width < h:
-        widths.append(width)
-        width *= ratio
-    rest = T_END - sum(widths)
-    count = int(np.ceil(rest / h))
-    return np.array(widths + [rest / count] * count)
-
-
-def test_fixed_bdf3_order_cap_and_graded_startup():
-    """Audit M-BDF3, documented order cap (see timescheme.BDF): full-width
-    BDF1/BDF2 startup steps make constant-step BDF3 second order (2.40e-5,
-    5.39e-6, 1.27e-6; order 2.09). A schedule graded from h*sqrt(h/T) gives
-    5.05e-6, 6.78e-7, 7.13e-8 (order 3.25)."""
-    uniform = [_ramp_error(n, time_scheme="bdf3") for n in (40, 80, 160)]
+@pytest.mark.parametrize("order, graded_order", [(3, 2.8), (4, 3.8)])
+def test_fixed_bdf_order_cap_and_graded_startup(order, graded_order):
+    """Audit M-BDF3 and O1: full-width BDF1/BDF2 startup steps make
+    constant-step BDF3 and BDF4 second order (BDF3: 2.40e-5, 5.39e-6,
+    1.27e-6; order 2.09). ``bdf_startup="graded"`` starts from
+    h*(h/T)**((q-1)/2) and grows by 1.5: BDF3 5.05e-6, 6.98e-7, 8.90e-8
+    (order 2.97), BDF4 9.44e-8, 8.35e-9, 4.57e-10 (order 4.19), for 8-17
+    extra steps."""
+    scheme = f"bdf{order}"
+    uniform = [_ramp_error(n, time_scheme=scheme) for n in (40, 80, 160)]
     assert _observed_order(uniform) == pytest.approx(2.0, abs=0.25), uniform
-    graded = []
-    for n in (40, 80, 160):
-        result = _solve(_ramp_problem(), dt=_graded_widths(n, 3),
-                        time_scheme="bdf3")
-        graded.append(abs(result.power[-1] / RAMP_REFERENCE - 1.0))
-    assert _observed_order(graded) >= 2.7, graded
+    graded = [_ramp_error(n, time_scheme=scheme, bdf_startup="graded")
+              for n in (40, 80, 160)]
+    assert _observed_order(graded) >= graded_order, graded
     assert graded[-1] < 0.1 * uniform[-1]
+
+
+def test_graded_bdf_widths_regrade_after_each_restart():
+    widths = graded_bdf_widths(1.0, 0.01, 4, restart_times=[0.3, 0.995])
+    ends = np.cumsum(widths)
+    assert ends[-1] == pytest.approx(1.0, rel=1e-14)
+    for event in (0.3, 0.995):
+        k = int(np.flatnonzero(np.isclose(ends, event, rtol=1e-12))[0])
+        assert widths[k + 1] == pytest.approx(0.01 * 0.01 ** 1.5)  # restart
+    assert widths.max() <= 0.01 * (1 + 1e-12)
+    assert (widths[1:] / widths[:-1]).max() <= 1.5 * (1 + 1e-12)
+    assert np.array_equal(graded_bdf_widths(1.0, 0.1, 2), np.full(10, 0.1))
+    with pytest.raises(ValueError, match="BDF5 and BDF6"):
+        graded_bdf_widths(1.0, 0.01, 5)
+
+
+def test_graded_bdf3_restart_keeps_third_order():
+    """The graded startup repeats after an interior event (the event problem
+    of the BDF2 restart test). Uniform BDF3 with the restart: 1.26e-4,
+    1.94e-5, 3.85e-6 (order 2.33, tending to two); graded: 8.02e-5, 9.25e-6,
+    1.03e-6 (order 3.14)."""
+    t_event, d1, d2 = 0.5 * T_END, STEP, -0.0002
+    first, second, base = _one_group(d1), _one_group(d2), _one_group()
+    problem_at = _event_problem(base, first, second, t_event)
+    k0, x0 = _initial_state(base, KIN)
+    x_event = expm(_kinetics_matrix(first, KIN, k0) * t_event) @ x0
+    x_end = expm(_kinetics_matrix(second, KIN, k0) * (T_END - t_event)) @ x_event
+    reference = x_end[0] * NU_SIGMA_F / k0
+    errors = {}
+    for startup in ("uniform", "graded"):
+        errors[startup] = [abs(_solve(problem_at, dt=T_END / n, time_scheme="bdf3",
+                                      bdf_restart_times=[t_event],
+                                      bdf_startup=startup).power[-1]
+                               / reference - 1.0) for n in (40, 80, 160)]
+    assert _observed_order(errors["graded"]) >= 2.9, errors
+    assert errors["graded"][-1] < 0.4 * errors["uniform"][-1], errors
+
+
+def test_graded_startup_steps_are_ordinary_steps():
+    """A driver mirroring the solver step by step (e.g. benchmarks/lra.py) sees
+    every graded step through on_step, at result.times."""
+    seen = []
+    solver = TransientSolver(GRID, _ramp_problem(), KIN, bc="reflective", device="cpu")
+    solver.on_step = lambda t, flux, power: seen.append((t, power))
+    result = solver.solve(t_end=T_END, dt=T_END / 40, tol_step=1e-12,
+                          time_scheme="bdf4", bdf_startup="graded")
+    assert len(result.times) > 41
+    np.testing.assert_array_equal([t for t, _ in seen], result.times[1:])
+    np.testing.assert_array_equal([p for _, p in seen], result.power[1:])
+
+
+# Audit O15: automatic order scored its q+1 candidate against the order-q
+# solution, so it measured the order-q error and rarely raised the order. At
+# rtol 1e-3 on this ramp it alternated between orders 1 and 2: 33 accepted and
+# 12 rejected steps, error 2.9e-4, against 19-24 steps, at most one rejection
+# and 2.7e-5-2.1e-4 for a fixed maximum order of 3-5. Scoring each candidate
+# on its own order's error scale, ranking by defect at a capped width and
+# ramping while q+1 cannot be scored: 19 and 2, error 1.2e-4.
+@pytest.mark.parametrize("rtol", [1e-3, 1e-5])
+def test_automatic_bdf_order_keeps_up_with_the_best_fixed_order(rtol):
+    def run(scheme, automatic):
+        result = _solve(_ramp_problem(), dt=1e-4, time_scheme=scheme,
+                        step_solver="monolithic",
+                        multigroup_kwargs={"rtol": 1e-13},
+                        adaptive_bdf={"rtol": rtol,
+                                      "automatic_order": automatic})
+        attempts = len(result.times) - 1 + result.rejected_steps
+        return attempts, abs(result.power[-1] / RAMP_REFERENCE - 1.0)
+
+    fixed = [run(f"bdf{q}", False) for q in (3, 4, 5)]
+    attempts, error = run("bdf5", True)
+    assert attempts <= 1.2 * min(a for a, _ in fixed), (attempts, fixed)
+    assert error <= max(e for _, e in fixed), (error, fixed)
+
+
+# BDF5 and BDF6 diverge on the graded ramp (errors up to 1e2 for BDF6 at
+# ratios 1.5 down to 1.1), so graded startup refuses them.
+@pytest.mark.parametrize("kwargs", [
+    dict(time_scheme="crank-nicolson"),
+    dict(time_scheme="bdf5"),
+    dict(time_scheme="bdf6"),
+    dict(time_scheme="bdf3", dt=np.full(10, T_END / 10)),
+    dict(time_scheme="bdf3", adaptive_bdf={"rtol": 1e-4}, step_solver="monolithic"),
+    dict(time_scheme="bdf3", bdf_startup="smooth"),
+])
+def test_graded_startup_rejects_what_it_cannot_grade(kwargs):
+    kwargs = {"dt": T_END / 10, "bdf_startup": "graded", **kwargs}
+    with pytest.raises(ValueError):
+        _solve(_ramp_problem(), **kwargs)
 
 
 def test_sn_bdf3_runs_to_completion():
@@ -403,3 +484,32 @@ def test_slow_steps_are_solved_not_accepted_unchanged(dollars, outer):
              for tol in (1e-6, 1e-12)}
     assert np.all(np.diff(power[1e-6]) > 0.0)   # every step moves
     assert np.abs(power[1e-6] / power[1e-12] - 1.0).max() < 1e-5
+
+
+# Audit O13: the SDP1, SDPN and S_N drivers had kept the change-only test and
+# the 1e-6 first sweep. On this 0.002 $ step SDP1, SP3 and SDP3 accepted 58, 39
+# and 51 of 80 steps unchanged and were about 1e-4 off; S_N moved every step but
+# stopped after about one sweep, 9e-4 off. On the reflective homogeneous medium
+# every angular model reduces to the same backward-Euler kinetics, so one tight
+# diffusion solve is the reference. Reflective SDP3 runs in the congruence
+# basis, whose P0 balance row is not a unit row.
+_O13_MODELS = {
+    "sdp1": lambda p: TransientSDP1Solver(GRID, p, KIN, bc="reflective", device="cpu"),
+    "sp3": lambda p: TransientSPNSolver(GRID, p, KIN, order=1, bc="reflective",
+                                        device="cpu"),
+    "sdp3": lambda p: TransientSDPNSolver(GRID, p, KIN, order=3, bc="reflective",
+                                          device="cpu"),
+    "sn": lambda p: TransientSNSolver(GRID, p, KIN, bc="reflective", device="cpu",
+                                      n_polar=2, n_azi=4),
+}
+
+
+@pytest.mark.parametrize("model", sorted(_O13_MODELS))
+def test_transport_slow_steps_are_solved_not_accepted_unchanged(model):
+    problem = _step_problem(_one_group(), _one_group(0.002 * BETA.sum() * SIGMA_A))
+    reference = TransientSolver(GRID, problem, KIN, bc="reflective",
+                                device="cpu").solve(
+        t_end=2.0, dt=0.05, tol_step=1e-12, time_scheme="backward-euler").power
+    power = _O13_MODELS[model](problem).solve(t_end=2.0, dt=0.05).power
+    assert np.all(np.diff(power) > 0.0)   # every step moves
+    assert np.abs(power / reference - 1.0).max() < 1e-5

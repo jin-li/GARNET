@@ -36,8 +36,8 @@ without a checkout, located by `_femffusion.py`: `$FEMFFUSION_DIR`, a sibling
 | `test_mesh_gmsh.py` | Gmsh 2.x reader: any tag count, non-contiguous node ids, planar meshes outside xy; MSH 4, binary and higher-order files refused |
 | `test_model_api_audit.py` | `Model.from_grid` on 2-D grids, `add_box` width warning, axial region over a drum clears the absorber blend |
 | `test_transient_point_kinetics.py` | transient stack vs the exact point-kinetics ODE |
-| `test_timescheme.py` | BDF/θ coefficients and history predictors; the published Eq. (44) error norm and its blockwise variant (unit-invariant, per field); step-controller bounds |
-| `test_kinetics_reference.py` | homogeneous transients vs independent `expm`/Radau multigroup kinetics; temporal orders, event and Crank–Nicolson restarts, adaptive startup, BDF3 order cap, S_N with BDF3, slow-step convergence |
+| `test_timescheme.py` | BDF/θ coefficients and history predictors; the published Eq. (44) error norm and its blockwise variant (unit-invariant, per field); variable-step error constants; step-controller bounds and order choice at a capped width |
+| `test_kinetics_reference.py` | homogeneous transients vs independent `expm`/Radau multigroup kinetics; temporal orders, event and Crank–Nicolson restarts, adaptive startup, BDF3 order cap and graded startup, automatic order against the best fixed order, S_N with BDF3, slow-step convergence of the diffusion, SDP1, SP3, SDP3 and S_N steps |
 | `test_transient_spn_equilibrium.py` | unperturbed diffusion/SPN/SDPN transients hold power, Cartesian and r-z, shared and distinct delayed spectra |
 | `test_transient_events.py` | events snap onto nearby step ends; restarts on the step leaving an event; `on_step` receives retainable copies |
 | `test_quasistatic_accuracy.py` | predictor–corrector IQS vs a full spatial transient: faster than first order in `shape_dt`, exact when `shape_dt = dt` (x-z and r-z) |

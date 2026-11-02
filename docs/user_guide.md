@@ -559,9 +559,14 @@ against its own scale (`error_norm="blockwise"`, the default);
 `error_norm="concatenated"` reproduces the paper's joined-state norm, under
 which the field with the largest values in its own units decides
 ([measured effect](../benchmark-results/adaptive-bdf-error-norm/)). The LRA driver uses that seam for its
-fully implicit temperature. With `automatic_order=True`, full-state
-`q-1/q/q+1` predictor defects compete by proposed safe width; event restarts
-still force order one. The corrected LRA CPU gate showed a 5.18x matched-error
+fully implicit temperature. With `automatic_order=True`, the orders
+`q-1/q/q+1` compete by proposed safe width, each scored by the full-state
+defect an order-k step of this width would show (`BDF.error_constants`).
+When the next step is capped by `max_dt` or a stop time, the smallest defect
+at the capped width decides. Event restarts drop to order one, and until the
+history can score `q+1` the order ramps as with a fixed maximum. Before audit
+item O15 the `q+1` score measured the order-q error, so at loose `rtol` the
+order stalled at one or two. The corrected LRA CPU gate showed a 5.18x matched-error
 speedup over adaptive backward Euler with the concatenated norm. Error-scaled rejection with a 0.5 cap
 reduced practical-tolerance LRA work by 5.6%; the default factor-two policy is
 retained for paper reproduction. Rejected-attempt time, width, and order are

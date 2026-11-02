@@ -91,10 +91,16 @@ constant startup prediction there is still an O(h) defect.
 **Formal order.** Fixed-step BDF3–BDF6 converge only at second order, although
 with a smaller error constant than BDF2. Their BDF1/BDF2 startup steps, at t=0
 and after each restart, run at the full width, and the startup error persists.
-Third order needs startup widths that shrink faster than `dt`. The adaptive
-controller selects such widths. Alternatively, pass an explicit `dt` list
-graded from about `dt*sqrt(dt/t_end)` by a ratio of at most 1.5 (measured order
-3.25 for BDF3). `time_scheme="crank-nicolson"` is second order for data that are
+Higher order needs startup widths that shrink faster than `dt`. The adaptive
+controller selects such widths. With a fixed step, BDF3 and BDF4 accept
+`bdf_startup="graded"`: the solver then starts at t=0 and after each
+`bdf_restart_times` event from `dt*(dt/t_end)**((q-1)/2)` and grows the width
+by 1.5 up to `dt` (measured orders 2.97 and 4.19, against 2.09 and 2.00, for
+8–17 extra steps). BDF5 and BDF6 diverge on such growing steps and refuse it.
+The graded steps are ordinary steps in `result.times` and `on_step`.
+A driver with its own schedule, such as `run_lra2d_cpu`, passes
+`garnet.graded_bdf_widths(t_end, dt, order)` as `dt`. The S_N driver supports
+only constant-width BDF and keeps the second-order cap. `time_scheme="crank-nicolson"` is second order for data that are
 continuous at t=0, and it stays second order across restarts, which re-seed
 its explicit half from the post-event state. For a perturbation applied at t=0
 it is first order, because its first explicit half uses the t=0 steady state.

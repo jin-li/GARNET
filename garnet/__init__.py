@@ -38,7 +38,7 @@ from .quasistatic import (EffectiveKinetics, FixedShapeQuasiStaticResult,
                           quasistatic_coupled_transient)
 from .feedback import ThermalFeedback
 from .thermal import ConductionSolver, ThermalMaterial, ThermalResult
-from .timescheme import BDF, BDF2, BDFStepController
+from .timescheme import BDF, BDF2, BDFStepController, graded_bdf_widths
 from .solver import (DiffusionEigenSolver, Result, SDP1EigenSolver,
                      SDP2EigenSolver, SDP3EigenSolver, SP1EigenSolver,
                      SP3EigenSolver, SP5EigenSolver, SP7EigenSolver)
@@ -112,6 +112,7 @@ __all__ = [
     "BDF",
     "BDF2",
     "BDFStepController",
+    "graded_bdf_widths",
     "NoiseSolver",
     "NoiseSource",
     "NoiseResult",

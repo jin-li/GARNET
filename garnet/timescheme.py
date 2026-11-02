@@ -651,9 +651,11 @@ class BDF(TimeScheme):
     O(h**3) local errors that the later steps cannot remove, so fixed-step
     BDF3--BDF6 converge globally at second order (measured 2.09 for BDF3 on
     a smooth ramp), with a smaller constant than BDF2. Restarts repeat the
-    startup. Third order needs startup widths that shrink faster than h: the
-    adaptive controller selects them, or an explicit nonuniform schedule
-    graded from ~h*sqrt(h/T) by a ratio <= 1.5 (measured 3.25 for BDF3).
+    startup. Higher order needs startup widths that shrink faster than h.
+    For BDF3 and BDF4, :func:`graded_bdf_widths` (``bdf_startup="graded"``
+    in ``TransientSolver.solve``) builds a fixed schedule growing from
+    h*(h/T)**((q-1)/2) by a ratio of 1.5 (measured orders 2.97 and 4.19).
+    BDF5 and BDF6 diverge on such growing steps and keep the cap.
     """
 
     is_bdf = True
@@ -814,6 +816,39 @@ class BDF(TimeScheme):
         return self.predict_history(
             self._history_u, dt, max_degree=max_degree)
 
+    def error_constants(self, dt, order):
+        """Local-error constants of order ``order`` at the proposed width.
+
+        With Y = dt**(q+1) y^(q+1), the degree-q predictor misses the exact
+        state by ``K_p * Y`` and the order-q corrector by ``-K_c * Y``, so
+        their defect (the quantity :meth:`error_norm` measures) is
+        ``(K_p + K_c) * Y``. Both follow from the accepted widths: K_p from
+        the predictor's interpolation nodes, K_c from the residual of the
+        same Vandermonde system as :meth:`prepare_step`. Equal widths give
+        K_p = 1 and K_c = 1/2, 2/9, 3/22, 12/125, 10/137 for q = 1..5.
+        """
+        dt, q = float(dt), int(order)
+        if q < 1 or q > self.max_order:
+            raise ValueError("BDF order must be between one and max_order")
+        if len(self._dt_history) < q:
+            raise ValueError("insufficient accepted step-width history")
+        nodes = [0.0]   # scaled by dt, measured back from the new time
+        distance = dt
+        for j in range(1, q + 2):
+            nodes.append(-distance / dt)
+            if j <= q:
+                distance += self._dt_history[j - 1]
+        factorial = float(np.prod(np.arange(1, q + 2)))
+        k_p = float(np.prod([-x for x in nodes[1:]])) / factorial
+        corrector_nodes = nodes[:q + 1]
+        vandermonde = np.asarray(
+            [[x**m for x in corrector_nodes] for m in range(q + 1)], dtype=float)
+        rhs = np.zeros(q + 1)
+        rhs[1] = 1.0
+        a = np.linalg.solve(vandermonde, rhs)
+        residual = sum(a_j * x**(q + 1) for a_j, x in zip(a, corrector_nodes))
+        return k_p, -float(residual) / (float(a[0]) * factorial)
+
     error_norms = ("concatenated", "blockwise")
 
     @staticmethod
@@ -890,6 +925,54 @@ class BDF2(BDF):
 
     def __init__(self):
         super().__init__(2)
+
+
+def graded_bdf_widths(t_end, dt, order, ratio=1.5, restart_times=()):
+    """Step widths that keep fixed-step BDF3 and BDF4 at their order.
+
+    At a constant width h the BDF1, BDF2, ... startup steps cap BDFq at
+    global order two (see :class:`BDF`). These widths start each smooth
+    segment at h * (h / t_end)**((order - 1) / 2) and grow by ``ratio`` until
+    they reach h; the rest of the segment is split evenly into steps no wider
+    than h. A segment starts at t = 0 and after each of ``restart_times``,
+    which become step ends -- pass the same times to the solver's
+    ``bdf_restart_times``, where the history is discarded and the order ramps
+    again. Orders one and two need no grading and get the even split only.
+
+    Measured on the kinetics references at 40/80/160 steps, for 8--17 extra
+    steps: BDF3 order 2.97 and BDF4 order 4.19 on a smooth ramp (2.09 and
+    2.00 at constant width), 3.03 and 3.87 after a 0.6 $ step. BDF5 and BDF6
+    are refused: on growing steps their variable-step formulas amplify
+    errors, and graded runs diverged (errors up to 1e2 for BDF6) at every
+    ratio from 1.5 down to 1.1.
+    """
+    t_end, h, q, ratio = float(t_end), float(dt), int(order), float(ratio)
+    if not (np.isfinite(t_end) and np.isfinite(h)) or t_end <= 0.0 or h <= 0.0:
+        raise ValueError("t_end and dt must be finite and positive")
+    if q not in _BDF_COEFFICIENTS:
+        raise ValueError("BDF order must be between 1 and 6")
+    if q > 4:
+        raise ValueError("graded startup is unstable for BDF5 and BDF6: "
+                         "run them at constant width (second order)")
+    if not np.isfinite(ratio) or ratio <= 1.0:
+        raise ValueError("the grading ratio must exceed one")
+    restarts = np.unique(np.asarray(restart_times, dtype=float).ravel())
+    if np.any(~np.isfinite(restarts)) or np.any(restarts <= 0.0) or np.any(restarts >= t_end):
+        raise ValueError("restart times must lie inside (0, t_end)")
+    first = h * (h / t_end) ** ((q - 1) / 2) if q > 2 else h
+    bounds = np.concatenate(([0.0], restarts, [t_end]))
+    widths = []
+    for start, stop in zip(bounds[:-1], bounds[1:]):
+        length, width, graded = stop - start, first, []
+        # A segment too short for the whole ramp ends in steps no wider than
+        # the next ramp width, so no width grows by more than ``ratio``.
+        while width < h and sum(graded) + 2.0 * width <= length:
+            graded.append(width)
+            width *= ratio
+        rest = length - sum(graded)
+        count = max(1, int(np.ceil(rest / min(h, width) * (1.0 - 1e-12))))
+        widths.extend(graded + [rest / count] * count)
+    return np.asarray(widths)
 
 
 class ExponentialBDF2(FrequencyTransform):
@@ -1038,12 +1121,16 @@ class BDFStepController:
             raise ValueError("BDF controller step width must be positive")
         return dt * self.factor(error, order, accepted=accepted)
 
-    def choose_order(self, dt, errors, current_order, *, hysteresis=1.05):
+    def choose_order(self, dt, errors, current_order, *, hysteresis=1.05,
+                     max_width=None):
         """Choose the candidate with the largest safe next-step proposal.
 
         ``errors`` maps candidate BDF orders to normalized defects. An order
         change must improve the proposed width by ``hysteresis`` over retaining
-        the current order, which suppresses one-step order chatter.
+        the current order, which suppresses one-step order chatter. With
+        ``max_width`` (the largest width the next step may take), candidates
+        that reach it are ranked instead by their defect scaled to that
+        width, with the same ``hysteresis``.
         """
         dt, current_order = float(dt), int(current_order)
         hysteresis = float(hysteresis)
@@ -1056,6 +1143,26 @@ class BDFStepController:
                 dt, error, int(order), accepted=float(error) <= 1.0)
             for order, error in errors.items()
         }
+        if max_width is not None:
+            # Orders whose proposal reaches the largest usable width (max_dt,
+            # the next stop) all take that width, so the widest proposal no
+            # longer separates them; the smallest defect at that width does
+            # (audit O15: pinned at max_dt, order one kept winning on a
+            # marginally larger unusable proposal).
+            max_width = float(max_width)
+            reach = [order for order, width in proposals.items()
+                     if width >= max_width]
+            if reach:
+                defect = {order: float(errors[order])
+                          * (max_width / dt) ** (order + 1) for order in reach}
+                best = min(reach, key=lambda order: (defect[order], -order))
+                if current_order in reach:
+                    if (best != current_order and defect[current_order]
+                            < hysteresis * defect[best]):
+                        best = current_order
+                elif max_width < hysteresis * proposals[current_order]:
+                    best = current_order
+                return best, proposals[best]
         best = max(proposals, key=lambda order: (proposals[order], order))
         if (best != current_order
                 and proposals[best] < hysteresis * proposals[current_order]):

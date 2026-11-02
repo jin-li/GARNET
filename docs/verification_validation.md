@@ -13,10 +13,14 @@ On 28–29 October 2026 a code audit of the features with benchmark V&V
 thermal coupling, SPH and readers, the `Model` API and non-Cartesian meshes)
 fixed 4 critical and 13 high-severity defects plus many smaller ones. The
 [audit note](qa/code_audit_2026-10-28.md) lists each finding and fix, the
-results that moved, and the open items: the BDF3–6 fixed-step order cap,
-SPH D-scaling normalization, the change-only stopping test of the SDP1,
-SDPN and S_N transients (O13), and the GMRES solve of non-symmetric SDPN
-blocks on very large meshes (O14). Resolved since: the SPN/SDPN V&V report
+results that moved, and the open items: SPH D-scaling normalization (O5),
+and the GMRES solve of non-symmetric SDPN blocks on very large meshes (O14,
+shelved because it does not reach realistic problems). Resolved since:
+automatic BDF order selection, which under-used orders 3–5 at loose tolerance
+(O15), the
+SDP1, SDPN and S_N transient steps, which could accept slow steps
+unconverged (O13), the BDF3–6
+fixed-step order cap, removable for BDF3 and BDF4 with `bdf_startup="graded"` (O1), the SPN/SDPN V&V report
 against Carreño et al. (2024), Brantley–Larsen and C5G7
 ([report](../benchmark-results/carreno2024-sdpn-vv/carreno2024-sdpn-vv.pdf), O10), the diffusion transient step, which could accept slow
 steps unsolved (O12), the GH200 IQS guard settings, re-checked and kept (O3), the GPU-only paths,
@@ -42,8 +46,11 @@ slow Brantley–Larsen and C5G7 tests pass when selected with `-m slow`. One tes
 intermittently there: it allows 10 s for an example's cold `--help`, which
 takes 8–11 s on that shared node. The full suite including slow tests gave
 **1283 passed, 4 skipped, 0 failed** on a GH200
-([record](../benchmark-results/gpu-paths-gh200/)). The full-suite records in
-the sections below predate the audit.
+([record](../benchmark-results/gpu-paths-gh200/)). On 2026-11-02, after O13,
+O1 and O15, the regular CPU suite on `cn000` gave **1297 passed, 24 skipped**,
+with that example test again over its 10 s (about 9 s before and after the
+changes).
+The full-suite records in the sections below predate the audit.
 
 Recorded values moved by the fixes:
 
@@ -320,7 +327,7 @@ also converged on CPU and returned the documented `(2, 24, 24, 24)` flux shape.
 | SPH and homogenization | Reaction-rate preservation, material consistency, and preservation of fission-energy coefficients. On a leaky colorset the SPH eigenvalue error must be below 0.3 of the homogenized error (see the audit section above). Per-cell and r-z volumes are honoured; empty regions and unknown `d_scaling` values are rejected. Slow HP-MR checks require corrected diffusion to recover each selected transport-family reference within 15 pcm. | [SPH verification](../tests/verification/test_sph.py), [κΣf consistency](../tests/verification/test_kappa_consistency.py), [HP-MR SPH](../tests/validation/test_hpmr_sph.py), [reference families](../tests/validation/test_hpmr_sph_reference_families.py) |
 | Cross-section input | Griffin material balances and conventions; FEMFFUSION files compared with independent benchmark transcriptions, including scattering direction and upscatter. Missing required Griffin tags raise an error; `.xsec` `PLANE` headers give per-plane maps, and Σf is stored as κΣf. | [Griffin readers](../tests/verification/test_griffin_xs.py), [FEMFFUSION readers](../tests/verification/test_femffusion_io.py) |
 | Delayed-neutron transients | Uniform perturbations agree with an independent point-kinetics solution to relative error below `5e-4` in the specified diffusion and SDPN cases. Equilibrium, precursor hand-off, and restart invariants are checked separately. Reflective homogeneous cores reduce exactly to multigroup infinite-medium kinetics, integrated independently with `expm` or Radau; a 0.615 $ six-family step meets per-scheme limits (adaptive BDF2: `2e-4` at the end time). Unperturbed diffusion, SP1–SP5 and SDP1–SDP3 transients hold power within `1e-8` on Cartesian and r-z grids, with shared and distinct delayed spectra. | [Kinetics references](../tests/verification/test_kinetics_reference.py), [SPN-family equilibrium](../tests/verification/test_transient_spn_equilibrium.py), [Point kinetics](../tests/verification/test_transient_point_kinetics.py), [material-dependent kinetics](../tests/verification/test_transient_per_material.py), [kinetics theory](../tests/verification/test_transient_kinetics_theory.py) |
-| BDF time integration | Orders 1–6 differentiate polynomials exactly to floating-point tolerance; nonuniform history, precursor elimination, convergence order, event alignment, rejected-step rollback, and automatic order selection have explicit checks. History restarts on the step leaving an event keep BDF2 and Crank–Nicolson second order (observed order at least 1.8); the adaptive startup defect is second order. Fixed-step BDF3 is capped at second order by its startup (documented; open item O1), while graded steps exceed order 2.7. Events within `1e-3` of a step width snap to the grid. | [Time schemes](../tests/verification/test_timescheme.py), [transient integration](../tests/verification/test_transient_point_kinetics.py), [events](../tests/verification/test_transient_events.py), [kinetics references](../tests/verification/test_kinetics_reference.py) |
+| BDF time integration | Orders 1–6 differentiate polynomials exactly to floating-point tolerance; nonuniform history, precursor elimination, convergence order, event alignment, rejected-step rollback, and automatic order selection have explicit checks; the variable-step error constants that score candidate orders are exact on nonuniform nodes, and automatic order needs at most 1.2× the attempts of the best fixed order on the exact-reference ramp (O15). History restarts on the step leaving an event keep BDF2 and Crank–Nicolson second order (observed order at least 1.8); the adaptive startup defect is second order. Fixed-step BDF3 is capped at second order by its startup (documented); `bdf_startup="graded"` restores order 2.8 or more for BDF3 and 3.8 or more for BDF4, also across an interior restart (O1), its steps reach `on_step` one to one, and BDF5 and BDF6, which diverge on its growing steps, are refused. Events within `1e-3` of a step width snap to the grid. | [Time schemes](../tests/verification/test_timescheme.py), [transient integration](../tests/verification/test_transient_point_kinetics.py), [events](../tests/verification/test_transient_events.py), [kinetics references](../tests/verification/test_kinetics_reference.py) |
 | Quasi-static kinetics | Exact homogeneous projections, normalization invariance, stationary equilibrium, and comparisons with full spatial transients. On a heterogeneous two-group core the predictor–corrector IQS error falls by more than 2.8 per halving of `shape_dt` (x-z and r-z), stays below 0.3 of the adiabatic error, and reproduces the full transient within `1e-7` when `shape_dt = dt`. The reduced HP-MR drum ramp must stay within 1% of full diffusion and below half the adiabatic error; `iqs_predictor_tol` rejects and halves an interval whose corrector disagrees with the accepted power. Guards also check full-diffusion fallback. | [Quasi-static tests](../tests/verification/test_quasistatic.py), [IQS accuracy](../tests/verification/test_quasistatic_accuracy.py) |
 | Eigenvalue iteration and Krylov solvers | Default SDP3 on BIBLIS converges in under 60 outer iterations, also with explicit BiCGStab, and matches a tight GMRES solve within `1e-6`. Plain power iteration stops on an error bound (shape error below `5e-6` at default tolerance); excised cells carry no source. Every Krylov solver accepts the common options and returns zero for a zero right-hand side; the BiCGStab breakdown test is scale-invariant. Damped odd-degree Neumann preconditioning beats Jacobi on an SP7 block. | [Solver convergence](../tests/verification/test_solver_convergence.py), [Krylov solvers](../tests/verification/test_linalg_krylov.py), [preconditioners](../tests/verification/test_preconditioner.py) |
 

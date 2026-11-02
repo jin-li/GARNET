@@ -53,8 +53,9 @@ from .sn import SNTransportSolver
 from .sp3 import SP3GroupOperator
 from .spn import SDPNGroupOperator, _SDPN_G, _SPN_C, _SPN_G, _marshak_applies
 from .timescheme import (BDF, BDFStepController, ExponentialBDF2, ExponentialTheta,
-                         FrequencyTransform, ThetaMethod, make_time_scheme,
-                         physical_state_errors, physical_history_prediction)
+                         FrequencyTransform, ThetaMethod, graded_bdf_widths,
+                         make_time_scheme, physical_state_errors,
+                         physical_history_prediction)
 from .stencil import BC_VACUUM, BC_ZERO_FLUX, GroupOperator
 from .solver import (DiffusionEigenSolver, Fields, Result, SDP1EigenSolver,
                      SDPNEigenSolver, scatter_stack)
@@ -73,6 +74,38 @@ _ANDERSON_RESTART_GROWTH = 1.5
 # rebalance. Six is the measured default for upscattering libraries; historical
 # comparisons are retained in docs/numerical_implementation_notes.md.
 _UPSCATTER_SUBSWEEPS = 6
+
+
+def _step_inner_floor(fixed_total: float, emission_total: float,
+                      tol_step: float) -> float:
+    """Inner-solve rtol floor of a within-step fission-source fixed point.
+
+    The amplitude estimate W(delta)/Fx (:func:`_amplitude_error`) magnifies
+    inner-solve noise by W/Fx, so on a core this close to critical
+    (Fx < 1e-2 W) the floor drops to hold that noise near 0.1 tol_step. A
+    step's first sweep solves at this floor: it has no change to scale by and
+    must resolve the step's own source change, which in a slow phase is 1e-6
+    of the group source or less (audit O12, O13).
+    """
+    fixed_fraction = (fixed_total / emission_total
+                      if fixed_total > 0.0 and emission_total > 0.0 else 1.0)
+    return max(min(1e-3, 0.1 * fixed_fraction) * tol_step, 1e-12)
+
+
+def _amplitude_error(fixed_total: float, w_delta: float) -> float:
+    """Relative amplitude error |f - 1| of a within-step fission-source iterate.
+
+    f = Fx / (Fx - W(delta)) rescales the swept solution into whole-core
+    balance with the source it implies (see the rebalance in
+    :meth:`TransientSolver.solve`); Fx is the step's fixed source (delayed +
+    time) and W(delta) the emission of the sweep's source change, both under
+    one linear functional of the step's right-hand side. Near criticality the
+    source change understates this error by 1 / (1 - k_prompt).
+    """
+    if fixed_total <= 0.0:
+        return 0.0   # no fixed source, no estimate
+    denom = fixed_total - w_delta
+    return abs(w_delta) / denom if denom > 0.0 else np.inf
 
 
 def _n_steps(t_end: float, dt: float) -> int:
@@ -571,6 +604,7 @@ class TransientSolver:
               time_weight: float | None = None,
               ftm_kwargs: dict | None = None,
               bdf_restart_times=None,
+              bdf_startup: str = "uniform",
               step_alignment_times=None,
               adaptive_bdf: dict | None = None,
               max_feedback_iterations: int = 12,
@@ -664,8 +698,9 @@ class TransientSolver:
             With a constant ``dt``, BDF3--BDF6 are globally only second
             order: the BDF1/BDF2 startup steps (at t=0 and after each
             restart) run at full width and their local errors persist. Use
-            ``adaptive_bdf``, or an explicit ``dt`` schedule graded from
-            about ``dt*sqrt(dt/t_end)`` at each start, to observe third order.
+            ``bdf_startup="graded"``, ``adaptive_bdf``, or an explicit ``dt``
+            schedule (e.g. from :func:`~garnet.timescheme.graded_bdf_widths`)
+            to observe the scheme's order.
             Crank--Nicolson is first order for a perturbation applied at
             t=0: its first trapezoid half evaluates ``problem_at(0)``, the
             pre-step material from which the steady state was computed. Its
@@ -700,6 +735,19 @@ class TransientSolver:
             then uses BDF1 and ramps again (fixed and adaptive steps alike).
             Use this for abrupt drum frames, rod events, and feedback-law
             corners.
+        bdf_startup : ``"uniform"`` (default) keeps the constant ``dt``.
+            ``"graded"`` replaces it, for BDF3 and BDF4, by
+            :func:`~garnet.timescheme.graded_bdf_widths`: steps from
+            ``dt*(dt/t_end)**((q-1)/2)`` growing by 1.5 to ``dt`` at t=0 and
+            after each ``bdf_restart_times`` event, so the order-ramping
+            startup no longer caps the global order at two (smooth ramp:
+            observed orders 2.97 and 4.19, against 2.09 and 2.00). Every
+            graded step is an ordinary step, reported in ``result.times`` and
+            to ``on_step``; ``t_end`` need not then be a multiple of ``dt``.
+            BDF1 and BDF2 keep the constant ``dt``; BDF5 and BDF6 are refused,
+            because they diverge on growing steps. It needs a scalar ``dt``
+            and does not combine with ``adaptive_bdf`` (which grades by its
+            error control) or ``step_alignment_times``.
         adaptive_bdf : experimental BDF local-error controller. A dictionary
             with ``rtol`` (required in production; default 1e-3), optional
             ``atol``, ``min_dt``, ``max_dt``, ``safety``, ``min_factor``,
@@ -725,8 +773,15 @@ class TransientSolver:
             rejected down to ``min_dt``. External ``adaptive_error_state``
             predictions are the caller's: a constant startup prediction
             there is still an O(h) defect. With automatic order enabled,
-            candidate ``q-1/q/q+1`` predictor defects compete by safe proposed
-            width. A coupled driver may add its state through
+            candidate orders ``q-1/q/q+1`` compete by safe proposed width,
+            each scored by the defect an order-k step of this width would
+            show (``BDF.error_constants``); the q+1 score removes the order-q
+            corrector's own error first. Candidates that reach the largest
+            width the next step may take (``max_dt`` or the next stop) are
+            ranked by their defect at that width, and while the history is
+            too short to score q+1 (t=0 and after each restart) the order
+            ramps as with a fixed maximum (audit O15). A coupled driver may
+            add its state through
             ``adaptive_error_state`` and ``adaptive_order_error_state``.
         adaptive_ftm : experimental physical-state step-doubling controller
             for ``ftm2`` and ``ftm-bdf2``. Supports the width/tolerance controls
@@ -851,6 +906,24 @@ class TransientSolver:
         adaptive_controls = adaptive_ftm if ftm_adaptive else adaptive_bdf
         adaptive_kw = None if adaptive_controls is None else dict(adaptive_controls)
         adaptive = adaptive_kw is not None
+        if bdf_startup not in ("uniform", "graded"):
+            raise ValueError("bdf_startup must be 'uniform' or 'graded'")
+        if bdf_startup == "graded":
+            if not isinstance(scheme, BDF):
+                raise ValueError("bdf_startup='graded' needs a BDF time_scheme")
+            if scheme.max_order > 4:
+                raise ValueError("bdf_startup='graded' is unstable for BDF5 "
+                                 "and BDF6, which diverge on growing steps")
+            if adaptive:
+                raise ValueError("bdf_startup='graded' does not combine with "
+                                 "adaptive_bdf, whose error control sets the "
+                                 "startup widths")
+            if np.ndim(dt) != 0:
+                raise ValueError("bdf_startup='graded' needs a scalar dt; an "
+                                 "explicit schedule is used as given")
+            if step_alignment_times is not None:
+                raise NotImplementedError("bdf_startup='graded' does not "
+                                          "combine with step_alignment_times")
         ftm_output_rtol = None
         ftm_output_atol = 0.0
         ftm_estimator = "step-doubling"
@@ -951,7 +1024,13 @@ class TransientSolver:
             dt_step = min(initial_dt, adaptive_max_dt,
                           t_end if t_end > 0.0 else initial_dt)
         else:
-            target_times, step_widths = _step_schedule(t_end, dt)
+            schedule = dt
+            if bdf_startup == "graded" and scheme.max_order > 2:
+                schedule = graded_bdf_widths(
+                    t_end, dt, scheme.max_order,
+                    restart_times=(() if bdf_restart_times is None
+                                   else bdf_restart_times))
+            target_times, step_widths = _step_schedule(t_end, schedule)
             n_steps = len(step_widths)
             dt_step = (float(step_widths[0]) if n_steps else float(dt))
         if np.ndim(dt) != 0 and not (
@@ -1836,6 +1915,15 @@ class TransientSolver:
 
                     next_order_n = time_order_n
                     if automatic_order:
+                        # Each candidate k is scored by the defect an order-k
+                        # step of this width would show, (K_p + K_c) Y_{k+1}
+                        # (BDF.error_constants), so all three proposals rest
+                        # on the controller's own scale (audit O15). The
+                        # order-q solution carries -K_c Y_{q+1}: negligible
+                        # against the degree-(q-1) predictor's error, but it
+                        # would dominate the degree-(q+1) one, so it is
+                        # removed first. Scored on the raw order-q solution,
+                        # q+1 only ever showed the order-q error.
                         candidate_errors = {time_order_n: local_error}
                         candidates = {max(1, time_order_n - 1), time_order_n}
                         higher = time_order_n + 1
@@ -1868,13 +1956,42 @@ class TransientSolver:
                             elif external_corrected:
                                 raise AssertionError(
                                     "external candidate-order state is missing")
-                            candidate_errors[candidate] = scheme.error_norm(
-                                candidate_corrected, candidate_predicted,
-                                rtol=adaptive_rtol, atol=adaptive_atol,
-                                norm=adaptive_norm)
+                            if candidate > time_order_n:
+                                # exact ~ corrected - K_c Y_{q+1}, with
+                                # Y_{q+1} = (corrected - predicted_q)/(K_p + K_c)
+                                k_p_q, k_c_q = scheme.error_constants(
+                                    dt_step, time_order_n)
+                                w = k_c_q / (k_p_q + k_c_q)
+                                candidate_predicted = [
+                                    p + w * (c - p_q) for p, c, p_q in zip(
+                                        candidate_predicted,
+                                        corrected_error_state,
+                                        predicted_error_state)]
+                            k_p, k_c = scheme.error_constants(dt_step, candidate)
+                            candidate_errors[candidate] = (
+                                (1.0 + k_c / k_p) * scheme.error_norm(
+                                    candidate_corrected, candidate_predicted,
+                                    rtol=adaptive_rtol, atol=adaptive_atol,
+                                    norm=adaptive_norm))
+                        # The next step can be no wider than max_dt or the
+                        # distance to the next stop (event, alignment, t_end).
+                        limit = float(t_end)
+                        future_events = stop_times[stop_times > t + 1e-14]
+                        if future_events.size:
+                            limit = min(limit, float(future_events[0]))
                         next_order_n, proposed_dt = controller.choose_order(
                             dt_step, candidate_errors, time_order_n,
-                            hysteresis=order_hysteresis)
+                            hysteresis=order_hysteresis,
+                            max_width=max(min(adaptive_max_dt, limit - t),
+                                          adaptive_min_dt))
+                        if (higher <= scheme.max_order
+                                and higher not in candidates
+                                and next_order_n == time_order_n):
+                            # Too little history to score q+1 (t=0 or a
+                            # restart): ramp as a fixed maximum order does.
+                            # The error test still guards every step, and
+                            # selection takes over once q+1 can be scored.
+                            next_order_n = higher
                         order_candidate_errors.append(candidate_errors)
                         next_time_orders.append(next_order_n)
                     else:
@@ -1929,12 +2046,7 @@ class TransientSolver:
                 term = delayed_sources[g] + time_history_weight[g] * carried_flux[g]
                 fixed_total += float(xp.sum(term * rhs_scale))
             emission_total = float(xp.sum(total_emission_weight * fission_source * rhs_scale))
-            # The amplitude estimate W(delta)/Fx magnifies inner-solve noise by
-            # W/Fx, so on a core this close to critical (Fx < 1e-2 W) the inner
-            # floor drops to hold that noise near 0.1 tol_step.
-            fixed_fraction = (fixed_total / emission_total
-                              if fixed_total > 0.0 and emission_total > 0.0 else 1.0)
-            rtol_floor = max(min(1e-3, 0.1 * fixed_fraction) * tol_step, 1e-12)
+            rtol_floor = _step_inner_floor(fixed_total, emission_total, tol_step)
 
             # Fixed point on the end-of-step fission source (Gauss-Seidel over
             # groups, warm-started from the previous step). Near criticality
@@ -2035,12 +2147,7 @@ class TransientSolver:
                 # that last stretch to unaccelerated Picard.
                 w_delta = float(xp.sum(total_emission_weight * delta * rhs_scale))
                 denom = fixed_total - w_delta
-                if fixed_total <= 0.0:
-                    amplitude = 0.0   # no fixed source, no estimate
-                elif denom > 0.0:
-                    amplitude = abs(w_delta) / denom
-                else:
-                    amplitude = np.inf
+                amplitude = _amplitude_error(fixed_total, w_delta)
                 if rebalance and fixed_total > 0.0 and denom > 0.0:
                     # Far from 1 means the balance is being asked to
                     # extrapolate through the critical pole; clamp and let
@@ -2267,6 +2374,7 @@ class TransientSDP1Solver:
         removed = [float(beta[i] / (1.0 + lam[i] * dt))
                    for i in range(kin.n_families)]
         w_fis = delayed_emission.fission_weights(removed, fields.chi)
+        w_tot = sum(w_fis)
         inv_vdt = [1.0 / (kin.velocities[g] * dt) for g in range(G)]
 
         ops, preconds = self._build_ops(xp, fields, inv_vdt, G)
@@ -2286,6 +2394,7 @@ class TransientSDP1Solver:
                 ops, preconds = self._build_ops(xp, fields, inv_vdt, G)
                 src_w = getattr(ops[0], "rhs_weight", None)
                 w_fis = delayed_emission.fission_weights(removed, fields.chi)
+                w_tot = sum(w_fis)
                 last = (mats, mmap)
 
             state_old = [s.copy() for s in state]
@@ -2306,10 +2415,22 @@ class TransientSDP1Solver:
                                         - 2.0 * phi0_old[g])])
                 tsrc.append(ts if src_w is None else ts * src_w)
 
+            # Whole-core balance for the amplitude half of the stopping test
+            # (see TransientSolver.solve; audit O13): summed over cells and
+            # groups, row 0 is the P0 neutron balance, with the isotropic
+            # source at weight 1 and the time source theta * phi0_old.
+            rs = 1.0 if src_w is None else src_w
+            fixed_total = sum(float(xp.sum(dsrc[g] * rs + tsrc[g][0]))
+                              for g in range(G))
+            rtol_floor = _step_inner_floor(
+                fixed_total, float(xp.sum(w_tot * S * rs)), tol_step)
+
             change = 1.0
+            amplitude = np.inf
             hist: list = []
             for sweep in range(1, max_sweeps + 1):
-                rtol = min(1e-6, max(1e-3 * change, 1e-3 * tol_step, 1e-12))
+                rtol = (rtol_floor if sweep == 1
+                        else min(1e-6, max(1e-3 * change, rtol_floor)))
                 phi0 = [self._phi0(state[g]) for g in range(G)]
                 for g in range(G):
                     # Isotropic external source into phi0 (fission + delayed +
@@ -2332,7 +2453,9 @@ class TransientSDP1Solver:
                 G_S = fields.fission_source(phi0) / k0
                 delta = G_S - S
                 change = float(xp.sqrt(xp.sum(delta * delta) / xp.sum(G_S**2)))
-                if change < tol_step:
+                amplitude = _amplitude_error(
+                    fixed_total, float(xp.sum(w_tot * delta * rs)))
+                if change < tol_step and amplitude < tol_step:
                     S = G_S
                     break
                 hist.append((S, G_S))
@@ -2343,7 +2466,8 @@ class TransientSDP1Solver:
             else:
                 raise RuntimeError(
                     f"time step at t={t:g} s did not converge "
-                    f"({max_sweeps} sweeps, source change {change:.2e})")
+                    f"({max_sweeps} sweeps, source change {change:.2e}, "
+                    f"amplitude error {amplitude:.2e})")
 
             for i in range(kin.n_families):
                 C[i] = (C[i] + (dt * beta[i]) * S) / (1.0 + lam[i] * dt)
@@ -2516,6 +2640,14 @@ class TransientSDPNSolver:
         w_phi = eig.ops[0].phi0_weights          # phi0 = w_phi . U
         w_src = eig.ops[0].src_weights           # isotropic source row weights
         tw = eig.ops[0].time_weights             # exact time matrix / theta
+        # The P0 neutron balance as a combination of the moment rows:
+        # p0_row^T tw = w_phi gives it the time term theta * phi0, and in every
+        # basis (plain U-form, diagonal similarity, congruence) it then carries
+        # the isotropic source at weight p0_row . w_src = 1. Its whole-core sum
+        # drives the amplitude half of the stopping test (audit O13).
+        p0_row = np.linalg.solve(np.array(tw, dtype=float).T,
+                                 np.array(w_phi, dtype=float))
+        p0_src = float(p0_row @ np.array(w_src, dtype=float))
 
         def phi0_of(state_g):
             p = w_phi[0] * state_g[0]
@@ -2539,6 +2671,7 @@ class TransientSDPNSolver:
         removed = [float(beta[i] / (1.0 + lam[i] * dt))
                    for i in range(kin.n_families)]
         w_fis = delayed_emission.fission_weights(removed, fields.chi)
+        w_tot = sum(w_fis)
         inv_vdt = [1.0 / (kin.velocities[g] * dt) for g in range(G)]
 
         ops, preconds = self._build_ops(xp, fields, inv_vdt, G)
@@ -2558,6 +2691,7 @@ class TransientSDPNSolver:
                 ops, preconds = self._build_ops(xp, fields, inv_vdt, G)
                 src_w = getattr(ops[0], "rhs_weight", None)
                 w_fis = delayed_emission.fission_weights(removed, fields.chi)
+                w_tot = sum(w_fis)
                 last = (mats, mmap)
 
             state_old = [s.copy() for s in state]
@@ -2582,10 +2716,24 @@ class TransientSDPNSolver:
                     rows.append(r)
                 tsrc.append(rows)
 
+            # Whole-core P0 balance (see p0_row): rs weights the isotropic
+            # source in it, so the delayed source and the emission take rs.
+            rs = p0_src if src_w is None else p0_src * src_w
+            fixed_total = 0.0
+            for g in range(G):
+                fixed_total += float(xp.sum(dsrc[g] * rs))
+                for i in range(M):
+                    if tsrc[g][i] is not None and p0_row[i] != 0.0:
+                        fixed_total += float(p0_row[i]) * float(xp.sum(tsrc[g][i]))
+            rtol_floor = _step_inner_floor(
+                fixed_total, float(xp.sum(w_tot * S * rs)), tol_step)
+
             change = 1.0
+            amplitude = np.inf
             hist: list = []
             for sweep in range(1, max_sweeps + 1):
-                rtol = min(1e-6, max(1e-3 * change, 1e-3 * tol_step, 1e-12))
+                rtol = (rtol_floor if sweep == 1
+                        else min(1e-6, max(1e-3 * change, rtol_floor)))
                 phi0 = [phi0_of(state[g]) for g in range(G)]
                 for g in range(G):
                     # Isotropic external source into phi0 (fission + delayed +
@@ -2612,7 +2760,9 @@ class TransientSDPNSolver:
                 G_S = fields.fission_source(phi0) / k0
                 delta = G_S - S
                 change = float(xp.sqrt(xp.sum(delta * delta) / xp.sum(G_S**2)))
-                if change < tol_step:
+                amplitude = _amplitude_error(
+                    fixed_total, float(xp.sum(w_tot * delta * rs)))
+                if change < tol_step and amplitude < tol_step:
                     S = G_S
                     break
                 hist.append((S, G_S))
@@ -2623,7 +2773,8 @@ class TransientSDPNSolver:
             else:
                 raise RuntimeError(
                     f"time step at t={t:g} s did not converge "
-                    f"({max_sweeps} sweeps, source change {change:.2e})")
+                    f"({max_sweeps} sweeps, source change {change:.2e}, "
+                    f"amplitude error {amplitude:.2e})")
 
             for i in range(kin.n_families):
                 C[i] = (C[i] + (dt * beta[i]) * S) / (1.0 + lam[i] * dt)
@@ -2768,10 +2919,18 @@ class TransientSNSolver:
             facs.append(eng.t_cmfd_factor(g, ctx["ss"][g] * phi[g] + qext,
                                           ctx["psi_old"][g], ctx["state"][g]))
         # Coarse fixed point on the fission source: identical structure to the
-        # transport fixed point but with sparse back-solves instead of sweeps.
+        # transport fixed point but with sparse back-solves instead of sweeps,
+        # and the same two stopping tests. A coarse source converged in change
+        # alone is off in amplitude by up to 1 / (1 - k_prompt) times that
+        # change, which the transport step's amplitude test then rejects on
+        # every pass (audit O13).
         nsf = ctx["nsf_h"]
         ph = [asnumpy(p).ravel().copy() for p in phi]
         Sv = asnumpy(S).ravel().copy()
+        w_tot = sum(ctx["w_fis_h"])
+        fixed_total = float(sum(np.sum(ctx["dsrc_h"][g]
+                                       + ctx["theta"][g] * ctx["phi_old_h"][g])
+                                for g in range(G)))
         hist = []
         for _ in range(200):
             for g in range(G):
@@ -2786,10 +2945,12 @@ class TransientSNSolver:
             if not np.all(np.isfinite(S_new)) or np.any(S_new < 0.0):
                 return None
             d = np.linalg.norm(S_new - Sv) / max(np.linalg.norm(S_new), 1e-300)
+            amplitude = _amplitude_error(fixed_total,
+                                         float(np.sum(w_tot * (S_new - Sv))))
             hist.append((Sv, S_new))
             hist = hist[-5:]
             Sv = S_new if len(hist) < 2 else _anderson_mix(hist, S_new, np)
-            if d < 1e-10:
+            if d < ctx["tol"] and amplitude < ctx["tol"]:
                 break
         else:
             return None
@@ -3022,6 +3183,7 @@ class TransientSNSolver:
                 scheme.precursor_decayed(n, C_hist, S_prev, beta, lam_l, dt))
             if accel == "cmfd":
                 ctx = dict(G=G, k0=k0, theta=theta, ss=ss, scatter=scatter,
+                           tol=min(1e-10, 0.1 * tol_step),
                            w_fis=w_fis, dsrc=dsrc_g, psi_old=psi_old,
                            state=state,
                            nsf_h=[asnumpy(nsf[g]).ravel() for g in range(G)],
@@ -3031,11 +3193,24 @@ class TransientSNSolver:
                            scatter_h=[[None if s is None else asnumpy(s).ravel()
                                        for s in row] for row in scatter])
 
+            # Whole-core balance for the amplitude half of the stopping test
+            # (see TransientSolver.solve; audit O13). Integrated over angle the
+            # per-ordinate time source theta * Psi becomes theta * phi_old, as
+            # in the CMFD balance, so the sum over cells and groups needs no
+            # angular flux.
+            w_tot = sum(w_fis)
+            fixed_total = sum(float(xp.sum(dsrc_g[g] + theta[g] * phi_old[g]))
+                              for g in range(G))
+            rtol_floor = _step_inner_floor(
+                fixed_total, float(xp.sum(w_tot * S)), tol_step)
+
             change = 1.0
+            amplitude = np.inf
             change_prev = np.inf
             hist: list = []
             for sweep in range(1, max_sweeps + 1):
-                rtol = min(1e-6, max(1e-3 * change, 1e-3 * tol_step, 1e-12))
+                rtol = (rtol_floor if sweep == 1
+                        else min(1e-6, max(1e-3 * change, rtol_floor)))
                 phi_new = [None] * G
                 psi_new = [None] * G
                 for g in range(G):
@@ -3052,8 +3227,10 @@ class TransientSNSolver:
                 G_S = fission_source(phi_new) / k0
                 delta = G_S - S
                 change = float(xp.sqrt(xp.sum(delta * delta) / xp.sum(G_S**2)))
+                amplitude = _amplitude_error(fixed_total,
+                                             float(xp.sum(w_tot * delta)))
                 phi, psi = phi_new, psi_new
-                if change < tol_step:
+                if change < tol_step and amplitude < tol_step:
                     S = G_S
                     break
                 if accel == "cmfd":
@@ -3077,7 +3254,8 @@ class TransientSNSolver:
             else:
                 raise RuntimeError(
                     f"time step at t={t:g} s did not converge "
-                    f"({max_sweeps} sweeps, source change {change:.2e})")
+                    f"({max_sweeps} sweeps, source change {change:.2e}, "
+                    f"amplitude error {amplitude:.2e})")
 
             # Precursors first: they must see the same step index (hence the
             # same a0) the flux solve just used. Then advance the carried
