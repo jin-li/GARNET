@@ -1,0 +1,4 @@
+DONE c5g7-SDP1-s8-z8 RESULT c5g7 SDP1      marshak   mesh    8  k=1.182253756  dk=  -429.6 pcm  conv=True  outers= 131  inners= 119191  t=  284.85s
+DONE c5g7-SDP1-s8-z64 RESULT c5g7 SDP1      marshak   mesh    8  k=1.182253756  dk=  -429.6 pcm  conv=True  outers= 134  inners= 124965  t= 1081.92s
+DONE c5g7-SDP1-s8-z128 RESULT c5g7 SDP1      marshak   mesh    8  k=1.182253756  dk=  -429.6 pcm  conv=True  outers= 134  inners= 124700  t= 2038.18s
+FAIL c5g7-SDP1-s16-z64 (see c5g7-SDP1-s16-z64.log)

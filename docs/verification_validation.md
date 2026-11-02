@@ -60,6 +60,7 @@ Recorded values moved by the fixes:
 | Adaptive LRA-2D (refine 1), BDF2 rtol 1e-3 | blockwise error norm: 453 → 539 steps, peak power error −1.23e-2 → −5.7e-3, P(3 s) unchanged (O11) |
 | HP-MR periodic assembly S_N `k∞` | 1.24523 → 1.20632 at refine 4, 1.18232 → 1.18414 at refine 8 (exact pin fractions, O6) |
 | SP5/SP7/SDP2/SDP3 `k` with vacuum faces | coupled Marshak vacuum now the default: Brantley–Larsen +53 pcm, BIBLIS +0.9 pcm (per-moment Robin kept as `marshak_vacuum=False`) |
+| Pin-resolved C5G7 `k` (exact pin areas now the default) | against the old 16 × 16 sampling: −226 pcm at 4 cells per pin, +22 pcm at 8; homogenized C5G7 unchanged |
 
 Three test limits changed: VVER-440 from 600 to 250 pcm, TWIGL model-API
 power samples from `0.02` to `0.005`, and the SPH leaky-colorset ratio from

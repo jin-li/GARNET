@@ -1,0 +1,16 @@
+  outer    1  k = 1.03330795  dk = 3.33e-02  src_err = 2.25e-01
+  outer    2  k = 1.08364315  dk = 5.03e-02  src_err = 1.26e-01
+  outer    3  k = 1.10952392  dk = 2.59e-02  src_err = 9.21e-02
+  outer    4  k = 1.13181522  dk = 2.23e-02  src_err = 3.05e-02
+  outer    5  k = 1.14575834  dk = 1.39e-02  src_err = 4.16e-02
+  outer    6  k = 1.15141814  dk = 5.66e-03  src_err = 3.15e-02
+  outer    7  k = 1.15868812  dk = 7.27e-03  src_err = 1.25e-02
+  outer    8  k = 1.16432478  dk = 5.64e-03  src_err = 6.20e-03
+  outer    9  k = 1.16951040  dk = 5.19e-03  src_err = 5.91e-03
+  outer   10  k = 1.17068843  dk = 1.18e-03  src_err = 1.52e-02
+  outer   11  k = 1.17128160  dk = 5.93e-04  src_err = 5.06e-03
+  outer   12  k = 1.17308338  dk = 1.80e-03  src_err = 6.84e-03
+  outer   13  k = 1.17374886  dk = 6.65e-04  src_err = 4.53e-03
+  outer   14  k = 1.17561791  dk = 1.87e-03  src_err = 2.32e-03
+  outer   15  k = 1.17718868  dk = 1.57e-03  src_err = 3.73e-03
+  outer   16  k = 1.17761127  dk = 4.23e-04  src_err = 2.91e-03

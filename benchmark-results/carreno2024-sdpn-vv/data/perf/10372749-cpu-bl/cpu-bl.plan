@@ -1,0 +1,23 @@
+SP1 bl-SP1-n80 bl --methods SP1 --vacuum marshak --meshes 80 --repeats 3
+SP1 bl-SP1-n160 bl --methods SP1 --vacuum marshak --meshes 160 --repeats 3
+SP1 bl-SP1-n320 bl --methods SP1 --vacuum marshak --meshes 320 --repeats 3
+SP1 bl-SP1-n640 bl --methods SP1 --vacuum marshak --meshes 640 --repeats 3
+SP1 bl-SP1-n1280 bl --methods SP1 --vacuum marshak --meshes 1280
+SP1 bl-SP1-n2560 bl --methods SP1 --vacuum marshak --meshes 2560
+SP3 bl-SP3-n80 bl --methods SP3 --vacuum marshak --meshes 80 --repeats 3
+SP3 bl-SP3-n160 bl --methods SP3 --vacuum marshak --meshes 160 --repeats 3
+SP3 bl-SP3-n320 bl --methods SP3 --vacuum marshak --meshes 320 --repeats 3
+SP3 bl-SP3-n640 bl --methods SP3 --vacuum marshak --meshes 640 --repeats 3
+SP3 bl-SP3-n1280 bl --methods SP3 --vacuum marshak --meshes 1280
+SP3 bl-SP3-n2560 bl --methods SP3 --vacuum marshak --meshes 2560
+SDP1 bl-SDP1-n80 bl --methods SDP1 --vacuum marshak --meshes 80 --repeats 3
+SDP1 bl-SDP1-n160 bl --methods SDP1 --vacuum marshak --meshes 160 --repeats 3
+SDP1 bl-SDP1-n320 bl --methods SDP1 --vacuum marshak --meshes 320 --repeats 3
+SDP1 bl-SDP1-n640 bl --methods SDP1 --vacuum marshak --meshes 640
+SDP1 bl-SDP1-n1280 bl --methods SDP1 --vacuum marshak --meshes 1280
+SDP3 bl-SDP3-n80 bl --methods SDP3 --vacuum marshak --meshes 80 --repeats 3
+SDP3 bl-SDP3-n160 bl --methods SDP3 --vacuum marshak --meshes 160 --repeats 3
+SDP3 bl-SDP3-n320 bl --methods SDP3 --vacuum marshak --meshes 320 --repeats 3
+SDP3 bl-SDP3-n640 bl --methods SDP3 --vacuum marshak --meshes 640
+SDP3 bl-SDP3-n1280 bl --methods SDP3 --vacuum marshak --meshes 1280
+after bl-SP3-n640-alone bl --methods SP3 --vacuum marshak --meshes 640 --repeats 3

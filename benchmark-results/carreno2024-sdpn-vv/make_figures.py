@@ -10,6 +10,7 @@ also list 1e5 |k - k_ref| (not the relative form of its Eq. 49).
 """
 
 import json
+import re
 from pathlib import Path
 
 import matplotlib
@@ -559,6 +560,200 @@ def cost_tables(runs, timing):
                               "outers $s=24$", "inners $s=24$", "GH200 $s=24$ (s)"], rows, "llrrrrrrr")
 
 
+PERF_METHODS = ["SP1", "SP3", "SDP1", "SDP3"]
+MOMENTS = {"SP1": 1, "SP3": 2, "SDP1": 2, "SDP3": 4}
+PAPER_BL_CPU_S = {"SP1": 1.1, "SP3": 1.5, "SDP1": 1.5, "SDP3": 2.6}   # Table 6, 80x80 Q2 FEM
+
+
+def load_perf():
+    """data/perf/<job>/<tag>.json -> list of run records with device and tag."""
+    out = []
+    for f in sorted(HERE.glob("data/perf/*/*.json")):
+        j = json.loads(f.read_text())
+        env = j["environment"]
+        for r in j["runs"]:
+            dev = "gpu" if j["args"]["device"] != "cpu" else "cpu"
+            r.update(device=dev, tag=f.stem, nz=r.get("nz", j["args"].get("nz", 1)),
+                     hardware=env.get("gpu") if dev == "gpu" else env.get("cpu"), node=env.get("node"))
+            out.append(r)
+    return out
+
+
+def _perf_failures():
+    """Runs listed as FAIL in the job progress logs: {(device, tag): reason},
+    reason "OOM" (device memory) or "cap" (Krylov iteration cap), from the
+    run's log, or "cancelled" for a run the log also lists as CANCELLED
+    (stopped on purpose)."""
+    fails = {}
+    for f in HERE.glob("data/perf/*/progress.log"):
+        dev = "gpu" if "gpu" in f.parent.name else "cpu"
+        lines = f.read_text().splitlines()
+        cancelled = {line.split()[1] for line in lines if line.startswith("CANCELLED")}
+        for line in lines:
+            if line.startswith("FAIL"):
+                tag = line.split()[1]
+                log = f.parent / f"{tag}.log"
+                text = log.read_text() if log.exists() else ""
+                fails[(dev, tag)] = ("cancelled" if tag in cancelled else
+                                     "OOM" if "OutOfMemoryError" in text else
+                                     "cap" if "failed to converge" in text else "fail")
+    return fails
+
+
+def _cell_moments(tag):
+    """Cells x moments of a run tag (the size of one within-group block)."""
+    case, m, mesh, nz = re.fullmatch(r"(bl|c5g7)-(\w+?)-[ns](\d+)(?:-z(\d+))?", tag).groups()
+    mesh, nz = int(mesh), int(nz or 1)
+    return (mesh * mesh if case == "bl" else (51 * mesh) ** 2) * nz * MOMENTS[m]
+
+
+def _cpu_cost(perf, basis, cap_runs):
+    """One core's seconds per inner iteration per cell-moment in a basis run:
+    a timed cap run of data/perf/cpu-projections.json or a converged CPU run;
+    None if neither exists yet."""
+    if basis in cap_runs:
+        c = cap_runs[basis]
+        return c["seconds"] / c["iterations"] / _cell_moments(basis)
+    r = next((r for r in perf if r["device"] == "cpu" and r["tag"] == basis and r["converged"]), None)
+    return r and r["solve_seconds"] / r["inners"] / _cell_moments(basis)
+
+
+def _secs(t):
+    return "--" if t is None else f"{t:.0f}" if t >= 100 else f"{t:.3g}"
+
+
+def perf_analysis(perf):
+    """GARNET on one GH200 against one CPU core, identical meshes, 2-D and
+    extruded over reflective layers."""
+    if not perf:
+        return {}
+    fails = _perf_failures()
+    pj = json.loads((HERE / "data/perf/cpu-projections.json").read_text())
+    proj_rows, projections = [], []
+    out = {}
+    for case, unit, label in (("bl", "n", "Brantley--Larsen"), ("c5g7", "s", "C5G7")):
+        groups = 1 if case == "bl" else 7
+        rows, res = [], {}
+        fig, (ax, cx, bx) = plt.subplots(1, 3, figsize=(7.4, 2.7))
+        for m in PERF_METHODS:
+            sizes = {(r["mesh"], r["nz"]) for r in perf if r["case"] == case and r["method"] == m
+                     and "alone" not in r["tag"]}
+            for _, tag in fails:
+                mt = re.fullmatch(rf"{case}-{m}-{unit}(\d+)(?:-z(\d+))?", tag)
+                if mt:
+                    sizes.add((int(mt.group(1)), int(mt.group(2) or 1)))
+            sizes = sorted(sizes, key=lambda x: (x[1] > 1, x[0] ** 2 * x[1]))
+            pts = []
+            for mesh, nz in sizes:
+                pick = lambda dev: next((r for r in perf if (r["case"], r["method"], r["mesh"], r["nz"], r["device"])
+                                         == (case, m, mesh, nz, dev) and "alone" not in r["tag"]), None)
+                c, g = pick("cpu"), pick("gpu")
+                ok_c = c if c and c["converged"] else None
+                ok_g = g if g and g["converged"] else None
+                ref = ok_g or ok_c or c or g or {"outers": "--", "inners": "--"}
+                cells = mesh * mesh * nz if case == "bl" else (51 * mesh) ** 2 * nz
+                unknowns = cells * groups * MOMENTS[m]
+                sp = ok_c["solve_seconds"] / ok_g["solve_seconds"] if ok_c and ok_g else None
+                dk = abs(ok_c["k"] - ok_g["k"]) if ok_c and ok_g else None
+                q = dict(mesh=mesh, nz=nz, unknowns=unknowns,
+                         cpu=ok_c and ok_c["solve_seconds"], gpu=ok_g and ok_g["solve_seconds"],
+                         cpu_repeats=ok_c and len(ok_c["solve_seconds_all"]),
+                         outers=ref["outers"], inners=ref["inners"], speedup=sp, dk=dk,
+                         gpu_gb=ok_g and ok_g.get("gpu_pool_bytes") and ok_g["gpu_pool_bytes"] / 1e9,
+                         cpu_per_inner=ok_c and ok_c["solve_seconds"] / ok_c["inners"],
+                         gpu_per_inner=ok_g and ok_g["solve_seconds"] / ok_g["inners"])
+                tag = f"{case}-{m}-{unit}{mesh}" + ("" if nz == 1 else f"-z{nz}")
+                # Projected one-core time where the CPU has no converged run.
+                bases = pj["targets"].get(tag, []) if ok_g and not ok_c else []
+                basis = next((b for b in bases if _cpu_cost(perf, b, pj["cap_runs"])), None)
+                if basis:
+                    cost = _cpu_cost(perf, basis, pj["cap_runs"])
+                    q["cpu_proj"] = cost * _cell_moments(tag) * ok_g["inners"]
+                    q["speedup_proj"] = q["cpu_proj"] / ok_g["solve_seconds"]
+                    status = fails.get(("cpu", tag), "running")
+                    projections.append(dict(tag=tag, basis=basis, status=status, cpu_ns=cost * 1e9,
+                                            cpu_proj=q["cpu_proj"], gpu=q["gpu"],
+                                            speedup_proj=q["speedup_proj"]))
+                    proj_rows.append([label, m, str(mesh), str(nz), f"{unknowns / 1e6:.3g}", status,
+                                      r"\code{" + basis + "}" + (" (cap)" if basis in pj["cap_runs"] else ""),
+                                      f"{cost * 1e9:.0f}", str(ok_g["inners"]), f"{q['cpu_proj'] / 3600:.0f}",
+                                      _secs(q["gpu"]), f"{q['speedup_proj']:.0f}"])
+                pts.append(q)
+                cpu_txt = _secs(q["cpu"]) + ("$^1$" if ok_c and q["cpu_repeats"] == 1 else "")
+                if c is None and ("cpu", tag) in fails:
+                    cpu_txt = fails[("cpu", tag)]
+                gpu_txt = _secs(q["gpu"]) if g or ("gpu", tag) not in fails else fails[("gpu", tag)]
+                rows.append([m if (mesh, nz) == sizes[0] else "",
+                             str(mesh), str(nz), f"{unknowns / 1e6:.3g}", str(ref["outers"]), str(ref["inners"]),
+                             cpu_txt, gpu_txt, fmt(q["gpu_gb"], ".1f"), fmt(sp, ".0f" if sp and sp >= 10 else ".1f"),
+                             fmt(dk, ".0e")])
+            res[m] = pts
+            for dev, ls in (("cpu", "-"), ("gpu", "--")):
+                for ext, mk in ((False, "o"), (True, "^")):
+                    sel = [q for q in pts if q[dev] and (q["nz"] > 1) == ext]
+                    if not sel:
+                        continue
+                    lab = (f"{m} {'CPU' if dev == 'cpu' else 'GH200'}") if not ext else None
+                    ax.loglog([q["unknowns"] for q in sel], [q[dev] for q in sel], mk + ls, ms=3,
+                              lw=0.9 if not ext else 0.6, color=COLORS[m], label=lab,
+                              mfc=COLORS[m] if dev == "cpu" else "none")
+                    cx.loglog([q["unknowns"] for q in sel], [q[f"{dev}_per_inner"] for q in sel], mk,
+                              ms=3, color=COLORS[m], mfc=COLORS[m] if dev == "cpu" else "none")
+            for ext, mk, ls in ((False, "o", "-"), (True, "^", ":")):
+                good = [q for q in pts if q["speedup"] and (q["nz"] > 1) == ext]
+                if good:
+                    bx.semilogx([q["unknowns"] for q in good], [q["speedup"] for q in good], mk + ls,
+                                ms=3, color=COLORS[m], label=m if not ext else None)
+            proj = [q for q in pts if q.get("speedup_proj")]
+            if proj:
+                bx.semilogx([q["unknowns"] for q in proj], [q["speedup_proj"] for q in proj], "^",
+                            ms=3.5, mfc="none", color=COLORS[m])
+            # Crossover: the smallest 2-D mesh from which the GH200 is faster
+            # at every larger mesh.
+            two_d = [q for q in pts if q["speedup"] and q["nz"] == 1]
+            cross = next((q for i, q in enumerate(two_d) if all(p["speedup"] > 1 for p in two_d[i:])), None)
+            best = max((q for q in pts if q["speedup"]), key=lambda q: q["speedup"], default=None)
+            out.setdefault(case, {})[m] = dict(
+                points=pts,
+                crossover=cross and dict(mesh=cross["mesh"], unknowns=cross["unknowns"],
+                                         speedup=cross["speedup"], cpu=cross["cpu"]),
+                max_speedup=best and dict(mesh=best["mesh"], nz=best["nz"], unknowns=best["unknowns"],
+                                          speedup=best["speedup"]))
+        for a in (ax, cx, bx):
+            a.set_xlabel("unknowns", fontsize=7)
+            a.tick_params(labelsize=6)
+        ax.set_ylabel("solve time (s)", fontsize=7)
+        ax.set_title(f"{label}: solve time", fontsize=7)
+        ax.legend(fontsize=4.5, ncol=2)
+        cx.set_ylabel("time per inner iteration (s)", fontsize=7)
+        cx.set_title("filled: CPU core, open: GH200", fontsize=7)
+        bx.axhline(1, color="k", lw=0.7)
+        bx.set_ylabel("GH200 speedup over one core", fontsize=7)
+        bx.set_title("o 2-D, ^ extruded (open: projected)", fontsize=7)
+        bx.legend(fontsize=5)
+        fig.tight_layout()
+        fig.savefig(FIG / f"perf_{case}.pdf")
+        plt.close(fig)
+        write_table(f"perf_{case}", ["Method", f"${unit}$", "$n_z$", "unknowns ($10^6$)", "outers", "inners",
+                                     "CPU (s)", "GH200 (s)", "GH200 GB", "speedup", "$|\\Delta k|$"],
+                    rows, "lrrrrrrrrrr")
+    write_table("perf_projection", ["Case", "Method", "mesh", "$n_z$", "unknowns ($10^6$)", "CPU run",
+                                    "basis", "ns", "GH200 inners", "CPU (h)", "GH200 (s)", "speedup"],
+                proj_rows, "llrrrllrrrrr")
+    out["projections"] = projections
+    # Concurrency control: each "<tag>-alone" CPU run against its concurrent twin.
+    ctrl = {}
+    for a in (r for r in perf if r["device"] == "cpu" and r["tag"].endswith("-alone")):
+        c = next((r for r in perf if r["device"] == "cpu" and r["tag"] == a["tag"][:-len("-alone")]), None)
+        if c:
+            ctrl[c["tag"]] = dict(concurrent=c["solve_seconds"], alone=a["solve_seconds"],
+                                  ratio=c["solve_seconds"] / a["solve_seconds"])
+    out["concurrency_control"] = ctrl
+    out["hardware"] = {d: sorted({r["hardware"] for r in perf if r["device"] == d and r["hardware"]})
+                       for d in ("cpu", "gpu")}
+    return out
+
+
 def main():
     FIG.mkdir(exist_ok=True)
     TAB.mkdir(exist_ok=True)
@@ -570,6 +765,7 @@ def main():
                    brantley_larsen=bl_analysis(runs, figs),
                    c5g7=c5g7_analysis(runs, figs, nea))
     cost_tables(runs, load_timing())
+    summary["performance"] = perf_analysis(load_perf())
     (HERE / "data/summary.json").write_text(json.dumps(summary, indent=1, default=float))
     print(f"{len(runs)} runs, {len(unconverged)} not converged")
 

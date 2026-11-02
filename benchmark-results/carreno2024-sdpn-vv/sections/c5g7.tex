@@ -14,8 +14,9 @@ two symmetry planes and vacuum outside. Three \garnet{} models were run:
   exact\_area=True, outer\_bc="vacuum")}). With Marshak vacuum,
   $s = 4$--$48$ for SP$_N$ and $s = 4$--$24$ for SDP$_N$; Robin vacuum at
   $s = 4, 8, 16$; zero-flux outer faces at $s = 8$.
-\item \textbf{Pin-resolved with sampled areas}: the builder's default
-  $16 \times 16$-point sampling of the covered fractions, SP1 only.
+\item \textbf{Pin-resolved with sampled areas}: the builder's former
+  default, $16 \times 16$-point sampling of the covered fractions
+  (\code{exact\_area=False}), SP1 only.
 \item \textbf{Pin-cell homogenized}: each pin cell volume-weighted, zero-flux
   outer faces, $s = 1, 2, 4, 8$. This is the model of
   \path{tests/validation/test_c5g7.py} (at $s = 1$).

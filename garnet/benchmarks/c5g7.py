@@ -146,10 +146,12 @@ class C5G7Problem:
     mix_weight: np.ndarray = None     # pin-resolved: fuel-covered area fraction
 
 
-def pin_coverage(s: int, sub: int | None = 16) -> np.ndarray:
+def pin_coverage(s: int, sub: int | None = None) -> np.ndarray:
     """Fraction of each of the s x s sub-cells of a pin covered by the centred
-    r = 0.54 cm fuel cylinder (identical for every pin). Sub-sampled sub x sub,
-    or exact (closed-form square/circle intersection) with ``sub=None``."""
+    r = 0.54 cm fuel cylinder (identical for every pin). Exact by default
+    (closed-form square/circle intersection); an integer ``sub`` instead counts
+    the fraction of sub x sub sample points inside the circle, the rule used
+    before 2026-10-30 with sub = 16."""
     R = PIN_RADIUS / PIN_PITCH
     if sub is None:
         from ..model import _disk_polygon_area
@@ -174,7 +176,7 @@ def pin_coverage(s: int, sub: int | None = 16) -> np.ndarray:
 
 
 def build_c5g7_2d(cells_per_pin: int = 2,
-                  pin_resolved: bool = False, exact_area: bool = False,
+                  pin_resolved: bool = False, exact_area: bool = True,
                   outer_bc: str = "zero-flux") -> C5G7Problem:
     """Assemble the 2D quarter-core problem on a Cartesian grid.
 
@@ -190,9 +192,11 @@ def build_c5g7_2d(cells_per_pin: int = 2,
     solutions of Carreno et al. (2024); the default (False) keeps the fast
     volume-homogenized pin cells.
 
-    exact_area: pin-resolved only. True computes each cell's covered fraction
-    in closed form; the default samples 16 x 16 points per cell, which misstates
-    the fuel area by -0.66% at cells_per_pin = 4 and +0.06% at 8.
+    exact_area: pin-resolved only. True (default) computes each cell's
+    covered fraction in closed form, so every pin holds exactly pi r^2 of fuel.
+    False restores the 16 x 16-point sampling used before 2026-10-30, which
+    misstates the fuel area by -0.66% at cells_per_pin = 4 and +0.06% at 8 and
+    moves k by +226 and -22 pcm (benchmark-results/carreno2024-sdpn-vv).
 
     outer_bc: boundary on the two outer faces. The benchmark specifies
     "vacuum"; the default "zero-flux" keeps earlier results unchanged.

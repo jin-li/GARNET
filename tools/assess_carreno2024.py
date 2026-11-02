@@ -33,11 +33,17 @@ Brantley-Larsen (Fig. 4); the main diagonal of the inner UO2 assembly and the
 anti-diagonal of a MOX assembly for C5G7 (Figs. 6-7, groups 1 and 7). C5G7 runs
 also record the 51 x 51 pin fission-rate map, normalized to a mean of 1 over
 the 1056 fuel pins. ``--repeats N`` keeps the fastest of N identical solves.
+
+``--nz N`` extrudes either problem over N layers of cubic cells with
+reflective top and bottom faces, for performance measurements at the cell
+counts of a 3-D core. The solution is the 2-D one in every layer, so k must
+equal the 2-D eigenvalue; flux lines and pin powers are taken from layer 0.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import platform
 import time
@@ -130,7 +136,17 @@ def solver_for(method, vacuum):
     return table[method], kw
 
 
-def brantley_larsen(n):
+def _extrude(grid, nz, *maps):
+    """(nz-layer grid of cubic cells, maps repeated along z); nz = 1 is a no-op."""
+    if nz == 1:
+        return (grid,) + maps
+    nx, ny, _ = grid.shape
+    h = grid.size[0] / nx
+    grid3 = Grid(shape=(nx, ny, nz), size=(grid.size[0], grid.size[1], h * nz))
+    return (grid3,) + tuple(None if m is None else np.repeat(m, nz, axis=2) for m in maps)
+
+
+def brantley_larsen(n, nz=1):
     """n x n mesh over the 10 x 10 cm square; reflective at x = 0 and y = 0."""
     h = 10.0 / n
     xc = (np.arange(n) + 0.5) * h
@@ -140,7 +156,8 @@ def brantley_larsen(n):
     mmap = np.where(in_bar[:, None] & (xc < 9.0)[None, :], 0, 1).astype(int)
     grid = Grid(shape=(n, n, 1), size=(10.0, 10.0, h))
     bc = (("reflective", "vacuum"), ("reflective", "vacuum"), "reflective")
-    return grid, [BL_FUEL, BL_MOD], dict(material_map=mmap[:, :, None], bc=bc)
+    grid, mmap3 = _extrude(grid, nz, mmap[:, :, None])
+    return grid, [BL_FUEL, BL_MOD], dict(material_map=mmap3, bc=bc)
 
 
 def bl_line(phi, n):
@@ -153,11 +170,16 @@ def bl_line(phi, n):
     return ((np.arange(n) + 0.5) * h).tolist(), line.tolist()
 
 
-def c5g7_problem(s, geometry, vacuum, area="exact"):
+def c5g7_problem(s, geometry, vacuum, area="exact", nz=1):
     outer = "zero-flux" if vacuum == "zero-flux" else "vacuum"
     resolved = geometry == "pin-resolved"
     prob = build_c5g7_2d(cells_per_pin=s, pin_resolved=resolved,
                          exact_area=area == "exact", outer_bc=outer)
+    if nz > 1:
+        grid, mm, mx, mw = _extrude(prob.grid, nz, prob.material_map,
+                                    prob.mix_material, prob.mix_weight)
+        prob = dataclasses.replace(prob, grid=grid, material_map=mm,
+                                   mix_material=mx, mix_weight=mw)
     kw = dict(material_map=prob.material_map, bc=prob.bc)
     if resolved:
         kw.update(mix_material=prob.mix_material, mix_weight=prob.mix_weight)
@@ -187,10 +209,10 @@ def c5g7_lines(prob, phi):
 def run_one(case, method, vacuum, mesh, args):
     cls, skw = solver_for(method, vacuum)
     if case == "bl":
-        grid, mats, kw = brantley_larsen(mesh)
+        grid, mats, kw = brantley_larsen(mesh, args.nz)
         prob = None
     else:
-        prob, kw = c5g7_problem(mesh, args.geometry, vacuum, args.area)
+        prob, kw = c5g7_problem(mesh, args.geometry, vacuum, args.area, args.nz)
         grid, mats = prob.grid, prob.materials
     best = None
     walls = []
@@ -211,7 +233,8 @@ def run_one(case, method, vacuum, mesh, args):
                k=float(res.k_eff), converged=bool(res.converged),
                outers=int(res.outer_iterations), inners=int(res.inner_iterations),
                setup_seconds=setup, solve_seconds=res.solve_seconds,
-               solve_seconds_all=walls, cells=int(np.prod(grid.shape)))
+               solve_seconds_all=walls, cells=int(np.prod(grid.shape)), nz=args.nz,
+               gpu_pool_bytes=_gpu_memory_bytes() if args.device != "cpu" else None)
     if case == "bl":
         x, line = bl_line(phi, mesh)
         rec.update(line_x=x, line_phi=line)
@@ -226,10 +249,37 @@ def run_one(case, method, vacuum, mesh, args):
     return rec
 
 
+def _cpu_model():
+    try:
+        for line in open("/proc/cpuinfo"):
+            if line.lower().startswith(("model name", "cpu model")):
+                return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or None
+
+
+def _gpu_memory_bytes():
+    """Bytes held by CuPy's memory pool, or None without CuPy."""
+    try:
+        import cupy
+        return int(cupy.get_default_memory_pool().total_bytes())
+    except Exception:
+        return None
+
+
 def environment():
-    return dict(python=platform.python_version(), machine=platform.machine(),
-                node=platform.node(), numpy=np.__version__,
+    info = dict(python=platform.python_version(), machine=platform.machine(),
+                node=platform.node(), numpy=np.__version__, cpu=_cpu_model(),
                 started=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+    try:
+        import cupy
+        name = cupy.cuda.runtime.getDeviceProperties(0)["name"]
+        info.update(cupy=cupy.__version__,
+                    gpu=name.decode() if isinstance(name, bytes) else name)
+    except Exception:
+        info.update(gpu=None)
+    return info
 
 
 def main():
@@ -252,6 +302,8 @@ def main():
     parser.add_argument("--tol-k", type=float, default=1e-10)
     parser.add_argument("--tol-source", type=float, default=1e-9)
     parser.add_argument("--repeats", type=int, default=1)
+    parser.add_argument("--nz", type=int, default=1,
+                        help="extrude over nz reflective layers (performance runs)")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--output")

@@ -74,9 +74,10 @@ bear on these problems are: the coupled Marshak vacuum is now the default of
 the dedicated SP3 solver; plain power iteration stops on an error bound
 rather than the last change; non-symmetric SDP$_N$ blocks default to GMRES;
 and, added for this study, \code{build\_c5g7\_2d} accepts exact pin areas
-(\code{exact\_area=True}) and a vacuum outer boundary
-(\code{outer\_bc="vacuum"}). Both new options are off by default, so no
-earlier result moves.
+(\code{exact\_area}) and a vacuum outer boundary (\code{outer\_bc="vacuum"}).
+Following this study (finding~4), exact areas are now the default of the
+pin-resolved C5G7 and C5G7-TD builders; every run here names its area rule
+explicitly, so that change moves none of the results.
 
 \textbf{Discretization.} Cell-centred finite volumes on a uniform Cartesian
 mesh, second order where material interfaces lie on cell faces. In the
@@ -128,6 +129,9 @@ the line width is below 0.4\% of the curve's peak in all five panels.
 \input{sections/c5g7}
 
 \clearpage
+\input{sections/perf}
+
+\clearpage
 \input{sections/tests}
 
 \input{sections/findings}
@@ -145,6 +149,11 @@ GARNET_VV_STAGE_ROOT=<new dir> GARNET_VV_ROBIN_CELLS= \
   bash slurm/stage_and_submit_carreno_gh.sh                           # GH200 batch 2
 #   (and GARNET_VV_CELLS="4 6 12 20 32" GARNET_VV_METHODS="SDP1 SDP2 SDP3")
 bash benchmark-results/carreno2024-sdpn-vv/run_timing.sh             # timings
+bash slurm/stage_and_submit_carreno_perf.sh               # GPU/CPU, 2-D
+GARNET_PERF_WHICH="gpu-bl3d gpu-c5g7-3d gpu-3d-z32 cpu-bl3d cpu-c5g7-3d" \
+  GARNET_PERF_WORK_ROOT=/data/scratch/shared/poncet_m/garnet-carreno-perf3d \
+  bash slurm/stage_and_submit_carreno_perf.sh             # GPU/CPU, extruded
+bash benchmark-results/carreno2024-sdpn-vv/collect_perf.sh
 cd benchmark-results/carreno2024-sdpn-vv && make
 \end{verbatim}
 

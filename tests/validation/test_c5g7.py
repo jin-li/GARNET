@@ -49,20 +49,34 @@ def test_c5g7_geometry():
     assert np.allclose(uo2_cell.nu_sigma_f, expected)
 
 
+def _fuel_area_fraction(prob, fuel_pins, s):
+    """Covered fuel area of the pins in ``fuel_pins``, in pin-cell units."""
+    fuel_cells = np.kron(fuel_pins, np.ones((s, s), bool)).T
+    base, mix = prob.material_map[..., 0], prob.mix_material[..., 0]
+    covered = np.where(mix >= 0, prob.mix_weight[..., 0], base < 4)
+    return covered[fuel_cells].sum() / s ** 2
+
+
 @pytest.mark.parametrize("s", [1, 3, 4, 8, 13, 16])
 def test_c5g7_exact_pin_area(s):
-    """Exact cell fractions carry the cylinder's pi r^2 at any resolution, and
-    the pin-resolved builder places them; the 16 x 16 sampled default does not
-    (-0.66% fuel at s = 4)."""
+    """The pin-resolved builders place exact cell fractions by default, which
+    carry the cylinder's pi r^2 at any resolution; the old 16 x 16 sampling
+    (exact_area=False) does not (-0.66% fuel at s = 4)."""
     from garnet.benchmarks.c5g7 import pin_coverage
-    assert pin_coverage(s, None).mean() == pytest.approx(FUEL_FRACTION, rel=1e-12)
-    prob = build_c5g7_2d(cells_per_pin=s, pin_resolved=True, exact_area=True,
-                         outer_bc="vacuum")
-    fuel_cells = prob.pin_map.repeat(s, 0).repeat(s, 1).T < 4
-    covered = np.where(prob.material_map[..., 0] < 4, 1.0, 0.0)
-    covered = np.where(prob.mix_material[..., 0] >= 0, prob.mix_weight[..., 0], covered)
-    assert covered[fuel_cells].sum() / s ** 2 == pytest.approx(1056 * FUEL_FRACTION, rel=1e-12)
+    from garnet.benchmarks.c5g7_td import build_c5g7_td
+    assert pin_coverage(s).mean() == pytest.approx(FUEL_FRACTION, rel=1e-12)
+    prob = build_c5g7_2d(cells_per_pin=s, pin_resolved=True, outer_bc="vacuum")
+    assert _fuel_area_fraction(prob, prob.pin_map < 4, s) == pytest.approx(
+        1056 * FUEL_FRACTION, rel=1e-12)
     assert prob.bc[0] == ("reflective", "vacuum") and prob.bc[1] == ("reflective", "vacuum")
+    td = build_c5g7_td(cells_per_pin=s, pin_resolved=True)
+    td_fuel = np.isin(td.pin_map, (0, 1, 2, 3))
+    assert td_fuel.sum() == 1056
+    assert _fuel_area_fraction(td, td_fuel, s) == pytest.approx(1056 * FUEL_FRACTION, rel=1e-12)
+    if s == 4:
+        old = build_c5g7_2d(cells_per_pin=s, pin_resolved=True, exact_area=False)
+        assert _fuel_area_fraction(old, old.pin_map < 4, s) / (1056 * FUEL_FRACTION) - 1 == \
+            pytest.approx(-0.0066, abs=5e-4)
 
 
 def test_c5g7_solves_to_reasonable_k():

@@ -1,0 +1,10 @@
+gpu bl-SP1-n640-z16 bl --methods SP1 --vacuum marshak --meshes 640 --nz 16 --repeats 2 --device gpu
+gpu bl-SP1-n640-z64 bl --methods SP1 --vacuum marshak --meshes 640 --nz 64 --device gpu
+gpu bl-SP3-n640-z16 bl --methods SP3 --vacuum marshak --meshes 640 --nz 16 --repeats 2 --device gpu
+gpu bl-SP3-n640-z64 bl --methods SP3 --vacuum marshak --meshes 640 --nz 64 --device gpu
+gpu bl-SDP1-n640-z16 bl --methods SDP1 --vacuum marshak --meshes 640 --nz 16 --repeats 2 --device gpu
+gpu bl-SDP1-n640-z64 bl --methods SDP1 --vacuum marshak --meshes 640 --nz 64 --device gpu
+gpu bl-SDP3-n640-z16 bl --methods SDP3 --vacuum marshak --meshes 640 --nz 16 --repeats 2 --device gpu
+gpu bl-SDP3-n640-z64 bl --methods SDP3 --vacuum marshak --meshes 640 --nz 64 --device gpu
+gpu bl-SP1-n640-z256 bl --methods SP1 --vacuum marshak --meshes 640 --nz 256 --device gpu
+gpu bl-SP3-n640-z256 bl --methods SP3 --vacuum marshak --meshes 640 --nz 256 --device gpu

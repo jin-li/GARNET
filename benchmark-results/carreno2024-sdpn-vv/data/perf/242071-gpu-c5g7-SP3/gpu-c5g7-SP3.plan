@@ -1,0 +1,6 @@
+gpu c5g7-SP3-s4 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SP3-s8 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SP3-s16 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SP3-s24 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 24 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SP3-s32 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 32 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SP3-s48 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 48 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu

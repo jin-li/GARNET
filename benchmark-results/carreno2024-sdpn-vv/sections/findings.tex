@@ -34,7 +34,8 @@
   general SDP$_N$ block of order~1 gives SDP1 with Marshak. Very large
   SDP$_N$ meshes are subject to finding~5.
 
-\item \textbf{The C5G7 builder's sampled pin areas are biased.} In the
+\item \textbf{The C5G7 builder's sampled pin areas were biased; exact
+  areas are now the default.} In the
   pin-resolved model, each cell that the $r = 0.54$~cm fuel circle cuts is a
   blend of pin and water weighted by its covered fraction, so a pin's fuel
   inventory is the sum of those fractions. By default each fraction is
@@ -49,21 +50,29 @@
   \code{exact\_area=True} each fraction is the closed-form area of the
   square--disk intersection (the routine of the HP-MR fix, audit item O6), and
   the fuel inventory equals $\pi r^2$ per pin to round-off on every mesh.
-  \emph{Recommendation:} make exact areas the default. No test or stored
-  result depends on the sampled default (the colorset ADF study already
-  samples $256 \times 256$ points); it would change the output of the
-  examples \code{c5g7\_meshconv.py}, \code{sdpn\_c5g7.py --pin-resolved} and
-  \code{c5g7\_td.py --pin-resolved}, whose C5G7-TD builder uses the same
-  sampling. The builder's zero-flux outer faces are within 1.4~pcm of vacuum
-  and can stay.
+  Following this study, exact areas are the default of the pin-resolved
+  C5G7 and C5G7-TD builders; \code{exact\_area=False} restores the sampling
+  to reproduce older results. No test or stored result depended on the
+  sampled default (the colorset ADF study samples $256 \times 256$ points
+  explicitly); the change moves the output of the examples
+  \code{c5g7\_meshconv.py}, \code{sdpn\_c5g7.py --pin-resolved} and
+  \code{c5g7\_td.py --pin-resolved}. The builder's zero-flux outer faces are
+  within 1.4~pcm of vacuum and stay the default.
 
-\item \textbf{The non-symmetric SDP$_N$ solve does not scale to the finest
-  C5G7 meshes.} With Marshak vacuum, SDP1, SDP2 and SDP3 at $s = 32$
+\item \textbf{The inner solves do not scale to the finest 2-D meshes.}
+  With Marshak vacuum, SDP1, SDP2 and SDP3 at C5G7 $s = 32$
   (2.7~million cells) all stopped in the first outer iteration: GMRES with
   the default Jacobi preconditioner did not reach its tolerance in 5000
   iterations (residual 1.3--4.8 times the target). Up to $s = 24$ they
   converged, but with 121--161 outer iterations against 57--73 for the
-  CG-solved SP$_N$ blocks.
+  CG-solved SP$_N$ blocks. The performance study
+  (Section~\ref{sec:perf}) hit the same cap on Brantley--Larsen, on both
+  devices: GMRES at $n = 1280$ (SDP1, SDP3; 1.6~million cells), and also CG
+  at $n = 2560$ (SP1, SP3; 6.6~million cells). Extruded 3-D meshes are better
+  conditioned at the same cell count and converge up to 105~million cells,
+  but GMRES there is close enough to the cap that two extruded
+  Brantley--Larsen cases converged on the GH200 and failed on the CPU, whose
+  Gram--Schmidt variant rounds differently.
   Tracked as audit item O14. \emph{Recommendation:} precondition the large
   non-symmetric blocks (for example \code{spn\_precondition}, already
   available) and decide whether an inner solve that misses its tolerance in
@@ -86,5 +95,22 @@
   $-225$~pcm mesh error. Its docstrings now say so; its envelopes are kept.
 
 \item \textbf{Devices agree.} CPU and GH200 give the same $k$ to
-  $1.3 \times 10^{-13}$ in 18 configurations.
+  $1.3 \times 10^{-13}$ in the 18 configurations of the accuracy study, and
+  within $7 \times 10^{-9}$ on every mesh of the performance study, inside
+  the $2 \times 10^{-8}$ allowed between equivalent configurations.
+
+\item \textbf{The GH200 pays off from about $10^5$ unknowns.} On identical
+  meshes one GH200 is faster than one CPU core from 0.1--0.2~million unknowns
+  on Brantley--Larsen and from the coarsest C5G7 mesh (except SP3). On the
+  largest 2-D meshes both devices ran it is 22--162 times faster, and the
+  speedup is still rising there. It solves extruded, 3-D-sized versions of
+  both problems with up to 597~million unknowns in 2--34 minutes. On the
+  extruded meshes with 64 layers it is 350--400 times faster than one core
+  for SP1 and SP3 (measured), and about 200--260 times for SDP1 and SDP3
+  (projected from measured per-iteration costs). Its limits are device
+  memory, reached by SDP$_N$ at about 450~million unknowns, and the
+  iteration cap of finding~5. Two single-core runs and two controls were
+  still running on 2 November. \emph{Recommendation:} profile SP3's operator apply
+  on the GPU, whose fixed cost per iteration is five to six times SP1's,
+  probably in the coupled Marshak boundary term.
 \end{enumerate}

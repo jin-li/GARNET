@@ -31,9 +31,18 @@ equations they implement, after the October 2026 code audit (item O10).
   per-moment Robin vacuum, then the default of every solver except SP3, is
   52--73~pcm low on a leaky core, so Marshak is now the default wherever it is
   available, with Robin kept for comparison; the C5G7 builder's sampled pin
-  areas misstate the fuel inventory and move $k$ by up to 226~pcm (exact areas
-  are now an option); and the non-symmetric SDP$_N$ solve failed to converge
-  at 2.7 million cells.
+  areas misstated the fuel inventory and moved $k$ by up to 226~pcm, so exact
+  areas are now the default; and the Jacobi-preconditioned inner solves hit
+  their iteration cap on the finest 2-D meshes (GMRES from 1.6 million
+  cells, CG at 6.6 million).
+\item \textbf{GPU against CPU.} On identical meshes, one GH200 is faster
+  than one CPU core from about $10^5$ unknowns and 22--162 times faster on the
+  largest 2-D meshes both ran. It solves 3-D-sized, extruded versions of both
+  problems with up to 597~million unknowns in at most 34 minutes; on those
+  with 64 layers it is 350--400 times faster than one core for SP1 and SP3
+  (measured), and about 200--260 times for SDP1 and SDP3 (projected).
+  \emph{Interim:} two single-core runs and two controls were still running
+  on 2 November; Section~\ref{sec:perf} will be updated when they finish.
 \item \textbf{Tests.} The Brantley--Larsen mesh-limit test now covers every
   method at 4~pcm (was SP3 and SDP1 at 10~pcm); a slow pin-resolved C5G7
   test checks diffusion against the paper's $k$ and pin powers.
