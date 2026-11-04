@@ -48,6 +48,11 @@ PITCH = 26.752            # cm, assembly flat-to-flat / lattice spacing
 DRUM_RADIUS = 13.25       # cm, drum outer radius
 DRUM_ABSORBER_INNER = 12.25   # cm, B4C layer inner radius
 DRUM_ARC_HALF_DEG = 45.0  # B4C arc spans +-45 deg about its facing direction
+#: B4C arc area over the drum hex area. The 90 deg annular arc (12.25-13.25
+#: cm) lies wholly inside the hex (13.25 cm < 13.376 cm inradius), so this is
+#: the absorber fraction of a drum hex homogenized as one material.
+DRUM_ARC_AREA_FRACTION = ((math.pi / 4.0) * (DRUM_RADIUS ** 2 - DRUM_ABSORBER_INNER ** 2)
+                          / (math.sqrt(3.0) / 2.0 * PITCH ** 2))
 CORE_HEIGHT = 160.0       # cm, fueled length
 AXIAL_REFLECTOR_HEIGHT = 20.0  # cm, Be slab above and below the fuel
 TOTAL_HEIGHT = CORE_HEIGHT + 2 * AXIAL_REFLECTOR_HEIGHT
@@ -325,6 +330,32 @@ def absorber_fraction_map(raster: TriRaster, drum_angle_deg, samples: int = 10):
     return frac
 
 
+def smeared_drum_material(materials, fraction: float = DRUM_ARC_AREA_FRACTION,
+                          name: str = "drum_smeared"):
+    """One material for a whole drum hex: the B4C arc smeared into the drum body.
+
+    Flat-flux (area-weighted) mix of ``materials[DRUM_ABSORBER]`` at area
+    ``fraction`` into ``materials[DRUM_BE]``. Total, absorption, scattering and
+    production are averaged and D = 1/(3 Sigma_t), so every cross section --
+    the transport one included -- is linear in ``fraction``. The arc's rotation
+    is invisible at this level: this is the hex-homogenized drum.
+    """
+    from ..griffin_xs import volume_homogenize
+
+    if not 0.0 <= fraction <= 1.0:
+        raise ValueError(f"fraction must lie in [0, 1], got {fraction}")
+    parts = {DRUM_BE: materials[DRUM_BE], DRUM_ABSORBER: materials[DRUM_ABSORBER]}
+    return volume_homogenize(parts, {DRUM_BE: 1.0 - fraction, DRUM_ABSORBER: fraction},
+                             name=name)
+
+
+def _smear_drums(materials):
+    """Copy of ``materials`` with the drum body replaced by the smeared drum."""
+    mats = list(materials)
+    mats[DRUM_BE] = smeared_drum_material(mats)
+    return mats
+
+
 def hpmr_locally_refined_mesh(refine: int = 3, drum_angle_deg=0.0,
                               refine_drums: bool = True, band_margin: float = 1.5,
                               materials=None):
@@ -437,12 +468,15 @@ def build_hpmr2d(refine: int = 4, drum_angle_deg=0.0,
                      (withdrawn).
     materials      : optional replacement list ordered as MATERIAL_NAMES
                      (e.g. SPH-corrected sets read via garnet.femffusion).
-    absorber       : "raster" (centroid staircase, one material per cell) or
+    absorber       : "raster" (centroid staircase, one material per cell),
                      "polar" (exact polar area fraction volume-mixed into the
                      drum cells; sets ``mix_material``/``mix_weight`` on the
-                     problem -- pass them to the solver). The polar path
-                     represents the arc's area and rotation smoothly and works
-                     below the raster's refine>=4 floor.
+                     problem -- pass them to the solver), or "smeared" (every
+                     drum hex is one material, :func:`smeared_drum_material`,
+                     stored in the DRUM_BE slot; the drum angle has no effect).
+                     The polar path represents the arc's area and rotation
+                     smoothly and works below the raster's refine>=4 floor;
+                     "smeared" is the fully hex-homogenized core.
     samples        : ignored (the polar area fractions are exact); kept for
                      compatibility.
 
@@ -474,8 +508,12 @@ def build_hpmr2d(refine: int = 4, drum_angle_deg=0.0,
         frac = absorber_fraction_map(raster, angles, samples=samples)
         mix_weight = frac
         mix_material = np.where(frac > 0.0, DRUM_ABSORBER, -1).astype(np.int64)
+    elif absorber == "smeared":
+        raster = hpmr_raster(refine, angles, paint_absorber=False)
+        mats = _smear_drums(mats)
     else:
-        raise ValueError(f"absorber must be 'raster' or 'polar', got {absorber!r}")
+        raise ValueError("absorber must be 'raster', 'polar' or 'smeared', "
+                         f"got {absorber!r}")
 
     mmap, side = raster.material_map, raster.side
     return HpmrProblem(grid=TriGrid(shape=mmap.shape, side=side),
@@ -553,6 +591,8 @@ def build_hpmr3d(refine: int = 4, nz: int = 20, drum_angle_deg=0.0,
     if len(mats) != len(MATERIAL_NAMES_3D):
         raise ValueError(f"expected {len(MATERIAL_NAMES_3D)} materials "
                          f"({', '.join(MATERIAL_NAMES_3D)}), got {len(mats)}")
+    if absorber == "smeared":
+        mats = _smear_drums(mats)
     p2d = build_hpmr2d(refine=refine, drum_angle_deg=angles,
                        absorber=absorber, samples=samples)
 

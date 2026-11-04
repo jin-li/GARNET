@@ -1,4 +1,4 @@
-"""Readers for FEMFFUSION cross-section files.
+"""Readers and writers for FEMFFUSION cross-section files.
 
 FEMFFUSION (https://github.com/Zonni/FEMFFUSION) defines its materials in two
 file formats; both are parsed here into GARNET ``Material`` lists so that
@@ -31,6 +31,9 @@ down the conventions:
   column = FROM group (FEMFFUSION transposes on read, materials.cc:2502);
   it is transposed here to GARNET's ``sigma_s[from, to]``. The diffusion
   coefficient uses ``SigmaTR`` when present, else ``SigmaT``.
+
+:func:`write_material_xml` goes the other way, so a GARNET problem can be
+posed to FEMFFUSION with identical data (kinetics included).
 """
 
 from __future__ import annotations
@@ -199,3 +202,80 @@ def read_material_xml(path) -> list:
             sigma_a=sigma_a, nu_sigma_f=nu_sig_f, sigma_s=sigma_s, chi=chi,
             total=sigma_t.reshape(G) if sigma_t is not None else None))
     return out
+
+
+def _fmt(values) -> str:
+    """Floats to text that reads back bit-identically (17 significant digits)."""
+    return " ".join(f"{float(v):.17g}" for v in np.ravel(values))
+
+
+def write_material_xml(materials, path,
+                       energy_per_fission: float = ENERGY_PER_FISSION_J,
+                       kinetics: Kinetics | None = None) -> None:
+    """Write ``materials`` as a FEMFFUSION multigroup XML file (``XSEC_Type = XML``).
+
+    The inverse of :func:`read_material_xml`: ``<mix id=i>`` is ``materials[i]``.
+    Everything FEMFFUSION's diffusion operator uses is written explicitly, so
+    nothing is re-derived on its side: ``SigmaTR = 1/(3D)`` (its D),
+    ``SigmaR = Material.removal`` (its removal; without it FEMFFUSION would use
+    SigmaT - SigmaS_gg) and ``SigmaS`` with row = TO group. ``SigmaT`` is
+    ``Material.sigma_t``. ``SigF`` is the power weight: ``kappa_fission /
+    energy_per_fission`` when present (the inverse of :func:`read_xsec`), else
+    nu_sigma_f. Non-fissile materials get a zero ``Chi``, which FEMFFUSION
+    requires of materials without delayed neutrons.
+
+    ``kinetics`` adds ``nprecursors`` and, per mix, ``Beta``, ``Lambda``,
+    ``ChiD`` (one row per family: ``kinetics.chi_delayed`` or the fissile
+    chi) and ``Velocities``. Non-fissile mixes get zero ``Beta`` -- they make
+    no precursors -- but the global ``Lambda`` and the first fissile
+    material's ``Chi``/``ChiD`` (harmless: their nu*Sigma_f is zero). Two
+    FEMFFUSION (main@1611f90) behaviours force this layout for a transient:
+    it stores the prompt and delayed spectra of an XML material only when
+    ``ChiD`` is present, and its default Implicit-Exponential scheme takes the
+    decay constants and delayed spectra of material 0 for the whole core
+    (``get_delayed_decay_constant(0, p)``) -- a non-fissile mix 0 with zero
+    lambda would never release its precursors. The data must therefore share
+    one set of decay constants and delayed spectra across the fissile mixes.
+    """
+    G = materials[0].n_groups
+    head = f'<materials ngroups="{G}"'
+    if kinetics is not None:
+        I = kinetics.decay.size
+        vel = np.broadcast_to(kinetics.velocities, (len(materials), G))
+        beta = np.broadcast_to(kinetics.beta, (len(materials), I))
+        chi_ref = next(m.chi for m in materials if m.is_fissile)
+        head += f' nprecursors="{I}"'
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', head + ">"]
+    for i, m in enumerate(materials):
+        if m.n_groups != G:
+            raise ValueError(f"material {i} has {m.n_groups} groups, expected {G}")
+        sig_f = (m.kappa_fission / energy_per_fission if m.kappa_fission is not None
+                 else m.nu_sigma_f)
+        chi = m.chi if m.is_fissile else (np.zeros(G) if kinetics is None else chi_ref)
+        scatter = ";\n      ".join(_fmt(row) for row in m.sigma_s.T)
+        lines += [f'  <mix id="{i}">',
+                  f"    <name>{m.name or f'mix-{i}'}</name>",
+                  f"    <SigmaT> {_fmt(m.sigma_t)}; </SigmaT>",
+                  f"    <SigmaTR> {_fmt(1.0 / (3.0 * m.diffusion))}; </SigmaTR>",
+                  f"    <SigmaR> {_fmt(m.removal)}; </SigmaR>",
+                  f"    <SigmaA> {_fmt(m.sigma_a)}; </SigmaA>",
+                  f"    <SigmaS>\n      {scatter};\n    </SigmaS>",
+                  f"    <Chi> {_fmt(chi)}; </Chi>",
+                  f"    <NuSigF> {_fmt(m.nu_sigma_f)}; </NuSigF>",
+                  f"    <SigF> {_fmt(sig_f)}; </SigF>"]
+        if kinetics is not None:
+            cd = kinetics.chi_delayed
+            spectra = (np.tile(chi, (I, 1)) if cd is None else
+                       np.broadcast_to(np.asarray(cd, float).reshape(-1, G), (I, G)))
+            b = beta[i] if m.is_fissile else np.zeros(I)
+            lam = kinetics.decay
+            chid = ";\n      ".join(_fmt(row) for row in spectra)
+            lines += [f"    <Beta> {_fmt(b)}; </Beta>",
+                      f"    <Lambda> {_fmt(lam)}; </Lambda>",
+                      f"    <ChiD>\n      {chid};\n    </ChiD>",
+                      f"    <Velocities> {_fmt(vel[i])}; </Velocities>"]
+        lines.append("  </mix>")
+    lines.append("</materials>")
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+

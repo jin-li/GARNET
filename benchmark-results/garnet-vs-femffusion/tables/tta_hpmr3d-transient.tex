@@ -1,0 +1,15 @@
+\begin{tabular}{llrrrrr}
+\hline
+Target & Platform & Mesh & Unknowns & max $|P/P_\mathrm{ref}-1|$ & Solve (s) & Wall (s) \\
+\hline
+0.01 & FEMFFUSION FE2 & FE2 r0 & 165,165 & 9.7e-03 & 107 & 117 \\
+ & FEMFFUSION FE3 & FE3 r0 & 534,347 & 9.9e-03 & 598 & 633 \\
+ & GARNET CPU & r2 z30 & 435,600 & 5.2e-03 & 99.9 & 100 \\
+ & GARNET GH200 & r2 z30 & 435,600 & 5.2e-03 & 12.1 & 19 \\
+\hline
+0.001 & FEMFFUSION FE2 & FE2 r0 & 165,165 & 4.5e-04 & 1262 & 1367 \\
+ & FEMFFUSION FE3 & -- & -- & -- & -- & -- \\
+ & GARNET CPU & r2 z30 & 435,600 & 9.7e-04 & 127 & 127 \\
+ & GARNET GH200 & r2 z30 & 435,600 & 9.7e-04 & 16.7 & 22 \\
+\hline
+\end{tabular}

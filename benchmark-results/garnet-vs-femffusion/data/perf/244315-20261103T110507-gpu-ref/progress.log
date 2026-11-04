@@ -1,0 +1,9 @@
+DONE ref-iaea-r4 RESULT iaea3d mesh=4 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=586112 k=1.0286616 counters={'outers': 69, 'inners': 609} setup=0.010s solve=0.304s warmup=0.233s wall=3.8s
+DONE ref-iaea-r8 RESULT iaea3d mesh=8 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=4688896 k=1.0288947 counters={'outers': 74, 'inners': 1437} setup=0.013s solve=0.818s warmup=0.088s wall=2.0s
+DONE ref-iaea-r16 RESULT iaea3d mesh=16 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=37511168 k=1.0290221 counters={'outers': 77, 'inners': 3193} setup=0.046s solve=10.603s warmup=0.709s wall=12.7s
+DONE ref-lmw-r4 RESULT langenbuch3d mesh=4 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=149760 k=0.9993945 counters={'outers': 41, 'inners': 267} setup=0.008s solve=0.148s warmup=0.031s wall=0.9s
+DONE ref-lmw-r8 RESULT langenbuch3d mesh=8 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=1198080 k=0.9993593 counters={'outers': 41, 'inners': 585} setup=0.010s solve=0.281s warmup=0.050s wall=1.0s
+DONE ref-lmw-r16 RESULT langenbuch3d mesh=16 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=9584640 k=0.9994402 counters={'outers': 50, 'inners': 1482} setup=0.013s solve=1.256s warmup=0.155s wall=2.2s
+DONE ref-hpmr-r3z40 RESULT hpmr3d mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182428 counters={'outers': 342, 'inners': 11784} setup=0.067s solve=4.424s warmup=0.166s wall=6.0s
+DONE ref-hpmr-r6z80 RESULT hpmr3d mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185565 counters={'outers': 337, 'inners': 23424} setup=0.075s solve=8.547s warmup=0.288s wall=10.0s
+DONE ref-hpmr-r12z160 RESULT hpmr3d mesh=12 nz=160 device=cuda (cupy): NVIDIA GH200 120GB unknowns=83635200 k=1.1186254 counters={'outers': 337, 'inners': 49605} setup=0.194s solve=90.586s warmup=2.284s wall=96.3s

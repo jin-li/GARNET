@@ -1,0 +1,32 @@
+\section{All runs}
+\label{sec:runs}
+
+Every comparison run, with its accuracy against the reference of
+Table~\ref{tab:refs} and its cost. ``Outers / inners'' are each code's own
+counts: \garnet's outer iterations and Krylov iterations, summed over groups,
+and \ffn's outer iterations and matrix-vector products. They are not
+comparable across codes. Memory is the CuPy pool for the GH200 and the peak
+process RSS otherwise.
+
+\begin{table}[h]\tablefile{runs_iaea3d}\caption{IAEA-3D.}\label{tab:runs-iaea}\end{table}
+\begin{table}[h]\tablefile{runs_langenbuch3d}\caption{3-D Langenbuch at $t=0$.}\label{tab:runs-lmw}\end{table}
+\begin{table}[h]\tablefile{runs_hpmr3d}\caption{HP-MR, steady.}\label{tab:runs-hpmr}\end{table}
+
+\clearpage
+% The transient table is a longtable (it spans pages); its caption:
+\newcommand{\transientrunscaption}{HP-MR transient. Errors: the largest
+$|P/P_\mathrm{ref}-1|$ over the run (max) and at $t = 2$~s (end). Schemes:
+\ffn's Semi-Implicit-Euler (SI-Euler) and Semi-Implicit-Exponential
+(SI-Exp); \garnet's fixed-step BDF2 with the fixed-point step, or with the
+monolithic step (mono); aBDF$q$ ($\epsilon$): adaptive step with automatic
+order up to $q$ and per-step error tolerance $\epsilon$, with $\Delta t$ the
+range of accepted steps. Steps: the accepted time steps of the march
+(rejected ones in parentheses). Inners: its inner iterations, \garnet's
+Krylov iterations and \ffn's GMRES iterations (one linear solve per step,
+plus a null step at $t = 0$).}
+\begingroup
+\setlength{\LTcapwidth}{\textwidth}
+\setlength{\tabcolsep}{2.5pt}
+\IfFileExists{tables/runs_hpmr3d-transient.tex}{\input{tables/runs_hpmr3d-transient}}%
+  {\begin{center}\emph{[table runs\_hpmr3d-transient not generated]}\end{center}}
+\endgroup

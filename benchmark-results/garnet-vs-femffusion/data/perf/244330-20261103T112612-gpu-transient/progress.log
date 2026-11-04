@@ -1,0 +1,33 @@
+DONE gputr-r2z30-bdf2-dt0.2 RESULT hpmr3d-transient mesh=2 nz=30 device=cuda (cupy): NVIDIA GH200 120GB unknowns=435600 k=1.1178233 counters={'steps': 10, 'inners': 22561, 'sweeps': 181, 'rejected': 0} setup=0.002s solve=12.065s warmup=6.845s wall=32.7s
+DONE gputr-r2z30-bdf2-dt0.1 RESULT hpmr3d-transient mesh=2 nz=30 device=cuda (cupy): NVIDIA GH200 120GB unknowns=435600 k=1.1178233 counters={'steps': 20, 'inners': 32902, 'sweeps': 264, 'rejected': 0} setup=0.002s solve=16.696s warmup=5.240s wall=39.3s
+DONE gputr-r2z30-bdf2-dt0.05 RESULT hpmr3d-transient mesh=2 nz=30 device=cuda (cupy): NVIDIA GH200 120GB unknowns=435600 k=1.1178233 counters={'steps': 40, 'inners': 71728, 'sweeps': 583, 'rejected': 0} setup=0.002s solve=30.187s warmup=5.099s wall=67.9s
+DONE gputr-r2z30-bdf2-dt0.025 RESULT hpmr3d-transient mesh=2 nz=30 device=cuda (cupy): NVIDIA GH200 120GB unknowns=435600 k=1.1178233 counters={'steps': 80, 'inners': 146770, 'sweeps': 1165, 'rejected': 0} setup=0.002s solve=57.504s warmup=4.680s wall=120.5s
+DONE gputr-r2z30-bdf2-dt0.0125 RESULT hpmr3d-transient mesh=2 nz=30 device=cuda (cupy): NVIDIA GH200 120GB unknowns=435600 k=1.1178233 counters={'steps': 160, 'inners': 298838, 'sweeps': 2354, 'rejected': 0} setup=0.002s solve=113.841s warmup=4.571s wall=233.1s
+FAIL gputr-r2z30-abdf-rt1e-3 (see gputr-r2z30-abdf-rt1e-3.log)
+FAIL gputr-r2z30-abdf-rt1e-4 (see gputr-r2z30-abdf-rt1e-4.log)
+FAIL gputr-r2z30-abdf-rt1e-5 (see gputr-r2z30-abdf-rt1e-5.log)
+DONE gputr-r3z40-bdf2-dt0.2 RESULT hpmr3d-transient mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182427 counters={'steps': 10, 'inners': 30530, 'sweeps': 175, 'rejected': 0} setup=0.002s solve=13.339s warmup=6.407s wall=33.8s
+DONE gputr-r3z40-bdf2-dt0.1 RESULT hpmr3d-transient mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182427 counters={'steps': 20, 'inners': 46216, 'sweeps': 265, 'rejected': 0} setup=0.002s solve=19.223s warmup=6.450s wall=45.5s
+DONE gputr-r3z40-bdf2-dt0.05 RESULT hpmr3d-transient mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182427 counters={'steps': 40, 'inners': 97443, 'sweeps': 562, 'rejected': 0} setup=0.002s solve=36.108s warmup=6.326s wall=79.1s
+DONE gputr-r3z40-bdf2-dt0.025 RESULT hpmr3d-transient mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182427 counters={'steps': 80, 'inners': 206263, 'sweeps': 1172, 'rejected': 0} setup=0.001s solve=72.690s warmup=6.260s wall=152.2s
+DONE gputr-r3z40-bdf2-dt0.0125 RESULT hpmr3d-transient mesh=3 nz=40 device=cuda (cupy): NVIDIA GH200 120GB unknowns=1306800 k=1.1182427 counters={'steps': 160, 'inners': 417393, 'sweeps': 2357, 'rejected': 0} setup=0.002s solve=144.375s warmup=6.026s wall=295.5s
+FAIL gputr-r3z40-abdf-rt1e-3 (see gputr-r3z40-abdf-rt1e-3.log)
+FAIL gputr-r3z40-abdf-rt1e-4 (see gputr-r3z40-abdf-rt1e-4.log)
+FAIL gputr-r3z40-abdf-rt1e-5 (see gputr-r3z40-abdf-rt1e-5.log)
+DONE gputr-r4z50-bdf2-dt0.2 RESULT hpmr3d-transient mesh=4 nz=50 device=cuda (cupy): NVIDIA GH200 120GB unknowns=2904000 k=1.1184069 counters={'steps': 10, 'inners': 39472, 'sweeps': 175, 'rejected': 0} setup=0.002s solve=17.430s warmup=8.481s wall=26.4s
+DONE gputr-r4z50-bdf2-dt0.1 RESULT hpmr3d-transient mesh=4 nz=50 device=cuda (cupy): NVIDIA GH200 120GB unknowns=2904000 k=1.1184069 counters={'steps': 20, 'inners': 59474, 'sweeps': 263, 'rejected': 0} setup=0.002s solve=24.790s warmup=8.555s wall=33.9s
+DONE gputr-r4z50-bdf2-dt0.05 RESULT hpmr3d-transient mesh=4 nz=50 device=cuda (cupy): NVIDIA GH200 120GB unknowns=2904000 k=1.1184069 counters={'steps': 40, 'inners': 125912, 'sweeps': 560, 'rejected': 0} setup=0.002s solve=47.529s warmup=8.691s wall=56.7s
+DONE gputr-r4z50-bdf2-dt0.025 RESULT hpmr3d-transient mesh=4 nz=50 device=cuda (cupy): NVIDIA GH200 120GB unknowns=2904000 k=1.1184069 counters={'steps': 80, 'inners': 266513, 'sweeps': 1171, 'rejected': 0} setup=0.002s solve=88.012s warmup=7.879s wall=96.4s
+DONE gputr-r4z50-bdf2-dt0.0125 RESULT hpmr3d-transient mesh=4 nz=50 device=cuda (cupy): NVIDIA GH200 120GB unknowns=2904000 k=1.1184069 counters={'steps': 160, 'inners': 543348, 'sweeps': 2376, 'rejected': 0} setup=0.001s solve=184.115s warmup=7.874s wall=192.5s
+FAIL gputr-r4z50-abdf-rt1e-3 (see gputr-r4z50-abdf-rt1e-3.log)
+FAIL gputr-r4z50-abdf-rt1e-4 (see gputr-r4z50-abdf-rt1e-4.log)
+FAIL gputr-r4z50-abdf-rt1e-5 (see gputr-r4z50-abdf-rt1e-5.log)
+DONE gputr-r6z80-bdf2-dt0.2 RESULT hpmr3d-transient mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185564 counters={'steps': 10, 'inners': 61933, 'sweeps': 185, 'rejected': 0} setup=0.002s solve=31.687s warmup=14.805s wall=47.1s
+DONE gputr-r6z80-bdf2-dt0.1 RESULT hpmr3d-transient mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185564 counters={'steps': 20, 'inners': 88332, 'sweeps': 262, 'rejected': 0} setup=0.002s solve=42.914s warmup=14.641s wall=58.1s
+DONE gputr-r6z80-bdf2-dt0.05 RESULT hpmr3d-transient mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185564 counters={'steps': 40, 'inners': 186315, 'sweeps': 555, 'rejected': 0} setup=0.002s solve=79.793s warmup=14.539s wall=94.9s
+DONE gputr-r6z80-bdf2-dt0.025 RESULT hpmr3d-transient mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185564 counters={'steps': 80, 'inners': 397409, 'sweeps': 1174, 'rejected': 0} setup=0.002s solve=158.701s warmup=14.045s wall=173.3s
+DONE gputr-r6z80-bdf2-dt0.0125 RESULT hpmr3d-transient mesh=6 nz=80 device=cuda (cupy): NVIDIA GH200 120GB unknowns=10454400 k=1.1185564 counters={'steps': 160, 'inners': 810694, 'sweeps': 2382, 'rejected': 0} setup=0.002s solve=315.175s warmup=13.506s wall=329.3s
+FAIL gputr-r6z80-abdf-rt1e-3 (see gputr-r6z80-abdf-rt1e-3.log)
+FAIL gputr-r6z80-abdf-rt1e-4 (see gputr-r6z80-abdf-rt1e-4.log)
+FAIL gputr-r6z80-abdf-rt1e-5 (see gputr-r6z80-abdf-rt1e-5.log)
+FAIL gputr-ref-r6z80-abdf-rt1e-7 (see gputr-ref-r6z80-abdf-rt1e-7.log)

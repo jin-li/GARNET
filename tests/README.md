@@ -79,6 +79,7 @@ there is a single source of truth for every published number.
 | `test_brantley_larsen_2d.py` | Brantley–Larsen 2D, SPN/SDPN | Carreño et al. 2024 Table 6 |
 | `test_biblis_iaea.py` | BIBLIS 2D, IAEA 3D | published k's, FEMFFUSION |
 | `test_vver440.py` | VVER-440 2D (tri + Gmsh mesh; the mesh cases need a FEMFFUSION checkout) | FEMFFUSION k = 1.00349 |
+| `test_femffusion_equivalence.py` | IAEA-3D and Langenbuch builders as FEMFFUSION's example inputs (needs a FEMFFUSION checkout) | node-by-node material map, cross sections, boundary conditions |
 | `test_twigl_langenbuch.py` | TWIGL 2D, Langenbuch/LMW 3D kinetics | published power histories |
 | `test_lra2d.py` | LRA-2D (ANL-7416) with adiabatic feedback | ANL specification and static `k`'s; adiabatic/Doppler laws; coupled adaptive run with the thermal startup predictor |
 | `test_anl7416_8a1.py` | ANL-7416 Problem 8-A1 (r-z kinetics) | book k's + Exhibit A power trace |

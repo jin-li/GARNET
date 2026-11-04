@@ -1,0 +1,17 @@
+\begin{tabular}{lp{7.3cm}rr}
+\hline
+Case & Reference & Value & Uncertainty \\
+\hline
+IAEA-3D & GARNET GH200, r = (8, 12, 16) (three-level limit, observed order 1.57) & $k$ = 1.0290869 & 3.23 pcm \\
+ & \quad check: FEMFFUSION finest run & 1.0290810 & -0.59 pcm \\
+3-D Langenbuch ($t=0$) & FEMFFUSION FE3, refinements 0/1/2 (three-level limit, observed order 3.30) & $k$ = 0.9994838 & 0.34 pcm \\
+ & \quad check: FEMFFUSION FE4 r1 & 0.9994872 & +0.34 pcm \\
+ & \quad check: FEMFFUSION FE5 r1 & 0.9994854 & +0.16 pcm \\
+ & \quad check: GARNET GH200 limit & 0.9995353 & +5.16 pcm \\
+HP-MR 3-D (hex-homogenized, 11 groups) & FEMFFUSION finest run, FE2 r2 (9,602,307 DoFs) (spread of the three finest FEMFFUSION runs) & $k$ = 1.1186360 & 0.44 pcm \\
+ & \quad check: FEMFFUSION FE4 r0 & 1.1186340 & -0.20 pcm \\
+ & \quad check: FEMFFUSION FE5 r0 & 1.1186380 & +0.20 pcm \\
+ & \quad check: GARNET GH200 limit & 1.1186449 & +0.89 pcm \\
+HP-MR 3-D, +0.5\,\$ insertion & GARNET GH200, BDF2 dt = 0.025/0.0125 s extrapolated in time, then in space over (r, nz) = ((4, 50), (6, 80), (8, 100)) & $P(2\,\mathrm{s})$ = 2.52056 & 8e-05 \\
+\hline
+\end{tabular}

@@ -1,0 +1,22 @@
+gpu gpu-iaea-r1 assess_garnet_vs_femffusion.py iaea3d --mesh 1 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r2 assess_garnet_vs_femffusion.py iaea3d --mesh 2 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r3 assess_garnet_vs_femffusion.py iaea3d --mesh 3 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r4 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r6 assess_garnet_vs_femffusion.py iaea3d --mesh 6 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r8 assess_garnet_vs_femffusion.py iaea3d --mesh 8 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r12 assess_garnet_vs_femffusion.py iaea3d --mesh 12 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r16 assess_garnet_vs_femffusion.py iaea3d --mesh 16 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r1 assess_garnet_vs_femffusion.py langenbuch3d --mesh 1 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r2 assess_garnet_vs_femffusion.py langenbuch3d --mesh 2 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r3 assess_garnet_vs_femffusion.py langenbuch3d --mesh 3 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r4 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r6 assess_garnet_vs_femffusion.py langenbuch3d --mesh 6 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r8 assess_garnet_vs_femffusion.py langenbuch3d --mesh 8 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r12 assess_garnet_vs_femffusion.py langenbuch3d --mesh 12 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-lmw-r16 assess_garnet_vs_femffusion.py langenbuch3d --mesh 16 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r2z30 assess_garnet_vs_femffusion.py hpmr3d --mesh 2 --nz 30 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r3z40 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 40 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r4z50 assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r6z80 assess_garnet_vs_femffusion.py hpmr3d --mesh 6 --nz 80 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r8z100 assess_garnet_vs_femffusion.py hpmr3d --mesh 8 --nz 100 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-hpmr-r12z160 assess_garnet_vs_femffusion.py hpmr3d --mesh 12 --nz 160 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@

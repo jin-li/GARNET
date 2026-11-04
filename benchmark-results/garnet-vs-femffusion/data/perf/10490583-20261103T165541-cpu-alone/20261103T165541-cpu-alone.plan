@@ -1,0 +1,2 @@
+after cpu-hpmr-r3z40-alone assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 40 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+after ff-iaea-fe3-r0-alone run_femffusion.py iaea3d --prm /data/user/poncet_m/FEMFFUSION/examples/3D_IAEA/IAEA_FE3.prm --fe-degree 3 --refinements 0 --set Solver_Type=slepc_2g --set Matrix_Free_Type=non_diagonal --set EPS_Tolerance=1e-6 --repeats 3 --workdir @WORK@ --output @OUT@

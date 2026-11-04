@@ -1,0 +1,71 @@
+\section{Reproduction}
+\label{sec:reproduction}
+
+All commands are run from the \garnet{} repository root on a merlin7 login
+node, unless stated otherwise.
+
+\paragraph{1. Build \ffn{}.} The tarballs \code{petsc-3.19.6}, \code{slepc-3.19.2}
+and \code{dealii-9.5.2} must be in
+\code{/data/scratch/shared/poncet\_m/femffusion-deps-v1/src}. Then:
+\begin{verbatim}
+sbatch slurm/build_femffusion.sh
+# or, on a login node: BUILD_JOBS=6 bash -l slurm/build_femffusion.sh
+\end{verbatim}
+This builds the libraries and \code{\textasciitilde/FEMFFUSION/build-release/femffusion.exe},
+writes \code{build-info.json} (versions, flags and the runtime library path)
+and runs \code{femffusion.exe -t}.
+
+\paragraph{2. HP-MR input for \ffn{}.}
+\begin{verbatim}
+PYTHONPATH=. python tools/export_femffusion.py \
+    /data/scratch/shared/poncet_m/garnet-femffusion-perf/inputs/hpmr-v2
+\end{verbatim}
+The output is the hexagonal mesh, the XML materials (kinetics included), the
+steady \code{.prm} and the transient \code{.prm} with its final-state XML. The
+steady runs used \code{hpmr-v1}, written before the kinetics moved into the
+XML. Its static data are identical, and both inputs give the same $k$.
+
+\paragraph{3. Runs.} Every run is one line of a plan file in
+\code{benchmark-results/garnet-vs-femffusion/plans/}:
+\code{<chain> <tag> <tool> <arguments>}, where the tool is
+\code{tools/assess\_garnet\_vs\_femffusion.py} or \code{tools/run\_femffusion.py}.
+\begin{verbatim}
+bash slurm/stage_and_submit_femffusion_cmp.sh cpu-hourly plans/cpu-steady-a.plan
+bash slurm/stage_and_submit_femffusion_cmp.sh cpu-daily  plans/cpu-steady-b.plan
+bash slurm/stage_and_submit_femffusion_cmp.sh gpu        plans/gpu-steady.plan
+\end{verbatim}
+Each submission stages its own snapshot of the repository with a
+\code{PROVENANCE.txt} (\garnet{} commit, status and diff; \ffn{} commit and
+build). \code{slurm/run\_perf\_plan.sh} runs the chains, pinning each chain on
+a CPU node to its own NUMA domain. The plans used, in order:
+\begin{itemize}
+\item tuning: \code{cpu-ff-tune}, \code{cpu-ff-trtune}, \code{cpu-garnet-tune},
+  \code{gpu-garnet-tune};
+\item references: \code{gpu-ref}, \code{cpu-ff-ref}, and \code{cpu-ref-shared}
+  (target \code{cpu-daily-shared}: part of a shared node, for runs whose time
+  is not used);
+\item steady: \code{gpu-steady}, \code{cpu-steady-a/b}, \code{cpu-alone};
+\item transient: \code{gpu-transient}, \code{gpu-transient-2},
+  \code{cpu-transient-a/b}, \code{cpu-fftransient-a/b/c};
+\item runs left over by the queue limits: \code{cpu-split-h1/h2/h3},
+  \code{cpu-split-d} and the single-run plans \code{cpu-one-*}, each an
+  exclusive node with a short time limit.
+\end{itemize}
+
+\paragraph{4. Report.}
+\begin{verbatim}
+cd benchmark-results/garnet-vs-femffusion
+bash collect.sh                      # results -> data/perf/<job>/
+PYTHONPATH=../.. python make_reference.py
+make PYTHON=python                   # figures, tables, data/summary.json, PDF
+\end{verbatim}
+
+\paragraph{Checks in the test suite.}
+\begin{itemize}
+\item \code{tests/validation/test\_femffusion\_equivalence.py}: \garnet's
+  IAEA-3D and Langenbuch builders pose \ffn's example inputs, node by node.
+\item \code{tests/verification/test\_femffusion\_io.py}: the XML writer round
+  trip and its kinetics layout.
+\item \code{tests/validation/test\_hpmr.py}: the hex-homogenized drum option
+  (\code{absorber="smeared"}).
+\end{itemize}

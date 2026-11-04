@@ -218,3 +218,40 @@ def test_custom_materials_swap_in():
                           sigma_a=f.sigma_a, nu_sigma_f=1.1 * f.nu_sigma_f,
                           sigma_s=f.sigma_s, chi=f.chi)
     assert _k(4, 0.0, materials=mats) > k_ref
+
+
+def test_smeared_drum_is_one_material_per_hex():
+    # absorber="smeared" is the hex-homogenized core: no arc cells, every drum
+    # hex is the DRUM_BE slot, and that slot holds the area-weighted mix.
+    import math
+    from garnet.benchmarks.hpmr import (DRUM_ABSORBER_INNER, DRUM_ARC_AREA_FRACTION,
+                                        DRUM_BE, DRUM_RADIUS, PITCH)
+    r = 2                                        # below the raster's floor
+    p = build_hpmr2d(refine=r, absorber="smeared")
+    assert not (p.material_map == DRUM_ABSORBER).any()
+    assert p.mix_material is None and p.mix_weight is None
+    # 12 complete drum hexes of 6 r^2 triangles
+    assert int((p.material_map == DRUM_BE).sum()) == 12 * 6 * r * r
+    # smeared absorber area over the 12 drums is exactly 12 arcs
+    hex_area = math.sqrt(3.0) / 2.0 * PITCH ** 2
+    arc_area = math.pi / 4.0 * (DRUM_RADIUS ** 2 - DRUM_ABSORBER_INNER ** 2)
+    assert 12 * hex_area * DRUM_ARC_AREA_FRACTION == pytest.approx(12 * arc_area, rel=1e-14)
+    base = _placeholder_materials()
+    f = DRUM_ARC_AREA_FRACTION
+    mix = p.materials[DRUM_BE]
+    for key in ("sigma_a", "sigma_t", "sigma_s"):
+        expect = (1 - f) * getattr(base[DRUM_BE], key) + f * getattr(base[DRUM_ABSORBER], key)
+        np.testing.assert_allclose(getattr(mix, key), expect, rtol=1e-14)
+    np.testing.assert_allclose(mix.diffusion, 1.0 / (3.0 * mix.sigma_t), rtol=1e-14)
+
+
+def test_3d_smeared_drums_are_rotation_invariant():
+    from garnet.benchmarks.hpmr import DRUM_BE, build_hpmr3d
+    p0 = build_hpmr3d(refine=2, nz=10, drum_angle_deg=0.0, absorber="smeared")
+    p1 = build_hpmr3d(refine=2, nz=10, drum_angle_deg=150.0, absorber="smeared")
+    assert np.array_equal(p0.material_map, p1.material_map)
+    assert p0.materials[DRUM_BE].name == "drum_smeared"
+    res = TriDiffusionEigenSolver(p0.grid, p0.materials, p0.material_map,
+                                  active=p0.active, mask_bc=p0.mask_bc, bc=p0.bc,
+                                  device="cpu").solve(tol_k=1e-7, tol_source=1e-6)
+    assert res.converged and 0.9 < res.k_eff < 1.1

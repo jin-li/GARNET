@@ -1,0 +1,126 @@
+\section{Problems: the same equations in both codes}
+\label{sec:problems}
+
+All four problems are multigroup diffusion on homogenized regions, and each
+is posed to both codes with identical data. Discretization is the only
+difference. \ffn{} uses continuous-Galerkin finite elements of degree $p$ on
+hexahedra. \garnet{} uses second-order cell-centred finite volumes on
+Cartesian boxes or triangular prisms. Both therefore converge to the same
+continuous solution.
+
+\paragraph{IAEA-3D.} The two-group benchmark (ANL-7416 Suppl.~2) on a
+$17 \times 17 \times 19$ lattice of 20~cm nodes. \ffn{} runs its own input
+(\code{examples/3D\_IAEA}). That input applies the albedo condition
+$D\,\partial\phi/\partial n = -0.4695\,\phi$ on every face of the full core,
+and the corners of the octagonal core are holes. \garnet's
+\code{build\_iaea} carries the same data. Its albedo is the same Robin
+coefficient: \ffn{} \code{matrix\_operators\_petsc.cc} adds
+$\alpha \int \phi\,v$ on boundary faces, and \garnet{} passes $\alpha$ to its
+Robin face term. The published $k = 1.02903$ assumes a different boundary
+condition. It is quoted for context only and is not used as a reference.
+
+\paragraph{3-D Langenbuch at $t = 0$.} The two-group LMW core
+($11 \times 11 \times 10$ nodes of 20~cm) with zero-flux boundaries. Bank~1
+is half inserted, with its tips at 100~cm on a node face, and bank~2 is
+withdrawn, so no node is partly rodded. \ffn{} runs
+\code{examples/3D\_Langenbuch} with its \code{.bar} file at the initial
+positions. Two discrepancies in \garnet's builder were found and removed
+before any timing:
+\begin{itemize}
+\item \ffn's map excises the four corner columns. \garnet{} had filled them
+  with reflector. \code{build\_langenbuch(excise\_corners=True)} now poses the
+  staircase zero-flux boundary instead; the default is unchanged.
+\item \garnet's cross sections had been transcribed with one digit fewer than
+  the \code{.xsec} file (a relative difference of about $10^{-8}$). They now
+  carry the file's digits.
+\end{itemize}
+
+\paragraph{Input identity, IAEA-3D and Langenbuch.}
+\code{tests/validation/test\_femffusion\_equivalence.py} rebuilds \ffn's node
+map from the \code{.prm} \code{Geometry\_Points} and the \code{.xsec}
+\code{PLANE} blocks, and applies the bars at their initial heights. It then
+checks node by node that \garnet's material map, active mask, cross sections
+and boundary conditions are the same. \garnet's first array axis is \ffn's
+$y$, so \garnet's maps are \ffn's transposed in plan. The two models are
+mirror images across the core diagonal: $k$ is identical, and node powers are
+compared after the transpose.
+
+\paragraph{HP-MR, hex-homogenized (11 groups).} The ANL/INL heat-pipe
+microreactor: 30 fuel hexagons, a central cell, 12 beryllium reflector
+hexagons and 12 control drums, on a 26.752~cm lattice. The core is 200~cm
+high, with 20~cm beryllium axial reflectors. Cross sections are the 11-group
+ENDF/B-VIII.0 library of the INL Virtual Test Bed, with the fuel assembly
+flat-flux homogenized. Each hexagon is one material in each axial zone. The
+drums are withdrawn: a drum hexagon is the library's drum beryllium, with no
+B$_4$C (Section~\ref{sec:blackdrum} explains why). The boundary is
+vacuum (Marshak, $\alpha = 1/2$) on every face in both codes. \ffn's input is
+written by \code{tools/export\_femffusion.py}:
+\begin{itemize}
+\item a Gmsh mesh of three quadrilaterals per hexagon, built from \garnet's
+  own site coordinates;
+\item an XML material file with one mix per hexagon and plane: 55 hexagons
+  $\times$ 10 planes of 20~cm;
+\item the kinetics in a \code{PREC\_Filename} file.
+\end{itemize}
+The XML writer round-trips through \garnet's reader exactly. The only
+exception is $D$, which passes through $\Sigma_{tr} = 1/(3D)$ as in \ffn{}
+and so loses one ulp.
+
+\paragraph{HP-MR transient: external reactivity insertion.} From the critical
+initial state, every fissile $\nu\Sigma_f$ is multiplied by
+$1 + \varepsilon(t)$. $\varepsilon$ rises linearly from 0 to
+$\varepsilon_1 = \rho/(1-\rho)$ over $[0, 2]$~s, with
+$\rho = 0.5\,\beta = 340.1$~pcm. Scaling all production scales $k$, so the
+final state is exactly $+0.5$\,\$ statically on any mesh. $\Sigma_f$, the
+power weight, is unchanged.
+
+The kinetics are the library's 11 group speeds and six precursor families
+($\beta = 680.2$~pcm), with the delayed spectrum set equal to $\chi$ in both
+codes, and there is no feedback. \ffn{} runs this through
+\code{Type\_Perturbation = Read\_XML\_File}, which interpolates every cross
+section linearly from the initial to a final XML over $[0, T_\mathrm{end}]$;
+here the two files differ only in \code{NuSigF}. \garnet's \code{problem\_at}
+applies the same linear scaling.
+
+\paragraph{Three \ffn{} transient findings.} All three were found with a null
+transient (final XML equal to the initial one), which must keep $P = 1$.
+\begin{enumerate}
+\item With the kinetics in a \code{PREC\_Filename} file (the format of \ffn's
+  C5G7-TD example), an XML material keeps a zero prompt spectrum. \ffn{}
+  stores the prompt and delayed spectra of an XML material only when it has
+  \code{ChiD}, and the unperturbed transient collapsed. The kinetics are
+  therefore written into the XML.
+\item The default Implicit-Exponential scheme takes the decay constants and
+  delayed spectra of material~0 for the whole core
+  (\code{get\_delayed\_decay\_constant(0, p)}). Our mix~0 is a non-fissile
+  axial-reflector cell, so every non-fissile mix carries the global $\lambda$
+  and the fissile $\chi$ with $\beta = 0$; all fissile mixes share one set
+  of delayed data. This changes nothing physically.
+\item Even so, Implicit-Exponential does not hold the null transient: $P$
+  drops by 3.9\% in a 0.1~s step and by 0.2\% in a 0.01~s step, and keeps
+  drifting. Both semi-implicit schemes (Semi-Implicit-Euler and
+  Semi-Implicit-Exponential) hold $P = 1.0000$. The comparison uses those two.
+\end{enumerate}
+
+\paragraph{Why the drums are withdrawn.}\label{sec:blackdrum} The model was
+first set up with each drum hexagon homogenized by area: the drum's $90^\circ$
+B$_4$C arc covers $f_0 = 3.2$\% of the hexagon, with $\Sigma_t$ mixed and
+$D = 1/(3\Sigma_t)$ (\code{absorber="smeared"}). The result is a hexagon that
+is black to thermal neutrons: $\Sigma_a \approx 10$~cm$^{-1}$,
+$D \approx 0.03$~cm, a diffusion length of about 0.5~mm. Neither code
+converges on it at any practical mesh:
+\begin{itemize}
+\item \ffn{} FE1 to FE3 levels off near $k = 1.0347$;
+\item \garnet{} came down from 1.0553 ($r=2$) through 1.0494 ($r=4$) to
+  1.0466 ($r=6$, 7.8 million unknowns), roughly first order and still
+  1200~pcm above.
+\end{itemize}
+With the drums made pure beryllium, the two codes agree to a few pcm at the
+same meshes. That confirms the geometry, boundary conditions and cross-section
+semantics. Such a drum would be a benchmark of resolving an unphysical
+sub-millimetre boundary layer, not of discretization cost.
+
+The same smearing rules out a drum-rotation transient: a linear ramp of the
+smeared B$_4$C fraction inserts almost all of its reactivity in its last few
+percent, because the hexagon stays black until the fraction falls below about
+10\% of nominal. The transient is therefore an external reactivity insertion.

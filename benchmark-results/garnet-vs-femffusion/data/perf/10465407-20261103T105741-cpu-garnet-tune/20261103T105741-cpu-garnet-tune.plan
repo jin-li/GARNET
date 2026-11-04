@@ -1,0 +1,19 @@
+pd0a4 tune-iaea-r4-pd0a4 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd0a4 tune-lmw-r4-pd0a4 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd0a4 tune-hpmr-r3z30-pd0a4 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd0a8 tune-iaea-r4-pd0a8 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd0a8 tune-lmw-r4-pd0a8 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd0a8 tune-hpmr-r3z30-pd0a8 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a4 tune-iaea-r4-pd1a4 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a4 tune-lmw-r4-pd1a4 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a4 tune-hpmr-r3z30-pd1a4 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a8 tune-iaea-r4-pd1a8 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a8 tune-lmw-r4-pd1a8 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd1a8 tune-hpmr-r3z30-pd1a8 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a4 tune-iaea-r4-pd2a4 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a4 tune-lmw-r4-pd2a4 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a4 tune-hpmr-r3z30-pd2a4 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a8 tune-iaea-r4-pd2a8 assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a8 tune-lmw-r4-pd2a8 assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+pd2a8 tune-hpmr-r3z30-pd2a8 assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@
+after tune-hpmr-r3z30-pd0a8-alone assess_garnet_vs_femffusion.py hpmr3d --mesh 3 --nz 30 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --output @OUT@

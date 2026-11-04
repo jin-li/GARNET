@@ -1,0 +1,31 @@
+DONE cpu-lmw-r1 RESULT langenbuch3d mesh=1 nz=None device=cpu (numpy) unknowns=2340 k=1.0053465 counters={'outers': 36, 'inners': 140} setup=0.001s solve=0.020s warmup=0.239s wall=0.4s
+DONE cpu-iaea-r1 RESULT iaea3d mesh=1 nz=None device=cpu (numpy) unknowns=9158 k=1.0322967 counters={'outers': 50, 'inners': 152} setup=0.001s solve=0.052s warmup=0.470s wall=0.7s
+DONE ff-lmw-fe2-r0 RESULT langenbuch3d FE2 r0 dofs=21546 k=1.000228 counters={'outers': 8, 'inners': None, 'matvecs': 41, 'precond_applications': 32} assembly=0.166377 solve=0.694877 wall=3.65
+DONE cpu-lmw-r2 RESULT langenbuch3d mesh=2 nz=None device=cpu (numpy) unknowns=18720 k=1.0005438 counters={'outers': 32, 'inners': 194} setup=0.001s solve=0.048s warmup=0.004s wall=0.2s
+DONE cpu-iaea-r2 RESULT iaea3d mesh=2 nz=None device=cpu (numpy) unknowns=73264 k=1.0290583 counters={'outers': 57, 'inners': 274} setup=0.006s solve=0.346s warmup=0.031s wall=1.1s
+DONE ff-iaea-fe2-r0 RESULT iaea3d FE2 r0 dofs=80574 k=1.030339 counters={'outers': 4, 'inners': 648, 'matvecs': 40, 'precond_applications': None} assembly=0.619193 solve=3.021407 wall=6.44
+DONE cpu-lmw-r3 RESULT langenbuch3d mesh=3 nz=None device=cpu (numpy) unknowns=63180 k=0.9996335 counters={'outers': 33, 'inners': 294} setup=0.003s solve=0.152s warmup=0.015s wall=0.5s
+DONE cpu-iaea-r3 RESULT iaea3d mesh=3 nz=None device=cpu (numpy) unknowns=247266 k=1.0286554 counters={'outers': 51, 'inners': 342} setup=0.015s solve=1.289s warmup=0.136s wall=4.2s
+DONE cpu-lmw-r4 RESULT langenbuch3d mesh=4 nz=None device=cpu (numpy) unknowns=149760 k=0.9993945 counters={'outers': 29, 'inners': 346} setup=0.007s solve=0.384s warmup=0.042s wall=1.3s
+DONE ff-lmw-fe2-r1 RESULT langenbuch3d FE2 r1 dofs=160802 k=0.9996945 counters={'outers': 6, 'inners': None, 'matvecs': 31, 'precond_applications': 24} assembly=1.271811 solve=4.6911000000000005 wall=10.05
+DONE cpu-lmw-r6 RESULT langenbuch3d mesh=6 nz=None device=cpu (numpy) unknowns=505440 k=0.9993304 counters={'outers': 29, 'inners': 540} setup=0.022s solve=1.999s warmup=0.238s wall=6.5s
+DONE cpu-iaea-r4 RESULT iaea3d mesh=4 nz=None device=cpu (numpy) unknowns=586112 k=1.0286618 counters={'outers': 52, 'inners': 450} setup=0.033s solve=4.247s warmup=0.442s wall=13.5s
+DONE cpu-hpmr-r2z30 RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178233 counters={'outers': 253, 'inners': 11057} setup=0.082s solve=18.244s warmup=0.258s wall=56.0s
+DONE ff-hpmr-fe2-r0 RESULT hpmr3d FE2 r0 dofs=165165 k=1.11886 counters={'outers': 45, 'inners': None, 'matvecs': 46, 'precond_applications': None} assembly=0.722893 solve=17.542875 wall=21.31
+DONE ff-lmw-fe3-r0 RESULT langenbuch3d FE3 r0 dofs=69440 k=0.999748 counters={'outers': 7, 'inners': None, 'matvecs': 36, 'precond_applications': 28} assembly=1.573714 solve=4.389150000000001 wall=8.7
+DONE cpu-lmw-r8 RESULT langenbuch3d mesh=8 nz=None device=cpu (numpy) unknowns=1198080 k=0.9993591 counters={'outers': 32, 'inners': 799} setup=0.060s solve=9.034s warmup=0.902s wall=28.8s
+DONE cpu-iaea-r6 RESULT iaea3d mesh=6 nz=None device=cpu (numpy) unknowns=1978128 k=1.0287990 counters={'outers': 52, 'inners': 680} setup=0.162s solve=36.188s warmup=2.755s wall=114.4s
+DONE ff-iaea-fe3-r0 RESULT iaea3d FE3 r0 dofs=263552 k=1.029138 counters={'outers': 4, 'inners': 1049, 'matvecs': 40, 'precond_applications': None} assembly=6.172883000000001 solve=42.64414 wall=51.95
+DONE ff-lmw-fe3-r1 RESULT langenbuch3d FE3 r1 dofs=530090 k=0.9995106 counters={'outers': 6, 'inners': None, 'matvecs': 31, 'precond_applications': 24} assembly=12.347762000000001 solve=46.2586 wall=61.61
+DONE cpu-hpmr-r3z40 RESULT hpmr3d mesh=3 nz=40 device=cpu (numpy) unknowns=1306800 k=1.1182427 counters={'outers': 252, 'inners': 16162} setup=0.222s solve=76.431s warmup=1.318s wall=234.0s
+DONE cpu-lmw-r12 RESULT langenbuch3d mesh=12 nz=None device=cpu (numpy) unknowns=4043520 k=0.9994125 counters={'outers': 32, 'inners': 1238} setup=0.249s solve=66.118s warmup=6.523s wall=206.4s
+DONE ff-lmw-fe2-r2 RESULT langenbuch3d FE2 r2 dofs=1241730 k=0.9995153 counters={'outers': 5, 'inners': None, 'matvecs': 26, 'precond_applications': 20} assembly=9.950768 solve=44.8956 wall=58.55
+DONE ff-iaea-fe2-r1 RESULT iaea3d FE2 r1 dofs=614922 k=1.0292 counters={'outers': 4, 'inners': 1170, 'matvecs': 40, 'precond_applications': None} assembly=4.889837 solve=41.60683 wall=49.49
+DONE ff-hpmr-fe3-r0 RESULT hpmr3d FE3 r0 dofs=534347 k=1.118606 counters={'outers': 11, 'inners': None, 'matvecs': 56, 'precond_applications': 44} assembly=4.877416 solve=89.26077 wall=97.49000000000001
+DONE ff-hpmr-fe2-r1 RESULT hpmr3d FE2 r1 dofs=1239799 k=1.118632 counters={'outers': 33, 'inners': None, 'matvecs': 35, 'precond_applications': None} assembly=4.712936 solve=123.50897000000002 wall=132.46
+DONE cpu-iaea-r8 RESULT iaea3d mesh=8 nz=None device=cpu (numpy) unknowns=4688896 k=1.0288949 counters={'outers': 55, 'inners': 937} setup=0.441s solve=119.870s warmup=7.762s wall=375.1s
+DONE cpu-iaea-r12 RESULT iaea3d mesh=12 nz=None device=cpu (numpy) unknowns=15825024 k=1.0289854 counters={'outers': 48, 'inners': 1292} setup=1.895s solve=652.294s warmup=42.684s wall=699.1s
+DONE cpu-lmw-r16 RESULT langenbuch3d mesh=16 nz=None device=cpu (numpy) unknowns=9584640 k=0.9994402 counters={'outers': 32, 'inners': 1696} setup=0.831s solve=269.009s warmup=27.887s wall=298.8s
+DONE cpu-hpmr-r4z50 RESULT hpmr3d mesh=4 nz=50 device=cpu (numpy) unknowns=2904000 k=1.1184069 counters={'outers': 251, 'inners': 21931} setup=0.497s solve=241.441s warmup=4.034s wall=744.9s
+DONE cpu-hpmr-r6z80 RESULT hpmr3d mesh=6 nz=80 device=cpu (numpy) unknowns=10454400 k=1.1185564 counters={'outers': 250, 'inners': 34286} setup=2.652s solve=1995.341s warmup=32.466s wall=2034.2s
+DONE cpu-iaea-r16 RESULT iaea3d mesh=16 nz=None device=cpu (numpy) unknowns=37511168 k=1.0290220 counters={'outers': 52, 'inners': 1883} setup=4.310s solve=2120.243s warmup=124.705s wall=2254.3s

@@ -1,0 +1,143 @@
+{
+ "environment": {
+  "code": "garnet",
+  "python": "3.12.12",
+  "machine": "x86_64",
+  "node": "cn006",
+  "cpu": "AMD EPYC 7742 64-Core Processor",
+  "numpy": "2.3.5",
+  "started": "2026-11-03T16:28:35+0100",
+  "commit": "c81ee749a26418b964720dbfd8b40d518f59a20d",
+  "scipy": "1.16.3"
+ },
+ "args": {
+  "case": "hpmr3d-transient",
+  "mesh": 3,
+  "nz": 40,
+  "device": "cpu",
+  "repeats": 1,
+  "tol_k": 1e-07,
+  "tol_source": 1e-06,
+  "anderson_depth": 8,
+  "precond_degree": 0,
+  "dollars": 0.5,
+  "ramp": 2.0,
+  "t_end": 2.0,
+  "dt": 0.2,
+  "time_scheme": "bdf2",
+  "tol_step": 1e-07,
+  "step_solver": "fixed-point",
+  "mg_rtol": 1e-09,
+  "subsweeps": 6,
+  "step_anderson_depth": 1,
+  "max_sweeps": 4000,
+  "adaptive_rtol": null,
+  "automatic_order": false,
+  "verbose": false,
+  "output": "/data/scratch/shared/poncet_m/garnet-femffusion-perf/results/10487937-20261103T161548-cpu-transient-a/cputr-r3z40-bdf2-dt0.2.json"
+ },
+ "case": "hpmr3d-transient",
+ "mesh": {
+  "refine": 3,
+  "nz": 40,
+  "cells": 118800,
+  "groups": 11,
+  "unknowns": 1306800
+ },
+ "k": 1.1182427429678587,
+ "converged": true,
+ "insertion": {
+  "dollars": 0.5,
+  "epsilon": 0.0034125675107201103,
+  "ramp": 2.0
+ },
+ "step_solver": "fixed-point",
+ "counters": {
+  "steps": 10,
+  "inners": 53960,
+  "sweeps": 174,
+  "rejected": 0
+ },
+ "timings": {
+  "setup": 3.40150436386466e-05,
+  "setup_all": [
+   3.40150436386466e-05
+  ],
+  "solve": 372.93825624894816,
+  "solve_all": [
+   372.93825624894816
+  ],
+  "warmup": 174.09515302092768,
+  "build": 0.09877764899283648,
+  "wall": 547.189159880043
+ },
+ "transient": {
+  "t": [
+   0.0,
+   0.2,
+   0.4,
+   0.6000000000000001,
+   0.8,
+   1.0,
+   1.2000000000000002,
+   1.4000000000000001,
+   1.6,
+   1.8,
+   2.0
+  ],
+  "P": [
+   1.0,
+   1.052674244536309,
+   1.117221456549466,
+   1.1945639240101715,
+   1.287243169572289,
+   1.399144335618948,
+   1.535568593585106,
+   1.703911728537079,
+   1.9147678091294866,
+   2.18372385258241,
+   2.5344381939706486
+  ],
+  "P_fission_source": [
+   1.0,
+   1.053033488315767,
+   1.1179839908046136,
+   1.1957869014822542,
+   1.2890003133966759,
+   1.4015316996930203,
+   1.5387127653207346,
+   1.7079820689225031,
+   1.919995279964355,
+   2.19043081304085,
+   2.543087222031522
+  ],
+  "spectral_ratio": [
+   0.9999999889967126,
+   0.9999999861123525,
+   0.9999999845615336,
+   0.9999999828263538,
+   0.9999999808617945,
+   0.9999999786575774,
+   0.9999999761582592,
+   0.9999999732801105,
+   0.9999999699173775,
+   0.9999999659381715
+  ],
+  "orders": [
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ]
+ },
+ "device": "cpu (numpy)",
+ "memory": {
+  "max_rss_bytes": 2174717952
+ }
+}

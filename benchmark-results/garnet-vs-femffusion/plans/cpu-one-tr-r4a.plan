@@ -1,0 +1,1 @@
+c0 cputr-r4z50-abdf2-rt1e-3 assess_garnet_vs_femffusion.py hpmr3d-transient --mesh 4 --nz 50 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --step-solver monolithic --time-scheme bdf2 --dt 0.01 --adaptive-rtol 1e-3 --automatic-order --tol-step 1e-8 --repeats 1 --output @OUT@

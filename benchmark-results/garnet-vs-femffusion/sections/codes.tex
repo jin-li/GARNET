@@ -1,0 +1,45 @@
+\section{Codes, builds and hardware}
+\label{sec:codes}
+
+\paragraph{\ffn{}.} Commit \code{main@1611f90} of
+\url{https://github.com/Zonni/FEMFFUSION}, unmodified. It was built for this
+report against the library versions its README documents. All three
+libraries were compiled from source with \code{-O3 -march=znver2}, so
+deal.II's matrix-free kernels use 4-wide AVX2 vectors:
+\begin{itemize}
+\item PETSc 3.19.6 (real scalars, 32-bit indices);
+\item SLEPc 3.19.2;
+\item deal.II 9.5.2 (Release, with PETSc and SLEPc).
+\end{itemize}
+The toolchain is gcc 12.3, Open MPI 5.0.8 and OpenBLAS 0.3.30. The build
+recipe is \code{slurm/build\_femffusion.sh}. Its own test suite
+(\code{femffusion.exe -t}) passes: ``ALL TEST PASSED''.
+
+\ffn{} runs on \emph{one core}. Its data structures are written for MPI
+(\code{parallel::shared::Triangulation}, PETSc MPI matrices), but several
+places assume a single process:
+\begin{itemize}
+\item \code{MPI\_Bcast} of a vector object's address;
+\item a local index in \code{copy\_to\_Vector}, used by every matrix-free product;
+\item the shell-matrix sizes of \code{slepc\_2g};
+\item the Newton and multilevel paths, which refuse more than one process.
+\end{itemize}
+Threads are capped at one (\code{MPI\_InitFinalize(\dots, 1)}). No upstream
+branch or fork carries MPI work. Repairing it is deferred, so a full-node
+\ffn{} column is not part of this report.
+
+\paragraph{\garnet{}.} Branch \code{femffusion-perf-report} (from
+\code{main@c81ee74}), NumPy/SciPy on the CPU and CuPy on the GPU, double
+precision, fused kernels on. On the CPU it is single-threaded (BLAS threads
+are set to 1).
+
+\paragraph{Hardware.}
+\begin{itemize}
+\item \textbf{CPU:} one core of an exclusive merlin7 node, dual AMD EPYC 7742
+  (Zen~2, $2 \times 64$ cores, NPS4, 512~GB). Concurrent single-core runs
+  are pinned one per NUMA domain. Both codes' CPU runs use the same node type.
+  The reference-only runs (Section~\ref{sec:steady}) shared a node with
+  other users' jobs; their times are not used.
+\item \textbf{GPU:} one NVIDIA GH200 (96~GB HBM3) on gmerlin7.
+\end{itemize}
+Speed-ups are quoted against one core. They are not node-to-node comparisons.
