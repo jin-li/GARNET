@@ -25,6 +25,13 @@ Figure~\ref{fig:transient}.
   a factor of 10. On the GH200 it is 17~s, 76 times faster than \ffn.
 \end{itemize}
 
+The \garnet{} transients were not rerun with the Wielandt shift
+(Section~\ref{sec:steady}). Their initial eigen-solve is the power iteration,
+the same solve as the steady $r=2$ run: 18.2~s on one core and 3.0~s on the
+GH200, against 8.3 and 1.0~s with the shift. At $10^{-3}$ the shift would
+therefore save about 10~s of the 127~s on one core and 2~s of the 17~s on the
+GH200; the comparison with \ffn{} does not change.
+
 The difference is the time integration, not the space discretization. \ffn's
 two working schemes are first order. Its default Implicit-Exponential scheme
 does not hold the unperturbed state on this input

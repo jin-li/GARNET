@@ -294,6 +294,30 @@
     "warmup": null
    },
    {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r3",
+    "unknowns": 37967010,
+    "k": 1.029074,
+    "counters": {
+     "outers": 4,
+     "inners": 4836,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 72985030656,
+     "femffusion_max_memory_mb": 72381.1
+    },
+    "dk_pcm": -1.2863994457879002,
+    "power_max": 0.004676307723807131,
+    "power_rms": 0.0017244687714813931,
+    "solve": 10821.6,
+    "wall": 12722.0,
+    "setup": null,
+    "assembly": 300.23336,
+    "warmup": null
+   },
+   {
     "platform": "GARNET GH200",
     "mesh": "r1",
     "unknowns": 9158,
@@ -1126,90 +1150,6 @@
   },
   "rows": [
    {
-    "platform": "GARNET CPU",
-    "mesh": "r2 z30",
-    "unknowns": 435600,
-    "k": 1.1178233398059496,
-    "counters": {
-     "outers": 253,
-     "inners": 11057
-    },
-    "memory": {
-     "max_rss_bytes": 503193600
-    },
-    "dk_pcm": -81.2660194050352,
-    "power_max": 0.03813335346780762,
-    "power_rms": 0.019021734101276295,
-    "solve": 18.244431556086056,
-    "wall": 18.41056449606549,
-    "setup": 0.08184613101184368,
-    "assembly": null,
-    "warmup": 0.25771299900952727
-   },
-   {
-    "platform": "GARNET CPU",
-    "mesh": "r3 z40",
-    "unknowns": 1306800,
-    "k": 1.1182427429678587,
-    "counters": {
-     "outers": 252,
-     "inners": 16162
-    },
-    "memory": {
-     "max_rss_bytes": 1288417280
-    },
-    "dk_pcm": -39.32570321412143,
-    "power_max": 0.02176929645731776,
-    "power_rms": 0.010940291540874848,
-    "solve": 76.43103254493326,
-    "wall": 76.76018015597947,
-    "setup": 0.22232487401925027,
-    "assembly": null,
-    "warmup": 1.3181244189618155
-   },
-   {
-    "platform": "GARNET CPU",
-    "mesh": "r4 z50",
-    "unknowns": 2904000,
-    "k": 1.1184068799150335,
-    "counters": {
-     "outers": 251,
-     "inners": 21931
-    },
-    "memory": {
-     "max_rss_bytes": 2712702976
-    },
-    "dk_pcm": -22.912008496644987,
-    "power_max": 0.014054325642384362,
-    "power_rms": 0.007123591466979952,
-    "solve": 241.44138841400854,
-    "wall": 242.08872635511216,
-    "setup": 0.49661904107779264,
-    "assembly": null,
-    "warmup": 4.034050435060635
-   },
-   {
-    "platform": "GARNET CPU",
-    "mesh": "r6 z80",
-    "unknowns": 10454400,
-    "k": 1.1185564255648155,
-    "counters": {
-     "outers": 250,
-     "inners": 34286
-    },
-    "memory": {
-     "max_rss_bytes": 8844025856
-    },
-    "dk_pcm": -7.9574435184470715,
-    "power_max": 0.005935170754426473,
-    "power_rms": 0.0029708661243266587,
-    "solve": 1995.3414936150657,
-    "wall": 1998.2944091460668,
-    "setup": 2.6522328900173306,
-    "assembly": null,
-    "warmup": 32.46559128398076
-   },
-   {
     "platform": "FEMFFUSION FE2",
     "mesh": "FE2 r0",
     "unknowns": 165165,
@@ -1306,136 +1246,252 @@
     "warmup": null
    },
    {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.117823372497517,
+    "counters": {
+     "outers": 10,
+     "inners": 3194,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 709754880
+    },
+    "dk_pcm": -81.26275024828988,
+    "power_max": 0.03813368745155905,
+    "power_rms": 0.0190219549534606,
+    "solve": 8.270070006023161,
+    "wall": 8.412578682997264,
+    "setup": 0.08072403399273753,
+    "assembly": null,
+    "warmup": 1.903593858005479
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242764424705,
+    "counters": {
+     "outers": 10,
+     "inners": 4556,
+     "multigroup": 59
+    },
+    "memory": {
+     "max_rss_bytes": 1862144000
+    },
+    "dk_pcm": -39.32355752949146,
+    "power_max": 0.021769818744333272,
+    "power_rms": 0.010940696208272899,
+    "solve": 30.954933113069274,
+    "wall": 31.28384424711112,
+    "setup": 0.2232787610264495,
+    "assembly": null,
+    "warmup": 7.434742743032984
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068903163622,
+    "counters": {
+     "outers": 10,
+     "inners": 6225,
+     "multigroup": 60
+    },
+    "memory": {
+     "max_rss_bytes": 3879776256
+    },
+    "dk_pcm": -22.910968363776263,
+    "power_max": 0.014054694541559323,
+    "power_rms": 0.007123929503737054,
+    "solve": 94.70221018104348,
+    "wall": 95.318388258107,
+    "setup": 0.4664529870497063,
+    "assembly": null,
+    "warmup": 23.93778277502861
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.118556447387056,
+    "counters": {
+     "outers": 10,
+     "inners": 9837,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 12302893056
+    },
+    "dk_pcm": -7.955261294401161,
+    "power_max": 0.005935995088107427,
+    "power_rms": 0.0029713658008191507,
+    "solve": 667.4603413490113,
+    "wall": 670.399731681915,
+    "setup": 2.6294398709433153,
+    "assembly": null,
+    "warmup": 150.95099834399298
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r8 z100",
+    "unknowns": 23232000,
+    "k": 1.118592077801128,
+    "counters": {
+     "outers": 10,
+     "inners": 13335,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 23560736768
+    },
+    "dk_pcm": -4.392219887194848,
+    "power_max": 0.0037637873594069675,
+    "power_rms": 0.001907171322627064,
+    "solve": 1835.354487505043,
+    "wall": 1842.5032488910947,
+    "setup": 6.5895522580249235,
+    "assembly": null,
+    "warmup": 476.05195085390005
+   },
+   {
     "platform": "GARNET GH200",
     "mesh": "r12 z160",
     "unknowns": 83635200,
-    "k": 1.1186254047603785,
+    "k": 1.1186254366304622,
     "counters": {
-     "outers": 250,
-     "inners": 37273
+     "outers": 10,
+     "inners": 10481,
+     "multigroup": 61
     },
     "memory": {
-     "max_rss_bytes": 3448242176,
-     "gpu_pool_bytes": 75952581632
+     "max_rss_bytes": 3638427648,
+     "gpu_pool_bytes": 85329952768
     },
-    "dk_pcm": -1.0595239621435937,
-    "power_max": 0.0015694807499345765,
-    "power_rms": 0.0007870465745236329,
-    "solve": 68.16860355302924,
-    "wall": 71.01205713109812,
-    "setup": 0.13779790501575917,
+    "dk_pcm": -1.056336953775272,
+    "power_max": 0.0015704560284369755,
+    "power_rms": 0.0007876139323932576,
+    "solve": 23.233667689026333,
+    "wall": 30.592616718262434,
+    "setup": 0.1374108900781721,
     "assembly": null,
-    "warmup": 2.265573767013848
+    "warmup": 6.774427417083643
    },
    {
     "platform": "GARNET GH200",
     "mesh": "r2 z30",
     "unknowns": 435600,
-    "k": 1.117823340561195,
+    "k": 1.1178233904202437,
     "counters": {
-     "outers": 254,
-     "inners": 6559
+     "outers": 10,
+     "inners": 1793,
+     "multigroup": 58
     },
     "memory": {
-     "max_rss_bytes": 339738624,
-     "gpu_pool_bytes": 561773056
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1056898560
     },
-    "dk_pcm": -81.26594388049301,
-    "power_max": 0.03813336509104972,
-    "power_rms": 0.0190217509304851,
-    "solve": 3.0127364519867115,
-    "wall": 3.213831899978686,
-    "setup": 0.04566538997460157,
+    "dk_pcm": -81.26095797562627,
+    "power_max": 0.03813369592150358,
+    "power_rms": 0.01902199138888016,
+    "solve": 0.9766138100530952,
+    "wall": 1.3557993291178718,
+    "setup": 0.038746878039091825,
     "assembly": null,
-    "warmup": 0.12094662297749892
+    "warmup": 0.31246434105560184
    },
    {
     "platform": "GARNET GH200",
     "mesh": "r3 z40",
     "unknowns": 1306800,
-    "k": 1.1182427431750368,
+    "k": 1.118242753429662,
     "counters": {
-     "outers": 252,
-     "inners": 8815
+     "outers": 10,
+     "inners": 2392,
+     "multigroup": 57
     },
     "memory": {
-     "max_rss_bytes": 377487360,
-     "gpu_pool_bytes": 1604033024
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 2645135872
     },
-    "dk_pcm": -39.32568249631618,
-    "power_max": 0.021769317829120588,
-    "power_rms": 0.010940297919608481,
-    "solve": 3.813317309017293,
-    "wall": 4.0663717110292055,
-    "setup": 0.04769655899144709,
+    "dk_pcm": -39.32465703380128,
+    "power_max": 0.021769492769106044,
+    "power_rms": 0.010940561961766335,
+    "solve": 1.174858964048326,
+    "wall": 1.6286374210612848,
+    "setup": 0.03993788699153811,
     "assembly": null,
-    "warmup": 0.15172566199908033
+    "warmup": 0.3724793290020898
    },
    {
     "platform": "GARNET GH200",
     "mesh": "r4 z50",
     "unknowns": 2904000,
-    "k": 1.1184068808394259,
+    "k": 1.1184068873062636,
     "counters": {
-     "outers": 252,
-     "inners": 11687
+     "outers": 10,
+     "inners": 3127,
+     "multigroup": 57
     },
     "memory": {
-     "max_rss_bytes": 415236096,
-     "gpu_pool_bytes": 3424024064
+     "max_rss_bytes": 641728512,
+     "gpu_pool_bytes": 5725463552
     },
-    "dk_pcm": -22.91191605741094,
-    "power_max": 0.01405428056462405,
-    "power_rms": 0.007123580057066793,
-    "solve": 4.7805980810080655,
-    "wall": 5.0709057518979535,
-    "setup": 0.04682295297970995,
+    "dk_pcm": -22.911269373637744,
+    "power_max": 0.014054729834850904,
+    "power_rms": 0.00712397516676738,
+    "solve": 1.3576885260408744,
+    "wall": 1.8861236020457,
+    "setup": 0.04032210202421993,
     "assembly": null,
-    "warmup": 0.18075627594953403
+    "warmup": 0.4285941650159657
    },
    {
     "platform": "GARNET GH200",
     "mesh": "r6 z80",
     "unknowns": 10454400,
-    "k": 1.1185564274342068,
+    "k": 1.11855644156281,
     "counters": {
-     "outers": 251,
-     "inners": 17647
+     "outers": 10,
+     "inners": 4900,
+     "multigroup": 59
     },
     "memory": {
-     "max_rss_bytes": 717225984,
-     "gpu_pool_bytes": 12025507328
+     "max_rss_bytes": 943718400,
+     "gpu_pool_bytes": 20078084608
     },
-    "dk_pcm": -7.95725657931623,
-    "power_max": 0.00593520957612877,
-    "power_rms": 0.0029708902434471777,
-    "solve": 6.956599187979009,
-    "wall": 7.440843362943269,
-    "setup": 0.05072923196712509,
+    "dk_pcm": -7.955843718998601,
+    "power_max": 0.005935544829220981,
+    "power_rms": 0.0029711642720368753,
+    "solve": 2.3842058799928054,
+    "wall": 3.2836332839215174,
+    "setup": 0.04365615698043257,
     "assembly": null,
-    "warmup": 0.3060329079744406
+    "warmup": 0.7371065779589117
    },
    {
     "platform": "GARNET GH200",
     "mesh": "r8 z100",
     "unknowns": 23232000,
-    "k": 1.1185920558528801,
+    "k": 1.1185920757048762,
     "counters": {
-     "outers": 250,
-     "inners": 23527
+     "outers": 10,
+     "inners": 6613,
+     "multigroup": 60
     },
     "memory": {
-     "max_rss_bytes": 1283457024,
-     "gpu_pool_bytes": 26372652544
+     "max_rss_bytes": 1472200704,
+     "gpu_pool_bytes": 50106895360
     },
-    "dk_pcm": -4.39441471198343,
-    "power_max": 0.003762942882161232,
-    "power_rms": 0.001906634442632202,
-    "solve": 14.459457000019029,
-    "wall": 15.675417302991264,
-    "setup": 0.0517661269987002,
+    "dk_pcm": -4.392429512378726,
+    "power_max": 0.003763766088958698,
+    "power_rms": 0.0019071751890165625,
+    "solve": 5.232325212913565,
+    "wall": 7.001987318973988,
+    "setup": 0.05016312003135681,
     "assembly": null,
-    "warmup": 0.9620453519746661
+    "warmup": 1.5199055790435523
    }
   ],
   "tta_rows": {
@@ -1452,13 +1508,13 @@
     },
     "GARNET CPU": {
      "mesh": "r6 z80",
-     "solve": 1995.3414936150657,
-     "wall": 1998.2944091460668
+     "solve": 667.4603413490113,
+     "wall": 670.399731681915
     },
     "GARNET GH200": {
      "mesh": "r6 z80",
-     "solve": 6.956599187979009,
-     "wall": 7.440843362943269
+     "solve": 2.3842058799928054,
+     "wall": 3.2836332839215174
     }
    },
    "1 pcm, 0.1\\%": {
@@ -1490,13 +1546,13 @@
     },
     "GARNET CPU": {
      "mesh": "r6 z80",
-     "solve": 1995.3414936150657,
-     "wall": 1998.2944091460668
+     "solve": 667.4603413490113,
+     "wall": 670.399731681915
     },
     "GARNET GH200": {
      "mesh": "r6 z80",
-     "solve": 6.956599187979009,
-     "wall": 7.440843362943269
+     "solve": 2.3842058799928054,
+     "wall": 3.2836332839215174
     }
    },
    "(1.0, 0.001)": {

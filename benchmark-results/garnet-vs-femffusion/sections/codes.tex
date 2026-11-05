@@ -30,7 +30,9 @@ branch or fork carries MPI work. Repairing it is deferred, so a full-node
 
 \paragraph{\garnet{}.} Branch \code{femffusion-perf-report} (from
 \code{main@c81ee74}), NumPy/SciPy on the CPU and CuPy on the GPU, double
-precision, fused kernels on. On the CPU it is single-threaded (BLAS threads
+precision, fused kernels on. The HP-MR steady runs with the Wielandt shift
+come from branch \code{wielandt-shift}, which adds it to
+\code{femffusion-perf-report@dd03736}. On the CPU it is single-threaded (BLAS threads
 are set to 1).
 
 \paragraph{Hardware.}

@@ -63,6 +63,15 @@ def mesh_label(run):
 # Tags of runs that are not comparison rows: tuning sweeps and reference runs.
 NOT_ROWS = ("tune-", "fftune-", "fftrtune-", "ffref-", "ref-", "gputr-ref-")
 
+# GARNET HP-MR steady: the Wielandt-shifted runs (cpu-/gpu-hpmr-w<mode>-*)
+# are GARNET's best configuration there and replace the plain power-iteration
+# runs (cpu-/gpu-hpmr-r*); the other Wielandt mode was the comparison that
+# chose this one. Both stay in data/perf/.
+WIELANDT_MODE = "f"                      # "f" fixed, "a" adaptive
+_OTHER_MODE = {"f": "a", "a": "f"}[WIELANDT_MODE]
+SUPERSEDED = ("cpu-hpmr-r", "gpu-hpmr-r",
+              f"cpu-hpmr-w{_OTHER_MODE}-", f"gpu-hpmr-w{_OTHER_MODE}-")
+
 
 def _is_reference_run(run, ref):
     """The run a reference IS (FEMFFUSION's finest-run fallback) is not a row."""
@@ -77,6 +86,8 @@ def load_runs(case):
     for f in sorted(glob.glob(os.path.join(HERE, "data", "perf", "*", "*.json"))):
         name = os.path.basename(f)
         if name.startswith(NOT_ROWS) or name.endswith("-alone.json"):    # tuning, refs, controls
+            continue
+        if case == "hpmr3d" and name.startswith(SUPERSEDED):
             continue
         run = json.load(open(f))
         if run.get("case") == case:
@@ -319,6 +330,8 @@ def _counters(r):
         return f"{c.get('outers') or '--'} / {c.get('matvecs') or '--'} mv"
     if "steps" in c:
         return f"{c['steps']} steps / {c.get('inners', '--')}"
+    if c.get("multigroup"):              # Wielandt: outers (FGMRES) / inners
+        return f"{c.get('outers', '--')} ({c['multigroup']}) / {c.get('inners', '--')}"
     return f"{c.get('outers', '--')} / {c.get('inners', '--')}"
 
 
@@ -380,6 +393,43 @@ def write_transient_runs_table(case, rows):
                                  f"{_memory_gb(r):.1f}"]) + " \\\\")
     lines.append("\\end{longtable}")
     with open(os.path.join(HERE, "tables", f"runs_{case}.tex"), "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def write_wielandt_table():
+    """HP-MR steady: GARNET's plain power iteration against the fixed and
+    adaptive Wielandt shift, run by run (outers and solve seconds), the
+    speed-up of the fixed shift and its |dk| from the plain run."""
+    def runs(prefix):
+        out = {}
+        for f in glob.glob(os.path.join(HERE, "data", "perf", "*", prefix + "*.json")):
+            name = os.path.basename(f)
+            if name.endswith("-alone.json"):
+                continue
+            r = json.load(open(f))
+            if r.get("case") == "hpmr3d":
+                out[(platform(r), mesh_label(r))] = r
+        return out
+    plain = {**runs("cpu-hpmr-r"), **runs("gpu-hpmr-r")}
+    fixed = {**runs("cpu-hpmr-wf-"), **runs("gpu-hpmr-wf-")}
+    adaptive = {**runs("cpu-hpmr-wa-"), **runs("gpu-hpmr-wa-")}
+    keys = sorted(set(plain) & set(fixed) & set(adaptive),
+                  key=lambda k: (PLATFORMS.index(k[0]), plain[k]["mesh"]["unknowns"]))
+    if not keys:
+        return
+    cell = lambda r: f"{r['counters']['outers']} & {_fmt_t(cost(r)['solve'])}"
+    lines = ["\\begin{tabular}{llr|rr|rr|rr|rr}", "\\hline",
+             " & & & \\multicolumn{2}{c|}{power iteration} & "
+             "\\multicolumn{2}{c|}{adaptive shift} & \\multicolumn{2}{c|}{fixed shift} & & \\\\",
+             "Platform & Mesh & Unknowns & outers & s & outers & s & outers & s & "
+             "speed-up & $|\\Delta k|$ (pcm) \\\\", "\\hline"]
+    for k in keys:
+        p, a, f = plain[k], adaptive[k], fixed[k]
+        lines.append(" & ".join([k[0], k[1], f"{p['mesh']['unknowns']:,}", cell(p), cell(a),
+                                 cell(f), f"{cost(p)['solve'] / cost(f)['solve']:.1f}",
+                                 f"{1e5 * abs(f['k'] - p['k']):.3f}"]) + " \\\\")
+    lines += ["\\hline", "\\end{tabular}"]
+    with open(os.path.join(HERE, "tables", "wielandt_hpmr3d.tex"), "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
 
@@ -458,6 +508,7 @@ def main():
                                                for t, b in tta.items()})
     write_ratio_table(summary)
     write_reference_table()
+    write_wielandt_table()
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     with open(os.path.join(HERE, "data", "summary.json"), "w") as fh:
         json.dump(summary, fh, indent=1, default=float)

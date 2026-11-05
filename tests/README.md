@@ -24,6 +24,7 @@ without a checkout, located by `_femffusion.py`: `$FEMFFUSION_DIR`, a sibling
 | `test_sdpn_symmetric.py` | symmetrized SDPN blocks are self-adjoint and leave k unchanged; CG/GMRES/BiCGStab auto-selection, steady and transient; a transient `linear_solver` swap leaves the power history unchanged |
 | `test_sdpn_adjoint.py` | SP3/SPN/SDPN adjoint k and importance vs an independently assembled dense transpose, Cartesian and r-z |
 | `test_solver_convergence.py` | default and BiCGStab SDP3 converge on BIBLIS; power iteration stops on an error bound; excised cells carry no source |
+| `test_wielandt.py` | Wielandt-shifted outer iteration (fixed and adaptive) leaves the eigenpair unchanged: diffusion, SP3/SP5/SDP3, triangular prisms, r-z, forward and adjoint; converges on an upscatter core where plain power iteration stops early |
 | `test_boundary_conditions.py` | bc spec forms; symmetry-plane invariant |
 | `test_hex_lattice.py` | hex topology, k = k∞ invariant, BC ordering |
 | `test_tri_boundaries.py` | unmasked tri/hex outer edges take `bc`; axial active/inactive faces are mask boundaries; discontinuity-factor adjoint = dense left eigenvector |

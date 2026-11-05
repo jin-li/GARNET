@@ -166,12 +166,24 @@ def _solver(prob, device, precond_degree, xp_sync=True):
     return s, time.perf_counter() - t0
 
 
+def _wielandt_kw(args):
+    """solve() options of the Wielandt-shifted iteration (empty when off)."""
+    if args.wielandt_shift is None:
+        return {}
+    kw = dict(wielandt_shift=args.wielandt_shift, wielandt_mode=args.wielandt_mode)
+    if args.multigroup_restart is not None:
+        kw["multigroup_kwargs"] = dict(restart=args.multigroup_restart)
+    return kw
+
+
 def run_steady(args, prob, layout):
     solve_kw = dict(tol_k=args.tol_k, tol_source=args.tol_source,
-                    anderson_depth=args.anderson_depth)
+                    anderson_depth=args.anderson_depth, **_wielandt_kw(args))
     s, _ = _solver(prob, args.device, args.precond_degree)
     t0 = time.perf_counter()
-    s.solve(max_outer=2, tol_k=0.0, tol_source=0.0)
+    # Two outers: on the Wielandt path the second is a shifted solve, so the
+    # GPU warm-up also compiles the multigroup FGMRES kernels.
+    s.solve(max_outer=2, tol_k=0.0, tol_source=0.0, **_wielandt_kw(args))
     synchronize(s.xp)
     warmup = time.perf_counter() - t0
     best, setups, solves = None, [], []
@@ -187,7 +199,8 @@ def run_steady(args, prob, layout):
     node = node_powers(prob, asnumpy(best.flux), layout)
     return dict(k=float(best.k_eff), converged=bool(best.converged),
                 counters=dict(outers=int(best.outer_iterations),
-                              inners=int(best.inner_iterations)),
+                              inners=int(best.inner_iterations),
+                              multigroup=int(best.multigroup_iterations)),
                 timings=dict(setup=min(setups), setup_all=setups, solve=min(solves),
                              solve_all=solves, warmup=warmup),
                 node_power=_json_array(node), device=best.device)
@@ -260,7 +273,8 @@ def run_transient(args, prob, layout):
 
     kw = dict(dt=args.dt, tol_step=args.tol_step, time_scheme=args.time_scheme,
               step_solver=args.step_solver,
-              steady_kwargs=dict(tol_k=args.tol_k, tol_source=args.tol_source))
+              steady_kwargs=dict(tol_k=args.tol_k, tol_source=args.tol_source,
+                                 **_wielandt_kw(args)))
     if args.step_solver == "fixed-point":
         # As tuned on this 11-group set (hpmr_transient_bench): rebalanced
         # Picard, Anderson depth 1, 6 Gauss-Seidel scatter subsweeps.
@@ -378,6 +392,13 @@ def main():
     parser.add_argument("--tol-source", type=float, default=1e-7)
     parser.add_argument("--anderson-depth", type=int, default=8)
     parser.add_argument("--precond-degree", type=int, default=0)
+    parser.add_argument("--wielandt-shift", type=float, default=None,
+                        help="Wielandt-shifted eigen-solve (steady, or a transient's "
+                             "initial state) with this delta_k")
+    parser.add_argument("--wielandt-mode", choices=["fixed", "adaptive"],
+                        default="fixed")
+    parser.add_argument("--multigroup-restart", type=int, default=None,
+                        help="Wielandt: FGMRES restart (memory: 2*restart+4 states)")
     # transient
     parser.add_argument("--dollars", type=float, default=0.5)
     parser.add_argument("--ramp", type=float, default=2.0)

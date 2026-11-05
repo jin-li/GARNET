@@ -43,8 +43,9 @@ better degree to \garnet. ``--'': no measured run meets the target.
 \begin{itemize}
 \item \textbf{Per core, \ffn's high-order elements win, often by an order of
   magnitude.} On the HP-MR at 10~pcm and 1\%, \ffn{} needs 89~s (FE3 $r=0$).
-  \garnet{} on one core needs 2000~s ($r=6$, 10.5 million unknowns): 22 times
-  slower. On Langenbuch the two are comparable at 10~pcm (45 against 66~s).
+  \garnet{} on one core needs 667~s ($r=6$, 10.5 million unknowns, with the
+  Wielandt shift below): 7.5 times slower. On Langenbuch the two are
+  comparable at 10~pcm (45 against 66~s).
   \garnet's cost per unknown is lower (Section~\ref{sec:discussion}), but its
   second-order finite volumes need far more unknowns for the same error,
   above all for the node powers.
@@ -57,20 +58,56 @@ better degree to \garnet. ``--'': no measured run meets the target.
   cell-centred scheme with harmonic-mean coefficients loses order. On
   Langenbuch the worst node, in the same position, is 0.56\% off at $r=16$.
 \item \textbf{On the GH200, \garnet{} reaches the 10~pcm, 1\% target first}
-  wherever it reaches it at all: 7.0~s on the HP-MR (13 times faster than \ffn{}
+  wherever it reaches it at all: 2.4~s on the HP-MR (37 times faster than \ffn{}
   on one core) and 0.35~s on Langenbuch (130 times). Its 1~pcm, 0.1\% target
   is out of reach of the meshes that fit (HP-MR $r=12$, 84 million unknowns,
   is 1.1~pcm and 0.16\% off). That target is close to the references' own
   resolution (0.3 to 0.4~pcm), so it separates the codes only coarsely.
 \end{itemize}
 
+\paragraph{HP-MR: Wielandt-shifted iteration.} \garnet's HP-MR rows use its
+Wielandt-shifted eigenvalue iteration. Each outer iteration solves
+$(M - F/k_s)\Psi = (1/k - 1/k_s)F\Psi_{\mathrm{old}}$ over all 11 groups at
+once by FGMRES, preconditioned by a sweep over the groups. Fission and
+scattering, upscatter included, are resolved in every outer. The plain power
+iteration sweeps the groups once per outer and leaves the strong thermal
+upscatter of this library to the outer loop: about 250 outers at every mesh.
+Table~\ref{tab:wielandt} compares the two shift modes, on the same node types,
+tolerances and preconditioners as the power iteration they replace:
+\begin{itemize}
+\item \textbf{fixed} (classic Wielandt): $k_s = k + 0.3$, frozen after the
+  first outer;
+\item \textbf{adaptive}: $k_s = k + \delta$ at every outer, with $\delta$
+  steered so a shifted solve costs about six FGMRES iterations.
+\end{itemize}
+The fixed shift is 9--25\% faster on every mesh, CPU and GH200, and is the
+one used in the comparison rows. It is 2.2--3.5 times faster than the power
+iteration, and moves $k$ by at most 0.005~pcm. On the two-group cores the
+power iteration with Anderson acceleration stays faster (44 outers on IAEA
+$r=4$, against about ten shifted solves of ten sweeps each), so their rows
+are unchanged.
+
+\begin{table}[h]
+\tablefile{wielandt_hpmr3d}
+\caption{HP-MR steady, \garnet: power iteration (Anderson depth 8) against
+the adaptive and fixed Wielandt shift, $\delta k = 0.3$, best of three solve
+seconds except CPU $r=6$ (single runs). Speed-up: power iteration over fixed
+shift; $|\Delta k|$: fixed shift against power iteration.}
+\label{tab:wielandt}
+\end{table}
+
 \paragraph{IAEA-3D.} \pending{Until \ffn{} FE3 $r=2$ is in, the reference
 is provisional: \garnet's GH200 mesh limit ($r$ = 8, 12, 16, observed order
 1.57), uncertain to 3.2~pcm, with the node powers extrapolated at the same
-order. \ffn's finest run, FE2 $r=2$, lands 0.6~pcm from it and within 0.09\%
-in every node, so the two codes agree independently on $k$ and on the node
-powers. With FE3 $r=2$, \ffn's degree-3 series becomes the reference, as on
-Langenbuch.}
+order. Its $k$ holds: \ffn's FE2 series ($r$ = 1, 2, 3, observed order 4.1)
+converges 1.3~pcm below it. Its node powers are good to about 0.5\% only.
+\ffn's finest run, FE2 $r=3$ (38 million unknowns, 3.0~h on one core),
+differs from it by a smooth tilt, up to 0.47\% low at the core edge and
+0.2\% high at the centre. That tilt has the shape of FE2's own refinement
+steps, which shrink eightfold per refinement (order 3), so FE2 $r=3$ is
+the more accurate of the two. FE2 $r=2$'s 0.09\% agreement with the
+reference is a coincidence of two similar errors. With FE3 $r=2$, \ffn's
+degree-3 series becomes the reference, as on Langenbuch.}
 \begin{itemize}
 \item \ffn{} meets 10~pcm and 1\% at FE3 $r=1$ (2.0 million unknowns,
   \pending{665~s}) and at FE2 $r=2$ (4.8 million, \pending{658~s}).
@@ -81,7 +118,8 @@ Langenbuch.}
   errors: its node powers are 31\% off.
 \item \pending{The 1~pcm, 0.1\% target lies below the provisional
   reference's uncertainty, so the IAEA row for it in Table~\ref{tab:tta} is
-  not yet meaningful.}
+  not yet meaningful: FE2 $r=2$ appears to meet it only because its
+  node-power error matches the reference's.}
 \end{itemize}
 
 \begin{figure}[h]

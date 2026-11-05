@@ -4,8 +4,9 @@
 Every comparison run, with its accuracy against the reference of
 Table~\ref{tab:refs} and its cost. ``Outers / inners'' are each code's own
 counts: \garnet's outer iterations and Krylov iterations, summed over groups,
-and \ffn's outer iterations and matrix-vector products. They are not
-comparable across codes. Memory is the CuPy pool for the GH200 and the peak
+and \ffn's outer iterations and matrix-vector products. On \garnet's
+Wielandt-shifted HP-MR rows the FGMRES iterations of the shifted solves are
+in parentheses. The counts are not comparable across codes. Memory is the CuPy pool for the GH200 and the peak
 process RSS otherwise.
 
 \begin{table}[h]\tablefile{runs_iaea3d}\caption{IAEA-3D.}\label{tab:runs-iaea}\end{table}

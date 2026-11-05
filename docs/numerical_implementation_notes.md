@@ -140,6 +140,77 @@ The two-group demonstration behaved differently: Anderson took 2.0 s versus
 driver retains a group-count heuristic and allows callers to override it
 through `transient_kwargs`.
 
+## Wielandt-shifted eigenvalue iteration
+
+`solve(wielandt_shift=δk)` in `_PowerIterationSolver` (`garnet/solver.py`)
+replaces each outer after the first with
+
+    (M − λ_s F) Ψⁿ⁺¹ = (λⁿ − λ_s) F Ψⁿ,   λ = 1/k,   λ_s = 1/k_s,
+    λⁿ⁺¹ = λ_s + (λⁿ − λ_s) Sⁿ/Sⁿ⁺¹,
+
+with S the fission-source total. The fundamental-mode error contracts by
+`(λ₀ − λ_s)/(λ₁ − λ_s)` per outer instead of `k₁/k₀`. The shifted system
+couples every group through scattering and fission. `_ShiftedMultigroupSystem`
+solves it with FGMRES on the stacked group states, so every angular family
+(diffusion, SP3, SPN, SDPN, triangular prisms, r-z) and the adjoint share one
+code path through `_rhs`, `_phi` and `_linear_components`. The right
+preconditioner is a Gauss–Seidel sweep over the groups of `M` alone, with
+inexact (`inner_rtol = 0.1`) within-group solves by the solver's own Krylov
+method. The forward problem sweeps fast to thermal and the adjoint thermal to
+fast; problems with upscatter get two sweeps. Fission stays with FGMRES: with
+`P ≈ M` the preconditioned spectrum is `1 − kᵢ/k_s`, one isolated value near
+`1 − k₀/k_s` and the rest towards 1. The first sweep starts from zero, and the
+Krylov solvers then skip the initial `A·0` (`x0=None`). The FGMRES tolerance
+is `min(0.1, 0.1·src_err)` relative to the right-hand side.
+
+`wielandt_mode` chooses how `k_s` follows the iteration. `"fixed"` is the
+classic method: `k_s = k¹ + δk` after the first outer, re-anchored only if
+`k` climbs past half the offset. `"adaptive"` sets `k_s = k + δ` at every
+outer and steers `δ` by `√(n/6)`, where `n` is the FGMRES count of the
+previous shifted solve. `δ` stays within `[max(1e-4, 10·|Δk|), 10·δk]`.
+
+Two alternatives were measured and rejected (HP-MR r2/nz20, 11 groups, and
+IAEA r4, login node):
+
+- A shift that shrinks with the outer change (`δ = 10·k·src_err`, Rayleigh
+  quotient style) needed 6–7 times more within-group iterations than a
+  constant offset. A small shift crowds every mode with `kᵢ` near `k₀`
+  towards zero in `1 − kᵢ/k_s`, not only the fundamental, so the
+  scatter-only preconditioner leaves FGMRES many slow modes.
+- An FGMRES tolerance relative to the unshifted source, looser by
+  `λ/(λ − λ_s)`, raised the within-group iterations from 3670 to 11777 at
+  δk = 0.1. The noisier solves cost Anderson more outers than they saved.
+
+Within-group iterations at `tol_k = 1e-7`, `tol_source = 1e-6`, Anderson depth
+8 on the forward problem. The tight HP-MR reference is `k = 1.11731834`.
+
+| Case | Plain | Fixed, δk = 0.3 | Adaptive, from 0.3 |
+|---|---|---|---|
+| HP-MR forward | 7466 (0.45 pcm early stop); 17996 converged | 3044 | 2998 |
+| HP-MR adjoint | 21474 | 4962 | 4917 |
+| IAEA forward | 700 | 1102 | 1543 |
+| IAEA adjoint | 6869 | 4108 | 2458 |
+
+On the HP-MR most of the gain comes from solving the upscatter in every outer.
+A shift of 100 (`k_s ≫ k`) still needs only 3939 iterations, and δk = 0.3
+removes another 30%. Plain power iteration sweeps the groups once per outer,
+so its per-outer change understates the upscatter error. At the default
+tolerances it stops 5×10⁻⁶ (0.45 pcm) short on that mesh. On two-group cores
+without upscatter, Anderson-accelerated power iteration already resolves the
+source in about 45 sweeps, while each shifted solve costs about ten. The shift
+then pays only on the adjoint, which runs without Anderson. FGMRES keeps
+`2·restart + 4` copies of the multigroup state, about 29 GB at restart 20 on
+the 84-million-unknown HP-MR. The GH200 runs of that mesh therefore use
+restart 8.
+
+On exclusive EPYC 7742 cores and a GH200, the HP-MR from 0.44 to 84 million
+unknowns went from about 250 outers to 10. The fixed shift (δk = 0.3) solved
+2.2–3.5 times faster than the power iteration and 9–25% faster than the
+adaptive one on every mesh, and moved `k` by at most 0.005 pcm. `"fixed"` is
+therefore the default. At default tolerances on r2/nz30 its iteration error is
+0.003 pcm and 1.8×10⁻⁷ in node power. See
+`benchmark-results/garnet-vs-femffusion/` (Table "HP-MR steady").
+
 ## Methods introduced by the October 2026 audit
 
 The [code audit](qa/code_audit_2026-10-28.md) fixes added the methods below.

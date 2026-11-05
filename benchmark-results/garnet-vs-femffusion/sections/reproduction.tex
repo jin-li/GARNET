@@ -50,6 +50,13 @@ a CPU node to its own NUMA domain. The plans used, in order:
 \item runs left over by the queue limits: \code{cpu-split-h1/h2/h3},
   \code{cpu-split-d} and the single-run plans \code{cpu-one-*}, each an
   exclusive node with a short time limit.
+\item Wielandt shift, HP-MR steady: \code{gpu-wielandt} (\code{gpu-hourly})
+  and \code{cpu-wielandt} (\code{cpu-hourly}). Both run the fixed and the
+  adaptive shift; \code{WIELANDT\_MODE} in \code{make\_figures.py} selects
+  the rows. The \code{tune-floor-*} runs of \code{cpu-wielandt} are the
+  iteration-error check of Section~\ref{sec:method}. \code{cpu-one-hpmr-wf-r8}
+  replaced the power-iteration plan \code{cpu-one-hpmr-r8}, cancelled
+  before it ran.
 \end{itemize}
 
 \paragraph{4. Report.}

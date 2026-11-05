@@ -19,8 +19,11 @@ iteration error stays below 0.1~pcm in $k$ and $10^{-4}$ in node power. That
 threshold is well below the discretization errors being compared:
 \begin{itemize}
 \item \garnet{}: \code{tol\_k} = $10^{-7}$ and \code{tol\_source} = $10^{-6}$,
-  measured against $10^{-11}/10^{-10}$ on all three cases (at most 0.007~pcm
-  and $6.6 \times 10^{-5}$);
+  measured against $10^{-11}/10^{-10}$ on IAEA, Langenbuch and the first,
+  smeared-drum HP-MR (at most 0.007~pcm and $6.6 \times 10^{-5}$). On the
+  drums-withdrawn HP-MR compared here ($r=2$, $n_z=30$) the power iteration
+  is 0.006~pcm and $2.4 \times 10^{-6}$ off, and the Wielandt shift
+  0.003~pcm and $1.8 \times 10^{-7}$;
 \item \ffn{}: \code{EPS\_Tolerance} = $10^{-6}$ for \code{slepc\_2g},
   \code{gd} and \code{bifpam}, measured against $10^{-10}$ or $10^{-11}$
   (below 0.05~pcm and $1.7 \times 10^{-5}$).
@@ -43,6 +46,10 @@ same hardware as the production runs. The full sweeps are in
 \item \garnet{}, CPU: Neumann preconditioner of degree 1/0/0 and Anderson
   depth 4/4/8 for IAEA/Langenbuch/HP-MR.
 \item \garnet{}, GH200: degree 2/2/1 and depth 4/4/8.
+\item \garnet{}, HP-MR steady: the fixed Wielandt shift $\delta k = 0.3$
+  (Section~\ref{sec:steady}) with the defaults of its multigroup solve. Only
+  the GH200 run at $r=12$ shortens the FGMRES restart from 20 to 8, so that
+  the basis fits in the 96~GB.
 \item \garnet{} transients: BDF2 with the fixed-point step for fixed steps;
   the monolithic step for adaptive BDF, which supports only that.
 \end{itemize}

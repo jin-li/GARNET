@@ -177,6 +177,17 @@ adjoint) scales both by `(1 − ρ̂)`, where ρ̂ is the dominance ratio estima
 from the iteration history. They then bound the error, not the last step. The
 scaling costs about 25–80% more outer iterations for an error about 100 times
 smaller.
+
+`wielandt_shift=δk` replaces the single group sweep of each outer with a
+Wielandt-shifted multigroup solve, `k_s = k + δk`, for example
+`model.steady(wielandt_shift=0.3)`. It pays where one sweep is a poor inner
+solve: strong upscatter, such as the 11-group HP-MR library, and the adjoint,
+which runs without Anderson. On few-group cores without upscatter the default
+is cheaper. `wielandt_mode="fixed"` (the default) keeps the classic constant
+`k_s`; `"adaptive"` steers the shift by the cost of each shifted solve.
+`multigroup_kwargs` tunes the shifted solve; its FGMRES restart sets the
+memory, `2·restart + 4` copies of the multigroup state. See
+[the implementation notes](numerical_implementation_notes.md#wielandt-shifted-eigenvalue-iteration).
 Geometry, boundary conditions and device settings stay with the model and
 cannot be overridden inside `solver_kwargs`.
 
