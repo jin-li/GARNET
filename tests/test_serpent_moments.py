@@ -139,3 +139,52 @@ def test_scalar_and_moment_record_selection_share_diagnostics(tmp_path, reader):
     with pytest.raises(ValueError, match="selection matched 2 records"):
         reader(path, universe="synthetic")
     assert reader(path, universe="synthetic", record_index=1).record_index == 1
+def multiplying_scatter(tmp_path, overrides=None):
+    """Two-group collision/production closure with extra scattering neutrons."""
+    fields={
+        'INF_TOT':'[1 0 2 0]',
+        'INF_ABS':'[.2 0 .8 0]',
+        'INF_RABSXS':'[-.1 0 .8 .05]',
+        'INF_S0':'[.2 0 .6 0 .1 0 1.1 0]',
+        'INF_SP0':'[.2 0 .9 0 .1 0 1.1 0]',
+    }
+    fields.update(overrides or {})
+    return write(tmp_path,fields)
+
+
+def test_signed_reduced_absorption_retained_for_native_moments_and_base_reader(tmp_path):
+    path=multiplying_scatter(tmp_path);before=path.read_bytes()
+    base=read_serpent_xs(path);native=read_serpent_moment_xs(path)
+    for record in (base,native):
+        estimate=record.estimate('INF_RABSXS')
+        np.testing.assert_array_equal(estimate.mean,[-.1,.8])
+        np.testing.assert_array_equal(estimate.relative_error,[0.,.05])
+        for values in record.balance_diagnostics().values():
+            np.testing.assert_allclose(values['per_group_cm_inv'],0,atol=1e-15)
+        with pytest.raises(ValueError,match='INF_RABSXS.*unsupported signed reduced absorption'):
+            record.to_diffusion_material(diffusion='inf')
+    material=native.to_moment_material(orientation='from-major')
+    np.testing.assert_array_equal(material.raw['INF_RABSXS'],[-.1,.8])
+    np.testing.assert_array_equal(material.reported_errors['INF_RABSXS'],[0.,.05])
+    np.testing.assert_array_equal(material.collision[0],[[.2,.6],[.1,1.1]])
+    np.testing.assert_array_equal(material.production[0],[[.2,.9],[.1,1.1]])
+    np.testing.assert_allclose(material.loss[0],[[.8,-.1],[-.9,.9]],rtol=0,atol=1e-15)
+    np.testing.assert_allclose(material.balance_diagnostics['total_minus_reduced_absorption_production_out'],0,atol=1e-15)
+    assert not material.provenance['physical_admission']
+    assert path.read_bytes()==before
+
+
+@pytest.mark.parametrize('field,value',[
+    ('INF_RABSXS','[-.1 -.01 .8 .05]'),
+    ('INF_RABSXS','[-.1 nan .8 .05]'),
+    ('INF_RABSXS','[nan 0 .8 .05]'),
+    ('INF_RABSXS','[-inf 0 .8 .05]'),
+    ('INF_ABS','[-.2 0 .8 0]'),
+    ('INF_TOT','[-1 0 2 0]'),
+    ('INF_TOT','[0 0 2 0]'),
+    ('INF_DIFFCOEF','[-1 0 .5 0]'),
+    ('INF_DIFFCOEF','[0 0 .5 0]'),
+])
+@pytest.mark.parametrize('reader',[read_serpent_xs,read_serpent_moment_xs])
+def test_signed_reduced_absorption_does_not_relax_other_guards(tmp_path,field,value,reader):
+    with pytest.raises(ValueError,match=field):reader(multiplying_scatter(tmp_path,{field:value}))

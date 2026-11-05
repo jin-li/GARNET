@@ -16,6 +16,7 @@ import re
 import numpy as np
 
 from .materials import Material
+from ._microgroup_identity import microgroup_bounds
 # Preserve historical private names for callers that used the scalar parser.
 from ._serpent_literals import _ASSIGNMENT, _COUNTER, _NUMBER, _literal, _statements
 
@@ -40,7 +41,7 @@ _REQUIRED = {
     "INF_ABS", "INF_RABSXS", "INF_NSF", "INF_FLX",
     "INF_S0", "INF_SP0",
 }
-_KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS
+_KNOWN = _REQUIRED | _STATISTICAL_FIELDS | _ADF_GEOMETRY_FIELDS | {"MICRO_NG", "MICRO_E"}
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,18 @@ class SerpentXSRecord:
     @property
     def energy_bounds_mev(self):
         return self.fields["MACRO_E"].copy()
+
+    @property
+    def micro_energy_bounds_mev(self):
+        """Optional printed micro-group boundaries, separate from macro groups."""
+        bounds = microgroup_bounds(self.fields)
+        return None if bounds is None else np.array(bounds)
+
+    @property
+    def n_micro_groups(self):
+        """Optional micro-group count; None denotes unknown structure."""
+        bounds = microgroup_bounds(self.fields)
+        return None if bounds is None else len(bounds) - 1
 
     @property
     def n_surfaces(self):
@@ -138,6 +151,10 @@ class SerpentXSRecord:
                 or not np.all(np.isfinite(edges)) or np.any(edges < 0)
                 or not np.all(np.diff(edges) < 0)):
             raise self._error("MACRO_E", "expected G+1 finite nonnegative descending boundaries in MeV")
+        try:
+            microgroup_bounds(self.fields)
+        except ValueError as exc:
+            raise self._error("MICRO_NG/MICRO_E", str(exc)) from exc
         if "DF_N_SURF" in self.fields:
             ns = self.fields["DF_N_SURF"]
             if (not isinstance(ns, np.ndarray) or ns.size != 1
@@ -157,11 +174,13 @@ class SerpentXSRecord:
                         3 if key == "ANA_KEFF" else 1)
             if est.mean.size != expected:
                 raise self._error(key, f"expected {expected} mean/error pairs")
+            # Reduced absorption subtracts scattering multiplication and may be
+            # signed; physical absorption and the other XS guards remain distinct.
             if (not np.all(np.isfinite(est.mean))
-                    or (key != "DF_SURF_NET_CURR" and np.any(est.mean < 0))
+                    or (key not in {"DF_SURF_NET_CURR", "INF_RABSXS"} and np.any(est.mean < 0))
                     or not np.all(np.isfinite(est.relative_error))
                     or np.any(est.relative_error < 0)):
-                raise self._error(key, "means must be finite (nonnegative except net current); "
+                raise self._error(key, "means must be finite (nonnegative except net current and reduced absorption); "
                                   "relative errors must be finite and nonnegative")
             if key in {"CMM_DIFFCOEF", "INF_DIFFCOEF", "TRC_DIFFCOEF", "INF_TOT"} and np.any(est.mean <= 0):
                 raise self._error(key, "values must be strictly positive")
@@ -181,6 +200,11 @@ class SerpentXSRecord:
     def to_diffusion_material(self, diffusion="cmm"):
         """Map INF production balance, with reduced (not physical) absorption.
 
+        Reduced absorption can be signed when scattering produces extra neutrons.
+        The reader preserves it, but this scalar Material adapter refuses negative
+        reduced absorption because Material requires nonnegative sigma_a. Native
+        moment loss uses total minus production scattering without this adapter.
+
         This adapter is validated for diffusion eigenpairs. Do not interpret
         ``Material.sigma_a`` as a physical absorption tally, or assume these
         uncorrected data have been validated for SPN/SN or thermal feedback.
@@ -197,6 +221,10 @@ class SerpentXSRecord:
         keys = {"cmm": "CMM_DIFFCOEF", "inf": "INF_DIFFCOEF", "trc": "TRC_DIFFCOEF"}
         if diffusion not in keys:
             raise self._error("diffusion", "use 'cmm', 'inf' or 'trc'")
+        reduced = self.estimate("INF_RABSXS").mean
+        if np.any(reduced < 0):
+            raise self._error("INF_RABSXS", "unsupported signed reduced absorption: "
+                              "scalar diffusion Material requires nonnegative sigma_a; no clamping or fallback")
         chi = (self.estimate("INF_CHIT").mean if "INF_CHIT" in self.fields
                else np.zeros(self.n_groups))
         if chi.sum() == 0:
@@ -207,7 +235,7 @@ class SerpentXSRecord:
                          if "INF_FISS" in self.fields else None)
         return Material(
             diffusion=self.estimate(keys[diffusion]).mean,
-            sigma_a=self.estimate("INF_RABSXS").mean,
+            sigma_a=reduced,
             nu_sigma_f=self.estimate("INF_NSF").mean,
             sigma_s=self.estimate("INF_SP0").mean.reshape(self.n_groups, self.n_groups),
             chi=chi, total=self.estimate("INF_TOT").mean,

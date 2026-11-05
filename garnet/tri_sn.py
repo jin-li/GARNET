@@ -254,6 +254,8 @@ class TriSNTransportSolver:
         self._measure = self.vol if self.is3d else self.area  # step cell measure
 
         mats = [materials] if isinstance(materials, Material) else list(materials)
+        if any(m.fv_only for m in mats):
+            raise ValueError("FV-only material cannot be used by an SN transport solver")
         self.G = mats[0].n_groups
         mmap = (np.zeros(grid.shape, int) if material_map is None
                 else np.asarray(material_map).reshape(grid.shape))

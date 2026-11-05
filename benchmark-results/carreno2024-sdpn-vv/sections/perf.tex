@@ -1,0 +1,66 @@
+\section{GPU and CPU performance}
+\label{sec:perf}
+
+\noindent\fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+\textbf{Interim version, 2 November 2026.} Two single-core runs of the
+extruded cases (Brantley--Larsen SDP3 with 16 layers, C5G7 SDP3 with 8 layers)
+and the two concurrency controls of the extruded jobs are still running and
+are expected to finish by the evening of 3 November. This section quotes
+projections for them, and for the extruded GMRES cases that will not be
+measured on one core; it will be updated with the measurements.}}
+\medskip
+
+\input{sections/perf_setup}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{perf_bl.pdf}
+\caption{Brantley--Larsen, Marshak vacuum, on identical meshes: solve time
+(left), time per inner iteration (middle) and the GH200's speedup over one
+CPU core (right). CPU filled markers and solid lines, GH200 open markers and
+dashed lines; circles 2-D meshes, triangles extruded ones. In the right
+panel, open triangles are speedups with a projected one-core time
+(Table~\ref{tab:perf-proj}).}
+\label{fig:perf-bl}
+\end{figure}
+
+\begin{table}[h]
+\caption{Brantley--Larsen solve times on identical $n \times n$ meshes. CPU:
+best of three on one core, or a single solve ($^1$) where one takes hours.
+GH200: best of three, single solves for the largest extruded cases. Extruded
+rows ($n_z > 1$) follow the 2-D ones. Iteration counts are the GH200 run's;
+GH200 GB is the memory CuPy's pool held after the solve; $|\Delta k|$ is the
+CPU--GPU difference. OOM: out of GH200 memory; cap: an inner solve hit its
+5000-iteration cap; cancelled: stopped on purpose; --: not run. One-core
+projections for the extruded GMRES cases are in Table~\ref{tab:perf-proj}.}
+\label{tab:perf-bl}
+\tablefile{perf_bl}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{perf_c5g7.pdf}
+\caption{C5G7 pin-resolved, Marshak vacuum: as Fig.~\ref{fig:perf-bl}.}
+\label{fig:perf-c5g7}
+\end{figure}
+
+\begin{table}[h]
+\caption{C5G7 pin-resolved solve times on identical meshes ($s$ cells per pin
+side); as Table~\ref{tab:perf-bl}.}
+\label{tab:perf-c5g7}
+\tablefile{perf_c5g7}
+\end{table}
+
+\begin{table}[h]
+\caption{Projected one-core times of the extruded GMRES cases without a
+converged CPU run (status of 2 November 2026). CPU run: what happened to the
+one-core run (cap: stopped at the 5000-iteration cap; cancelled: stopped on
+purpose; running). ns: one core's time per inner iteration per cell-moment
+in the basis run; ``(cap)'' marks a basis timed from a cap run's log.
+Projected CPU time = ns $\times$ cell-moments $\times$ GH200 inners;
+uncertainty about $\pm 25$\%.}
+\label{tab:perf-proj}
+\tablefile{perf_projection}
+\end{table}
+
+\input{sections/perf_result}

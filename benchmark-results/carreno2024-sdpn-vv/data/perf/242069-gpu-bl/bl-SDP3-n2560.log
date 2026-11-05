@@ -1,0 +1,23 @@
+Traceback (most recent call last):
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf-stage/repo/tools/assess_carreno2024.py", line 310, in <module>
+    main()
+    ~~~~^^
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf-stage/repo/tools/assess_carreno2024.py", line 296, in main
+    rec = run_one(args.case, method, vacuum, mesh, args)
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf-stage/repo/tools/assess_carreno2024.py", line 201, in run_one
+    res = solver.solve(tol_k=args.tol_k, tol_source=args.tol_source,
+                       verbose=args.verbose)
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf-stage/repo/garnet/solver.py", line 540, in solve
+    state[g], n_it = self._linsolve(
+                     ~~~~~~~~~~~~~~^
+        apply_A, self._rhs(g, q0, adjoint), state[g],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.ops[g].inv_diag, xp, rtol=rtol,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        precond=precond)
+        ^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf-stage/repo/garnet/linalg.py", line 810, in gmres
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: GMRES failed to converge in 5000 iterations (residual 1.006e+02, target 5.690e-01)

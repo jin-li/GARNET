@@ -7,27 +7,49 @@ both land near K_REFERENCE; the bulk transient exercises the tri operator
 inside TransientSolver.
 """
 
-import os
-
 import numpy as np
 import pytest
 
 from garnet.benchmarks import build_vver440
 from garnet.benchmarks.vver440 import K_REFERENCE
 from garnet.tri import TriDiffusionEigenSolver
+from tests._femffusion import femffusion_path, requires_femffusion
 
 
 def test_vver440_triangular_geometry_and_k():
     # build_vver440 returns the corrected hexagonal geometry on a body-fitted
-    # triangular mesh. k converges near the FEMFFUSION diffusion reference
-    # (the old hand-placed hex was a sheared parallelogram, ~1900 pcm off;
-    # this is a real hexagon).
+    # triangular mesh. k converges to the FEMFFUSION diffusion reference:
+    # -111/-92/-37/-14 pcm at refine 1/2/4/8. (The old hand-placed hex was a
+    # sheared parallelogram, ~1900 pcm off; a later placement that shifted odd
+    # rows a full pitch sat at ~-420 pcm and did not converge.) Tolerance is
+    # ~2x the refine-1 discretization error.
     p = build_vver440(refine=1)
     assert int(p.active.sum()) == 421 * 6            # 6 triangles per assembly
     res = TriDiffusionEigenSolver(p.grid, p.materials, p.material_map, active=p.active,
                                   mask_bc=p.mask_bc, device="cpu").solve(tol_k=1e-8, tol_source=1e-7)
     assert res.converged
-    assert res.k_eff == pytest.approx(K_REFERENCE, abs=6e-3)
+    assert res.k_eff == pytest.approx(K_REFERENCE, abs=2.5e-3)
+
+
+def test_vver440_map_is_60_degree_symmetric():
+    # The placed core must be a regular hexagon: invariant under a 60-degree
+    # rotation about the central assembly, outline and materials alike. The
+    # only intended asymmetry is material 8, a copy of control assembly 5 on
+    # two of the six ring positions (perturbed by the ramp_hex transient).
+    from garnet.benchmarks.vver440 import _hex_sites
+    from garnet.hexraster import hex_site_xy
+    sites = _hex_sites()
+    assert len(sites) == 421
+    xy = {rc: np.array(hex_site_xy(*rc, 1.0)) for rc in sites}
+    centre = np.mean(list(xy.values()), axis=0)
+    centre_site = [rc for rc, p in xy.items() if np.allclose(p, centre, atol=1e-9)]
+    assert len(centre_site) == 1 and sites[centre_site[0]] == 5
+    key = lambda p: (round(2 * p[0]), round(2 * p[1] / np.sqrt(3)))   # half-pitch lattice units
+    rot60 = np.array([[0.5, -np.sqrt(3) / 2], [np.sqrt(3) / 2, 0.5]])
+    mat = {rc: 5 if m == 8 else m for rc, m in sites.items()}
+    placed = {key(p - centre): mat[rc] for rc, p in xy.items()}
+    rotated = {key(rot60 @ (p - centre)): mat[rc] for rc, p in xy.items()}
+    assert rotated == placed
 
 
 def test_vver440_bulk_transient():
@@ -45,11 +67,11 @@ def test_vver440_bulk_transient():
     assert 1.08 < P[-1] < 1.20                        # ~0.1$ delayed-supercritical rise
 
 
-_MSH = os.path.expanduser(
-    "~/claude-tests/FEMFFUSION/examples/2D_VVER440/VVER440.msh")
+_MSH_REL = "examples/2D_VVER440/VVER440.msh"
+_MSH = femffusion_path(_MSH_REL)
 
 
-@pytest.mark.skipif(not os.path.exists(_MSH), reason="FEMFFUSION VVER440.msh not present")
+@requires_femffusion(_MSH_REL)
 def test_vver440_msh_matches_femffusion():
     from garnet.benchmarks.vver440 import build_vver440_msh
     from garnet.mesh import UnstructuredDiffusionSolver
@@ -59,7 +81,7 @@ def test_vver440_msh_matches_femffusion():
     assert res.k_eff == pytest.approx(K_REFERENCE, abs=1e-3)   # FEMFFUSION FE3 diffusion
 
 
-@pytest.mark.skipif(not os.path.exists(_MSH), reason="FEMFFUSION VVER440.msh not present")
+@requires_femffusion(_MSH_REL)
 def test_vver440_msh_converges_on_keff_with_loose_source_tolerance():
     # Regression for the adaptive inner-CG tolerance: converging on k_eff alone
     # (a loose source-shape tolerance) must still tighten the inner solve with the

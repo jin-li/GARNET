@@ -23,12 +23,39 @@ model_api
 transient_api
 coupling
 serpent_xs
+regional_xs
 amd_rocm
 kinetics_parameters
 api_audit
 verification_validation
 development/integration_inventory
 development/validation
+```
+
+## Experimental fitted-mesh and native methods
+
+Use the [method selection guide](development/native-methods.md) to distinguish
+corrected diffusion, native full-matrix moments and angular transport pilots,
+then follow the relevant API contract. These opt-in paths retain separate
+validation and device scopes.
+
+```{toctree}
+:maxdepth: 1
+:caption: Experimental mesh and native methods
+
+development/native-methods
+development/subpin-mesh-geometry
+development/polygon-mesh
+development/corrected-fv
+development/native-scalar-fv
+development/corrected-mesh-moments
+development/corrected-native-moments
+development/moment-homogenization
+development/native-angular-source
+development/native-mesh-streaming
+development/native-mesh-transport
+development/native-angular-p0
+development/native-nem-p0
 ```
 
 ## Building locally
@@ -75,6 +102,7 @@ c5g7_colorset_adf
 numerical_implementation_notes
 dallosso_1d_reference
 qa/adf_audit_2026-10-27
+qa/code_audit_2026-10-28
 exponential_literature_review_2026-10-26
 exponential_proposal_review
 moc_2d1d_feasibility_2026-10-26

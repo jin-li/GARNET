@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 
 from .moderator_paths import TabulatedModeratorPath
+from ._microgroup_identity import (MICROGROUP_IDENTITY_KEY, native_identity,
+                                   identity_from_bounds, validate_identity)
 
 
 # Legacy identities retain their original missing/null comparison rules.
@@ -178,11 +180,18 @@ class BranchState:
             if not isinstance(identities, Mapping):
                 raise ValueError('compatibility_identities must be a mapping of nonempty string keys')
             _validate_identity_names(identities)
-        object.__setattr__(self, 'metadata', _freeze(self.metadata))
-        if not isinstance(self.qualification, str) or not self.qualification:
-            raise ValueError('qualification must be explicit nonempty text')
         if self.native is not None and not isinstance(self.native, NativeBranchState):
             raise TypeError('native must be NativeBranchState')
+        declared = self.metadata.get(MICROGROUP_IDENTITY_KEY)
+        if MICROGROUP_IDENTITY_KEY in self.metadata:
+            declared = validate_identity(declared)
+        effective = (native_identity(self.native.records) if self.native is not None else
+                     declared if declared is not None else identity_from_bounds(None))
+        if declared is not None and declared != effective:
+            raise ValueError('microgroup_identity conflicts with retained native records')
+        object.__setattr__(self, 'metadata', _freeze({**self.metadata, MICROGROUP_IDENTITY_KEY: effective}))
+        if not isinstance(self.qualification, str) or not self.qualification:
+            raise ValueError('qualification must be explicit nonempty text')
         expected = {'length_unit': 'cm', 'energy_unit': 'MeV',
                     'temperature_unit': 'K', 'density_unit': 'g/cm3',
                     'scattering_order': 'source-emitted', 'fission_order': 'emitted-source',
@@ -190,6 +199,11 @@ class BranchState:
         for key, value in expected.items():
             if key in self.metadata and self.metadata[key] != value:
                 raise ValueError(f'unsupported {key}: expected {value}')
+
+    @property
+    def microgroup_identity(self):
+        """Immutable effective native micro-grid identity (explicitly unknown if absent)."""
+        return self.metadata[MICROGROUP_IDENTITY_KEY]
 
     @property
     def nu_sigma_f(self):
@@ -286,6 +300,8 @@ class BranchLibrary:
     def _compatible(self, vertices):
         first=vertices[0]
         for s in vertices[1:]:
+            if s.microgroup_identity != first.microgroup_identity:
+                raise ValueError('incompatible microgroup identities (including known/unknown structures)')
             if self._fixed(s.conditions) != self._fixed(first.conditions):
                 raise ValueError('simplex mixes fixed conditions/configurations/families')
             if s.region_ids != first.region_ids or not np.array_equal(s.energy_bounds_mev,first.energy_bounds_mev) or not np.array_equal(s.exterior_mask,first.exterior_mask):
@@ -350,6 +366,7 @@ class BranchLibrary:
             # Reject true extrapolation, permit only floating-point boundary noise.
             if np.any(weights < -1e-12) or np.any(weights > 1+1e-12):
                 continue
+            self._compatible(vertices)
             weights = np.maximum(weights, 0)
             weights /= weights.sum()
             data=_arguments(vertices[0])

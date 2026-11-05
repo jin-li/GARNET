@@ -1,0 +1,9 @@
+SP1 bl-SP1-n640-z16 bl --methods SP1 --vacuum marshak --meshes 640 --nz 16
+SP1 bl-SP1-n640-z64 bl --methods SP1 --vacuum marshak --meshes 640 --nz 64
+SP3 bl-SP3-n640-z16 bl --methods SP3 --vacuum marshak --meshes 640 --nz 16
+SP3 bl-SP3-n640-z64 bl --methods SP3 --vacuum marshak --meshes 640 --nz 64
+SDP1 bl-SDP1-n640-z16 bl --methods SDP1 --vacuum marshak --meshes 640 --nz 16
+SDP1 bl-SDP1-n640-z64 bl --methods SDP1 --vacuum marshak --meshes 640 --nz 64
+SDP3 bl-SDP3-n640-z16 bl --methods SDP3 --vacuum marshak --meshes 640 --nz 16
+SDP3-z32 bl-SDP3-n640-z32 bl --methods SDP3 --vacuum marshak --meshes 640 --nz 32
+after bl-SP1-n640-z16-alone bl --methods SP1 --vacuum marshak --meshes 640 --nz 16

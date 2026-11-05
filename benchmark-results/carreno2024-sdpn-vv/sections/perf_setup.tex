@@ -1,0 +1,36 @@
+This section compares \garnet{} on one NVIDIA GH200 with \garnet{} on one core
+of a CPU node, on identical meshes, for SP1 (diffusion, CG), SP3 (CG), SDP1
+and SDP3 (both GMRES), all with the Marshak vacuum and the tolerances of the
+accuracy study. It answers a different question from the rest of the report,
+so the meshes go far past convergence, towards the cell counts of a 3-D core.
+FEMFFUSION was not run; the paper's own FEMFFUSION times for Brantley--Larsen
+(Table~6: 1.1--2.6~s on an $80 \times 80$ second-degree mesh, hardware not
+stated) are quoted for scale only.
+
+\textbf{Two kinds of mesh.} The 2-D ladders refine each problem until the
+solver stops converging. With Jacobi preconditioning the inner iteration count
+grows with the 2-D mesh size, and the Krylov solvers stop at 5000 iterations:
+CG fails at Brantley--Larsen $n = 2560$ (6.6 million cells), GMRES at
+$n = 1280$ for SDP1 and at C5G7 $s = 32$ (audit item O14). A 3-D core reaches
+tens of millions of cells with far fewer cells per direction, so it is much
+better conditioned. The extruded cases reproduce that: the 2-D mesh is
+repeated over $n_z$ layers of cubic cells with reflective top and bottom, so
+the solution, and $k$, are exactly those of the 2-D problem while the grid,
+its memory traffic and its arithmetic are genuinely 3-D. Brantley--Larsen
+$n = 640$ is extruded to 16, 64 and 256 layers (up to 105 million cells), C5G7
+$s = 8$ to 8, 64 and 128 layers and $s = 16$ to 64 layers (up to 43 million
+cells, 7 groups). The largest SDP$_N$ cases stop at the GH200's memory. On the
+CPU, the extruded cases go to 64 layers, except SDP3, which goes to 32: at
+64 layers it would run past the 5-day job limit. The GH200 also runs SDP3 at
+32 layers, so that the two devices are compared on the same mesh.
+
+\textbf{Timing.} Solve time is measured between device synchronizations. GPU
+runs keep the best of three solves (the first includes CuPy's kernel
+compilation), except the largest extruded ones, which are single solves. CPU
+runs keep the best of three where a solve takes minutes and use a single solve
+where it takes hours. Each CPU job had an exclusive merlin7 node (two
+64-core AMD EPYC~7742) and ran its methods side by side as single-threaded
+processes, at most five at a time. One case of each job was re-timed alone at
+the end as a control. \garnet's CPU path is
+single-threaded, so the speedup is over one core. A code that used every core
+of the node would narrow it, by up to the node's memory-bandwidth limit.

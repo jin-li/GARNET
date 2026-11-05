@@ -1,0 +1,15 @@
+SP1 c5g7-SP1-s4 c5g7 --methods SP1 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SP1 c5g7-SP1-s8 c5g7 --methods SP1 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SP1 c5g7-SP1-s16 c5g7 --methods SP1 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SP1 c5g7-SP1-s24 c5g7 --methods SP1 --vacuum marshak --cells-per-pin 24 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SP3 c5g7-SP3-s4 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SP3 c5g7-SP3-s8 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SP3 c5g7-SP3-s16 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SP3 c5g7-SP3-s24 c5g7 --methods SP3 --vacuum marshak --cells-per-pin 24 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SDP1 c5g7-SDP1-s4 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SDP1 c5g7-SDP1-s8 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SDP1 c5g7-SDP1-s16 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SDP3 c5g7-SDP3-s4 c5g7 --methods SDP3 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3
+SDP3 c5g7-SDP3-s8 c5g7 --methods SDP3 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+SDP3 c5g7-SDP3-s16 c5g7 --methods SDP3 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines
+after c5g7-SP3-s8-alone c5g7 --methods SP3 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3

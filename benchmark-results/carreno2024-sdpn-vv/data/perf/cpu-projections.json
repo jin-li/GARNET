@@ -1,0 +1,35 @@
+{
+ "description": "Projected one-core solve times for extruded GMRES cases without a converged CPU run. Projected CPU time = (CPU seconds per inner iteration per cell-moment of the first available basis run) x (cells x moments of the target) x (GH200 inner iterations of the target). A basis is either a CPU run that stopped at the 5000-iteration GMRES cap (timed below; its 5000 iterations are full restart cycles of the first outer iteration) or a converged CPU run in data/perf. A target is projected only while no converged CPU run of it exists. Read by make_figures.py.",
+ "cap_runs": {
+  "bl-SDP1-n640-z16": {
+   "job": "10373002",
+   "start": "2026-11-01T21:57:16+01:00",
+   "end": "2026-11-01T23:44:32+01:00",
+   "seconds": 6436,
+   "iterations": 5000,
+   "timing": "log file creation and last write; includes Python start-up and problem setup"
+  },
+  "bl-SDP3-n640-z32": {
+   "job": "10373002",
+   "start": "2026-11-01T21:57:16+01:00",
+   "end": "2026-11-02T05:36:37+01:00",
+   "seconds": 27561,
+   "iterations": 5000,
+   "timing": "log file creation and last write; includes Python start-up and problem setup"
+  }
+ },
+ "targets": {
+  "bl-SDP1-n640-z16": ["bl-SDP1-n640-z16"],
+  "bl-SDP1-n640-z64": ["bl-SDP1-n640-z16"],
+  "bl-SDP3-n640-z16": ["bl-SDP3-n640-z32"],
+  "bl-SDP3-n640-z32": ["bl-SDP3-n640-z32"],
+  "c5g7-SDP1-s8-z64": ["c5g7-SDP1-s8-z8"],
+  "c5g7-SDP3-s8-z8": ["bl-SDP3-n640-z32"],
+  "c5g7-SDP3-s8-z32": ["c5g7-SDP3-s8-z8", "bl-SDP3-n640-z32"]
+ },
+ "cancelled": {
+  "date": "2026-11-02",
+  "tags": ["bl-SDP1-n640-z64", "c5g7-SDP1-s8-z64", "c5g7-SDP3-s8-z32"],
+  "reason": "stopped on request after 4-11 h of an expected ~60-80 h each: further GMRES points, redundant with the measured and projected ones"
+ }
+}

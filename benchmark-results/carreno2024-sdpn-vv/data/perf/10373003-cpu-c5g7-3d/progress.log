@@ -1,0 +1,9 @@
+DONE c5g7-SP1-s8-z8 RESULT c5g7 SP1       marshak   mesh    8  k=1.183292064  dk=  -325.8 pcm  conv=True  outers=  62  inners=  47963  t= 1749.06s
+DONE c5g7-SP3-s8-z8 RESULT c5g7 SP3       marshak   mesh    8  k=1.182559119  dk=  -399.1 pcm  conv=True  outers=  67  inners=  54265  t= 5276.39s
+DONE c5g7-SP1-s8-z64 RESULT c5g7 SP1       marshak   mesh    8  k=1.183292064  dk=  -325.8 pcm  conv=True  outers=  57  inners=  44539  t=13687.09s
+DONE c5g7-SDP1-s8-z8 RESULT c5g7 SDP1      marshak   mesh    8  k=1.182253756  dk=  -429.6 pcm  conv=True  outers= 134  inners= 120606  t=25269.81s
+DONE c5g7-SP3-s8-z64 RESULT c5g7 SP3       marshak   mesh    8  k=1.182559113  dk=  -399.1 pcm  conv=True  outers=  63  inners=  51230  t=33900.57s
+CANCELLED c5g7-SDP1-s8-z64 2026-11-02T09:13:51+01:00 (stopped by request: redundant with the other GMRES points)
+FAIL c5g7-SDP1-s8-z64 (see c5g7-SDP1-s8-z64.log)
+CANCELLED c5g7-SDP3-s8-z32 2026-11-02T09:13:52+01:00 (stopped by request: redundant with the other GMRES points)
+FAIL c5g7-SDP3-s8-z32 (see c5g7-SDP3-s8-z32.log)

@@ -54,6 +54,8 @@ multiplier: 1+omega*dt versus exp(omega*dt). The diffusion engine consumes
 Its precursors and source quadrature integrate the frozen exponential model.
 The second-order ``ftm2`` variant carries the physical neutron derivative and
 integrates linear transformed precursor production, with no heat transform.
+Its opt-in ``precursor_production`` control instead integrates linear or
+PARCS-style quadratic **physical** production, independent of frequency.
 ``ftm-bdf2`` instead uses a damped BDF2 recurrence in a fresh exponential frame
 for both neutrons and precursors, with BDF1 startup and endpoint heat weights.
 """
@@ -67,7 +69,8 @@ import numpy as np
 from . import kernels
 from .backend import asnumpy
 from ._exponential import (ExponentialBDF2Step, ExponentialStep,
-                           ExponentialThetaStep, population_frequency)
+                           ExponentialThetaStep, PhysicalProductionStep,
+                           population_frequency)
 
 
 def _lin(xs, coeffs):
@@ -84,7 +87,7 @@ def _lin(xs, coeffs):
 
 
 def _error_norm_sums(corrected, predicted, rtol, atol):
-    """Return defect/scale squared norms with one device-to-host transfer.
+    """Return per-field defect/scale squared norms with one host transfer.
 
     Reductions remain as zero-dimensional device arrays while all state fields
     are visited.  Besides requiring only one GPU synchronization for the whole
@@ -92,20 +95,18 @@ def _error_norm_sums(corrected, predicted, rtol, atol):
     complete copies of that state as residual and scale lists.
     """
     xp = kernels.module_of(corrected[0])
-    numerator = denominator = None
+    sums = []
     for c, p in zip(corrected, predicted):
         residual = c - p
-        n = kernels.dot(xp, residual, residual)
+        sums.append(kernels.dot(xp, residual, residual))
         if atol == 0.0:
-            d = (rtol * rtol) * kernels.dot(xp, c, c)
+            sums.append((rtol * rtol) * kernels.dot(xp, c, c))
         else:
             scale = atol + rtol * xp.abs(c)
-            d = kernels.dot(xp, scale, scale)
-        numerator = n if numerator is None else numerator + n
-        denominator = d if denominator is None else denominator + d
-    # A single two-scalar copy is the only synchronization in this routine.
-    pair = asnumpy(xp.stack((numerator, denominator)))
-    return float(pair[0]), float(pair[1])
+            sums.append(kernels.dot(xp, scale, scale))
+    # A single copy of 2 scalars per field is the only synchronization here.
+    pairs = asnumpy(xp.stack(sums)).reshape(-1, 2)
+    return pairs[:, 0], pairs[:, 1]
 
 
 def physical_state_errors(fine, coarse, previous, *, rtol, atol=0.0, weights=None):
@@ -372,28 +373,41 @@ class ExponentialTheta(FrequencyTransform):
 
     Carries the accepted physical neutron derivative, so changing frequency
     or width does not reuse a derivative in the previous transformed frame.
-    Precursors integrate linearly interpolated transformed production. The
-    thermal driver receives its usual endpoint source weight, not an
-    exponential heat quadrature or a transformed heat equation.
+    By default precursors integrate linearly interpolated transformed
+    production. ``precursor_production="linear-physical"`` or
+    ``"quadratic-physical"`` instead interpolates physical production; the
+    quadratic history spans the previous accepted width and starts or
+    restarts as linear-physical. The thermal driver receives its usual
+    endpoint source weight, not an exponential heat quadrature or a
+    transformed heat equation.
     """
 
     name = "ftm2"
     order = 2
     _coefficient_type = ExponentialThetaStep
+    precursor_productions = ("linear-transformed", "linear-physical",
+                             "quadratic-physical")
 
-    def __init__(self, *, startup_be_steps=0, **kwargs):
+    def __init__(self, *, startup_be_steps=0,
+                 precursor_production="linear-transformed", **kwargs):
         super().__init__(**kwargs)
         if (isinstance(startup_be_steps, (bool, np.bool_))
                 or not np.isfinite(startup_be_steps)
                 or int(startup_be_steps) != startup_be_steps or startup_be_steps < 0):
             raise ValueError("FTM2 startup_be_steps must be a non-negative integer")
+        if precursor_production not in self.precursor_productions:
+            raise ValueError("FTM2 precursor_production must be one of "
+                             f"{self.precursor_productions}")
         self.startup_be_steps = int(startup_be_steps)
         self._startup_remaining = self.startup_be_steps
+        self.precursor_production = precursor_production
 
     def start(self, u0):
         result = super().start(u0)
         self._derivative = [0.0 * u for u in u0]
         self._beta_old = self._pending_beta = None
+        self.step_production = None
+        self._clear_production_history()
         self._prepared_carried = None
         self._startup_remaining = self.startup_be_steps
         return result
@@ -402,7 +416,32 @@ class ExponentialTheta(FrequencyTransform):
         """Seed the actual physical endpoint RHS at initialization/restart."""
         self._derivative = [d.copy() for d in derivative]
         self._beta_old = [b.copy() if hasattr(b, "copy") else b for b in beta]
+        self._clear_production_history()
         self._prepared_carried = None
+
+    def _clear_production_history(self):
+        # Quadratic physical production must not span a restart or event.
+        self._older_production = self._pending_older = None
+
+    @property
+    def production_interpolation(self):
+        """Precursor production model of the prepared step, for diagnostics."""
+        if self.fallback_reason:
+            return "backward-euler"
+        if self.precursor_production == "quadratic-physical":
+            return ("quadratic-physical" if self._older_production is not None
+                    else "linear-physical")
+        return self.precursor_production
+
+    def _production_weights(self, decay):
+        """Return retention, older, old and new weights and removed beta."""
+        if self.precursor_production == "linear-transformed":
+            retention, old, new, removed = self._coefficients.linear_precursor(decay)
+            return retention, 0.0, old, new, removed
+        older = self._older_production
+        previous = (older[2] if older is not None
+                    and self.precursor_production == "quadratic-physical" else None)
+        return PhysicalProductionStep(self._coefficients.width, previous).weights(decay)
 
     def prepare_step(self, step, dt):
         super().prepare_step(step, dt)
@@ -441,6 +480,9 @@ class ExponentialTheta(FrequencyTransform):
         if self._pending_beta is not None:
             self._beta_old = [b.copy() if hasattr(b, "copy") else b
                               for b in self._pending_beta]
+        if self._pending_older is not None:
+            self._older_production = self._pending_older + (width,)
+            self._pending_older = None
         super().push(u_new)
         self._prepared_carried = None
         self._startup_remaining = max(0, self._startup_remaining-1)
@@ -451,7 +493,7 @@ class ExponentialTheta(FrequencyTransform):
     def precursor_bcoef(self, step, beta, lam, dt):
         if self.fallback_reason:
             return TimeScheme.precursor_bcoef(self, step, beta, lam, dt)
-        return [b * self._coefficients.linear_precursor(float(l))[3]
+        return [b * self._production_weights(float(l))[4]
                 for b, l in zip(beta, lam)]
 
     def precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt):
@@ -459,21 +501,37 @@ class ExponentialTheta(FrequencyTransform):
             return TimeScheme.precursor_decayed(self, step, C_hist, S_prev, beta, lam, dt)
         if self._beta_old is None:
             raise RuntimeError("FTM2 needs the accepted endpoint production history")
+        S_older, beta_older, _ = self._older_production or (None, None, None)
         out = []
-        for c, b, l in zip(C_hist[0], self._beta_old, lam):
-            retention, old, _, _ = self._coefficients.linear_precursor(float(l))
-            out.append(float(l) * (retention*c + old*b*S_prev))
+        for i, (c, b, l) in enumerate(zip(C_hist[0], self._beta_old, lam)):
+            retention, older, old, _, _ = self._production_weights(float(l))
+            history = retention*c + old*b*S_prev
+            if older:
+                history = history + older*beta_older[i]*S_older
+            out.append(float(l) * history)
         return out
 
     def precursor_update(self, step, C_hist, S_new, S_prev, beta, lam, dt):
         self._pending_beta = list(beta)
+        self.step_production = self.production_interpolation
+        if self.precursor_production == "quadratic-physical":
+            # The previous endpoint becomes the older quadratic node on
+            # acceptance, whichever formula this step uses: BE fallback and
+            # startup steps still record physical production.
+            self._pending_older = (
+                S_prev.copy() if hasattr(S_prev, "copy") else S_prev,
+                [b.copy() if hasattr(b, "copy") else b for b in self._beta_old])
         if self.fallback_reason:
             return TimeScheme.precursor_update(
                 self, step, C_hist, S_new, S_prev, beta, lam, dt)
+        S_older, beta_older, _ = self._older_production or (None, None, None)
         out = []
-        for c, b_old, b_new, l in zip(C_hist[0], self._beta_old, beta, lam):
-            retention, old, new, _ = self._coefficients.linear_precursor(float(l))
-            out.append(retention*c + old*b_old*S_prev + new*b_new*S_new)
+        for i, (c, b_old, b_new, l) in enumerate(zip(C_hist[0], self._beta_old, beta, lam)):
+            retention, older, old, new, _ = self._production_weights(float(l))
+            value = retention*c + old*b_old*S_prev + new*b_new*S_new
+            if older:
+                value = value + older*beta_older[i]*S_older
+            out.append(value)
         return out
 
 
@@ -481,7 +539,13 @@ class ThetaMethod(TimeScheme):
     """theta-method with weight w on the end-of-step operator (w=1/2 is CN).
 
     A-stable for w >= 1/2 but *not* L-stable at w = 1/2, so a prompt jump rings
-    rather than decays; opt-in, and prompt-only (no BDF-form precursors).
+    rather than decays; opt-in. Precursors use the matching theta form below.
+
+    Crank--Nicolson is first order for a perturbation applied at t=0: the
+    first step's explicit half uses ``F^0 = 0``, the steady state of
+    ``problem_at(0)`` (the pre-step material), not the perturbed operator.
+    Second order holds for data continuous at t=0. A mid-transient restart
+    must re-seed ``F^n`` through :meth:`start`.
     """
 
     is_bdf = True          # has its own analytic precursor treatment (below)
@@ -496,8 +560,20 @@ class ThetaMethod(TimeScheme):
         self._carry = (1.0 - self.w) / self.w
         self._psi = None
 
-    def start(self, u0):
-        self._psi = list(u0)
+    def start(self, u0, increment=None):
+        """Seed ``Psi^n = u^n + (1 - w) v dt F^n``.
+
+        ``increment`` is the explicit-Euler increment ``v dt F^n`` at ``u0``
+        for the coming step width. The critically adjusted t=0 steady state
+        has ``F^0 = 0`` (evaluated with ``problem_at(0)``), so it may be
+        omitted there. A mid-transient restart must supply it: ``Psi = u``
+        alone drops the ``(1 - w) F^n`` half of the trapezoid and makes the
+        restarted step first order.
+        """
+        if increment is None:
+            self._psi = list(u0)
+        else:
+            self._psi = [u + (1.0 - self.w) * d for u, d in zip(u0, increment)]
         return list(u0)
 
     def a0(self, step):
@@ -570,6 +646,16 @@ class BDF(TimeScheme):
     The first accepted step uses BDF1, the next BDF2, and so on until the
     requested maximum order is reached.  This avoids inventing unavailable
     pre-history and preserves an initially critical equilibrium exactly.
+
+    Order cap: at a constant width those startup steps carry O(h**2) and
+    O(h**3) local errors that the later steps cannot remove, so fixed-step
+    BDF3--BDF6 converge globally at second order (measured 2.09 for BDF3 on
+    a smooth ramp), with a smaller constant than BDF2. Restarts repeat the
+    startup. Higher order needs startup widths that shrink faster than h.
+    For BDF3 and BDF4, :func:`graded_bdf_widths` (``bdf_startup="graded"``
+    in ``TransientSolver.solve``) builds a fixed schedule growing from
+    h*(h/T)**((q-1)/2) by a ratio of 1.5 (measured orders 2.97 and 4.19).
+    BDF5 and BDF6 diverge on such growing steps and keep the cap.
     """
 
     is_bdf = True
@@ -730,16 +816,56 @@ class BDF(TimeScheme):
         return self.predict_history(
             self._history_u, dt, max_degree=max_degree)
 
+    def error_constants(self, dt, order):
+        """Local-error constants of order ``order`` at the proposed width.
+
+        With Y = dt**(q+1) y^(q+1), the degree-q predictor misses the exact
+        state by ``K_p * Y`` and the order-q corrector by ``-K_c * Y``, so
+        their defect (the quantity :meth:`error_norm` measures) is
+        ``(K_p + K_c) * Y``. Both follow from the accepted widths: K_p from
+        the predictor's interpolation nodes, K_c from the residual of the
+        same Vandermonde system as :meth:`prepare_step`. Equal widths give
+        K_p = 1 and K_c = 1/2, 2/9, 3/22, 12/125, 10/137 for q = 1..5.
+        """
+        dt, q = float(dt), int(order)
+        if q < 1 or q > self.max_order:
+            raise ValueError("BDF order must be between one and max_order")
+        if len(self._dt_history) < q:
+            raise ValueError("insufficient accepted step-width history")
+        nodes = [0.0]   # scaled by dt, measured back from the new time
+        distance = dt
+        for j in range(1, q + 2):
+            nodes.append(-distance / dt)
+            if j <= q:
+                distance += self._dt_history[j - 1]
+        factorial = float(np.prod(np.arange(1, q + 2)))
+        k_p = float(np.prod([-x for x in nodes[1:]])) / factorial
+        corrector_nodes = nodes[:q + 1]
+        vandermonde = np.asarray(
+            [[x**m for x in corrector_nodes] for m in range(q + 1)], dtype=float)
+        rhs = np.zeros(q + 1)
+        rhs[1] = 1.0
+        a = np.linalg.solve(vandermonde, rhs)
+        residual = sum(a_j * x**(q + 1) for a_j, x in zip(a, corrector_nodes))
+        return k_p, -float(residual) / (float(a[0]) * factorial)
+
+    error_norms = ("concatenated", "blockwise")
+
     @staticmethod
-    def error_norm(corrected, predicted, *, rtol, atol=0.0):
+    def error_norm(corrected, predicted, *, rtol, atol=0.0, norm="concatenated"):
         """Normalized predictor--corrector defect used for step acceptance.
 
         This follows Eq. (44) of Cherezov et al.: the Euclidean norm of the
         state correction divided by the norm of ``atol + rtol*corrected``.
-        Both arguments are iterables so multigroup fluxes, precursor families,
-        and thermal fields can be evaluated independently or concatenated.
-        A value no greater than one passes the local error test.
+        Both arguments are iterables of fields (group fluxes, precursor
+        families, thermal or other coupled state). ``"concatenated"`` applies
+        Eq. (44) to all fields joined, so the field with the largest values in
+        its own units dominates both norms. ``"blockwise"`` applies it to each
+        field and returns the largest, so every field meets the tolerance
+        relative to its own scale. A value no greater than one passes.
         """
+        if norm not in BDF.error_norms:
+            raise ValueError(f"BDF error norm must be one of {BDF.error_norms}")
         rtol, atol = float(rtol), float(atol)
         if not np.isfinite(rtol) or rtol <= 0.0:
             raise ValueError("BDF error rtol must be finite and positive")
@@ -751,9 +877,15 @@ class BDF(TimeScheme):
                              "non-zero lengths")
         numerator, denominator = _error_norm_sums(
             corrected, predicted, rtol, atol)
-        if denominator == 0.0:
-            return 0.0 if numerator == 0.0 else np.inf
-        return float(np.sqrt(numerator / denominator))
+        if norm == "concatenated":
+            # Plain left-to-right sums, as the fields were always accumulated
+            # (Python's sum() of floats is compensated since 3.12).
+            numerator = np.add.accumulate(numerator)[-1:]
+            denominator = np.add.accumulate(denominator)[-1:]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = np.where(denominator > 0.0, numerator / denominator,
+                             np.where(numerator == 0.0, 0.0, np.inf))
+        return float(np.sqrt(ratio.max()))
 
     def push(self, u_new):
         self._history_u.insert(0, list(u_new))
@@ -793,6 +925,54 @@ class BDF2(BDF):
 
     def __init__(self):
         super().__init__(2)
+
+
+def graded_bdf_widths(t_end, dt, order, ratio=1.5, restart_times=()):
+    """Step widths that keep fixed-step BDF3 and BDF4 at their order.
+
+    At a constant width h the BDF1, BDF2, ... startup steps cap BDFq at
+    global order two (see :class:`BDF`). These widths start each smooth
+    segment at h * (h / t_end)**((order - 1) / 2) and grow by ``ratio`` until
+    they reach h; the rest of the segment is split evenly into steps no wider
+    than h. A segment starts at t = 0 and after each of ``restart_times``,
+    which become step ends -- pass the same times to the solver's
+    ``bdf_restart_times``, where the history is discarded and the order ramps
+    again. Orders one and two need no grading and get the even split only.
+
+    Measured on the kinetics references at 40/80/160 steps, for 8--17 extra
+    steps: BDF3 order 2.97 and BDF4 order 4.19 on a smooth ramp (2.09 and
+    2.00 at constant width), 3.03 and 3.87 after a 0.6 $ step. BDF5 and BDF6
+    are refused: on growing steps their variable-step formulas amplify
+    errors, and graded runs diverged (errors up to 1e2 for BDF6) at every
+    ratio from 1.5 down to 1.1.
+    """
+    t_end, h, q, ratio = float(t_end), float(dt), int(order), float(ratio)
+    if not (np.isfinite(t_end) and np.isfinite(h)) or t_end <= 0.0 or h <= 0.0:
+        raise ValueError("t_end and dt must be finite and positive")
+    if q not in _BDF_COEFFICIENTS:
+        raise ValueError("BDF order must be between 1 and 6")
+    if q > 4:
+        raise ValueError("graded startup is unstable for BDF5 and BDF6: "
+                         "run them at constant width (second order)")
+    if not np.isfinite(ratio) or ratio <= 1.0:
+        raise ValueError("the grading ratio must exceed one")
+    restarts = np.unique(np.asarray(restart_times, dtype=float).ravel())
+    if np.any(~np.isfinite(restarts)) or np.any(restarts <= 0.0) or np.any(restarts >= t_end):
+        raise ValueError("restart times must lie inside (0, t_end)")
+    first = h * (h / t_end) ** ((q - 1) / 2) if q > 2 else h
+    bounds = np.concatenate(([0.0], restarts, [t_end]))
+    widths = []
+    for start, stop in zip(bounds[:-1], bounds[1:]):
+        length, width, graded = stop - start, first, []
+        # A segment too short for the whole ramp ends in steps no wider than
+        # the next ramp width, so no width grows by more than ``ratio``.
+        while width < h and sum(graded) + 2.0 * width <= length:
+            graded.append(width)
+            width *= ratio
+        rest = length - sum(graded)
+        count = max(1, int(np.ceil(rest / min(h, width) * (1.0 - 1e-12))))
+        widths.extend(graded + [rest / count] * count)
+    return np.asarray(widths)
 
 
 class ExponentialBDF2(FrequencyTransform):
@@ -941,12 +1121,16 @@ class BDFStepController:
             raise ValueError("BDF controller step width must be positive")
         return dt * self.factor(error, order, accepted=accepted)
 
-    def choose_order(self, dt, errors, current_order, *, hysteresis=1.05):
+    def choose_order(self, dt, errors, current_order, *, hysteresis=1.05,
+                     max_width=None):
         """Choose the candidate with the largest safe next-step proposal.
 
         ``errors`` maps candidate BDF orders to normalized defects. An order
         change must improve the proposed width by ``hysteresis`` over retaining
-        the current order, which suppresses one-step order chatter.
+        the current order, which suppresses one-step order chatter. With
+        ``max_width`` (the largest width the next step may take), candidates
+        that reach it are ranked instead by their defect scaled to that
+        width, with the same ``hysteresis``.
         """
         dt, current_order = float(dt), int(current_order)
         hysteresis = float(hysteresis)
@@ -959,6 +1143,26 @@ class BDFStepController:
                 dt, error, int(order), accepted=float(error) <= 1.0)
             for order, error in errors.items()
         }
+        if max_width is not None:
+            # Orders whose proposal reaches the largest usable width (max_dt,
+            # the next stop) all take that width, so the widest proposal no
+            # longer separates them; the smallest defect at that width does
+            # (audit O15: pinned at max_dt, order one kept winning on a
+            # marginally larger unusable proposal).
+            max_width = float(max_width)
+            reach = [order for order, width in proposals.items()
+                     if width >= max_width]
+            if reach:
+                defect = {order: float(errors[order])
+                          * (max_width / dt) ** (order + 1) for order in reach}
+                best = min(reach, key=lambda order: (defect[order], -order))
+                if current_order in reach:
+                    if (best != current_order and defect[current_order]
+                            < hysteresis * defect[best]):
+                        best = current_order
+                elif max_width < hysteresis * proposals[current_order]:
+                    best = current_order
+                return best, proposals[best]
         best = max(proposals, key=lambda order: (proposals[order], order))
         if (best != current_order
                 and proposals[best] < hysteresis * proposals[current_order]):
