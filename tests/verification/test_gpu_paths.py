@@ -30,7 +30,10 @@ TIGHT = dict(tol_k=1e-10, tol_source=1e-9)
 
 @pytest.fixture
 def cuda():
-    cp = pytest.importorskip("cupy")
+    try:
+        import cupy as cp
+    except ImportError:
+        pytest.skip("CuPy or its GPU runtime is unavailable")
     try:
         if cp.cuda.runtime.getDeviceCount() < 1:
             pytest.skip("no CUDA device")
