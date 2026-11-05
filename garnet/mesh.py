@@ -42,9 +42,10 @@ from .stencil import _face_valid, face_alpha
 
 
 _VACUUM_ALPHA = 0.5
+_GEOMETRY_UNSET = object()
 
 
-@dataclass
+@dataclass(init=False)
 class Mesh:
     """Cells and faces of a 2D or 3D finite-volume mesh.
 
@@ -71,6 +72,35 @@ class Mesh:
     face_center: np.ndarray = None  # (n_faces, dim) face (or face-overlap) centre
     bface_normal: np.ndarray = None  # (n_bfaces, dim) outward unit normal
     bface_center: np.ndarray = None  # (n_bfaces, dim) boundary face centre
+
+    bface_tags: np.ndarray | None = None
+
+    def __init__(self, coords, cells, cell_tag, centroid, area, faces, bfaces,
+                 face_distances=None, face_normal=None, face_center=None,
+                 bface_normal=None, bface_center=None, *, face_centers=_GEOMETRY_UNSET,
+                 face_normals=_GEOMETRY_UNSET, bface_centers=_GEOMETRY_UNSET,
+                 bface_normals=_GEOMETRY_UNSET,
+                 bface_tags=None):
+        self.coords, self.cells, self.cell_tag = coords, cells, cell_tag
+        self.centroid, self.area = centroid, area
+        self.faces, self.bfaces = faces, bfaces
+        self.face_distances, self.bface_tags = face_distances, bface_tags
+        for singular, old, new in (("face_center", face_center, face_centers),
+                                   ("face_normal", face_normal, face_normals),
+                                   ("bface_center", bface_center, bface_centers),
+                                   ("bface_normal", bface_normal, bface_normals)):
+            setattr(self, singular, old if new is _GEOMETRY_UNSET else new)
+
+    # Alias properties share storage and work with dataclasses.replace under
+    # either API, without retaining stale copies of geometry arrays.
+    face_centers = property(lambda self: self.face_center,
+                            lambda self, value: setattr(self, "face_center", value))
+    face_normals = property(lambda self: self.face_normal,
+                            lambda self, value: setattr(self, "face_normal", value))
+    bface_centers = property(lambda self: self.bface_center,
+                             lambda self, value: setattr(self, "bface_center", value))
+    bface_normals = property(lambda self: self.bface_normal,
+                             lambda self, value: setattr(self, "bface_normal", value))
 
     @property
     def n_cells(self) -> int:
@@ -246,7 +276,7 @@ _GMSH_UNSUPPORTED = {7: "5-node pyramid", 9: "6-node triangle", 10: "9-node quad
                      19: "13-node pyramid"}
 
 
-def read_gmsh(path: str) -> Mesh:
+def read_gmsh(path: str, *, normal_distances=None) -> Mesh:
     """Parse a Gmsh 2.x ASCII mesh and assemble a Mesh.
 
     Handles 2D meshes of triangles (type 2) / quads (type 3) and 3D meshes of
@@ -288,9 +318,10 @@ def read_gmsh(path: str) -> Mesh:
                              "quads, tetrahedra, hexahedra and prisms are supported")
     is_3d = any(t[1] in _GMSH_3D for t in elems)
     table = _GMSH_3D if is_3d else _GMSH_2D
-    cells, tags = [], []
+    cells, tags, boundary_tags = [], [], {}
+    boundary_table = _GMSH_2D if is_3d else {1: 2}
     for t in elems:
-        nnode = table.get(t[1])
+        nnode = table.get(t[1], boundary_table.get(t[1]))
         if nnode is None:
             continue
         ntags = t[2]
@@ -299,14 +330,18 @@ def read_gmsh(path: str) -> Mesh:
             raise ValueError(f"{path}: element {t[0]} (type {t[1]}, {ntags} tags) "
                              f"lists {len(nodes)} nodes, expected {nnode}")
         try:
-            cells.append(tuple(node_index[g] for g in nodes))
+            mapped = tuple(node_index[g] for g in nodes)
         except KeyError as err:
             raise ValueError(f"{path}: element {t[0]} references node {err.args[0]}, "
                              "which is not in $Nodes") from None
+        if t[1] not in table:
+            boundary_tags[mapped] = t[3] if ntags else 0
+            continue
+        cells.append(mapped)
         tags.append(t[3] if ntags else 0)        # first tag (physical / assembly id)
     if is_3d:
-        return assemble_mesh_3d(coords, cells, tags, normal_distances=True)
-    return assemble_mesh(coords, cells, tags)
+        return assemble_mesh_3d(coords, cells, tags, normal_distances=(True if normal_distances is None else normal_distances), boundary_tags=boundary_tags)
+    return assemble_mesh(coords, cells, tags, normal_distances=(True if normal_distances is None else normal_distances), boundary_tags=boundary_tags)
 
 
 def _planar_coords(coords, cells):
@@ -387,13 +422,15 @@ def _clip_convex(poly, clip):
 
 def _polygon_area_centroid_2d(P):
     """Area and centroid of a simple polygon (shoelace); signed area > 0 for CCW."""
-    x, y = P[:, 0], P[:, 1]
+    origin = P[0]
+    local = P - origin
+    x, y = local[:, 0], local[:, 1]
     xn, yn = np.roll(x, -1), np.roll(y, -1)
     cr = x * yn - xn * y
     a2 = float(cr.sum())
     if abs(a2) <= 0.0:
         return 0.0, P.mean(0)
-    return 0.5 * a2, np.array([((x + xn) * cr).sum(), ((y + yn) * cr).sum()]) / (3.0 * a2)
+    return 0.5 * a2, origin + np.array([((x + xn) * cr).sum(), ((y + yn) * cr).sum()]) / (3.0 * a2)
 
 
 def _match_nonconforming(one, normals, centers, measures, owner_centroid, scale, dim,
@@ -578,9 +615,26 @@ def _finish_faces(dim, centroid, interior, boundary, nonconf):
     return faces, as_arr(fn), as_arr(fc), bfaces, as_arr(bn), as_arr(bc)
 
 
-def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_distances):
+def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_distances, boundary_tags=None):
     """Attach normal geometry or retain the legacy centroid-distance contract."""
     faces, fn, fc, bfaces, bn, bc = face_data
+    boundary_labels = np.zeros(len(bfaces), dtype=int)
+    # Locate labels on original boundary polygons, including split subfaces.
+    for nodes, tag in (boundary_tags or {}).items():
+        points = np.asarray(coords)[list(nodes)]
+        if len(points) == 2:
+            direction = points[1] - points[0]
+            length2 = direction @ direction
+            projection = (bc - points[0]) @ direction / length2
+            on = np.linalg.norm(bc - points[0] - projection[:, None] * direction, axis=1) <= 1e-10 * max(1., np.sqrt(length2))
+            inside = (projection >= -1e-10) & (projection <= 1 + 1e-10)
+        else:
+            normal = np.cross(points[1] - points[0], points[2] - points[0])
+            normal /= np.linalg.norm(normal)
+            on = np.abs((bc - points[0]) @ normal) <= 1e-10 * max(1., np.max(np.linalg.norm(points - points[0], axis=1)))
+            signs = np.asarray([np.cross(b - a, bc - a) @ normal for a, b in zip(points, np.roll(points, -1, axis=0))])
+            inside = np.all(signs >= -1e-10, axis=0) | np.all(signs <= 1e-10, axis=0)
+        boundary_labels[on & inside] = tag
     distances = None
     if normal_distances:
         i = np.asarray([f[0] for f in faces], dtype=np.int64)
@@ -594,10 +648,10 @@ def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_di
     return Mesh(coords=coords, cells=cells, cell_tag=np.asarray(tags),
                 centroid=centroid, area=measure, faces=faces, bfaces=bfaces,
                 face_distances=distances, face_normal=fn, face_center=fc,
-                bface_normal=bn, bface_center=bc)
+                bface_normal=bn, bface_center=bc, bface_tags=boundary_labels)
 
 
-def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
+def assemble_mesh(coords, cells, tags, *, normal_distances=True, boundary_tags=None) -> Mesh:
     """Build a Mesh (centroids, areas, interior/boundary faces) from polygons.
 
     coords : (n_nodes, 2) node coordinates ((n_nodes, 3) is accepted for a planar
@@ -653,7 +707,7 @@ def assemble_mesh(coords, cells, tags, *, normal_distances=True) -> Mesh:
                              "(overlapping or non-manifold mesh)")
     return _assembled_mesh(coords, cells, tags, centroid, area,
                            _finish_faces(2, centroid, interior, boundary, True),
-                           normal_distances)
+                           normal_distances, boundary_tags)
 
 
 # Local face node-orderings per 3D element type, keyed by node count. Orientation
@@ -712,7 +766,7 @@ def _cell_volume_centroid_3d(cell_pts, faces_local):
     return vtot, (csum / vtot if vtot > 0 else g)
 
 
-def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
+def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False, boundary_tags=None) -> Mesh:
     """Build a 3D Mesh (volumes, centroids, interior/boundary faces) from cells.
 
     coords : (n_nodes, 3) node coordinates. cells : list of node-index tuples,
@@ -767,7 +821,7 @@ def assemble_mesh_3d(coords, cells, tags, *, normal_distances=False) -> Mesh:
                              "(non-manifold or overlapping mesh)")
     return _assembled_mesh(coords, cells, tags, centroid, volume,
                            _finish_faces(3, centroid, interior, boundary, True),
-                           normal_distances)
+                           normal_distances, boundary_tags)
 
 
 @dataclass
