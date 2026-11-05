@@ -12,7 +12,7 @@ assembly's memory and convergence behavior.
 | Calculation | Entry point | Data and scope |
 |---|---|---|
 | Scalar corrected diffusion | `CorrectedMeshGroupOperator`, or `mesh_discretization="corrected"` in the mesh diffusion solver | Scalar diffusion/removal coefficients; fixed linear nonorthogonal reconstruction. |
-| Native scalar finite-volume pilot | `NativeScalarFVEigenSolver` | Explicit native P0 reaction matrices and full fission matrix; opt-in CPU pilot with independent residual and positivity gates. See the [pilot scope](native-scalar-fv.md). |
+| Native scalar finite-volume pilot | `NativeScalarFV` | Explicit native P0 reaction matrices and full fission matrix; opt-in CPU pilot with independent residual and positivity gates. See the [pilot scope](native-scalar-fv.md). |
 | Per-group corrected SP3/SDP1 | `CorrectedMeshMomentOperator`, or the corrected mesh moment solver dispatch | Two coupled pseudo-moments with scalar material coefficients; distinct from native full group matrices. |
 | Native full-matrix SP3/SDP1/SP5/SP7 | `CorrectedNativeMomentOperator` | Explicit family, immutable `MomentMaterial` per cell, full native group loss matrices and family-specific coupled boundary laws; CPU research path. |
 | Angular scattering action | `ProductQuadrature` and `NativeAngularSource` | Full-sphere harmonic projection and native production matrices; no streaming or eigenvalue solve by themselves. |
