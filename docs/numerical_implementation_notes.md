@@ -254,7 +254,7 @@ field and operator setup per startup.
 
 ### Predictor–corrector IQS
 
-See [quasistatic_acceleration_plan.md](quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix).
+See [quasistatic_acceleration_plan.md](https://github.com/jin-li/GARNET/blob/main/docs/quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix).
 
 ### Exact drum absorber area
 

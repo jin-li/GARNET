@@ -558,7 +558,7 @@ state through `adaptive_error_state`. Each field must pass the tolerance
 against its own scale (`error_norm="blockwise"`, the default);
 `error_norm="concatenated"` reproduces the paper's joined-state norm, under
 which the field with the largest values in its own units decides
-([measured effect](../benchmark-results/adaptive-bdf-error-norm/)). The LRA driver uses that seam for its
+([measured effect](https://github.com/jin-li/GARNET/tree/main/benchmark-results/adaptive-bdf-error-norm/)). The LRA driver uses that seam for its
 fully implicit temperature. With `automatic_order=True`, the orders
 `q-1/q/q+1` compete by proposed safe width, each scored by the full-state
 defect an order-k step of this width would show (`BDF.error_constants`).
@@ -626,7 +626,7 @@ delayed-neutron production quadratically in physical time through the last
 three accepted endpoints (PARCS style), or `"linear-physical"`. Neither
 depends on the frequency. The quadratic history starts and restarts as linear,
 and `result.step_precursor_productions` reports the model used per step. The
-[eighth checkpoint](../benchmark-results/exponential-second-order/CHUNK8.md)
+{download}`eighth checkpoint <../benchmark-results/exponential-second-order/CHUNK8.md>`
 found the same accepted steps and work as the default linear transformed
 production, with precursor accuracy better or worse by regime; it is not a
 recommended setting.

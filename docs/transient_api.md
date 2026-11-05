@@ -343,14 +343,14 @@ replays (default 4). It is also rejected when the corrector's own end power
 differs from the accepted power by more than `iqs_predictor_tol`. Before
 29 October 2026 that tolerance only shortened the *next* interval. The HP-MR
 guard profile was re-checked under the new behaviour and kept
-([record](../benchmark-results/hpmr-iqs-gh200/README.md)). `result.counters` reports
+({download}`record <../benchmark-results/hpmr-iqs-gh200/README.md>`). `result.counters` reports
 `iqs_corrector_iterations` (replays), `iqs_max_iteration_change_ppm`,
 `iqs_interval_rejections`, split into `iqs_predictor_interval_reductions` and
 `iqs_unconverged_rejections`, and `iqs_predictor_interval_recoveries`. It also
 reports `iqs_unconverged_accepts` and `iqs_predictor_tol_accepts`, which count
 one-fine-step intervals that cannot be halved further. `thermal_redos` counts
 thermal windows that were re-stepped after a power correction. See the
-[quasi-static plan](quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix)
+[quasi-static plan](https://github.com/jin-li/GARNET/blob/main/docs/quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix)
 for the algorithm and measured accuracy.
 
 ## Test migration and evidence

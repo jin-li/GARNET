@@ -502,7 +502,7 @@ below one quarter of the tolerance. Before 2026-10-29 the guard only halved
 *subsequent* intervals and never replayed one. The HP-MR guard profile was
 re-checked under the new behaviour and kept
 ({download}`record <../benchmark-results/hpmr-iqs-gh200/README.md>`). See the
-[quasi-static plan](quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix).
+[quasi-static plan](https://github.com/jin-li/GARNET/blob/main/docs/quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix).
 `iqs_substeps>1` also makes a macro corrector traverse cached intermediate
 `problem_at` states, but is primarily a convergence control: the HP-MR CPU
 sweep found substantially more cost than accuracy benefit from 2–4 substeps.
