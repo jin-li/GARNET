@@ -622,12 +622,16 @@ def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_di
     # Locate labels on original boundary polygons, including split subfaces.
     for nodes, tag in (boundary_tags or {}).items():
         points = np.asarray(coords)[list(nodes)]
+        extent = float(np.max(np.linalg.norm(points - points[0], axis=1)))
+        coordinate_scale = max(extent, float(np.max(np.abs(points))))
+        tolerance = 1e-10 * extent + 16 * np.finfo(float).eps * coordinate_scale
         if len(points) == 2:
             direction = points[1] - points[0]
             length2 = direction @ direction
             projection = (bc - points[0]) @ direction / length2
-            on = np.linalg.norm(bc - points[0] - projection[:, None] * direction, axis=1) <= 1e-10 * max(1., np.sqrt(length2))
-            inside = (projection >= -1e-10) & (projection <= 1 + 1e-10)
+            on = np.linalg.norm(bc - points[0] - projection[:, None] * direction, axis=1) <= tolerance
+            fraction_tolerance = tolerance / np.sqrt(length2)
+            inside = (projection >= -fraction_tolerance) & (projection <= 1 + fraction_tolerance)
         else:
             normal = np.cross(points[1] - points[0], points[2] - points[0])
             normal /= np.linalg.norm(normal)
@@ -637,9 +641,14 @@ def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_di
             second = np.cross(normal, axis)
             relative = points - middle
             points = points[np.argsort(np.arctan2(relative @ second, relative @ axis))]
-            on = np.abs((bc - points[0]) @ normal) <= 1e-10 * max(1., np.max(np.linalg.norm(points - points[0], axis=1)))
-            signs = np.asarray([np.cross(b - a, bc - a) @ normal for a, b in zip(points, np.roll(points, -1, axis=0))])
-            inside = np.all(signs >= -1e-10, axis=0) | np.all(signs <= 1e-10, axis=0)
+            on = np.abs((bc - points[0]) @ normal) <= tolerance
+            # Signed distances to polygon edges have length units. Comparing
+            # unnormalized cross-products with a fixed tolerance mislabels
+            # neighbouring faces when the same geometry is expressed at a
+            # smaller scale.
+            signs = np.asarray([np.cross(b - a, bc - a) @ normal / np.linalg.norm(b - a)
+                                for a, b in zip(points, np.roll(points, -1, axis=0))])
+            inside = np.all(signs >= -tolerance, axis=0) | np.all(signs <= tolerance, axis=0)
         boundary_labels[on & inside] = tag
     distances = None
     if normal_distances:

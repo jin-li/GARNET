@@ -162,3 +162,26 @@ def test_boundary_node_set_label_does_not_require_polygon_winding():
     bottom = np.flatnonzero(np.isclose(mesh.bface_centers[:, 2], 0))
     assert mesh.bface_tags[bottom].tolist() == [42]
     assert np.count_nonzero(mesh.bface_tags) == 1
+
+
+@pytest.mark.parametrize("scale", [1e-5, 1., 1e5])
+@pytest.mark.parametrize("tag_nodes", [(6, 7, 10, 9), (9, 10, 7, 6)])
+def test_boundary_polygon_labels_are_scale_and_winding_invariant(scale, tag_nodes):
+    points = [(x, y, z) for z in (0., scale) for y in (0., scale)
+              for x in (0., scale, 2 * scale)]
+    cells = [(0, 1, 4, 3, 6, 7, 10, 9), (1, 2, 5, 4, 7, 8, 11, 10)]
+    mesh = assemble_mesh_3d(points, cells, [1, 2], boundary_tags={tag_nodes: 42},
+                            normal_distances=True)
+    faces = np.flatnonzero(mesh.bface_tags == 42)
+    assert len(faces) == 1
+    assert mesh.bfaces[faces[0]][0] == 0
+    assert mesh.bface_centers[faces[0], 2] == pytest.approx(scale)
+
+
+@pytest.mark.parametrize("scale", [1e-12, 1., 1e5])
+def test_boundary_segment_labels_do_not_leak_to_parallel_faces(scale):
+    points = [(0., 0.), (scale, 0.), (scale, scale), (0., scale)]
+    mesh = assemble_mesh(points, [(0, 1, 2, 3)], [1], boundary_tags={(0, 3): 42})
+    tagged = np.flatnonzero(mesh.bface_tags == 42)
+    assert len(tagged) == 1
+    assert mesh.bface_centers[tagged[0], 0] == 0
