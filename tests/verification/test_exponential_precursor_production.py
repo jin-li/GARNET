@@ -121,8 +121,12 @@ def test_two_family_changing_fission_against_independent_ode(production):
         sigma_a, nu_f = coefficients(t)
         return [base.replace(sigma_a=sigma_a, nu_sigma_f=nu_f)], None
 
+    # Resolve the coupled scattering solve below the requested eigen balance;
+    # its independent default tolerance is looser than this strict ODE control.
     steady = DiffusionEigenSolver(grid, [base], bc="reflective", device="cpu").solve(
-        tol_k=1e-13, tol_source=1e-12)
+        tol_k=1e-13, tol_source=1e-12, tol_fixed_source=1e-13)
+    assert steady.converged, steady.failure_reason
+    assert steady.balance_error < 1e-12
     phi0 = steady.flux[:, 0, 0, 0]
     phi0 = phi0/(np.dot(fission, phi0)/steady.k_eff)
     prompt = spectrum - beta @ delayed
