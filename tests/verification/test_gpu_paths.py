@@ -107,6 +107,8 @@ def _device_stencil(cp, n=24):
 
 def test_gpu_pcg_graph_capture_matches_direct_iterations(cuda):
     cp = cuda
+    if cp.cuda.runtime.is_hip:
+        pytest.skip("CuPy HIP graph capture is unsupported; ordinary PCG remains available")
     op, b = _device_stencil(cp)
     kw = dict(rtol=1e-10, check_every=4)
     reference, reference_it = pcg(op.apply, b, cp.zeros_like(b), op.inv_diag, cp, **kw)
