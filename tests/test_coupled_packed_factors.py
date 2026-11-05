@@ -16,8 +16,19 @@ from test_native_compact import fixture
 from test_native_sp5 import dense_pencil, operator
 
 
+@pytest.fixture
+def packed_backend():
+    """Packed numerical checks require the exact private ABI production admits."""
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
+
+
 @pytest.mark.parametrize('mode', ['group_ilu', 'group_ilu_coarse'])
 @pytest.mark.parametrize('deferred', [False, True])
+@pytest.mark.usefixtures("packed_backend")
 def test_native_eigen_residual_coarse_and_signed_application_parity(mode, deferred, monkeypatch):
     # Noncommuting three-group SP5 material, repeated faces, mixed boundaries.
     grid, materials = fixture('sp5')
@@ -70,6 +81,7 @@ def test_native_eigen_residual_coarse_and_signed_application_parity(mode, deferr
             assert metadata['coarse'][key] == original[key]
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_small_native_sp5_matches_independent_dense_pencil():
     op = operator(True)
     A, F = dense_pencil(orthogonal(op.grid.mesh), op.materials)
@@ -102,6 +114,7 @@ def test_default_and_explicit_superlu_are_bitwise_identical_without_packing(monk
     assert all('packed_nnz' not in s for s in default.provenance['preconditioner_metadata']['groups'])
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_original_factors_released_sequentially_and_metadata_keeps_counts(monkeypatch):
     op = operator(True)
     original_spilu, original_pack = driver.spilu, PackedSuperLU.from_superlu
@@ -174,6 +187,7 @@ def test_unsupported_backend_fails_before_operator_actions_or_assembly(monkeypat
 
 
 @pytest.mark.parametrize('exception', [MemoryError, RuntimeError, ValueError, TypeError])
+@pytest.mark.usefixtures("packed_backend")
 def test_packing_failure_preserves_original_cause_stats_and_callback_phase(exception, monkeypatch):
     op = operator(True)
     original = PackedSuperLU.from_superlu

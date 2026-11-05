@@ -20,6 +20,16 @@ from garnet.native_angular_sweep import (
 from garnet.packed_superlu import PackedSuperLU
 
 
+@pytest.fixture
+def packed_backend():
+    """Packed numerical checks require the exact private ABI production admits."""
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
+
+
 def test_storage_is_keyword_only_and_preserves_streaming_fill_positional_slot():
     for kind in (P0GalerkinTransport, StreamingBlockP0Transport):
         parameter = inspect.signature(kind).parameters['factor_storage']
@@ -73,6 +83,7 @@ def assert_payload(factor, config):
 
 @pytest.mark.parametrize('kind', [P0GalerkinTransport, StreamingBlockP0Transport])
 @pytest.mark.parametrize('boundary', ['vacuum', 'mixed', 'reflective'])
+@pytest.mark.usefixtures("packed_backend")
 def test_signed_four_group_actions_and_cold_tiny_rhs(kind, boundary):
     stream, bc = fixture(boundary)
     original = kind(stream, bc, inner_tolerance=1e-12)
@@ -117,6 +128,7 @@ def test_default_preserves_action_and_provenance_without_packing(monkeypatch):
         assert 'factor_storage' not in default._p0_provenance
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_original_superlu_objects_are_released_and_csc_is_unchanged(monkeypatch):
     factors = []
     for module, name in ((p0_module, 'spilu'), (sweep_module, 'splu')):
@@ -165,6 +177,7 @@ def test_unsupported_abi_fails_before_factorization(monkeypatch):
         factor_streaming_block(csc_matrix(np.eye(2)), factor_storage='packed')
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_packing_budget_rejected_before_conversion(monkeypatch):
     stream, bc = fixture()
     original = P0GalerkinTransport(stream, bc)
@@ -181,6 +194,7 @@ def test_packing_budget_rejected_before_conversion(monkeypatch):
                                max_bytes=block.provenance['packing_peak_estimate_bytes']-1)
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_corrupt_packed_action_fails_comparison(monkeypatch):
     stream, bc = fixture()
     original = PackedSuperLU.solve

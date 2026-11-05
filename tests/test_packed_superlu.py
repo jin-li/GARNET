@@ -11,6 +11,16 @@ from scipy.sparse.linalg import spilu, splu
 from garnet.packed_superlu import PackedSuperLU
 
 
+@pytest.fixture
+def packed_backend():
+    """Packed numerical checks require the exact private ABI production admits."""
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
+
+
 def _matrix(dtype):
     values = np.array([[0., 2, 0, 1], [3, 0, 4, 0],
                        [1, 0, 0, 1], [0, 3, 1, 0]], dtype=dtype)
@@ -22,6 +32,7 @@ def _matrix(dtype):
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64, np.complex128])
 @pytest.mark.parametrize("factory", [splu, spilu])
+@pytest.mark.usefixtures("packed_backend")
 def test_signed_multiple_repeated_rhs_match_source(dtype, factory):
     factor = factory(_matrix(dtype))
     n = factor.shape[0]
@@ -62,6 +73,7 @@ def test_signed_multiple_repeated_rhs_match_source(dtype, factory):
         np.testing.assert_array_equal(value, before)
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_random_sparse_factor_and_original_release():
     rng = np.random.default_rng(814)
     matrix = sparse_random(71, 71, density=.09, random_state=rng, format="csc")
@@ -80,6 +92,7 @@ def test_random_sparse_factor_and_original_release():
     np.testing.assert_allclose(matrix @ actual, rhs, rtol=2e-14, atol=2e-14)
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_repeated_calls_pass_the_same_sparse_arrays(monkeypatch):
     from garnet import packed_superlu as module
     packed = PackedSuperLU.from_superlu(splu(_matrix(np.float64)))
@@ -98,17 +111,29 @@ def test_repeated_calls_pass_the_same_sparse_arrays(monkeypatch):
     assert len(seen) == 4
 
 
-def test_explicit_backend_and_version_guards(monkeypatch):
-    from garnet import packed_superlu as module
-    factor = splu(_matrix(np.float64))
-    packed = PackedSuperLU.from_superlu(factor)
+@pytest.mark.usefixtures("packed_backend")
+def test_explicit_cpu_factor_guard():
     with pytest.raises(TypeError, match="CPU SuperLU"):
         PackedSuperLU.from_superlu(object())
-    monkeypatch.setattr(module.scipy, "__version__", "1.18.2")
+
+
+@pytest.mark.parametrize("backend", ["1.15.3", "1.18.2", "missing-gstrs", "noncallable-gstrs"])
+def test_explicit_backend_and_version_guards(backend, monkeypatch):
+    from garnet import packed_superlu as module
+    if backend in ("missing-gstrs", "noncallable-gstrs"):
+        monkeypatch.setattr(module.scipy, "__version__", "1.18.1")
+        if backend == "missing-gstrs":
+            monkeypatch.delattr(module._superlu, "gstrs", raising=False)
+        else:
+            monkeypatch.setattr(module._superlu, "gstrs", None, raising=False)
+    else:
+        monkeypatch.setattr(module.scipy, "__version__", backend)
+    # Both entry points reject before inspecting factors or packed arrays;
+    # no supported ABI is needed to exercise this fail-closed contract.
     with pytest.raises(RuntimeError, match="No fallback"):
-        PackedSuperLU.from_superlu(factor)
+        PackedSuperLU.from_superlu(object())
     with pytest.raises(RuntimeError, match="No fallback"):
-        packed.solve(np.ones(4))
+        PackedSuperLU().solve(np.ones(4))
 
 
 @pytest.mark.parametrize("which, value, message", [
@@ -116,6 +141,7 @@ def test_explicit_backend_and_version_guards(monkeypatch):
     ("L", 2., "unit lower"), ("U", 0., "nonzero upper"),
     ("U", np.nextafter(0., 1.), "inverse upper"),
 ])
+@pytest.mark.usefixtures("packed_backend")
 def test_invalid_factors_are_rejected(which, value, message):
     factor = splu(csc_matrix(np.eye(3)))
     getattr(factor, which).data[0] = value
@@ -123,6 +149,7 @@ def test_invalid_factors_are_rejected(which, value, message):
         PackedSuperLU.from_superlu(factor)
 
 
+@pytest.mark.usefixtures("packed_backend")
 def test_rhs_guards_and_empty_multiple_rhs(monkeypatch):
     from garnet import packed_superlu as module
     packed = PackedSuperLU.from_superlu(splu(_matrix(np.float64)))
@@ -146,6 +173,7 @@ def test_rhs_guards_and_empty_multiple_rhs(monkeypatch):
 @pytest.mark.parametrize("diagonal, off_diagonal, message", [
     (1e-300, 1e300, "finite"), (1e300, 1e-300, "underflowed"),
 ])
+@pytest.mark.usefixtures("packed_backend")
 def test_unrepresentable_upper_encoding_is_rejected(diagonal, off_diagonal, message):
     factor = splu(csc_matrix([[1., 1.], [0., 1.]]), permc_spec="NATURAL")
     upper = factor.U
