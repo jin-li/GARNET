@@ -769,12 +769,16 @@ class SDPNGroupOperator:
     def apply_transpose(self, u):
         """Return the algebraic transpose of the block applied to u.
 
-        The per-moment spatial stencils are symmetric (no ADF/DF on the moment
-        operators; cylindrical ones are volume-weighted), so the block
-        transpose is the same stencil with the cell coupling A_ij -> A_ji and
+        With symmetric per-moment spatial stencils (including volume-weighted
+        cylindrical ones), the block transpose uses the same stencil with the
+        cell coupling A_ij -> A_ji and
         each boundary cell's Marshak matrix K -> K^T. The Jacobi diagonal is
-        unchanged, so ``inv_diag`` serves both. Used by the adjoint eigen-solve.
+        unchanged, so ``inv_diag`` serves both. Unequal mesh trace factors
+        make the spatial stencils nonsymmetric; that transpose is not yet
+        implemented and is rejected explicitly.
         """
+        if any(not getattr(moment, "symmetric", True) for moment in self.moments):
+            raise ValueError("transpose with nonsymmetric spatial moment operators is not supported")
         return self._apply(u, transpose=True)
 
     def _apply(self, u, transpose):
