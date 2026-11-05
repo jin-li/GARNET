@@ -631,6 +631,12 @@ def _assembled_mesh(coords, cells, tags, centroid, measure, face_data, normal_di
         else:
             normal = np.cross(points[1] - points[0], points[2] - points[0])
             normal /= np.linalg.norm(normal)
+            middle = points.mean(axis=0)
+            axis = points[0] - middle
+            axis /= np.linalg.norm(axis)
+            second = np.cross(normal, axis)
+            relative = points - middle
+            points = points[np.argsort(np.arctan2(relative @ second, relative @ axis))]
             on = np.abs((bc - points[0]) @ normal) <= 1e-10 * max(1., np.max(np.linalg.norm(points - points[0], axis=1)))
             signs = np.asarray([np.cross(b - a, bc - a) @ normal for a, b in zip(points, np.roll(points, -1, axis=0))])
             inside = np.all(signs >= -1e-10, axis=0) | np.all(signs <= 1e-10, axis=0)

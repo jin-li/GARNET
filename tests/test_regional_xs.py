@@ -104,10 +104,11 @@ def test_bad_or_absent_transport_coefficient(bad):
 @pytest.mark.parametrize("key, value", [("TRC_DIFFCOEF", paired([1.])),
     ("INF_SP0", paired([.3, .1])), ("INF_RABSXS", paired([-.1, .2])),
     ("INF_SP0", paired([.3, -.1, .05, .75]))])
-def test_bad_shape_and_negative_native_production_or_reduced_absorption(key, value):
+def test_bad_native_arrays_or_unbalanced_signed_reduced_absorption(key, value):
     native = record()
     native.fields[key] = value
-    with pytest.raises(ValueError, match=key):
+    expected = "scalar production balance" if key == "INF_RABSXS" else key
+    with pytest.raises(ValueError, match=expected):
         adapt(native)
 
 

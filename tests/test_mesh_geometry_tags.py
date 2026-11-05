@@ -142,3 +142,23 @@ def test_degenerate_3d_geometry_is_rejected():
     with pytest.raises(ValueError):
         assemble_mesh_3d([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
                          [(0, 1, 2, 3)], [1])
+
+
+def test_geometry_aliases_share_storage_when_replaced():
+    from dataclasses import replace
+    mesh = assemble_mesh([(0, 0), (1, 0), (1, 1), (0, 1)], [(0, 1, 2, 3)], [0])
+    assert mesh.bface_centers is mesh.bface_center
+    shifted = mesh.bface_center + .1
+    assert replace(mesh, bface_centers=shifted).bface_center is shifted
+    assert replace(mesh, bface_center=shifted).bface_centers is shifted
+    assert replace(mesh, bface_centers=None).bface_center is None
+
+
+def test_boundary_node_set_label_does_not_require_polygon_winding():
+    mesh = assemble_mesh_3d([(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),
+                             (0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1)],
+                            [tuple(range(8))], [0], normal_distances=True,
+                            boundary_tags={(0, 2, 1, 3): 42})
+    bottom = np.flatnonzero(np.isclose(mesh.bface_centers[:, 2], 0))
+    assert mesh.bface_tags[bottom].tolist() == [42]
+    assert np.count_nonzero(mesh.bface_tags) == 1
