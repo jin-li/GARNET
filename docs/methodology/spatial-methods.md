@@ -46,6 +46,16 @@ unstructured diffusion solver's deferred correction.
 
 `build_rectilinear_mesh_3d` constructs a vertex-free common finite-volume mesh from strictly increasing x/y/z edges and a boolean mask. The input arrays are `(nz, ny, nx)`; active cell IDs follow C order. Centroids and widths are in x/y/z order. Mask exposures and outer-box exposures are distinct metadata, and callers choose their boundary conditions. This mesh has no vertex representation for vertex-based export.
 
+For fitted meshes, the experimental fixed linear corrected scalar and
+order-1 moment operators provide separate reconstruction contracts. The native
+full-matrix SP3/SDP1/SP5/SP7 CPU operator retains coupled energy-group matrices
+and uses a distinct cell-major state. The
+[method selection guide](../development/native-methods.md) connects these
+choices to spatial/energy homogenization, angular source and streaming
+operators, bounded transport iteration, and optional storage/preconditioning.
+Those algebraic and manufactured-field checks do not establish full-core or
+high-fidelity transport qualification.
+
 ## Discontinuity factors
 
 A whole-face factor relates a homogenized surface value to its reference heterogeneous value. Interface continuity is imposed on the **factor-weighted trace**, while the normal current remains conservative. In NEM notation,

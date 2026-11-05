@@ -45,6 +45,14 @@ print(moments.loss[1])
 
 This template needs a file containing the required native fields. Choose `from-major` only when that flattening contract has been independently established. Signed higher moments and native reported error metadata remain unchanged. This object feeds the specialized coupled-moment path; standard `Material` SPN/SN constructors do not automatically consume it. See the [methodology](../methodology/transport.md) for full-matrix, hybrid GPU and $B\to0$ condensation limits.
 
+For native full-matrix SP3/SP5/SP7, use the separate experimental CPU operator
+and its explicit family and per-cell material bindings. Follow the
+[method selection guide](../development/native-methods.md) before selecting
+spatial/energy homogenization or an angular comparator. It distinguishes
+source-only, streaming and bounded transport APIs, and explains optional
+compact/coarse/packed controls. None of these choices automatically qualifies
+native data or transfers earlier GPU evidence to a new CPU path.
+
 ## Build a nonuniform masked mesh
 
 The following example needs no external data:

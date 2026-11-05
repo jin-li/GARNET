@@ -31,6 +31,31 @@ development/integration_inventory
 development/validation
 ```
 
+## Experimental fitted-mesh and native methods
+
+Use the [method selection guide](development/native-methods.md) to distinguish
+corrected diffusion, native full-matrix moments and angular transport pilots,
+then follow the relevant API contract. These opt-in paths retain separate
+validation and device scopes.
+
+```{toctree}
+:maxdepth: 1
+:caption: Experimental mesh and native methods
+
+development/native-methods
+development/subpin-mesh-geometry
+development/polygon-mesh
+development/corrected-fv
+development/corrected-mesh-moments
+development/corrected-native-moments
+development/moment-homogenization
+development/native-angular-source
+development/native-mesh-streaming
+development/native-mesh-transport
+development/native-angular-p0
+development/native-nem-p0
+```
+
 ## Building locally
 
 Install the optional documentation dependencies with `pip install -e '.[docs]'`.
