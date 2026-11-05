@@ -1,0 +1,4 @@
+DONE c5g7-SDP1-s4 RESULT c5g7 SDP1      marshak   mesh    4  k=1.183607373  dk=  -294.3 pcm  conv=True  outers=  64  inners=  17242  t=   32.38s
+DONE c5g7-SDP1-s8 RESULT c5g7 SDP1      marshak   mesh    8  k=1.182253756  dk=  -429.6 pcm  conv=True  outers= 122  inners=  84939  t=  168.35s
+DONE c5g7-SDP1-s16 RESULT c5g7 SDP1      marshak   mesh   16  k=1.182225957  dk=  -432.4 pcm  conv=True  outers= 135  inners= 231530  t=  451.99s
+DONE c5g7-SDP1-s24 RESULT c5g7 SDP1      marshak   mesh   24  k=1.182239503  dk=  -431.0 pcm  conv=True  outers= 144  inners= 509771  t= 1304.95s

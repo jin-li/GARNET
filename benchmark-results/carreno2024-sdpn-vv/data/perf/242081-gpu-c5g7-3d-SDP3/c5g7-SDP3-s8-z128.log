@@ -1,0 +1,34 @@
+Traceback (most recent call last):
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf3d-stage/repo/tools/assess_carreno2024.py", line 334, in <module>
+    main()
+    ~~~~^^
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf3d-stage/repo/tools/assess_carreno2024.py", line 320, in main
+    rec = run_one(args.case, method, vacuum, mesh, args)
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf3d-stage/repo/tools/assess_carreno2024.py", line 223, in run_one
+    res = solver.solve(tol_k=args.tol_k, tol_source=args.tol_source,
+                       verbose=args.verbose)
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf3d-stage/repo/garnet/solver.py", line 540, in solve
+    state[g], n_it = self._linsolve(
+                     ~~~~~~~~~~~~~~^
+        apply_A, self._rhs(g, q0, adjoint), state[g],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.ops[g].inv_diag, xp, rtol=rtol,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        precond=precond)
+        ^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-carreno-perf3d-stage/repo/garnet/linalg.py", line 805, in gmres
+    r = b - apply_A(x)
+        ~~^~~~~~~~~~~~
+  File "cupy/_core/core.pyx", line 1379, in cupy._core.core._ndarray_base.__sub__
+  File "cupy/_core/_kernel.pyx", line 1349, in cupy._core._kernel.ufunc.__call__
+  File "cupy/_core/_kernel.pyx", line 645, in cupy._core._kernel._get_out_args_from_optionals
+  File "cupy/_core/core.pyx", line 2999, in cupy._core.core._ndarray_init
+  File "cupy/_core/core.pyx", line 272, in cupy._core.core._ndarray_base._init_fast
+  File "cupy/cuda/memory.pyx", line 875, in cupy.cuda.memory.alloc
+  File "cupy/cuda/memory.pyx", line 1579, in cupy.cuda.memory.MemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1600, in cupy.cuda.memory.MemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1271, in cupy.cuda.memory.SingleDeviceMemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1292, in cupy.cuda.memory.SingleDeviceMemoryPool._malloc
+  File "cupy/cuda/memory.pyx", line 1537, in cupy.cuda.memory.SingleDeviceMemoryPool._try_malloc
+  File "cupy/cuda/memory.pyx", line 1540, in cupy.cuda.memory.SingleDeviceMemoryPool._try_malloc
+cupy.cuda.memory.OutOfMemoryError: Out of memory allocating 681,836,544 bytes (allocated so far: 100,553,656,832 bytes).

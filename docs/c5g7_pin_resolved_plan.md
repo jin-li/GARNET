@@ -47,8 +47,9 @@ Details that matter for correctness:
   s = 4, +0.06% at s = 8 and −0.02% at s = 16. At about 25 (UO2) to 45 (MOX)
   pcm per 0.1% of fuel area, that would add non-monotone noise of tens of pcm
   to k_ref. The example uses sub = 256 (`COVERAGE_SAMPLES`), which keeps the
-  area error below 5e-5 at every s. `build_c5g7_2d` keeps sub = 16 so other
-  published results do not move. `_pin_coverage` became the public
+  area error below 5e-5 at every s. Since 30 October 2026 `build_c5g7_2d`
+  uses exact areas by default (`exact_area=False` restores sub = 16; see
+  benchmark-results/carreno2024-sdpn-vv). `_pin_coverage` became the public
   `pin_coverage` so the example can import it.
 - The default (pin-cell homogenized) path is unchanged: s = 2 reproduces the
   stored baseline to 1e-13.
@@ -136,8 +137,8 @@ publishable as such; the plan requires reporting regressions.
 
 ## Out of scope / follow-on
 
-- **Exact circle-cell intersection areas** instead of sampling. They would
-  remove the sub parameter. Use them in `build_c5g7_2d` only together with a
-  documented change to published results.
+- **Exact circle-cell intersection areas** instead of sampling: done for
+  `build_c5g7_2d` and `build_c5g7_td` (default since 30 October 2026); this
+  example still samples 256 × 256 points so its results do not move.
 - **Water reflector colorsets**, which need reflector factors.
 - **Transport (S_N) references and SPH combinations.**

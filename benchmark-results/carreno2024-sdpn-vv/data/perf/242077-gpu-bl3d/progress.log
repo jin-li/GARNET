@@ -1,0 +1,10 @@
+DONE bl-SP1-n640-z16 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  16393  t=    8.51s
+DONE bl-SP1-n640-z64 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  16526  t=   31.72s
+DONE bl-SP3-n640-z16 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  17155  t=   25.58s
+DONE bl-SP3-n640-z64 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  17301  t=   74.88s
+DONE bl-SDP1-n640-z16 RESULT bl SDP1      marshak   mesh  640  k=0.801631102  dk=  -372.9 pcm  conv=True  outers=  28  inners=  56920  t=  372.36s
+DONE bl-SDP1-n640-z64 RESULT bl SDP1      marshak   mesh  640  k=0.801631102  dk=  -372.9 pcm  conv=True  outers=  27  inners=  53681  t= 1113.04s
+DONE bl-SDP3-n640-z16 RESULT bl SDP3      marshak   mesh  640  k=0.803946259  dk=  -141.4 pcm  conv=True  outers=  32  inners=  57678  t=  664.93s
+DONE bl-SDP3-n640-z64 RESULT bl SDP3      marshak   mesh  640  k=0.803946259  dk=  -141.4 pcm  conv=True  outers=  32  inners=  57705  t= 2384.03s
+DONE bl-SP1-n640-z256 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  16566  t=  122.03s
+DONE bl-SP3-n640-z256 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  17247  t=  286.61s

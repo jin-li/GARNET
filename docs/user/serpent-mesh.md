@@ -68,3 +68,32 @@ print(topology["grid_indices"])
 The topology records exposed masked faces separately from outer-box faces; this builder example deliberately makes both reflective. If your model requires different exposure conditions, assign them through the appropriate low-level mesh boundary interface. IDs follow active `(z,y,x)` C order, while centroid and width components are `(x,y,z)`. Tags are labels, not automatically material indices.
 
 The vertex-free result supports finite-volume connectivity, not vertex export. `MeshModel` is a diffusion builder; low-level `MeshGrid` moment solvers have their own data and factor contracts. For general Gmsh input see [unstructured mesh](https://github.com/jin-li/GARNET/blob/main/examples/unstructured_mesh.py). The synthetic [common mesh example](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/common_mesh_fv.py) compares the integrated common-mesh pathway.
+
+## Choose geometry and skew correction explicitly
+
+For polygon meshes, `assemble_mesh(..., normal_distances=True)` is the default.
+It supplies normal distances on both sides of interior faces, plus interior
+and boundary face normals and centres. `UnstructuredDiffusionSolver` uses
+this geometry for its default deferred nonorthogonal correction: reconstructed
+cell gradients correct the tangential part of the face leakage. On an
+orthogonal mesh that contribution vanishes. The three-dimensional
+`assemble_mesh_3d` retains `normal_distances=False` by default; opt into `True`
+to provide this geometry for the unstructured diffusion solver. Gmsh imports
+already select normal geometry for three-dimensional meshes.
+
+`normal_distances=False` preserves the historical centroid-distance two-point
+approximation, including Euclidean centroid-to-boundary-midpoint distances,
+and omits correction geometry. Selecting normal distances while disabling
+`nonorthogonal_correction` also leaves a two-point approximation; normal
+distances alone do not establish convergence on a skew mesh.
+
+With normal geometry and an active skew correction,
+`UnstructuredDiffusionSolver` raises an error if `face_df` or `boundary_df`
+contains non-unit factors. A corrected gradient law for those discontinuous
+traces is not implemented. Pass `nonorthogonal_correction=False` to that
+low-level solver only when deliberately choosing the conservative two-point
+factor approximation, then assess its mesh error. Factors remain usable on
+orthogonal meshes, where the correction is zero. See the
+[spatial methodology](../methodology/spatial-methods.md) for the discretization
+and evidence limits. This diffusion option does not qualify the native moment
+transport pathway or add the correction to its separate `MeshGrid` operators.

@@ -1,0 +1,23 @@
+DONE bl-SP1-n80 RESULT bl SP1       marshak   mesh   80  k=0.777667042  dk= -2769.3 pcm  conv=True  outers=  18  inners=   1515  t=    0.15s
+DONE bl-SP3-n80 RESULT bl SP3       marshak   mesh   80  k=0.800177547  dk=  -518.2 pcm  conv=True  outers=  18  inners=   1523  t=    0.38s
+DONE bl-SDP1-n80 RESULT bl SDP1      marshak   mesh   80  k=0.802786891  dk=  -257.3 pcm  conv=True  outers=  21  inners=   1688  t=    0.96s
+DONE bl-SDP3-n80 RESULT bl SDP3      marshak   mesh   80  k=0.805240993  dk=   -11.9 pcm  conv=True  outers=  25  inners=   1728  t=    1.72s
+DONE bl-SP1-n160 RESULT bl SP1       marshak   mesh  160  k=0.777017559  dk= -2834.2 pcm  conv=True  outers=  18  inners=   3357  t=    0.77s
+DONE bl-SP3-n160 RESULT bl SP3       marshak   mesh  160  k=0.799323447  dk=  -603.7 pcm  conv=True  outers=  17  inners=   3121  t=    1.75s
+DONE bl-SDP1-n160 RESULT bl SDP1      marshak   mesh  160  k=0.801908096  dk=  -345.2 pcm  conv=True  outers=  24  inners=   4877  t=    7.96s
+DONE bl-SP1-n320 RESULT bl SP1       marshak   mesh  320  k=0.776854977  dk= -2850.5 pcm  conv=True  outers=  17  inners=   6469  t=    5.13s
+DONE bl-SDP3-n160 RESULT bl SDP3      marshak   mesh  160  k=0.804265973  dk=  -109.4 pcm  conv=True  outers=  29  inners=   4923  t=   18.15s
+DONE bl-SP3-n320 RESULT bl SP3       marshak   mesh  320  k=0.799108585  dk=  -625.1 pcm  conv=True  outers=  18  inners=   6782  t=   15.07s
+DONE bl-SP1-n640 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  13401  t=   59.92s
+DONE bl-SDP1-n320 RESULT bl SDP1      marshak   mesh  320  k=0.801686604  dk=  -367.3 pcm  conv=True  outers=  23  inners=  13064  t=   86.96s
+DONE bl-SDP3-n320 RESULT bl SDP3      marshak   mesh  320  k=0.804010889  dk=  -134.9 pcm  conv=True  outers=  28  inners=  11284  t=  165.95s
+DONE bl-SP3-n640 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  14140  t=  167.31s
+DONE bl-SP1-n1280 RESULT bl SP1       marshak   mesh 1280  k=0.776804131  dk= -2855.6 pcm  conv=True  outers=  18  inners=  29156  t= 1005.46s
+DONE bl-SDP1-n640 RESULT bl SDP1      marshak   mesh  640  k=0.801631102  dk=  -372.9 pcm  conv=True  outers=  28  inners=  39343  t= 1919.83s
+FAIL bl-SP1-n2560 (see bl-SP1-n2560.log)
+DONE bl-SP3-n1280 RESULT bl SP3       marshak   mesh 1280  k=0.799041307  dk=  -631.9 pcm  conv=True  outers=  18  inners=  29141  t= 2887.50s
+FAIL bl-SDP1-n1280 (see bl-SDP1-n1280.log)
+DONE bl-SDP3-n640 RESULT bl SDP3      marshak   mesh  640  k=0.803946259  dk=  -141.4 pcm  conv=True  outers=  30  inners=  40868  t= 4431.05s
+FAIL bl-SP3-n2560 (see bl-SP3-n2560.log)
+FAIL bl-SDP3-n1280 (see bl-SDP3-n1280.log)
+DONE bl-SP3-n640-alone RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  14140  t=  166.27s

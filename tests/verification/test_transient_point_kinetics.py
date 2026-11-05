@@ -16,6 +16,8 @@ agreement. With a physical neutron speed the prompt jump to beta/(beta-rho) is
 resolved in-window, and the match tightens to a few 1e-4 (backward-Euler O(dt)).
 """
 
+from functools import lru_cache
+
 import numpy as np
 import pytest
 
@@ -36,6 +38,19 @@ def _core():
     return Model.from_grid(GRID, BASE, bc="zero-flux", kinetics=KIN)
 
 
+@lru_cache(maxsize=1)
+def _tight_steady():
+    """Initial state for the BDF equilibrium tests.
+
+    Until audit O12 the first sweep of every step returned the warm start
+    untouched (one sweep, no inner iterations), so an unperturbed core held
+    P = 1 exactly whatever its steady tolerance. Solved steps carry the steady
+    state's own floor forward: from this state the power settles 5e-9 below
+    one at tol_step 1e-10 and 1e-11 alike, and the tests allow 1e-8.
+    """
+    return _core().steady(device='cpu', tol_k=1e-12, tol_source=1e-11)
+
+
 def absorption_step_problem(delta_sigma_a):
     """Sigma_a -> Sigma_a - delta everywhere for t > 0 (positive reactivity)."""
     m0 = [BASE]
@@ -52,17 +67,16 @@ def test_unperturbed_transient_stays_steady():
 
 def test_diffusion_bdf_orders_preserve_equilibrium_and_report_startup_order():
     """BDF1--6 share the diffusion path and must not manufacture reactivity."""
-    steady = _core().steady(
-        device='cpu', tol_k=1e-09, tol_source=1e-08)
     for order in range(1, 7):
         result = _core().transient(
             at=lambda _t: ([BASE], None), device='cpu', t_end=0.06, dt=0.01,
-            initial_steady=steady, time_scheme=f'bdf{order}', tol_step=1e-09)
+            initial_steady=_tight_steady(), time_scheme=f'bdf{order}',
+            tol_step=1e-10)
         assert result.time_scheme == ("backward-euler" if order == 1
                                       else f"bdf{order}")
         assert result.time_orders == [min(step, order)
                                       for step in range(1, 7)]
-        np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=2e-9)
+        np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=1e-8)
 
 
 def test_bdf3_monolithic_and_groupwise_diffusion_solve_same_equations():
@@ -125,11 +139,11 @@ def test_nonuniform_bdf_schedule_preserves_diffusion_equilibrium():
     widths = [0.007, 0.011, 0.004, 0.013, 0.009, 0.016]
     result = _core().transient(
         at=lambda _t: ([BASE], None), device='cpu', t_end=sum(widths), dt=widths,
-        time_scheme='bdf5', tol_step=1e-09)
+        initial_steady=_tight_steady(), time_scheme='bdf5', tol_step=1e-10)
     np.testing.assert_allclose(result.times,
                                np.r_[0.0, np.cumsum(widths)], atol=2e-16)
     assert result.time_orders == [1, 2, 3, 4, 5, 5]
-    np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=2e-9)
+    np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=1e-8)
 
 
 def test_explicit_step_schedule_validation_is_strict():
@@ -147,9 +161,11 @@ def test_explicit_step_schedule_validation_is_strict():
 def test_bdf_history_restart_reduces_order_without_disturbing_equilibrium():
     result = _core().transient(
         at=lambda _t: ([BASE], None), device='cpu', t_end=0.08, dt=0.01,
-        time_scheme='bdf5', bdf_restart_times=[0.04], tol_step=1e-09)
-    assert result.time_orders == [1, 2, 3, 1, 2, 3, 4, 5]
-    np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=2e-9)
+        initial_steady=_tight_steady(), time_scheme='bdf5',
+        bdf_restart_times=[0.04], tol_step=1e-10)
+    # The step ending at 0.04 keeps its history; the step leaving it restarts.
+    assert result.time_orders == [1, 2, 3, 4, 1, 2, 3, 4]
+    np.testing.assert_allclose(result.power, 1.0, rtol=0, atol=1e-8)
 
 
 def test_bdf_restart_must_be_aligned_with_the_step_schedule():
@@ -211,7 +227,11 @@ def test_adaptive_bdf_rejects_aligns_event_and_restarts_order():
     event = int(np.flatnonzero(np.isclose(result.times, 0.01))[0])
     # time_orders indexes steps, so the first step leaving the event is event.
     assert result.time_orders[event] == 1
-    assert result.power[-1] == pytest.approx(3.634, abs=2e-2)
+    # Reference 3.6339 (fixed BDF2, 640 steps). Since the startup step uses
+    # an O(h**2) explicit-Euler defect, rtol=1e-2 gives 3.662 (0.8%), and
+    # 1e-3 / 1e-4 give 3.6381 / 3.6347. The old constant startup predictor
+    # (an O(h) defect) forced a needlessly small first step.
+    assert result.power[-1] == pytest.approx(3.634, rel=1e-2)
 
 
 def test_adaptive_bdf_automatic_order_selects_and_reports_candidates():

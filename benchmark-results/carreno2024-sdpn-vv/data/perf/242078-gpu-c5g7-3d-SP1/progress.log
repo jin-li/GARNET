@@ -1,0 +1,4 @@
+DONE c5g7-SP1-s8-z8 RESULT c5g7 SP1       marshak   mesh    8  k=1.183292060  dk=  -325.8 pcm  conv=True  outers=  60  inners=  46380  t=    8.59s
+DONE c5g7-SP1-s8-z64 RESULT c5g7 SP1       marshak   mesh    8  k=1.183292061  dk=  -325.8 pcm  conv=True  outers=  62  inners=  48078  t=   39.07s
+DONE c5g7-SP1-s8-z128 RESULT c5g7 SP1       marshak   mesh    8  k=1.183292061  dk=  -325.8 pcm  conv=True  outers=  59  inners=  47122  t=   73.31s
+DONE c5g7-SP1-s16-z64 RESULT c5g7 SP1       marshak   mesh   16  k=1.183262389  dk=  -328.8 pcm  conv=True  outers=  60  inners= 102062  t=  305.93s

@@ -260,7 +260,7 @@ def test_scalar_trace_roundoff_guard_preserves_values(monkeypatch, negative, acc
     solver = DiffusionEigenSolver(Grid((2, 1, 1), (3., 1., 1.)), mat,
                                  bc='reflective', device='cpu')
     # Emulate cancellation in a physical trace of an otherwise empty group.
-    monkeypatch.setattr(solver, '_phi', lambda s: s + negative if not np.any(s) else s)
+    monkeypatch.setattr(solver, '_phi', lambda s, adjoint=False: s + negative if not np.any(s) else s)
     result = solver.solve()
     assert result.converged == accepted
     assert np.all(result.flux[1] < 0)
@@ -280,7 +280,7 @@ def test_masked_source_inherits_scalar_roundoff_without_clipping(monkeypatch, ad
                                  active=active, device='cpu')
     original_phi = solver._phi
 
-    def rounded_trace(state):
+    def rounded_trace(state, adjoint=False):
         phi = original_phi(state).copy()
         phi[-1] = -1e-16
         return phi
@@ -297,7 +297,7 @@ def test_masked_source_inherits_scalar_roundoff_without_clipping(monkeypatch, ad
         state0 = solver.state
 
     # The propagated source bound must never admit a nonphysical trace.
-    def invalid_trace(state):
+    def invalid_trace(state, adjoint=False):
         phi = original_phi(state).copy()
         phi[-1] = -1e-4
         return phi

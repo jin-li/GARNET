@@ -1,0 +1,4 @@
+gpu c5g7-SDP1-s4 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 4 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SDP1-s8 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 8 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SDP1-s16 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 16 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
+gpu c5g7-SDP1-s24 c5g7 --methods SDP1 --vacuum marshak --cells-per-pin 24 --tol-k 1e-9 --tol-source 1e-8 --no-lines --repeats 3 --device gpu
