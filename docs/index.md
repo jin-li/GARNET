@@ -23,6 +23,7 @@ model_api
 transient_api
 coupling
 serpent_xs
+regional_xs
 amd_rocm
 kinetics_parameters
 api_audit
