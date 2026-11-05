@@ -20,7 +20,7 @@ poisoned = fuel.replace(sigma_a=fuel.sigma_a * [1.0, 1.003])
 run = core.transient(
     t_end=0.1, dt=0.01, time_scheme="bdf2", device="auto",
     initial_steady=steady,
-    materials_at=lambda t: {"fuel": poisoned} if 0.035 <= t < 0.08 else {},
+    materials_at=lambda t: {"fuel": poisoned} if 0.035 < t <= 0.08 else {},
     event_times=[0.035, 0.08],
 )
 print(run)
@@ -32,6 +32,10 @@ unperturbed calculation stays at `P/P0 = 1` to solver accuracy.
 `materials_at(t)` accepts a partial
 name/index mapping or a complete ordered list; each mapping is relative to the
 base model. Return cached material objects while the constants are unchanged.
+The operator cache is keyed on object identity, so when the constants change,
+return a new `Material` rather than mutating the arrays of one already
+returned: an in-place edit to the same object is not detected and the solve
+keeps the stale operator.
 
 For moving assignments, `state_at(t)` returns a cached model with the same
 grid, physical dimensions, boundaries, active cells and material count. Use
@@ -48,15 +52,23 @@ Select `time_scheme="bdf2"` through `"bdf6"` explicitly for higher orders.
 
 `event_times` must lie strictly inside `(0, t_end)`. For fixed BDF steps, the
 API splits the schedule at those times and includes a final short interval if
-needed. Adaptive BDF hits the same times exactly. Both paths use the existing
-solver's history-restart behavior at the event. This prevents a control jump
-from being silently crossed by a long step. The callback defines the value at
-the event itself; use `t >= event` when the new state begins there.
+needed. A grid endpoint within `1e-3` of the local step width of an event is
+moved onto the event instead, so no sliver step is created (`t_end` itself is
+never moved). Adaptive BDF hits the same times exactly. This prevents a control
+jump from being silently crossed by a long step.
+
+The event endpoint belongs to the old smooth segment: the callback's value at
+`t_e` must be the pre-event state, as its value at t=0 is. Write `t > event`
+when the new state begins there, as in the examples. BDF history is discarded
+before the step *leaving* the event, which restarts at order one; this holds
+for fixed and adaptive steps and for low-level `bdf_restart_times`. Before
+29 October 2026 fixed schedules restarted the step ending at the event and
+recommended `t >= event`; the observed order then fell to about one.
 
 ```python
 adaptive = core.transient(
     t_end=0.1, dt=0.005, time_scheme="bdf3", device="auto",
-    materials_at=lambda t: {"fuel": poisoned} if t >= 0.035 else {},
+    materials_at=lambda t: {"fuel": poisoned} if t > 0.035 else {},
     event_times=[0.035],
     adaptive_bdf={"rtol": 1e-3, "min_dt": 1e-7, "max_dt": 0.01},
 )
@@ -68,7 +80,30 @@ explicitly supplied. If the time scheme is omitted, it uses adaptive BDF1
 `step_alignment_times` are still available. Use `event_times` or
 `bdf_restart_times`, not both. Nonuniform/event schedules require BDF or FTM.
 Controller tolerances govern a local defect estimate; assess time convergence
-for the observable and transient of interest.
+for the observable and transient of interest. On the first step, and after
+each restart, no history exists. There the defect is taken against an
+explicit-Euler predictor that uses the materials just after the start (the
+post-event state). This gives an O(h²) defect, like later steps, so a fast
+prompt jump is resolved rather than rejected down to `min_dt`. A coupled
+driver's own `adaptive_error_state` prediction is not covered by this: a
+constant startup prediction there is still an O(h) defect.
+
+**Formal order.** Fixed-step BDF3–BDF6 converge only at second order, although
+with a smaller error constant than BDF2. Their BDF1/BDF2 startup steps, at t=0
+and after each restart, run at the full width, and the startup error persists.
+Higher order needs startup widths that shrink faster than `dt`. The adaptive
+controller selects such widths. With a fixed step, BDF3 and BDF4 accept
+`bdf_startup="graded"`: the solver then starts at t=0 and after each
+`bdf_restart_times` event from `dt*(dt/t_end)**((q-1)/2)` and grows the width
+by 1.5 up to `dt` (measured orders 2.97 and 4.19, against 2.09 and 2.00, for
+8–17 extra steps). BDF5 and BDF6 diverge on such growing steps and refuse it.
+The graded steps are ordinary steps in `result.times` and `on_step`.
+A driver with its own schedule, such as `run_lra2d_cpu`, passes
+`garnet.graded_bdf_widths(t_end, dt, order)` as `dt`. The S_N driver supports
+only constant-width BDF and keeps the second-order cap. `time_scheme="crank-nicolson"` is second order for data that are
+continuous at t=0, and it stays second order across restarts, which re-seed
+its explicit half from the post-event state. For a perturbation applied at t=0
+it is first order, because its first explicit half uses the t=0 steady state.
 
 Experimental `time_scheme="ftm2"` and `"ftm-bdf2"` also use this interface
 with fixed or explicit widths. The latter supplies a damped, full-state
@@ -93,9 +128,9 @@ transformed = core.transient(
 a full step with two half steps in physical flux and precursor fields, then
 commits the two-half-step state once per macro endpoint. Rejections restore
 the physical state, frequency samples and recurrence histories. Callbacks
-and reported times include only committed macro endpoints. For FTM events,
-the endpoint belongs to the preceding segment: use `t > event` to change the
-material in the interval leaving that endpoint, as in the example above.
+and reported times include only committed macro endpoints. FTM events follow
+the same convention as BDF: use `t > event` to change the material in the
+interval leaving that endpoint, as in the example above.
 
 Each group/family has a separate active-volume weighted RMS error; the
 maximum controls acceptance. Scaling uses
@@ -104,7 +139,7 @@ The raw full/fine difference has no Richardson divisor. The width controller
 defaults to `max_factor=1.2` and `rejection_strategy="error"`; other width
 controls match `adaptive_bdf`, excluding automatic order selection.
 `min_dt` and `max_dt` bound macro widths; internal half widths are half that.
-Existing adaptive BDF retains its original error norm and defaults.
+Adaptive BDF applies the same per-field principle to its predictor defect (`error_norm="blockwise"`, the default since 2026-10-29); `error_norm="concatenated"` keeps the original joined-state Eq. (44).
 
 `local_error_blocks` and `rejected_error_blocks` list flux-group errors then
 precursor-family errors. `ftm_trial_diagnostics` and
@@ -225,8 +260,10 @@ run = core.transient(
 ```
 
 `on_step` runs once after each accepted neutron step and never for rejected
-attempts or the initial state. The flux stays on its current device. Treat
-callback arrays as read-only and copy them if retaining snapshots. Ordinary
+attempts or the initial state. The flux is a private copy on its current
+device: a `(G, ...)` array on the batched GPU path, otherwise a list of
+per-group arrays. It may be retained across steps, and writing to it does not
+affect the solver. Ordinary
 result reports transfer the final scalar flux to NumPy; device workflows can
 use `run.raw.flux` and `run.raw.precursors`.
 
@@ -249,7 +286,10 @@ or use the low-level result with its explicit caller-owned compatibility check.
 revolution. `add_region(material, r=(...), z=(...))` paints cell centres in an
 annular axial region. `add_box` is an alias. `r="vacuum"` sets the cylinder
 wall; `z=("reflective", "vacuum")` sets the lower and upper axial faces.
-The r=0 face has zero area and is a natural symmetry axis.
+The r=0 face has zero area and is a natural symmetry axis. The y faces of an
+r-z grid are the azimuthal seam, not a surface, so they are always reflective.
+This also holds for a scalar `bc` passed to a low-level cylindrical `Grid`
+solver.
 
 `material_map` has shape `(nr, nz)` and scalar flux has shape
 `(groups, nr, 1, nz)`. `radial_centers` and `axial_centers` provide coordinates.
@@ -268,9 +308,11 @@ run = core.transient(t_end=1.0, dt=0.01, at=problem_at, device="cpu")
 ```
 
 `Model.from_grid` returns `CylindricalModel` for a cylindrical grid and copies
-the material map. Cartesian input grids retain all three supplied extents and
-boundary axes, including one-cell-thick directions. This preserves the
-original benchmark problem rather than inferring collapsed-axis boundaries.
+the material map. On Cartesian input, trailing one-cell axes are collapsed as
+in a model built in 1-D or 2-D, so a single `bc` spec leaves them reflective.
+An explicit per-axis or per-face `bc` that closes such an axis keeps it as a
+physical one-cell slab. Before 2026-10-29 a scalar `"vacuum"` closed the
+collapsed z axis of a 2-D grid too. Physical extents are preserved either way.
 
 ## Thermal coupling
 
@@ -291,6 +333,25 @@ Adaptive neutron controls enter through
 for neutron-only runs. Thermal exchange times are aligned by the coupled
 driver without restarting BDF history. For fixed stepping, `dt_thermal` must
 remain an integer multiple of `dt`.
+
+`quasistatic_transient` with the default `shape_method="iqs"` iterates each
+shape interval as a predictor–corrector. The interval is replayed from its
+start, with the end-shape correction to ρ, Λ and β interpolated in time,
+until the end power changes by at most `iqs_iteration_tol` (default `1e-4`).
+It is rejected and retried with half the width after `iqs_max_iterations`
+replays (default 4). It is also rejected when the corrector's own end power
+differs from the accepted power by more than `iqs_predictor_tol`. Before
+29 October 2026 that tolerance only shortened the *next* interval. The HP-MR
+guard profile was re-checked under the new behaviour and kept
+({download}`record <../benchmark-results/hpmr-iqs-gh200/README.md>`). `result.counters` reports
+`iqs_corrector_iterations` (replays), `iqs_max_iteration_change_ppm`,
+`iqs_interval_rejections`, split into `iqs_predictor_interval_reductions` and
+`iqs_unconverged_rejections`, and `iqs_predictor_interval_recoveries`. It also
+reports `iqs_unconverged_accepts` and `iqs_predictor_tol_accepts`, which count
+one-fine-step intervals that cannot be halved further. `thermal_redos` counts
+thermal windows that were re-stepped after a power correction. See the
+[quasi-static plan](https://github.com/jin-li/GARNET/blob/main/docs/quasistatic_acceleration_plan.md#predictor-corrector-iqs-2026-10-29-audit-fix)
+for the algorithm and measured accuracy.
 
 ## Test migration and evidence
 

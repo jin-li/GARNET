@@ -471,6 +471,8 @@ class SNTransportSolver:
             raise ValueError("sweep='rows' is CPU-only; use sweep='wavefront'")
 
         mats = [materials] if isinstance(materials, Material) else list(materials)
+        if any(m.fv_only for m in mats):
+            raise ValueError("FV-only material cannot be used by an SN transport solver")
         G = mats[0].n_groups
         if any(m.n_groups != G for m in mats):
             raise ValueError("all materials must share the group count")

@@ -45,6 +45,14 @@ print(moments.loss[1])
 
 This template needs a file containing the required native fields. Choose `from-major` only when that flattening contract has been independently established. Signed higher moments and native reported error metadata remain unchanged. This object feeds the specialized coupled-moment path; standard `Material` SPN/SN constructors do not automatically consume it. See the [methodology](../methodology/transport.md) for full-matrix, hybrid GPU and $B\to0$ condensation limits.
 
+For native full-matrix SP3/SP5/SP7, use the separate experimental CPU operator
+and its explicit family and per-cell material bindings. Follow the
+[method selection guide](../development/native-methods.md) before selecting
+spatial/energy homogenization or an angular comparator. It distinguishes
+source-only, streaming and bounded transport APIs, and explains optional
+compact/coarse/packed controls. None of these choices automatically qualifies
+native data or transfers earlier GPU evidence to a new CPU path.
+
 ## Build a nonuniform masked mesh
 
 The following example needs no external data:
@@ -68,3 +76,94 @@ print(topology["grid_indices"])
 The topology records exposed masked faces separately from outer-box faces; this builder example deliberately makes both reflective. If your model requires different exposure conditions, assign them through the appropriate low-level mesh boundary interface. IDs follow active `(z,y,x)` C order, while centroid and width components are `(x,y,z)`. Tags are labels, not automatically material indices.
 
 The vertex-free result supports finite-volume connectivity, not vertex export. `MeshModel` is a diffusion builder; low-level `MeshGrid` moment solvers have their own data and factor contracts. For general Gmsh input see [unstructured mesh](https://github.com/jin-li/GARNET/blob/main/examples/unstructured_mesh.py). The synthetic [common mesh example](https://github.com/jin-li/GARNET/blob/main/examples/isonees_features/common_mesh_fv.py) compares the integrated common-mesh pathway.
+
+## Choose geometry and skew correction explicitly
+
+For polygon meshes, `assemble_mesh(..., normal_distances=True)` is the default.
+It supplies normal distances on both sides of interior faces, plus interior
+and boundary face normals and centres. `UnstructuredDiffusionSolver` uses
+this geometry for its default deferred nonorthogonal correction: reconstructed
+cell gradients correct the tangential part of the face leakage. On an
+orthogonal mesh that contribution vanishes. The three-dimensional
+`assemble_mesh_3d` retains `normal_distances=False` by default; opt into `True`
+to provide this geometry for the unstructured diffusion solver. Gmsh imports
+already select normal geometry for three-dimensional meshes.
+
+`normal_distances=False` preserves the historical centroid-distance two-point
+approximation, including Euclidean centroid-to-boundary-midpoint distances,
+and omits correction geometry. Selecting normal distances while disabling
+`nonorthogonal_correction` also leaves a two-point approximation; normal
+distances alone do not establish convergence on a skew mesh.
+
+With normal geometry and an active skew correction,
+`UnstructuredDiffusionSolver` raises an error if `face_df` or `boundary_df`
+contains non-unit factors. A corrected gradient law for those discontinuous
+traces is not implemented. Pass `nonorthogonal_correction=False` to that
+low-level solver only when deliberately choosing the conservative two-point
+factor approximation, then assess its mesh error. Factors remain usable on
+orthogonal meshes, where the correction is zero. See the
+[spatial methodology](../methodology/spatial-methods.md) for the discretization
+and evidence limits. This diffusion option does not qualify the native moment
+transport pathway or add the correction to its separate `MeshGrid` operators.
+Before using regional data, inspect energy-group flux support and scattering
+transfer errors as well as the declared balance check. A balance pass can
+reflect a wide statistical tolerance. Printed zero errors do not prove
+exactness, and a 100% relative error does not identify a particle-event count.
+For sparse Serpent 2.2.2 group-constant batches, increasing particles per batch
+may need investigation separately from adding cycles. Retain native errors,
+source histories and correction provenance; the adapter does not replace the
+study's statistical or physical qualification.
+
+Gmsh 2.2 ASCII imports can retain physical material and boundary tags. See the
+[fitted mesh geometry contract](../development/subpin-mesh-geometry.md). Map each
+boundary tag explicitly to a supported boundary condition; a physical label
+alone does not impose a reflective or vacuum boundary. Face geometry metadata
+does not add nonorthogonal correction to the existing two-point operator.
+
+Two-dimensional cell areas are evaluated in local coordinates to avoid
+subtracting large global-coordinate products for thin fitted cells. Check
+material-region areas against the intended geometry separately; this numerical
+stabilization does not remove polygonal approximation of curved interfaces.
+
+
+## Corrected fitted-mesh solves (experimental)
+
+Pass `mesh_discretization="corrected"` to `MeshDiffusionEigenSolver`,
+`MeshSP3EigenSolver`, or `MeshSDP1EigenSolver` to use the fixed linear
+nonorthogonal reconstruction. The solver selects GMRES and, by default, a fixed TPFA incomplete-LU
+preconditioner, with CPU factorization and backend-resident application. CG and moment symmetrization are unsupported.
+For moment solvers use `marshak_vacuum=True` to select coupled vacuum traces.
+Existing default solves retain the two-point operator. The corrected path
+requires oriented face geometry, a full-rank reconstruction patch, and unity
+discontinuity factors; higher-order mesh moment models are not supported.
+
+Use `tol_k=1e-6`, `tol_source=1e-5`, `tol_balance=1e-5`,
+`tol_fixed_source=1e-6`, and `inner_rtol_floor=1e-7` for explicit
+production-like iteration criteria. The separate fixed-source tolerance
+otherwise retains its stricter default. Independent equation/current balance and spatial
+convergence remain necessary before interpreting a reactor comparison.
+
+The corrected path accepts `mesh_preconditioner="tpfa_ilu"` (default),
+`"corrected_ilu"`, `"corrected_block_ilu"`, or `"tpfa_neumann"` (two fixed Jacobi sweeps).
+`"corrected_ilu"` factors the actual corrected FV matrix instead of its TPFA
+approximation. It changes neither the equations nor the stopping criteria;
+convergence still requires the true residual checks. Small CPU tests cover
+scalar and moment operators; this option does not establish reactor accuracy
+or GPU validation. Its setup and factor memory can exceed the TPFA option.
+For order-1 SP3/SDP1, `"corrected_block_ilu"` instead factors the two corrected
+diagonal moment blocks sequentially. In the actual U-form state `[U0, U1]`
+(scalar flux `phi0 = U0 - 2/3 U1`), its fixed linear application is
+`z0 = ILU(A00)^-1 r0`, then `z1 = ILU(A11)^-1 (r1 - A10 z0)`.
+It retains the full sparse corrected `A10`, including off-cell Marshak terms,
+and adds no scaling or volume weighting. Scalar and other moment orders are
+rejected. Both blocks use `drop_tol=1e-6`, `fill_factor=20`; singular factors
+fail explicitly without clipping or fallback. CPU setup avoids extracting
+explicit L/U copies. Each callable exposes `group`, `shape`, `setup_seconds`,
+`matrix_nnz`, `nnz`, `nnz_kind`, `coupling_nnz`, and `block_stats` with per-block
+timings and counts. Factor counts are SuperLU-reported counts rather than
+explicit CSC counts. Small CPU tests cover reflective and coupled Marshak
+boundaries; large-model memory/convergence and GPU execution remain unverified.
+ILU uses SciPy setup; on CuPy its
+triangular factors and permutations stay on the GPU. Factorization/backend
+failures propagate. The weaker polynomial option may fail on thin high-contrast
+material layers. Measure construction/factor memory before a large model.

@@ -1,0 +1,2 @@
+gpu bl-SDP3-n640-z32 bl --methods SDP3 --vacuum marshak --meshes 640 --nz 32 --device gpu
+gpu c5g7-SDP3-s8-z32 c5g7 --methods SDP3 --vacuum marshak --cells-per-pin 8 --nz 32 --tol-k 1e-9 --tol-source 1e-8 --no-lines --device gpu

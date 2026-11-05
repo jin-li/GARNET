@@ -200,7 +200,7 @@ class C5G7TDProblem:
 
 
 def build_c5g7_td(case: str = "TD1-1", cells_per_pin: int = 2,
-                  pin_resolved: bool = False) -> C5G7TDProblem:
+                  pin_resolved: bool = False, exact_area: bool = True) -> C5G7TDProblem:
     """Assemble a 2D C5G7-TD transient case.
 
     case          : one of CASES ("TD0-1" ... "TD3-4").
@@ -208,6 +208,8 @@ def build_c5g7_td(case: str = "TD1-1", cells_per_pin: int = 2,
     pin_resolved  : heterogeneous pin geometry via exact-area mixing
                     (needs cells_per_pin >= 8-10) instead of volume-
                     homogenized pin cells.
+    exact_area    : pin-resolved only; as for build_c5g7_2d. False restores the
+                    16 x 16-point sampling used before 2026-10-30.
 
     The returned problem_at(t) yields a *stable* materials-list layout (see
     module comment) whose entries change value -- never identity order -- as
@@ -244,7 +246,7 @@ def build_c5g7_td(case: str = "TD1-1", cells_per_pin: int = 2,
         # Exact-area rasterization as in build_c5g7_2d, but partial cells
         # blend against the *in-assembly* moderator (index 9), which TD3
         # scales while the reflector stays nominal.
-        frac = np.tile(pin_coverage(s), (n, n))
+        frac = np.tile(pin_coverage(s, None if exact_area else 16), (n, n))
         frac[expanded >= _CORE_WATER] = 0.0
         eps = 1e-9
         full = frac >= 1.0 - eps

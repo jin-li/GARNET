@@ -1,0 +1,8 @@
+DONE bl-SP1-n640-z16 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  16393  t= 4235.45s
+FAIL bl-SDP1-n640-z16 (see bl-SDP1-n640-z16.log)
+DONE bl-SP3-n640-z16 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  17152  t= 8414.80s
+DONE bl-SP1-n640-z64 RESULT bl SP1       marshak   mesh  640  k=0.776814304  dk= -2854.6 pcm  conv=True  outers=  17  inners=  16526  t=12019.37s
+FAIL bl-SDP3-n640-z32 (see bl-SDP3-n640-z32.log)
+DONE bl-SP3-n640-z64 RESULT bl SP3       marshak   mesh  640  k=0.799054771  dk=  -630.5 pcm  conv=True  outers=  18  inners=  17301  t=30121.12s
+CANCELLED bl-SDP1-n640-z64 2026-11-02T09:13:51+01:00 (stopped by request: redundant with the other GMRES points)
+FAIL bl-SDP1-n640-z64 (see bl-SDP1-n640-z64.log)

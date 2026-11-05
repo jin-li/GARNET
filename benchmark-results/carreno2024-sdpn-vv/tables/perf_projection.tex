@@ -1,0 +1,13 @@
+\begin{tabular}{llrrrllrrrrr}
+\hline
+Case & Method & mesh & $n_z$ & unknowns ($10^6$) & CPU run & basis & ns & GH200 inners & CPU (h) & GH200 (s) & speedup \\
+\hline
+Brantley--Larsen & SDP1 & 640 & 16 & 13.1 & cap & \code{bl-SDP1-n640-z16} (cap) & 98 & 56920 & 20 & 372 & 197 \\
+Brantley--Larsen & SDP1 & 640 & 64 & 52.4 & cancelled & \code{bl-SDP1-n640-z16} (cap) & 98 & 53681 & 77 & 1113 & 248 \\
+Brantley--Larsen & SDP3 & 640 & 16 & 26.2 & running & \code{bl-SDP3-n640-z32} (cap) & 105 & 57678 & 44 & 665 & 239 \\
+Brantley--Larsen & SDP3 & 640 & 32 & 52.4 & cap & \code{bl-SDP3-n640-z32} (cap) & 105 & 54049 & 83 & 1146 & 260 \\
+C5G7 & SDP1 & 8 & 64 & 149 & cancelled & \code{c5g7-SDP1-s8-z8} & 79 & 124965 & 58 & 1082 & 194 \\
+C5G7 & SDP3 & 8 & 8 & 37.3 & running & \code{bl-SDP3-n640-z32} (cap) & 105 & 116501 & 18 & 527 & 124 \\
+C5G7 & SDP3 & 8 & 32 & 149 & cancelled & \code{bl-SDP3-n640-z32} (cap) & 105 & 114215 & 71 & 1046 & 245 \\
+\hline
+\end{tabular}

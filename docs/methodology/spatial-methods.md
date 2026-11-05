@@ -13,18 +13,48 @@ The same face current enters the two cell equations with opposite signs. This is
 
 Cartesian operators use nearest-neighbor stencils. Cylindrical r-z operators incorporate radial areas and cell volumes, then use volume weighting when symmetry is required. Triangular operators use their explicit neighbor topology and prism extrusion in z. Unstructured finite volumes use mesh cell volumes, face areas and distances. Two-point flux accuracy depends on mesh orthogonality; arbitrary connectivity alone does not establish accuracy on strongly skewed cells.
 
-The two-dimensional polygon assembler accepts `normal_distances=True` by
-default. Explicit `normal_distances=False` retains the historical harmonic
-coefficient/centroid-separation interior formula and centroid-to-boundary-
-midpoint distances. The locally refined HPMR benchmark selects this historical
-mode for both refined and uniform references, preserving its established
-discretization. Neither mode includes a general nonorthogonal flux correction;
-its refinement evidence is not a proof of consistency on arbitrary skew meshes.
-The three-dimensional assembler already exposes the same explicit choice,
-with its existing default `False`.
+The two-dimensional polygon assembler `assemble_mesh` uses
+`normal_distances=True` by default. It records each side's normal distance,
+interior and boundary face centres, and oriented unit normals. The distance
+in each interior `faces` tuple remains the Euclidean centroid separation;
+`face_distances` supplies the authoritative per-side normal distances. With this
+geometry, `UnstructuredDiffusionSolver` applies a deferred nonorthogonal flux
+correction by default (`nonorthogonal_correction=True`). Least-squares cell
+gradients reconstruct the tangential offsets between cell centres and the
+face-normal line. Their leakage contribution is lagged into the source while
+the implicit two-point operator remains symmetric for unit factors. The
+correction vanishes when neighbouring cell centres align with the face normal.
+Robin boundary laws close the gradient reconstruction.
 
+Normal distances alone do not correct skewness. Explicit
+`normal_distances=False` retains the historical harmonic-coefficient/
+centroid-separation interior formula and centroid-to-boundary-midpoint
+distances, without the face geometry needed for deferred correction. The
+locally refined HPMR benchmark selects this historical mode for both refined
+and uniform references, preserving its established discretization. The
+three-dimensional assembler `assemble_mesh_3d` retains its default `False`;
+`normal_distances=True` supplies the normal geometry and enables correction in
+the unstructured diffusion solver. Gmsh imports explicitly select normal
+geometry for three-dimensional meshes.
+
+The [skew-mesh checks](../../tests/verification/test_mesh_skewed.py) compare
+corrected and uncorrected diffusion on diagonal-cut and jittered triangles.
+Their refinement evidence concerns those test families, not arbitrary skew
+meshes. `MeshGrid` operators and specialized moment receivers have separate
+contracts; supplying normal geometry does not automatically give them the
+unstructured diffusion solver's deferred correction.
 
 `build_rectilinear_mesh_3d` constructs a vertex-free common finite-volume mesh from strictly increasing x/y/z edges and a boolean mask. The input arrays are `(nz, ny, nx)`; active cell IDs follow C order. Centroids and widths are in x/y/z order. Mask exposures and outer-box exposures are distinct metadata, and callers choose their boundary conditions. This mesh has no vertex representation for vertex-based export.
+
+For fitted meshes, the experimental fixed linear corrected scalar and
+order-1 moment operators provide separate reconstruction contracts. The native
+full-matrix SP3/SDP1/SP5/SP7 CPU operator retains coupled energy-group matrices
+and uses a distinct cell-major state. The
+[method selection guide](../development/native-methods.md) connects these
+choices to spatial/energy homogenization, angular source and streaming
+operators, bounded transport iteration, and optional storage/preconditioning.
+Those algebraic and manufactured-field checks do not establish full-core or
+high-fidelity transport qualification.
 
 ## Discontinuity factors
 
@@ -35,6 +65,14 @@ f_{i,+}\phi_{i,+}^{\rm hom}=f_{j,-}\phi_{j,-}^{\rm hom}.
 ```
 
 Factors are positive node-side/group data, not a material-independent correction. Their orientation, reference spectrum, production kernel, geometry, side ordering and normalization belong to their provenance. NEM expects `(N,6,G)` in x−, y−, x+, y+, z−, z+ order and requires exterior factors to be unity.
+
+On a nonorthogonal mesh where the deferred correction is active,
+`UnstructuredDiffusionSolver` rejects non-unit interior or boundary factors:
+the gradient reconstruction for discontinuous factor-weighted traces is not
+implemented. Setting `nonorthogonal_correction=False` explicitly permits the
+conservative two-point factor approximation, using the selected mesh distances.
+It does not restore skew-mesh consistency. This restriction does not prevent
+non-unit factors on orthogonal meshes, where the correction vanishes.
 
 A whole-face average preserves one scalar trace per group and face. It cannot impose a subface distribution or face moments. Mesh moment factors and native face-trace developments use distinct representations; do not equate a refined submesh calculation with a whole-face ADF receiver. Transfer requires an explicit derivation and independent convergence evidence.
 

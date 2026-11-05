@@ -41,6 +41,8 @@ class Material:
     # solvers only need nu_sigma_f; power edits use this when present.
     kappa_fission: np.ndarray | None = None
     name: str = ""
+    # Diagonal-eliminated regional constants are restricted to FV solvers.
+    fv_only: bool = False
 
     def __post_init__(self):
         self.diffusion = np.atleast_1d(np.asarray(self.diffusion, dtype=np.float64))

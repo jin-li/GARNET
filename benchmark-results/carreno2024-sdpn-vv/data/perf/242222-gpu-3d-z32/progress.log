@@ -1,0 +1,2 @@
+DONE bl-SDP3-n640-z32 RESULT bl SDP3      marshak   mesh  640  k=0.803946259  dk=  -141.4 pcm  conv=True  outers=  30  inners=  54049  t= 1145.98s
+DONE c5g7-SDP3-s8-z32 RESULT c5g7 SDP3      marshak   mesh    8  k=1.182568274  dk=  -398.2 pcm  conv=True  outers= 149  inners= 114215  t= 1046.04s

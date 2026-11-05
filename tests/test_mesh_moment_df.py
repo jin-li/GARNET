@@ -226,3 +226,25 @@ def test_unequal_factors_commute_with_supported_sdp_similarity():
     assert plain_result.converged
     assert abs(result.k_eff-plain_result.k_eff)<2e-10
     np.testing.assert_allclose(result.flux,plain_result.flux,rtol=2e-8,atol=2e-9)
+
+
+@pytest.mark.parametrize("unequal", [False, True])
+def test_direct_moment_transpose_never_reuses_nonsymmetric_mesh_stencil(unequal):
+    mesh = rectangles()
+    factors = np.array([[[1.2, .8]], [[1.2, .8]]]) if unequal else np.ones((2, 1, 2))
+    solver = MeshSP3EigenSolver(mesh, materials(), [0, 1], device="cpu",
+        boundary_conditions="reflective", moment_df_model="common_trace",
+        moment_face_df=factors, marshak_vacuum=False)
+    operator = solver.ops[0]
+    shape = solver._initial_state()[0].shape
+    size = int(np.prod(shape))
+    basis = np.eye(size)
+    matrix = np.column_stack([operator.apply(e.reshape(shape)).ravel() for e in basis])
+    vector = np.arange(1., size + 1).reshape(shape)
+    if unequal:
+        assert np.max(np.abs(matrix - matrix.T)) > .01
+        with pytest.raises(ValueError, match="nonsymmetric spatial moment"):
+            operator.apply_transpose(vector)
+    else:
+        np.testing.assert_allclose(operator.apply_transpose(vector).ravel(),
+                                   matrix.T @ vector.ravel(), atol=1e-12)

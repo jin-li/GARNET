@@ -77,11 +77,13 @@ def fine_problem(layout, s, pin_resolved=False):
     grid = Grid(mmap.shape, (nx * ASSEMBLY_PITCH, ny * ASSEMBLY_PITCH, 1.0))
     if not pin_resolved:
         return grid, mmap, regions, None, None
-    # Same exact-area rasterization as build_c5g7_2d(pin_resolved=True): cells
+    # Same rasterization as build_c5g7_2d(pin_resolved=True), with 256 x 256-
+    # sampled fractions (area error below 5e-5) instead of exact ones: cells
     # inside the cylinder are pure pin, outside are water, and boundary cells
     # blend the pin into water by covered area. Every lattice position holds a
     # pin (guide tubes and the fission chamber included), so all are carved.
-    # The default 16 x 16 sampling misstates the fuel area by up to 0.7% (s = 4)
+    # 16 x 16 sampling (the builder default before 2026-10-30) misstates the
+    # fuel area by up to 0.7% (s = 4)
     # and 0.06% (s = 8), worth tens of pcm and non-monotone in s; 256 x 256
     # keeps it below 5e-5 at every s, so k_ref converges cleanly.
     frac = np.tile(pin_coverage(s, sub=COVERAGE_SAMPLES), (nx * N_PIN, ny * N_PIN))[..., None]
