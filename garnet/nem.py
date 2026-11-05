@@ -317,8 +317,13 @@ class NEMDiffusionSolver:
             condition = float(sparse.linalg.norm(matrix,1)*onenormest(inverse))
         except (RuntimeError,ValueError) as exc:
             raise NEMSolverError('singular condensed loss operator',evidence) from exc
+        # SuperLU's scalar counter reads stored L/U counts. Accessing .L or .U
+        # materializes both CSC factors, potentially duplicating gigabytes just
+        # for diagnostics; this count need not equal their exported CSC slots.
         evidence.update(condition_number_1_scaled_estimate=condition,
-                        linear_solver=type(self._lu).__name__,factor_nnz=int(self._lu.L.nnz+self._lu.U.nnz))
+                        linear_solver=type(self._lu).__name__,factor_nnz=int(self._lu.nnz),
+                        factor_nnz_kind='superlu_reported_L_plus_U',
+                        factor_entries_materialized_for_count=False)
         if not np.isfinite(condition) or condition > self.condition_limit:
             raise NEMSolverError('condensed loss condition estimate exceeds limit',evidence)
         self._backend_evidence = evidence
