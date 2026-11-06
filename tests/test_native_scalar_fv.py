@@ -1,11 +1,12 @@
 """Independent tiny synthetic checks; no physical qualification implied."""
 from dataclasses import FrozenInstanceError, replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from garnet.mesh import assemble_mesh
-from garnet.native_scalar_fv import NativeScalarFV, RegionalCoefficients
+from garnet.native_scalar_fv import NativeScalarFV, RegionalCoefficients, estimate_memory
 
 
 def mesh_grid(n=2, shear=0., unequal=False):
@@ -328,6 +329,103 @@ def test_rejected_candidate_preserves_last_accepted_flux_and_k(monkeypatch, fail
 def test_history_storage_is_in_prebuild_memory_admission():
     with pytest.raises(MemoryError, match="pre-build"):
         pilot(max_outer_iterations=10_000_000)
+
+
+def memory_coefficients(groups):
+    return RegionalCoefficients(region_ids=(17,), energy_bounds=np.arange(groups, -1, -1, dtype=float),
+        D=np.ones((1, groups)), T=np.ones((1, groups)), SP0=np.zeros((1, groups, groups)),
+        F=np.eye(groups)[None], scattering_orientation="from,to", fission_orientation="to,from")
+
+
+def memory_mesh(nx=18, ny=20):
+    """Topology/array inputs only: estimator must never assemble a stencil."""
+    faces = []
+    for j in range(ny):
+        for i in range(nx):
+            cell = j*nx+i
+            if i+1 < nx:
+                faces.append((cell, cell+1, 1., 1.))
+            if j+1 < ny:
+                faces.append((cell, cell+nx, 1., 1.))
+    bfaces = [(j*nx+i, 1., .5) for j in range(ny) for i in range(nx)
+              for side in (i == 0, i == nx-1, j == 0, j == ny-1) if side]
+    return SimpleNamespace(n_cells=nx*ny, faces=faces, bfaces=bfaces,
+        centroid=np.array([(i+.5, j+.5) for j in range(ny) for i in range(nx)]),
+        area=np.ones(nx*ny))
+
+
+def memory_estimate(mesh, groups=23, **kw):
+    settings = dict(method="corrected", preconditioner="ilu", restart=20,
+                    batch_cells=256, max_outer_iterations=100)
+    settings.update(kw)
+    return estimate_memory(mesh, memory_coefficients(groups), **settings)
+
+
+def test_estimator_linear_group_storage_and_single_group_python_peak():
+    mesh = memory_mesh(4, 5)
+    estimates = [memory_estimate(mesh, groups) for groups in (2, 4, 6)]
+    # Regional dense coefficient/batch sizes are quadratic in G by design;
+    # the remaining total grows linearly in group count, with one setup peak.
+    corrected_totals = [e["estimated_bytes"]-e["shared_input_bytes"]-e["regional_batch_bytes"]
+                        for e in estimates]
+    assert corrected_totals[1]-corrected_totals[0] == corrected_totals[2]-corrected_totals[1]
+    for field in ("one_group_python_construction_bytes", "one_group_factor_workspace_bytes",
+                  "one_group_construction_peak_bytes", "per_group_operator_bytes", "per_group_factor_bytes"):
+        assert len({e[field] for e in estimates}) == 1
+    e = estimates[0]
+    assert e["one_group_construction_peak_bytes"] == max(e["one_group_python_construction_bytes"],
+                                                       e["one_group_factor_workspace_bytes"])
+    assert not e["factor_fill_and_workspace_guaranteed"]
+
+
+def test_estimator_small_pin_retained_arrays_and_fixed_budget():
+    mesh = memory_mesh()
+    e = memory_estimate(mesh)
+    assert mesh.n_cells == 360
+    assert 0 < e["estimated_bytes"] < 4*1024**3
+    assert e["per_group_csr_bytes"] > 0
+    assert e["per_group_gather_bytes"] > 0
+    assert e["per_group_gradient_bytes"] > 0
+    assert e["per_group_tpfa_bytes"] > 0
+    tpfa = memory_estimate(mesh, method="tpfa")
+    assert tpfa["per_group_gradient_bytes"] == tpfa["per_group_gather_bytes"] == 0
+    assert tpfa["estimated_bytes"] < e["estimated_bytes"]
+    jacobi = memory_estimate(mesh, preconditioner="jacobi")
+    assert jacobi["per_group_operator_bytes"] == e["per_group_operator_bytes"]
+    assert jacobi["one_group_python_construction_bytes"] == e["one_group_python_construction_bytes"]
+    assert jacobi["one_group_factor_workspace_bytes"] == 0
+    assert jacobi["estimated_bytes"] < e["estimated_bytes"]
+
+
+def test_estimator_high_degree_rejects_before_operator_construction(monkeypatch):
+    import garnet.native_scalar_fv as native
+    n = 2048
+    star = SimpleNamespace(n_cells=n, faces=[(0, i, 1., 1.) for i in range(1, n)],
+                           bfaces=[], centroid=np.zeros((n, 2)), area=np.ones(n))
+    e = memory_estimate(star)
+    assert e["maximum_corrected_row_width"] == n
+    assert e["estimated_bytes"] > 4*1024**3
+    def unexpected(*args, **kwargs):
+        pytest.fail("high-degree memory rejection must precede group construction")
+    monkeypatch.setattr(native, "MeshGrid", unexpected)
+    with pytest.raises(MemoryError, match="pre-build"):
+        native.NativeScalarFV(star, memory_coefficients(23), np.zeros(n, dtype=int),
+            method="corrected", preconditioner="ilu", max_bytes=4*1024**3,
+            restart=20, max_inner_iterations=1000, max_outer_iterations=100,
+            batch_cells=256, external_memory_cap=True)
+
+
+def test_estimator_history_is_additive_and_admission_uses_total(monkeypatch):
+    mesh = mesh_grid()
+    c = coefficients()
+    settings = dict(method="corrected", preconditioner="ilu", restart=16,
+                    batch_cells=2, max_outer_iterations=200)
+    low = estimate_memory(mesh, c, **settings)
+    high = estimate_memory(mesh, c, **{**settings, "max_outer_iterations": 201})
+    assert high["estimated_bytes"]-low["estimated_bytes"] == 16384
+    assert high["history_bytes"]-low["history_bytes"] == 16384
+    with pytest.raises(MemoryError, match="pre-build"):
+        pilot(mesh, c, method="corrected", max_bytes=low["estimated_bytes"]-1)
 
 
 def test_corrected_geometry_rank_failure():

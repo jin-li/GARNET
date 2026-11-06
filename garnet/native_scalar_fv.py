@@ -88,6 +88,104 @@ def _positive_integer(value, name):
     return int(value)
 
 
+def estimate_memory(mesh, coefficients, *, method, preconditioner, restart,
+                    batch_cells, max_outer_iterations):
+    """Topology-based byte allowances, without operator/factor construction.
+
+    Sparse factor fill/workspace are planning allowances, not SuperLU bounds.
+    Python construction dictionaries exist for one group at a time; retained
+    gradients, CSR/gathers, TPFA bases and factors exist for every group.
+    """
+    if method not in ("tpfa", "corrected") or preconditioner not in ("ilu", "jacobi"):
+        raise ValueError("explicit method/preconditioner required for estimate")
+    restart = _positive_integer(restart, "restart")
+    batch_cells = _positive_integer(batch_cells, "batch_cells")
+    max_outer_iterations = _positive_integer(max_outer_iterations, "max_outer_iterations")
+    n, g = mesh.n_cells, coefficients.D.shape[1]
+    if n < 1:
+        raise ValueError("memory estimate requires nonempty mesh")
+    degree = np.zeros(n, dtype=np.int64)
+    for i, j, *_ in mesh.faces:
+        if not (0 <= i < n and 0 <= j < n):
+            raise ValueError("invalid mesh owner in memory estimate")
+        degree[i] += 1
+        degree[j] += 1
+    # Every gradient uses owner + face neighbors. An action row includes its
+    # own gradient and those of its face neighbors (two graph hops).
+    gradient_widths = np.minimum(n, degree+1)
+    row_widths = gradient_widths.copy()
+    face_width = 1
+    for i, j, *_ in mesh.faces:
+        row_widths[i] += gradient_widths[j]
+        row_widths[j] += gradient_widths[i]
+        face_width = max(face_width, min(n, int(gradient_widths[i]+gradient_widths[j])))
+    row_widths = np.minimum(n, row_widths)
+    boundary_width = 1
+    for owner, *_ in mesh.bfaces:
+        if not 0 <= owner < n:
+            raise ValueError("invalid boundary owner in memory estimate")
+        boundary_width = max(boundary_width, int(gradient_widths[owner]))
+    edges, boundary = len(mesh.faces), len(mesh.bfaces)
+    ell_slots = n*max(1, int(degree.max()))
+    tpfa_storage = 12*ell_slots + 40*n + 4096
+    dim = int(np.asarray(mesh.centroid).shape[1])
+    gradient_entries = int(gradient_widths.sum())
+    gradients = gradient_entries*(320+8*dim)+256*n
+    if method == "corrected":
+        matrix_nnz = int(row_widths.sum())
+        csr = 16*matrix_nnz+8*(n+1)  # allow 64-bit sparse indices
+        gather_slots = n*int(row_widths.max())+edges*face_width+boundary*boundary_width
+        gathers = 12*gather_slots  # actual int32 indices + float64 values
+        retained_operator = csr+gathers+gradients+tpfa_storage+16*n+8192
+        scalar_entries = matrix_nnz+edges*face_width+boundary*boundary_width
+        # rows/interior/boundary dictionaries, temporary reconstruction rows,
+        # Python lists used to create CSR, and simultaneous copied gradients.
+        construction = (192*scalar_entries+256*(n+edges+boundary)
+                        + gradients+512*(2*edges+boundary)+256*n
+                        + 96*max(matrix_nnz, edges*face_width, boundary*boundary_width)
+                        + 128*(ell_slots+n+edges+boundary))
+    else:
+        matrix_nnz = n+2*edges
+        csr = 16*matrix_nnz+8*(n+1)
+        retained_operator = tpfa_storage
+        construction = 128*(ell_slots+n+edges+boundary)+csr
+        gathers, gradients = 0, 0
+    factor_nnz = min(2*n*n, 20*matrix_nnz+2*n) if preconditioner == "ilu" else 0
+    # L/U values, indices, supernode bookkeeping and row/column permutations.
+    factors = 24*factor_nnz+128*n+8192 if preconditioner == "ilu" else 8*n
+    # CSC conversion + a three-factor-size workspace allowance for ordering,
+    # symbolic/numeric factorization, pivoting and SuperLU work arrays.
+    factor_workspace = 3*factors+2*csr+128*n if preconditioner == "ilu" else 0
+    coefficients_bytes = sum(a.nbytes for a in (coefficients.D, coefficients.T,
+        coefficients.SP0, coefficients.F, coefficients.energy_bounds,
+        coefficients.signed_rabs, coefficients.kappa_fission) if a is not None)
+    # Own/share input mesh arrays once; account Python face/cell records too.
+    mesh_bytes = sum(getattr(getattr(mesh, name, None), "nbytes", 0) for name in (
+        "coords", "cell_tag", "centroid", "area", "face_distances", "face_centers",
+        "face_normals", "bface_centers", "bface_normals", "bface_tags"))
+    shared = coefficients_bytes+mesh_bytes+256*(n+edges+boundary)+32*n
+    krylov = 8*n*g*(restart+24)+8*(restart+1)*(restart+4)
+    batch = 8*min(n, batch_cells)*(g*g+4*g)
+    history = 16384*max_outer_iterations
+    # _Gather.apply allocates gathered and multiplied cell/row slot arrays.
+    action_workspace = 16*n*int(row_widths.max()) if method == "corrected" else 16*ell_slots
+    construction_peak = max(construction, factor_workspace)
+    total = shared+g*(retained_operator+factors)+construction_peak+krylov+batch+history+action_workspace
+    return dict(estimated_bytes=int(total), shared_input_bytes=int(shared),
+        groups=int(g), per_group_operator_bytes=int(retained_operator),
+        per_group_csr_bytes=int(csr if method == "corrected" else 0),
+        per_group_gather_bytes=int(gathers), per_group_gradient_bytes=int(gradients),
+        per_group_tpfa_bytes=int(tpfa_storage), per_group_factor_bytes=int(factors),
+        per_group_factor_nnz_allowance=int(factor_nnz), group_matrix_nnz_allowance=int(matrix_nnz),
+        one_group_python_construction_bytes=int(construction),
+        one_group_factor_workspace_bytes=int(factor_workspace),
+        one_group_construction_peak_bytes=int(construction_peak),
+        krylov_state_bytes=int(krylov), regional_batch_bytes=int(batch),
+        history_bytes=int(history), action_workspace_bytes=int(action_workspace),
+        maximum_corrected_row_width=int(row_widths.max()),
+        factor_fill_and_workspace_guaranteed=False)
+
+
 class NativeScalarFV:
     """Cell-major (N,G) coupled loss/fission with bounded regional batches.
 
@@ -120,25 +218,15 @@ class NativeScalarFV:
         self.shape = (n, g)
         if n*g > 100000 and external_memory_cap is not True:
             raise ValueError("physical-scale setup requires an externally enforced memory cap")
-        # Degree-squared bound for corrected two-hop stencils; count Python
-        # dictionaries, gather matrices, GMRES vectors and factor headroom.
-        degree = np.zeros(n, dtype=np.int64)
-        for i, j, *_ in mesh.faces:
-            degree[i] += 1
-            degree[j] += 1
-        width = min(n, int((degree.max(initial=0)+1)**2))
-        matrix_bytes = n*g*max(1, width)*512
-        factor_headroom = matrix_bytes*20 if preconditioner == "ilu" else 0
-        estimate = (8*n*g*(self.restart+20) + matrix_bytes + factor_headroom
-                    + sum(a.nbytes for a in (coefficients.D, coefficients.T, coefficients.SP0, coefficients.F,
-                                             coefficients.energy_bounds, coefficients.signed_rabs,
-                                             coefficients.kappa_fission) if a is not None)
-                    + 8*min(n, self.batch_cells)*(g*g+4*g) + 16*n
-                    + 16384*self.max_outer_iterations)
+        memory = estimate_memory(mesh, coefficients, method=method,
+            preconditioner=preconditioner, restart=self.restart,
+            batch_cells=self.batch_cells, max_outer_iterations=self.max_outer_iterations)
+        estimate = memory["estimated_bytes"]
         if estimate > max_bytes:
             raise MemoryError(f"pre-build memory estimate {estimate} exceeds max_bytes {max_bytes}")
         self.diagnostics = dict(physical_qualification=False, method=method,
                                 preconditioner=preconditioner, estimated_bytes=estimate,
+                                memory_estimate=memory,
                                 external_memory_cap_declared=external_memory_cap,
                                 factor_memory_estimate_guaranteed=False)
         start = perf_counter()
