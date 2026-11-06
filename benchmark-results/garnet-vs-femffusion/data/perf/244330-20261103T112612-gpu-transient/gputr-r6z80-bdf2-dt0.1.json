@@ -1,0 +1,150 @@
+{
+ "environment": {
+  "code": "garnet",
+  "python": "3.13.7",
+  "machine": "aarch64",
+  "node": "gpu001",
+  "cpu": "aarch64",
+  "numpy": "2.3.2",
+  "started": "2026-11-03T11:53:36+0100",
+  "commit": "c81ee749a26418b964720dbfd8b40d518f59a20d",
+  "scipy": "1.16.3",
+  "cupy": "13.6.0",
+  "gpu": "NVIDIA GH200 120GB",
+  "cuda_driver": 13020,
+  "cuda_runtime": 12090
+ },
+ "args": {
+  "case": "hpmr3d-transient",
+  "mesh": 6,
+  "nz": 80,
+  "device": "gpu",
+  "repeats": 1,
+  "tol_k": 1e-07,
+  "tol_source": 1e-06,
+  "anderson_depth": 8,
+  "precond_degree": 1,
+  "dollars": 0.5,
+  "ramp": 2.0,
+  "t_end": 2.0,
+  "dt": 0.1,
+  "time_scheme": "bdf2",
+  "tol_step": 1e-07,
+  "subsweeps": 6,
+  "step_anderson_depth": 1,
+  "max_sweeps": 4000,
+  "adaptive_rtol": null,
+  "automatic_order": false,
+  "verbose": false,
+  "output": "/data/scratch/shared/poncet_m/garnet-femffusion-perf/results/244330-20261103T112612-gpu-transient/gputr-r6z80-bdf2-dt0.1.json"
+ },
+ "case": "hpmr3d-transient",
+ "mesh": {
+  "refine": 6,
+  "nz": 80,
+  "cells": 950400,
+  "groups": 11,
+  "unknowns": 10454400
+ },
+ "k": 1.1185564271879023,
+ "converged": true,
+ "insertion": {
+  "dollars": 0.5,
+  "epsilon": 0.0034125675107201103,
+  "ramp": 2.0
+ },
+ "counters": {
+  "steps": 20,
+  "inners": 88332,
+  "sweeps": 262,
+  "rejected": 0
+ },
+ "timings": {
+  "setup": 0.0020284159691073,
+  "setup_all": [
+   0.0020284159691073
+  ],
+  "solve": 42.91408290097024,
+  "solve_all": [
+   42.91408290097024
+  ],
+  "warmup": 14.641283952980302,
+  "build": 0.11978180101141334,
+  "wall": 58.126132094010245
+ },
+ "transient": {
+  "t": [
+   0.0,
+   0.1,
+   0.2,
+   0.30000000000000004,
+   0.4,
+   0.5,
+   0.6000000000000001,
+   0.7000000000000001,
+   0.8,
+   0.9,
+   1.0,
+   1.1,
+   1.2000000000000002,
+   1.3,
+   1.4000000000000001,
+   1.5,
+   1.6,
+   1.7000000000000002,
+   1.8,
+   1.9000000000000001,
+   2.0
+  ],
+  "P": [
+   1.0,
+   1.0233440421491793,
+   1.0511421278387232,
+   1.082138765125579,
+   1.1160236887620476,
+   1.1530375073514987,
+   1.1935244731751196,
+   1.2378622455087345,
+   1.286482340518587,
+   1.3398904137777508,
+   1.398681653991067,
+   1.4635587259480733,
+   1.5353532865963255,
+   1.6150540745103252,
+   1.7038424690415248,
+   1.8031382855664615,
+   1.9146588644114766,
+   2.0404963010149952,
+   2.1832188212821486,
+   2.3460059567688005,
+   2.5328302687756805
+  ],
+  "orders": [
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ]
+ },
+ "device": "cuda (cupy): NVIDIA GH200 120GB",
+ "memory": {
+  "max_rss_bytes": 377487360,
+  "gpu_pool_bytes": 21468149760
+ }
+}

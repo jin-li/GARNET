@@ -20,7 +20,8 @@ result = transport.solve()  # cold start only; no input eigenstate or warm cache
 
 A boundary-condition sequence must match the boundary face order exactly. Each
 entry is `vacuum` or `reflective`. Reflection is supported only for Cartesian
-x/y aligned normals. The quadrature supplies an exact index permutation that
+x/y aligned normals in 2D, and x/y/z aligned normals in 3D.
+The quadrature supplies an exact index permutation that
 is checked for involution, equal physical weights, preserved tangential
 components (including z), and reversed normal components, within floating-point
 coordinate tolerance. Oblique reflection is rejected; no angular interpolation
@@ -29,6 +30,14 @@ ordinate of its boundary owner. Vacuum incoming flux is zero. Arbitrary
 reflective angular fields have zero integrated boundary net current up to
 floating-point summation. Trigonometric near-tangencies retain their computed
 coefficient, as in the streaming foundation.
+
+The same native-moment source and energy data are used in both dimensions.
+For an axially constant extrusion of height `h`, reflecting axial faces recover
+`A3*psi = h*A2*psi` only when the field is even under z reflection. Arbitrary
+angular fields require matched prescribed cap inflow for that cancellation;
+z-odd fields generally differ. The physical fission action scales by `h`.
+This physical-operator identity does not imply equality of preconditioners:
+their streaming diagonal and block solves retain axial cap outflow.
 
 The linear loss operator and fission operator are
 

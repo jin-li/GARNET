@@ -215,6 +215,57 @@ def test_budget_failures_before_factor_and_after_retained_factor_measurement():
             P0GalerkinTransport(stream, bc)
 
 
+@pytest.mark.parametrize('storage', ['superlu', 'packed'])
+def test_post_setup_reservation_preserves_constructor_peak_and_nonfactor_allowances(storage):
+    if storage == 'packed':
+        _require_packed_backend()
+    from dataclasses import FrozenInstanceError
+
+    stream, bc = bound()
+    op = P0GalerkinTransport(stream, bc, factor_storage=storage)
+    config = op._p0_provenance
+    assert config['memory_accounting_version'] == 'p0_phase_liveness_v1'
+    assert op.memory_estimate_bytes == config['constructor_peak_estimate_bytes']
+    assert config['post_setup_reservation_bytes'] == op._post_setup_reservation_bytes
+    assert config['post_setup_nonfactor_allowance_bytes'] == config['extra_nonfactor_estimate_bytes']
+    assert config['post_setup_base_transport_estimate_bytes'] == config['base_memory_estimate_bytes']
+    assert config['post_setup_coarse_csr_array_bytes'] == module._sparse_bytes(op._coarse)
+    expected_peak = (config['base_memory_estimate_bytes']+config['extra_nonfactor_estimate_bytes']
+                     +max(config['factor_preflight_estimate_bytes'],
+                          config.get('packed_payload_array_bytes', config['retained_factor_array_bytes'])))
+    if storage == 'packed':
+        from garnet.packed_superlu import PackedSuperLU
+
+        assert isinstance(op._factor, PackedSuperLU)
+        assert len(op._factor.owned_arrays) == 9
+        assert all(array.base is None and array.flags.owndata
+                   for array in op._factor.owned_arrays)
+        assert not config['original_superlu_retained']
+        assert config['post_setup_factor_array_bytes'] == op._factor.payload_nbytes
+        assert op._post_setup_reservation_bytes == (
+            config['base_memory_estimate_bytes']+config['extra_nonfactor_estimate_bytes']
+            +op._factor.payload_nbytes+module._sparse_bytes(op._coarse))
+        # Packing retains the original measured-factor allowance in its peak.
+        assert op.memory_estimate_bytes == config['packing_peak_estimate_bytes']
+        assert op.memory_estimate_bytes >= expected_peak
+    else:
+        assert op.memory_estimate_bytes == expected_peak
+        assert op._post_setup_reservation_bytes == op.memory_estimate_bytes
+    with pytest.raises(FrozenInstanceError):
+        op._post_setup_reservation_bytes = 0
+
+
+def test_packed_P0_preflight_still_rejects_before_factorization():
+    _require_packed_backend()
+    stream, bc = bound()
+    base = NativeMeshTransport(stream, bc)
+    with patch.object(module, 'spilu') as factor:
+        with pytest.raises(ValueError, match='allocation estimate'):
+            P0GalerkinTransport(stream, bc, factor_storage='packed',
+                                max_bytes=base.memory_estimate_bytes+1)
+        factor.assert_not_called()
+
+
 def test_factor_failure_no_retry_and_nonfinite_application_fails_closed():
     stream, bc = bound()
     with patch.object(module, 'spilu', side_effect=RuntimeError('synthetic singular')) as factor:
@@ -274,3 +325,11 @@ def test_invalid_projection_fields():
     for field in (np.zeros((2, 2)), np.full(stream.shape, np.inf)):
         with pytest.raises(ValueError):
             op.restrict(field)
+
+
+def _require_packed_backend():
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))

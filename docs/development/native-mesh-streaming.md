@@ -2,7 +2,7 @@
 
 `garnet.native_mesh_streaming.NativeMeshStreaming` evaluates a conservative,
 first-order upwind streaming and native total-collision operator on a general
-fitted 2D `Mesh`. It is an algebraic foundation, with no transport iteration,
+fitted 2D or 3D `Mesh`. It is an algebraic foundation, with no transport iteration,
 eigenvalue solver, sparse solve, acceleration, reflection interpolation, or
 physical qualification. No new transport or pin physics run is implied by its
 verification tests.
@@ -29,7 +29,7 @@ nonnegative; zero is allowed for evaluation, without any invertibility promise.
 No total reconstruction, scattering cancellation, clipping, Marshak condition,
 regularization, or fission treatment is applied.
 
-The mesh must explicitly provide 2D cell centroids, positive cell areas,
+The mesh must explicitly provide consistently 2D or 3D cell centroids, positive cell measures,
 positive face measures and distances, face centers, and unit normals. Interior
 normals point from the first owner (left) to the second owner (right), with the
 face center between their centroid projections. Boundary normals point outward
@@ -38,11 +38,22 @@ sum of outward `face_measure*normal` vectors must vanish to a relative tolerance
 of `2e-12` times its total face measure. Missing, reversed, nonfinite, or
 inconsistent consumed geometry is rejected. These checks validate the consumed
 finite-volume geometry; they do not establish arbitrary polygon topology or
-mesh convergence.
+mesh convergence. The read-only `dimension` attribute records the spatial
+dimension. In 3D, `Mesh.area` stores cell volumes and face measures are areas.
+Use `assemble_mesh_3d(..., normal_distances=True)` or the existing Gmsh loader for conforming tetrahedra,
+triangular prisms, or hexahedra; the polygon builder remains a 2D utility.
+
+A 3D source requires `ProductQuadrature` with at least two polar nodes and
+four azimuthal nodes. The P0 defaults have no axial transport and are rejected
+for a 3D mesh; choose, for example,
+`ProductQuadrature(0, n_polar=2, n_azimuth=4)` explicitly. Established 2D
+defaults are unchanged. The default P7 quadrature already satisfies this guard.
+These minimum counts establish directional coverage, not angular convergence.
 
 For an ordinate `Omega`, physical three-dimensional direction components
-`Omega_x, Omega_y` are used without planar renormalization. A face's coefficient
-is `s=A*(Omega_x*n_x+Omega_y*n_y)`. On an interior face, the upstream value is
+are used without renormalization. A face's coefficient is
+`s=A*sum_d(Omega_d*n_d)` over the mesh dimension, including z in 3D.
+On an interior face, the upstream value is
 the left cell when `s>=0` and the right cell when `s<0`. That face contributes
 `+s*psi_upwind` to the left equation and `-s*psi_upwind` to the right equation.
 The cell-integrated loss and boundary forcing are
@@ -57,7 +68,7 @@ residual_with_scattering = L psi - b - V*q_native(psi)
 ```
 
 There is no quadrature weight in these per-ordinate equations, and the native
-angular source is multiplied by cell area exactly once. `incoming=None` means
+angular source is multiplied by cell area (2D) or volume (3D) exactly once. `incoming=None` means
 vacuum (zero incoming flux). Outgoing and exactly tangential entries in a
 supplied incoming array are ignored, even when those unused entries are NaN.
 Consumed incoming entries and all consumed angular fluxes must be finite.
@@ -73,8 +84,8 @@ for incoming directions. These currents use full-sphere weights summing to
 `4*pi`; interior contributions cancel exactly between neighboring equations
 up to floating-point summation. No surface-average division is applied.
 
-`assembled(angle,group)` builds only one sparse cell-by-cell matrix. Its scalar
-row construction is independent of the vectorized face accumulation used by
+`assembled(angle,group)` builds only one sparse cell-by-cell matrix. Its numeric COO
+construction is independent of the vectorized face accumulation used by
 `action`, so their comparison can detect implementation discrepancies. Sparse
 matrices have nonnegative diagonals and nonpositive off-diagonals for admitted
 totals; no claim of strict diagonal dominance, nonsingularity, or transport

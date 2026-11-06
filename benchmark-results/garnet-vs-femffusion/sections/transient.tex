@@ -1,0 +1,62 @@
+\section{HP-MR transient: +0.5\,\$ external reactivity insertion}
+\label{sec:transient}
+
+\paragraph{Reference.} The reference is $P(t)$ from \garnet{} on the GH200.
+Fixed-step BDF2 at $\Delta t$ = 0.025 and 0.0125~s is extrapolated in time
+(order 2), then in space over $(r, n_z)$ = (4, 50), (6, 80) and (8, 100). The
+two corrections are $1.5 \times 10^{-4}$ and $6.8 \times 10^{-5}$ relative,
+so the reference is good to about $10^{-4}$.
+
+The ($r=12$, $n_z=160$) mesh would have tightened it, but it does not fit in
+the GH200's 96~GB: the transient's precursor fields and BDF history raised
+the allocation past 100~GB, where the eigen-solve on the same mesh needs
+74~GB. \ffn's own runs converge onto this reference independently: its
+Semi-Implicit-Exponential error falls from $1.1 \times 10^{-3}$ to
+$4.5 \times 10^{-4}$ as $\Delta t$ halves to 0.003125~s. $P(2\,\mathrm{s}) =
+2.5206$.
+
+\paragraph{Time to accuracy.} See Table~\ref{tab:tta} (last rows) and
+Figure~\ref{fig:transient}.
+\begin{itemize}
+\item \textbf{$10^{-2}$:} the two codes are even on one core (\ffn{} 107~s,
+  \garnet{} 100~s). The GH200 takes 12~s.
+\item \textbf{$10^{-3}$:} \garnet{} on one core needs 127~s ($r=2$, BDF2,
+  $\Delta t = 0.1$~s) and \ffn{} 1262~s (FE2 $r=0$, $\Delta t = 0.003125$~s),
+  a factor of 10. On the GH200 it is 17~s, 76 times faster than \ffn.
+\end{itemize}
+
+The \garnet{} transients were not rerun with the Wielandt shift
+(Section~\ref{sec:steady}). Their initial eigen-solve is the power iteration,
+the same solve as the steady $r=2$ run: 18.2~s on one core and 3.0~s on the
+GH200, against 8.3 and 1.0~s with the shift. At $10^{-3}$ the shift would
+therefore save about 10~s of the 127~s on one core and 2~s of the 17~s on the
+GH200; the comparison with \ffn{} does not change.
+
+The difference is the time integration, not the space discretization. \ffn's
+two working schemes are first order. Its default Implicit-Exponential scheme
+does not hold the unperturbed state on this input
+(Section~\ref{sec:problems}). \garnet's BDF2 is second order. \ffn's spatial
+error is small at every mesh: FE2 $r=0$ and FE3 $r=0$ differ by less than
+$10^{-3}$. Its error is therefore almost all time error, and a $10^{-3}$
+target costs it 640 steps.
+
+\paragraph{\garnet{} step control.} Down to about $10^{-3}$ the front is
+fixed-step BDF2 with the fixed-point step. Below that it is adaptive BDF with
+automatic order up to BDF4 and an error per step of $10^{-3}$: 26 steps
+(6 rejected) reach $3.2$--$3.3 \times 10^{-4}$ on every mesh, in 25~s at
+$r=2$ on the GH200.
+
+Tighter error tolerances do not help. Both adaptive variants stall at
+$2.3$--$3 \times 10^{-4}$, the spatial error of these meshes, while the step
+count doubles with each decade of tolerance. Capped at BDF2, the controller
+needs about 30\% more steps for the same accuracy. The monolithic step,
+which adaptive BDF requires, costs about 25\% more than the fixed-point step
+at a fixed $\Delta t$ (31 against 25~s at $r=4$, $\Delta t = 0.1$~s).
+
+\begin{figure}[h]
+\figfile{pareto_hpmr3d-transient}{0.62}
+\caption{HP-MR transient: largest relative power error over the run against
+solve time. Each code is scored at its own output times against a spline of
+the dense reference. Faint: every run; line: each platform's Pareto front.}
+\label{fig:transient}
+\end{figure}

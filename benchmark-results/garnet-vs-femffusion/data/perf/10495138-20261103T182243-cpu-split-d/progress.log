@@ -1,0 +1,1 @@
+DONE ff-iaea-fe2-r3 RESULT iaea3d FE2 r3 dofs=37967010 k=1.029074 counters={'outers': 4, 'inners': 4836, 'matvecs': 40, 'precond_applications': None} assembly=300.23336 solve=10821.6 wall=12722.0

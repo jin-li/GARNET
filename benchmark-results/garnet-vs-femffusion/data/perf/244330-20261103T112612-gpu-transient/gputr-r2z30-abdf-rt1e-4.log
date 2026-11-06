@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T112612/repo/tools/assess_garnet_vs_femffusion.py", line 364, in <module>
+    main()
+    ~~~~^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T112612/repo/tools/assess_garnet_vs_femffusion.py", line 347, in main
+    out.update(run(args, prob, layout))
+               ~~~^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T112612/repo/tools/assess_garnet_vs_femffusion.py", line 237, in run_transient
+    res = s.solve(t_end=args.t_end, verbose=args.verbose, **kw)
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T112612/repo/garnet/transient.py", line 946, in solve
+    raise ValueError(f"{adaptive_name} currently requires "
+                     "step_solver='monolithic'")
+ValueError: adaptive_bdf currently requires step_solver='monolithic'

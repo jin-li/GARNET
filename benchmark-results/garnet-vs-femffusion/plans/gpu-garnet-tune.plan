@@ -1,0 +1,18 @@
+gpu tune-iaea-r4-pd0a4-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd0a4-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd0a4-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 0 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-iaea-r4-pd0a8-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd0a8-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd0a8-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-iaea-r4-pd1a4-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd1a4-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd1a4-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 1 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-iaea-r4-pd1a8-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd1a8-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd1a8-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 1 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-iaea-r4-pd2a4-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd2a4-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd2a4-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-iaea-r4-pd2a8-gpu assess_garnet_vs_femffusion.py iaea3d --mesh 4 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-lmw-r4-pd2a8-gpu assess_garnet_vs_femffusion.py langenbuch3d --mesh 4 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu tune-hpmr-r4z50-pd2a8-gpu assess_garnet_vs_femffusion.py hpmr3d --mesh 4 --nz 50 --precond-degree 2 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@

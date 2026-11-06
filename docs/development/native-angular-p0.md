@@ -1,5 +1,9 @@
 # Fixed native P0 Galerkin angular preconditioner
 
+Experimental one-energy-group operator primitives are documented separately in
+[native-grouped-angular.md](native-grouped-angular.md). They do not select a
+solver or replace the preconditioners described here.
+
 `garnet.native_angular_p0.P0GalerkinTransport` is an explicit alternative to the
 default `NativeMeshTransport` diagonal preconditioner. The default solver keeps
 the same diagonal arithmetic and provenance. The subclass changes only the
@@ -48,11 +52,18 @@ Add `+T_face` to both neighboring same-group diagonals and `-T_face` to their
 same-group off-diagonal couplings. A vacuum face adds `T_face` to its owner's
 diagonal; a specular face adds zero. The sum over negative normal velocities
 must match the positive half range within floating-point tolerance scaled by
-the face measure and quadrature's in-plane speed integral. This includes
+the face measure and quadrature's speed integral in the mesh dimension. This includes
 oblique interior/vacuum faces and numerical tangencies. No planar direction
 renormalization, continuum `face_measure/4` substitution, diffusion coefficient,
 Marshak boundary term, SPD assumption, or material removal reconstruction is
 used. Reflection retains the base solver's Cartesian-axis restriction.
+
+The same construction supports 3D face normals and includes axial interior
+and vacuum faces. A reflective axial face adds no coarse leakage. Use the
+3D directional-coverage requirements of `NativeMeshStreaming`; a quadrature
+with all axial direction components zero cannot represent axial leakage.
+Coarse and streaming-block corrections are checked against their own 3D
+discrete equations, rather than assumed equal to a scaled 2D preconditioner.
 
 The constructor calls `scipy.sparse.linalg.spilu` once with defaults
 `drop_tol=1e-6`, `fill_factor=20`, `drop_rule='basic,area'`, `permc_spec='COLAMD'`,
@@ -161,6 +172,27 @@ values and dtypes. A digest only finds candidates; equal planar directions
 alone do not authorize reuse. The natural block map is `[angle][group]` and
 angular arrays retain `[cell,angle,group]` order.
 
+### One-block sparse assembly
+
+`NativeMeshStreaming.assembled(angle, group)` constructs numeric COO arrays
+for one angle and group before converting them to CSR. It does not retain an
+angle-by-face cache. Cell diagonals are inserted first, followed by the two
+interleaved contributions of each interior face and then positive boundary
+outflow in face order. Separate component multiplications and addition preserve
+the scalar builder's floating-point operation order, including tangencies and
+the upstream-owner choice. Duplicate entries and signed zeros are retained
+until the same sparse conversion used previously.
+
+This replaces Python lists and per-face scalar loops while preserving the
+existing allocation guard and the separate matrix-free action. Manufactured
+tests compare COO bytes, CSR structure/data, and signed-vector actions against
+the original scalar construction. An overflowing boundary coefficient now
+raises even when it is negative and would previously have been omitted.
+Finite valid inputs, physical coefficients, factor settings and convergence
+criteria are unchanged. Assembly-only timing does not predict whole-solve
+speed; factorization, preconditioner application and source iteration require
+their own measurements.
+
 ### Optional packed factor storage
 
 Both preconditioner classes accept the keyword-only option
@@ -194,10 +226,35 @@ no reference to the original SuperLU object, but private triangular-solve and
 allocator overhead still require an external process memory limit. Successful
 small tests do not establish that a complete assembly setup fits or converges.
 
+### Packed P0 workspace lifetimes
+
+`P0GalerkinTransport.memory_estimate_bytes` remains the conservative peak for
+its construction, including ILU fill and packing workspaces. After that
+constructor returns, the original factor and its temporary triplets, L/U views,
+and packing arrays have been released. The retained packed P0 reservation is
+then the base transport estimate, all original nonfactor allowances, the owned
+packed payload, and the retained coarse CSR payload. Krylov, angular action,
+and coarse solve allowances are preserved.
+
+The streaming-block constructor uses this post-setup reservation only after
+P0 construction returns. Its final estimate is the maximum of the original P0
+construction peak, every streaming assembly/factor/packing phase, and the
+post-setup reservation plus angular workspace and all distinct retained blocks.
+Provenance records these components under `memory_accounting_version` and
+`base_p0_post_setup_reservation_bytes`; `base_p0_memory_estimate_bytes` retains
+its meaning as the P0 construction peak. The default opaque SuperLU storage
+keeps its previous reservation.
+
+This accounts for allocation lifetimes; it does not infer memory needs from
+measured RSS or alter a job's budget. Allocator arenas and native workspaces
+may remain resident, so an external hard memory limit is still required.
+
 Memory accounting retains the inherited Krylov/coarse estimates and reserves
 additional angular vectors, sparse assembly/conversion workspace and existing
 unique factors before every new block. The measured retained charge includes
-matrix arrays, twice the materialized L/U arrays, and row/column permutations.
+matrix arrays, twice the materialized L/U arrays, and row/column permutations
+for opaque SuperLU storage. Packed storage charges the matrix and its owned
+packed payload, while guarding conversion as a separate temporary peak.
 `streaming_fill_estimate` defaults to 20 and is only a preflight allowance;
 it does not cap SuperLU fill or opaque workspace. Enforce an external job
 memory limit throughout setup and solves. A failed setup is not permission to

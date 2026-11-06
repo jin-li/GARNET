@@ -1,0 +1,17 @@
+\begin{tabular}{llr|rr|rr|rr|rr}
+\hline
+ & & & \multicolumn{2}{c|}{power iteration} & \multicolumn{2}{c|}{adaptive shift} & \multicolumn{2}{c|}{fixed shift} & & \\
+Platform & Mesh & Unknowns & outers & s & outers & s & outers & s & speed-up & $|\Delta k|$ (pcm) \\
+\hline
+GARNET CPU & r2 z30 & 435,600 & 253 & 18.2 & 12 & 9.37 & 10 & 8.27 & 2.2 & 0.003 \\
+GARNET CPU & r3 z40 & 1,306,800 & 252 & 76.4 & 12 & 36.1 & 10 & 31 & 2.5 & 0.002 \\
+GARNET CPU & r4 z50 & 2,904,000 & 251 & 241 & 12 & 110 & 10 & 94.7 & 2.5 & 0.001 \\
+GARNET CPU & r6 z80 & 10,454,400 & 250 & 1995 & 12 & 770 & 10 & 667 & 3.0 & 0.002 \\
+GARNET GH200 & r2 z30 & 435,600 & 254 & 3.01 & 12 & 1.15 & 10 & 0.977 & 3.1 & 0.005 \\
+GARNET GH200 & r3 z40 & 1,306,800 & 252 & 3.81 & 11 & 1.28 & 10 & 1.17 & 3.2 & 0.001 \\
+GARNET GH200 & r4 z50 & 2,904,000 & 252 & 4.78 & 12 & 1.7 & 10 & 1.36 & 3.5 & 0.001 \\
+GARNET GH200 & r6 z80 & 10,454,400 & 251 & 6.96 & 12 & 2.72 & 10 & 2.38 & 2.9 & 0.001 \\
+GARNET GH200 & r8 z100 & 23,232,000 & 250 & 14.5 & 12 & 6 & 10 & 5.23 & 2.8 & 0.002 \\
+GARNET GH200 & r12 z160 & 83,635,200 & 250 & 68.2 & 12 & 26.7 & 10 & 23.2 & 2.9 & 0.003 \\
+\hline
+\end{tabular}

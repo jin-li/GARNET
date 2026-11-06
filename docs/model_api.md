@@ -177,6 +177,19 @@ adjoint) scales both by `(1 − ρ̂)`, where ρ̂ is the dominance ratio estima
 from the iteration history. They then bound the error, not the last step. The
 scaling costs about 25–80% more outer iterations for an error about 100 times
 smaller.
+
+`wielandt_shift=δk` enables an opt-in shifted multigroup FGMRES solve after
+settled startup, for example `core.steady(wielandt_shift=0.3)` on a
+`TriReactor`. `wielandt_mode="fixed"` holds the chosen shift;
+`"adaptive"` steers its offset using the cost of each shifted solve. Startup
+uses a component-ratio estimate, with the conditional scope described in
+[the implementation notes](numerical_implementation_notes.md#wielandt-shifted-eigenvalue-iteration).
+The actual shifted residual, final balance and physical-state checks remain
+active. A failed inner budget returns a failed result rather than an accepted
+new eigenvalue. `multigroup_kwargs` controls group-sweep preconditioning,
+FGMRES iterations and restart storage. FGMRES keeps approximately
+`2·restart + 4` copies of the multigroup state; compare memory and time with
+the unshifted solver at matched convergence requirements.
 Geometry, boundary conditions and device settings stay with the model and
 cannot be overridden inside `solver_kwargs`.
 

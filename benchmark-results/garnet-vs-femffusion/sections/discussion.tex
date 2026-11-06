@@ -1,0 +1,88 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Where the time goes.} The two codes spend their effort in
+different places:
+
+\begin{center}\small
+\begin{tabular}{p{4.0cm}p{5.0cm}p{5.9cm}}
+\hline
+ & \ffn{} & \garnet{} \\
+\hline
+Value of one unknown & high: degree-3 elements & low: second-order finite volumes \\
+Outer iterations to converge & 4--45 (Krylov eigensolvers) & 28--57 (2-group, power iteration); 10 (HP-MR, Wielandt shift) \\
+Solve cost per unknown, $\ge 10^6$ unknowns & 36--325~$\mu$s (one core) & 7.5--64~$\mu$s (one core); 0.09--0.9~$\mu$s (GH200) \\
+Cost per unknown and inner iteration & -- & 5--32~ns (one core); 0.03--0.43~ns (GH200) \\
+Memory per unknown & 2--3.6~kB (process) & 0.2--1.4~kB (CPU); 0.24--2.2~kB (GH200 pool) \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+\item \textbf{Steady, one core:} \ffn's richer unknowns and stronger eigensolver
+  outweigh \garnet's cheaper unknowns, by one to two orders of magnitude in
+  unknowns at the same error.
+\item \textbf{Steady, GH200:} a \garnet{} solve there is 190--320 times
+  faster than on one core from 4 million unknowns up (26--110 times at 1 to
+  3 million, where the GPU is not yet full). That carries it past \ffn{} on
+  one core on all three steady cores at 10~pcm and 1\%, IAEA-3D included,
+  where it needs 127 million unknowns.
+\item \textbf{Transient:} time integration decides the comparison, not space.
+  \garnet's second-order BDF against \ffn's first-order semi-implicit schemes is
+  worth a factor of 10 on the same core at $10^{-3}$.
+\end{itemize}
+
+\paragraph{What would change the picture.}
+\begin{itemize}
+\item \textbf{A parallel \ffn.} Its MPI path, once repaired (Section~\ref{sec:codes}),
+  would divide its times by up to the parallel efficiency times the number
+  of cores. At 64 cores and 50\% efficiency, a factor of 32 would bring its
+  HP-MR time at 10~pcm from 89~s to about 3~s, close to the GH200's 2.4~s.
+  This is an estimate, not a measurement: the repair is deferred.
+\item \textbf{\garnet's outer acceleration.} The Wielandt shift written for
+  this comparison took the HP-MR from about 250 Anderson-accelerated power
+  iterations to 10 shifted solves, 2.2--3.5 times faster
+  (Table~\ref{tab:wielandt}). Its shifted solves are preconditioned by a
+  fine-mesh group sweep only. \garnet{} still has no CMFD-style coarse-mesh
+  correction, which would cut the FGMRES iterations within each solve. On the
+  two-group cores the power iteration remains its fastest option, at 28--57
+  outers against \ffn's 4--8.
+\item \textbf{\garnet's discretization.} A higher-order or nodal-like
+  discretization would close the steady gap per core. The node powers are
+  where the finite volumes lose the most: on IAEA they need cells well below
+  the 2~cm thermal diffusion length before they converge at second order.
+\item \textbf{\ffn's time integration.} A working Implicit-Exponential scheme,
+  or any second-order scheme, would shrink the transient gap. Its default
+  scheme is first order and, on this input, does not hold equilibrium.
+\end{itemize}
+
+\paragraph{\ffn{} findings.} These were found while posing identical problems,
+and could be reported upstream:
+\begin{enumerate}
+\item Implicit-Exponential takes material~0's decay constants and delayed
+  spectra for the whole core. With multi-material kinetics it also drifts
+  from equilibrium in proportion to $\Delta t$ (3.9\% in a 0.1~s step).
+\item An XML material's prompt spectrum stays zero unless the material has a
+  \code{ChiD} element. With kinetics from \code{PREC\_Filename}, the
+  Implicit-Exponential transient collapses.
+\item \code{full\_allocated} with \code{gd} or \code{bifpam} gives a wrong $k$ on
+  the refined Langenbuch core: 1.70 and 1.38 instead of 0.9995.
+\item \code{full\_matrixfree} with \code{gd} or \code{slepc\_2g} crashes.
+\item Running on more than one MPI rank is not possible yet
+  (Section~\ref{sec:codes}).
+\end{enumerate}
+Items 1--2 are close to open fix branches of the \code{ondrejch} fork
+(\code{fix/time-delayed-spectrum-implicit},
+\code{fix/xml-default-delayed-spectra}).
+
+\paragraph{Fairness and scope.}
+\begin{itemize}
+\item Both codes ran the same problems on the same CPU type, each in its best
+  measured configuration, at tolerances chosen by the same rule.
+\item The GH200 is compared with one EPYC core. That is \ffn's only working
+  mode today, not a node-to-node comparison.
+\item The steady 1~pcm, 0.1\% target sits within a factor of three of the
+  references' resolution (0.3--0.4~pcm). It ranks the platforms only coarsely.
+\item The HP-MR is drums-withdrawn. The inserted, area-smeared drums are a
+  near-black absorber that neither code resolves (Section~\ref{sec:problems}).
+\end{itemize}

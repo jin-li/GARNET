@@ -39,3 +39,9 @@ Standard eigen solvers use fission-source power iteration with multigroup source
 Matrix-free operators store face coefficients and diagonals and apply local stencils through NumPy or CuPy. CG requires a symmetric positive definite formulation. Cylindrical volume weighting and suitable moment transformations can supply it; nonsymmetric closures require the supported nonsymmetric Krylov path. Do not select CG merely because a continuum diffusion equation looks symmetric.
 
 `device="auto"` is a convenience policy, not evidence of GPU execution. Record the reported backend, device, precision and library versions. The native-moment hybrid GPU solver is a separate assembled CSR implementation with host-side outer physics and residual checks. NEM sparse LU remains CPU-only.
+
+The optional Wielandt path solves a shifted multigroup system while retaining
+the same unshifted eigenproblem. Startup uses a component-ratio shift estimate;
+its Collatz interpretation requires an exact nonnegative source map. General
+moment and inexact solves retain independent shifted-equation residual, final
+balance and physical-state gates. See the [shift formulation and scope](../numerical_implementation_notes.md#wielandt-shifted-eigenvalue-iteration).

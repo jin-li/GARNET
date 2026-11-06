@@ -419,3 +419,58 @@ def test_bicgstab_breakdown_test_is_scale_invariant():
     x2, it2 = bicgstab(apply, s * b, np.zeros_like(b), inv_diag, np, rtol=1e-2)
     assert it2 == it1
     assert np.allclose(x2 / s, x1, rtol=1e-6)
+
+
+
+@pytest.mark.parametrize("solver", [pcg, gmres, bicgstab])
+def test_none_initial_guess_is_a_zero_start_without_the_initial_apply(solver):
+    # x0=None means x0 = 0 and skips the initial A @ 0 (the block
+    # preconditioner of the Wielandt solve starts its group solves from zero).
+    op, b = _spd_stencil_system()
+
+    def run(x0):
+        calls = []
+
+        def apply_counted(x):
+            calls.append(1)
+            return op.apply(x)
+
+        x, n = solver(apply_counted, b, x0, op.inv_diag, np, rtol=1e-10)
+        return x, n, len(calls)
+
+    ref, n_ref, applies_ref = run(np.zeros_like(b))
+    x, n, applies = run(None)
+    assert n == n_ref
+    assert np.array_equal(x, ref)
+    assert applies == applies_ref - 1
+
+
+@pytest.mark.parametrize("operator_out", [False, True])
+def test_pcg_none_start_reinitializes_reused_workspace(operator_out):
+    op, b = _spd_stencil_system(n=5)
+    workspace = PCGWorkspace.like(b, operator_out=operator_out)
+    ids = tuple(id(getattr(workspace, name)) for name in ("x", "r", "z", "p", "ap"))
+
+    def run(start, rhs):
+        for name in ("x", "r", "z", "p", "ap"):
+            getattr(workspace, name).fill(17.0)
+        calls = []
+
+        def apply(value, out=None):
+            calls.append(1)
+            return op.apply(value, out=out)
+
+        result, iterations = pcg(apply, rhs, start, op.inv_diag, np,
+                                 rtol=1e-11, workspace=workspace)
+        assert result is workspace.x
+        assert ids == tuple(id(getattr(workspace, name)) for name in ("x", "r", "z", "p", "ap"))
+        return result.copy(), iterations, len(calls)
+
+    reference, n_ref, applies_ref = run(np.zeros_like(b), b)
+    actual, n, applies = run(None, b)
+    assert n == n_ref and applies == applies_ref - 1
+    np.testing.assert_array_equal(actual, reference)
+    assert np.linalg.norm(op.apply(actual) - b) <= 1.1e-11 * np.linalg.norm(b)
+    zero, n_zero, applies_zero = run(None, np.zeros_like(b))
+    assert n_zero == applies_zero == 0
+    np.testing.assert_array_equal(zero, np.zeros_like(b))

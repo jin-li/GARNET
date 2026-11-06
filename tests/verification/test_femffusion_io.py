@@ -4,14 +4,16 @@ The .xsec reader is checked against the hand-transcribed VVER-440 table in
 garnet.benchmarks.vver440 (both originate from FEMFFUSION's
 examples/2D_VVER440/2D_VVER440.xsec, so they must agree exactly), and the XML
 reader against values read straight off the C5G7 file, including the
-SigmaS[to, from] -> sigma_s[from, to] transpose and upscatter.
+SigmaS[to, from] -> sigma_s[from, to] transpose and upscatter. The XML writer is
+checked by round trip on the 11-group HP-MR set, which has
+upscatter, kappa_fission and non-fissile materials.
 """
 
 import numpy as np
 import pytest
 
 from garnet.benchmarks.vver440 import _XS
-from garnet.femffusion import read_material_xml, read_xsec
+from garnet.femffusion import read_material_xml, read_xsec, write_material_xml
 from tests._femffusion import femffusion_path, requires_femffusion
 
 VVER_XSEC_REL = "examples/2D_VVER440/2D_VVER440.xsec"
@@ -170,3 +172,70 @@ def test_xsec_keeps_the_power_cross_section_as_kappa(tmp_path):
                                ENERGY_PER_FISSION_J * np.array([0.0026, 0.0451]))
     custom = read_xsec(_write(tmp_path, _XSEC_3D), energy_per_fission=1.0)
     np.testing.assert_allclose(custom.materials[1].kappa_fission, [0.0030, 0.0551])
+
+
+def _hpmr_11g():
+    from garnet.benchmarks.hpmr_thermal import hpmr_endfb8_builtin
+    return hpmr_endfb8_builtin(three_d=True)[1:]       # drop the void slot
+
+
+def test_xml_writer_round_trips(tmp_path):
+    import xml.etree.ElementTree as ET
+    from garnet.femffusion import ENERGY_PER_FISSION_J
+    mats = _hpmr_11g()
+    path = tmp_path / "hpmr.xml"
+    write_material_xml(mats, path)
+    back = read_material_xml(path)
+    assert len(back) == len(mats)
+    for m, b in zip(mats, back):
+        assert b.name == m.name
+        for key in ("sigma_a", "nu_sigma_f", "sigma_s", "sigma_t"):
+            np.testing.assert_array_equal(getattr(b, key), getattr(m, key), err_msg=key)
+        # D goes through SigmaTR = 1/(3D) and back, as in FEMFFUSION: 1 ulp
+        np.testing.assert_allclose(b.diffusion, m.diffusion, rtol=1e-15, atol=0)
+        if m.is_fissile:
+            np.testing.assert_allclose(b.chi, m.chi, rtol=1e-15)
+    assert any(np.triu(m.sigma_s, 1).any() for m in mats)       # upscatter kept
+    # The rows FEMFFUSION uses directly: removal and the power weight.
+    mixes = ET.parse(path).getroot().findall("mix")
+    for m, mix in zip(mats, mixes):
+        removal = np.array(mix.find("SigmaR").text.replace(";", " ").split(), float)
+        np.testing.assert_array_equal(removal, m.removal)
+        sig_f = np.array(mix.find("SigF").text.replace(";", " ").split(), float)
+        expect = (m.kappa_fission / ENERGY_PER_FISSION_J if m.kappa_fission is not None
+                  else m.nu_sigma_f)
+        np.testing.assert_array_equal(sig_f, expect)
+        if not m.is_fissile:
+            assert not np.array(mix.find("Chi").text.replace(";", " ").split(), float).any()
+
+
+
+def test_xml_writer_kinetics_layout(tmp_path):
+    # FEMFFUSION's Implicit-Exponential step reads the decay constants and
+    # delayed spectra of material 0 for every material, so non-fissile mixes
+    # carry the global lambda and the fissile chi/ChiD, with zero beta.
+    import xml.etree.ElementTree as ET
+    from garnet.benchmarks.hpmr_thermal import hpmr_kinetics_11g
+    from garnet.materials import Kinetics
+    mats = _hpmr_11g()
+    k = hpmr_kinetics_11g()
+    kin = Kinetics(velocities=k.velocities, beta=k.beta, decay=k.decay)
+    path = tmp_path / "hpmr.xml"
+    write_material_xml(mats, path, kinetics=kin)
+    root = ET.parse(path).getroot()
+    I, G = kin.decay.size, mats[0].n_groups
+    assert root.attrib["nprecursors"] == str(I)
+    chi_fuel = next(m.chi for m in mats if m.is_fissile)
+
+    def vec(mix, tag):
+        return np.array(mix.find(tag).text.replace(";", " ").split(), float)
+    for m, mix in zip(mats, root.findall("mix")):
+        np.testing.assert_array_equal(vec(mix, "Lambda"), kin.decay)
+        np.testing.assert_array_equal(vec(mix, "Velocities"), kin.velocities)
+        np.testing.assert_array_equal(vec(mix, "Beta"), kin.beta if m.is_fissile else 0.0)
+        np.testing.assert_array_equal(vec(mix, "ChiD").reshape(I, G),
+                                      np.tile(m.chi if m.is_fissile else chi_fuel, (I, 1)))
+    # the cross sections still read back unchanged
+    for m, b in zip(mats, read_material_xml(path)):
+        np.testing.assert_array_equal(b.nu_sigma_f, m.nu_sigma_f)
+        np.testing.assert_array_equal(b.sigma_s, m.sigma_s)
