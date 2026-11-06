@@ -168,6 +168,27 @@ values and dtypes. A digest only finds candidates; equal planar directions
 alone do not authorize reuse. The natural block map is `[angle][group]` and
 angular arrays retain `[cell,angle,group]` order.
 
+### One-block sparse assembly
+
+`NativeMeshStreaming.assembled(angle, group)` constructs numeric COO arrays
+for one angle and group before converting them to CSR. It does not retain an
+angle-by-face cache. Cell diagonals are inserted first, followed by the two
+interleaved contributions of each interior face and then positive boundary
+outflow in face order. Separate component multiplications and addition preserve
+the scalar builder's floating-point operation order, including tangencies and
+the upstream-owner choice. Duplicate entries and signed zeros are retained
+until the same sparse conversion used previously.
+
+This replaces Python lists and per-face scalar loops while preserving the
+existing allocation guard and the separate matrix-free action. Manufactured
+tests compare COO bytes, CSR structure/data, and signed-vector actions against
+the original scalar construction. An overflowing boundary coefficient now
+raises even when it is negative and would previously have been omitted.
+Finite valid inputs, physical coefficients, factor settings and convergence
+criteria are unchanged. Assembly-only timing does not predict whole-solve
+speed; factorization, preconditioner application and source iteration require
+their own measurements.
+
 ### Optional packed factor storage
 
 Both preconditioner classes accept the keyword-only option

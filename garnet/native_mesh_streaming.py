@@ -215,28 +215,44 @@ class NativeMeshStreaming:
         nc, nf, nb = len(self.area), len(self.owners), len(self.boundary_owners)
         _budget(128*(nc+4*nf+nb+1), self.max_bytes)
         omega = self.quadrature.directions[angle]
-        rows, columns, values = [], [], []
-        for cell in range(nc):
-            rows.append(cell)
-            columns.append(cell)
-            values.append(self.area[cell]*self.total[self.source.cell_material_ids[cell], group])
-        # Deliberately independent scalar row construction, not action's vector face accumulation.
-        for face in range(nf):
-            left, right = self.owners[face]
-            coefficient = self.measures[face]*sum(
-                omega[axis]*self.normals[face, axis] for axis in range(self.dimension))
-            upstream = left if coefficient >= 0 else right
-            rows.extend((left, right))
-            columns.extend((upstream, upstream))
-            values.extend((coefficient, -coefficient))
-        for face in range(nb):
-            coefficient = self.boundary_measures[face]*sum(
-                omega[axis]*self.boundary_normals[face, axis] for axis in range(self.dimension))
-            if coefficient > 0:
-                owner = self.boundary_owners[face]
-                rows.append(owner)
-                columns.append(owner)
-                values.append(coefficient)
+        # One angle/group only. Separate multiply/add ufuncs retain the scalar
+        # arithmetic order; dot/einsum can change rounding and upstream choice.
+        with np.errstate(over='ignore', invalid='ignore'):
+            speed = omega[0]*self.normals[:, 0] + omega[1]*self.normals[:, 1]
+            boundary_speed = (omega[0]*self.boundary_normals[:, 0]
+                              + omega[1]*self.boundary_normals[:, 1])
+            if self.dimension == 3:
+                speed = speed + omega[2]*self.normals[:, 2]
+                boundary_speed = boundary_speed + omega[2]*self.boundary_normals[:, 2]
+            coefficient = self.measures*speed
+            boundary = self.boundary_measures*boundary_speed
+        self._finite(coefficient)
+        # Reject even unused negative boundary overflow, which the scalar
+        # builder silently omitted. Finite coefficients keep identical behavior.
+        self._finite(boundary)
+        outgoing = np.flatnonzero(boundary > 0)
+        end = nc + 2*nf
+        count = end + len(outgoing)
+        rows = np.empty(count, dtype=np.int64)
+        columns = np.empty(count, dtype=np.int64)
+        values = np.empty(count, dtype=np.float64)
+        rows[:nc] = np.arange(nc, dtype=np.int64)
+        columns[:nc] = rows[:nc]
+        with np.errstate(over='ignore', invalid='ignore'):
+            values[:nc] = self.area*self.total[self.source.cell_material_ids, group]
+        # Preserve COO insertion order: diagonals, interleaved face (+c,-c),
+        # then strictly positive boundaries in input order. Keep signed zeros.
+        rows[nc:end:2] = self.owners[:, 0]
+        rows[nc+1:end:2] = self.owners[:, 1]
+        upstream = np.where(coefficient >= 0, self.owners[:, 0], self.owners[:, 1])
+        columns[nc:end:2] = upstream
+        columns[nc+1:end:2] = upstream
+        values[nc:end:2] = coefficient
+        values[nc+1:end:2] = -coefficient
+        rows[end:] = self.boundary_owners[outgoing]
+        columns[end:] = rows[end:]
+        values[end:] = boundary[outgoing]
+        self._finite(values)
         matrix = coo_matrix((values, (rows, columns)), shape=(nc, nc)).tocsr()
         self._finite(matrix.data)
         return matrix

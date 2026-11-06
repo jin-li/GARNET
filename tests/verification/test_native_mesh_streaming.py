@@ -1,9 +1,12 @@
 """Tiny algebraic streaming checks; no transport solve or physical qualification."""
 from dataclasses import replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from scipy.sparse import coo_matrix
 
+import garnet.native_mesh_streaming as streaming_module
 from garnet.mesh import assemble_mesh
 from garnet.moment_materials import MomentMaterial
 from garnet.native_angular_source import NativeAngularSource, ProductQuadrature
@@ -234,3 +237,178 @@ def test_input_and_budget_failures():
                       lambda: limited.face_currents(np.ones(op.shape))):
         with pytest.raises(ValueError, match='allocation estimate'):
             operation()
+
+
+def old_scalar_coo(op, angle, group):
+    """Literal pre-vectorization builder; retain its operation/insertion order."""
+    nc = len(op.area)
+    omega = op.quadrature.directions[angle]
+    rows, columns, values = [], [], []
+    for cell in range(nc):
+        rows.append(cell)
+        columns.append(cell)
+        values.append(op.area[cell]*op.total[op.source.cell_material_ids[cell], group])
+    for face in range(len(op.owners)):
+        left, right = op.owners[face]
+        nx, ny = op.normals[face]
+        coefficient = op.measures[face]*(omega[0]*nx + omega[1]*ny)
+        upstream = left if coefficient >= 0 else right
+        rows.extend((left, right))
+        columns.extend((upstream, upstream))
+        values.extend((coefficient, -coefficient))
+    for face in range(len(op.boundary_owners)):
+        nx, ny = op.boundary_normals[face]
+        coefficient = op.boundary_measures[face]*(omega[0]*nx + omega[1]*ny)
+        if coefficient > 0:
+            owner = op.boundary_owners[face]
+            rows.append(owner)
+            columns.append(owner)
+            values.append(coefficient)
+    return (np.array(rows, dtype=np.int64), np.array(columns, dtype=np.int64),
+            np.array(values, dtype=np.float64))
+
+
+def manufactured_assembly_storage():
+    """Algebraic storage only, without claiming validated physical geometry.
+
+    Repeated owners, permuted material IDs, zero totals and exact tangencies
+    make COO ordering observable. Real constructed operators are checked too.
+    """
+    directions = np.array([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.],
+                           [.6, .8, 0.], [-.6, -.8, 0.], [0., 0., 1.]])
+    return SimpleNamespace(
+        area=np.array([2., 3., 5.]),
+        total=np.array([[0., .25, 4.], [2., .5, 8.]]),
+        source=SimpleNamespace(cell_material_ids=np.array([1, 0, 1], dtype=np.int64)),
+        owners=np.array([[0, 1], [2, 1], [0, 2], [1, 0]], dtype=np.int64),
+        measures=np.array([2., .5, 4., 3.]),
+        normals=np.array([[1., 0.], [0., -1.], [-.6, .8], [-1., 0.]]),
+        boundary_owners=np.array([0, 0, 2, 1, 2], dtype=np.int64),
+        boundary_measures=np.array([2., 3., .5, 4., 5.]),
+        boundary_normals=np.array([[1., 0.], [-1., 0.], [0., 1.],
+                                   [0., -1.], [.6, .8]]),
+        quadrature=SimpleNamespace(directions=directions), shape=(3, 6, 3),
+        max_bytes=256*1024**2, _finite=NativeMeshStreaming._finite)
+
+
+def assert_old_coo_equivalence(op, angle, group, monkeypatch):
+    rows, columns, values = old_scalar_coo(op, angle, group)
+    expected = coo_matrix((values, (rows, columns)), shape=(len(op.area),)*2).tocsr()
+    captured = []
+
+    def checked_coo(entries, shape):
+        actual_values, (actual_rows, actual_columns) = entries
+        for actual, want in ((actual_rows, rows), (actual_columns, columns)):
+            assert actual.dtype == np.dtype(np.int64)
+            np.testing.assert_array_equal(actual, want)
+        assert actual_values.dtype == np.dtype(np.float64)
+        np.testing.assert_array_equal(actual_values.view(np.uint64), values.view(np.uint64))
+        captured.append(True)
+        return coo_matrix(entries, shape=shape)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(streaming_module, 'coo_matrix', checked_coo)
+        actual = NativeMeshStreaming.assembled(op, angle, group)
+    assert captured == [True]
+    np.testing.assert_array_equal(actual.indptr, expected.indptr)
+    np.testing.assert_array_equal(actual.indices, expected.indices)
+    np.testing.assert_array_equal(actual.data.view(np.uint64), expected.data.view(np.uint64))
+    for flux in (np.ones(len(op.area)), np.arange(len(op.area), dtype=float)-.75):
+        np.testing.assert_array_equal((actual @ flux).view(np.uint64),
+                                      (expected @ flux).view(np.uint64))
+    return rows, columns, values
+
+
+@pytest.mark.parametrize('shear', [0., .4])
+def test_assembled_matches_old_scalar_coo_on_validated_mesh(shear, monkeypatch):
+    _, op = operator(shear=shear)
+    for angle in range(op.shape[1]):
+        for group in range(op.shape[2]):
+            assert_old_coo_equivalence(op, angle, group, monkeypatch)
+
+
+def test_assembled_manufactured_directions_groups_and_readonly_storage(monkeypatch):
+    op = manufactured_assembly_storage()
+    arrays = [value for value in vars(op).values() if isinstance(value, np.ndarray)]
+    arrays += [op.source.cell_material_ids, op.quadrature.directions]
+    originals = [value.tobytes() for value in arrays]
+    for value in arrays:
+        value.flags.writeable = False
+    for angle in range(op.shape[1]):
+        for group in range(op.shape[2]):
+            assert_old_coo_equivalence(op, np.int64(angle), np.int32(group), monkeypatch)
+    assert [value.tobytes() for value in arrays] == originals
+    assert all(not value.flags.writeable for value in arrays)
+    rows, columns, values = assert_old_coo_equivalence(op, 5, 0, monkeypatch)
+    nc = len(op.area)
+    assert len(rows) == nc + 2*len(op.owners)  # tangent boundaries omitted
+    np.testing.assert_array_equal(columns[nc::2], op.owners[:, 0])
+    assert np.all(values[nc:] == 0)
+    np.testing.assert_array_equal(np.signbit(values[nc+1::2]), ~np.signbit(values[nc::2]))
+
+
+def test_assembled_cancellation_preserves_multiply_add_order(monkeypatch):
+    op = manufactured_assembly_storage()
+    op.normals[:3] = [[.8, -.6], [np.nextafter(.8, np.inf), -.6],
+                      [np.nextafter(.8, 0.), -.6]]
+    for angle in (3, 4):
+        for group in range(op.shape[2]):
+            _, columns, values = assert_old_coo_equivalence(op, angle, group, monkeypatch)
+            assert values[len(op.area)] == 0.
+            assert columns[len(op.area)] == op.owners[0, 0]
+
+
+@pytest.mark.parametrize('empty_interior,empty_boundary', [(True, False), (False, True), (True, True)])
+def test_assembled_empty_face_storage(empty_interior, empty_boundary, monkeypatch):
+    op = manufactured_assembly_storage()
+    if empty_interior:
+        op.owners = np.empty((0, 2), dtype=np.int64)
+        op.measures = np.empty(0)
+        op.normals = np.empty((0, 2))
+    if empty_boundary:
+        op.boundary_owners = np.empty(0, dtype=np.int64)
+        op.boundary_measures = np.empty(0)
+        op.boundary_normals = np.empty((0, 2))
+    for angle in (0, 1, 5):
+        assert_old_coo_equivalence(op, angle, 0, monkeypatch)
+
+
+def test_assembled_budget_unchanged_and_guard_precedes_workspace(monkeypatch):
+    op = manufactured_assembly_storage()
+    required = 128*(len(op.area)+4*len(op.owners)+len(op.boundary_owners)+1)
+    op.max_bytes = required-1
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError('allocated or computed workspace before budget guard')
+
+    with monkeypatch.context() as patch:
+        for name in ('empty', 'arange', 'flatnonzero', 'isfinite'):
+            patch.setattr(streaming_module.np, name, unexpected)
+        with pytest.raises(ValueError, match=f'allocation estimate {required} bytes'):
+            NativeMeshStreaming.assembled(op, 0, 0)
+    op.max_bytes = required
+    assert_old_coo_equivalence(op, 0, 0, monkeypatch)
+
+
+@pytest.mark.parametrize('angle,group', [(-1, 0), (6, 0), (True, 0), (0., 0),
+                                         (0, -1), (0, 3), (0, False), (0, 1.)])
+def test_assembled_indices_rejected_before_allocation(angle, group, monkeypatch):
+    op = manufactured_assembly_storage()
+    with monkeypatch.context() as patch:
+        patch.setattr(streaming_module.np, 'empty',
+                      lambda *args, **kwargs: pytest.fail('allocated for invalid index'))
+        with pytest.raises(ValueError):
+            NativeMeshStreaming.assembled(op, angle, group)
+
+
+@pytest.mark.parametrize('field,index', [('area', 0), ('measures', 0),
+                                        ('boundary_measures', 0), ('boundary_measures', 1)])
+def test_assembled_nonfinite_intermediates_rejected(field, index):
+    op = manufactured_assembly_storage()
+    getattr(op, field)[index] = np.finfo(np.float64).max
+    # Manufactured nonunit direction induces positive/negative boundary overflow.
+    # Negative overflow used to be omitted; the new builder rejects it as well.
+    if field != 'area':
+        op.quadrature.directions[0, 0] = 2.
+    with pytest.raises(ValueError, match='nonfinite'):
+        NativeMeshStreaming.assembled(op, 0, 0)
