@@ -128,21 +128,57 @@ a failed inner sweep can therefore be partial.
 
 `memory_estimate_bytes` is checked before operator reflection construction and
 again before solve allocations. With `F=nc*na*ng`, `M=nc*h*ng`, `G=nc*na`,
-`h=(L+1)^2`, and effective restart `r`, its byte bound is the operator's public
-workspace bound plus
-`8 * (5*F + 2*M + (r+1)*G + 32*G + 6*(r+1)^2 + 4*max_sweeps*(ng+4))`.
-The full-field allowance includes owned source/iterate, immutable result-copy
-ownership and conversion/validation margin. The remaining terms cover the
-moment cache, one-group GMRES basis and conservative live workspace,
-Hessenberg/rotation arrays and history numeric payload. The actual persistent
-diagonal and GMRES basis are one group only. The simultaneous residual never
-allocates a full coupled residual field or an angle-by-face cache.
+`h=(L+1)^2`, and effective restart `r`, its byte bound is the unchanged
+operator workspace bound `O` plus
+`8 * (3*F + M + (r+1)*G + W*G + 6*(r+1)^2 + 4*max_sweeps*(ng+4))`.
+Three full angular fields cover the owned RHS copy, iterate and immutable
+result, including a failure path where exception tracebacks retain GMRES
+frames while the result is frozen. There is exactly one coupled moment cache.
+Result freezing validates finite values in bounded group batches and creates
+immutable byte-backed storage without a full multigroup boolean mask.
+The one-group helper returns only scalar statuses: its RHS, diagonal,
+candidate, true residual, candidate moments and closures are released before
+the next group begins. Projection still precedes commit. The simultaneous
+residual also releases each group residual before the next group action and
+never allocates a full coupled residual field or an angle-by-face cache.
+
+The reviewed workspace uses `W=10`: RHS plus diagonal (2 group vectors),
+passed initial guess plus SciPy's internal iterate (2), residual/operator/
+preconditioner work `r/av/w` (3), and three transient vectors. `O` separately
+covers local harmonic/projected fields and norm temporaries. The basis uses
+`(r+1)*G`; the remaining terms reserve Hessenberg/rotation storage and history
+numeric payload. This lifetime bound does not rely on a second coupled cache
+or copies of every group diagonal.
+
+The 10-vector contract is specific to the reviewed SciPy 1.18.1 implementation.
+It requires these SHA256 hashes of the actual callable's module and helper
+module sources:
+
+- `iterative.py`: `0fe686ee49308a66e59a4f610346a8ba9f6d5eb7166f84748f7558420c938a70`
+- `utils.py`: `3b4aa7a964e336795a4ff2e8ee7594046ba76d9a5eba758fe1a99d81f13cb6b0`
+
+The binding also checks GMRES's module/function identity and globals, its code
+filename, and the actual `make_system` helper binding/code filename. Source
+bytes are read and hashed without evaluation. A version string alone never
+selects the smaller bound. If sources are absent, hashes differ or the callable
+is replaced, `W=32` retains the conservative workspace allowance. Construction
+and every solve select the contract afresh and reject an insufficient cap
+before numeric allocations. A changed contract may therefore require more
+memory than the estimate recorded at construction. Result provenance records
+the contract, reason, observed source hashes, workspace vector count and actual
+estimate used for that solve; the immutable solver's `workspace_contract` and
+`memory_estimate_bytes` describe construction.
 
 Caller inputs, previously retained results, and existing shared immutable
 geometry/source storage are outside this owned-workspace estimate. Python
 object overhead and vendor BLAS scratch are not bounded by the numeric guard.
-The five-full-field reserve is conservative; it does not claim these copies
-are all persistently allocated. This is neither an RSS cap nor admission of a
+For the static 2D layout `nc=1363753`, `na=128`, `ng=7`, `h=64`, `r=20`,
+the reviewed bound is approximately 77.397250 GiB internally, including
+approximately 5.215 GiB for `O`. This is layout arithmetic only. A caller RHS
+alone adds approximately 9.104 GiB outside this guard; caller fields, existing
+geometry, old results and opaque workspaces must independently fit the static
+16-GiB reserve before any process/core admission could be considered. No such
+admission is established here. This is neither an RSS cap nor admission of a
 96-GiB core calculation. Runtime, group-iteration convergence, physical arrays,
 fission/eigenvalue behavior and 3D geometry remain unqualified.
 
@@ -151,4 +187,8 @@ upscatter that requires revisiting groups, and literal small dense coupled
 matrices built from the Legendre angular kernel and geometric face equations.
 They cover mixed reflection, both native matrix orientations, signed P7,
 true residuals, zero source, explicit warm starts, caps, nonconvergence and
-input/result immutability. These are mathematical tests, not physical admission.
+input/result immutability. Additional weak-reference tests check that group
+arrays and closures die across groups and sweeps; a throwing callback deliberately
+retains GMRES traceback frames through immutable result creation. Contract-change
+tests check fallback selection and rejection before allocation. These are
+mathematical and lifetime tests, not physical admission.
