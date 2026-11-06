@@ -1,13 +1,5 @@
 \section*{Summary}
 
-\pending{\textbf{Preview (5 November 2026).} Four runs are still queued on
-merlin7. The one that matters is \ffn{} FE3 $r=2$ on IAEA-3D, which
-completes the IAEA reference; until it is in, the IAEA results rest on a
-provisional reference (Section~\ref{sec:steady}). The other three add points
-to the figures and the run tables and cannot change a time-to-accuracy
-entry. Text in this colour depends on the pending runs. Every table and
-figure is regenerated from the data.}
-
 This report times \garnet{} against \ffn{} on the same multigroup diffusion
 problems, solved to the same accuracy:
 \begin{itemize}
@@ -24,28 +16,33 @@ measured run that meets it (Table~\ref{tab:tta}).
 \paragraph{Findings.}
 \begin{itemize}
 \item \textbf{Steady state, one core: \ffn{} is faster.} At 10~pcm in $k$
-  and 1\% in every node power, its degree-2 and degree-3 elements need 8 to
-  20 times fewer unknowns than \garnet's second-order finite volumes.
+  and 1\% in every node power, its degree-3 elements need 8 to 60 times
+  fewer unknowns than \garnet's second-order finite volumes.
   \begin{itemize}
   \item HP-MR: 89~s for \ffn{} against 667~s for \garnet.
   \item Langenbuch: 45~s against 66~s.
+  \item IAEA-3D: 658~s; \garnet{} needs $r=24$ (127 million unknowns), an
+    estimated 2.6~h on one core, which was not run.
   \item 1~pcm and 0.1\%: only \ffn{} reaches it (Langenbuch 434~s,
-    HP-MR 124~s).
+    HP-MR 124~s, IAEA-3D 10,822~s).
   \end{itemize}
-\item \textbf{Steady state, GH200: \garnet{} is fastest wherever its meshes
-  reach the target.} HP-MR in 2.4~s, 37 times faster than \ffn{} on one
-  core; Langenbuch in 0.35~s, 130 times faster.
+\item \textbf{Steady state, GH200: \garnet{} is fastest on all three
+  cores.} HP-MR in 2.4~s, 37 times faster than \ffn{} on one core;
+  Langenbuch in 0.35~s, 130 times; IAEA-3D in 33.5~s, 20 times.
 \item \textbf{HP-MR: \garnet's Wielandt shift.} Its HP-MR rows use the new
   Wielandt-shifted eigenvalue iteration (classic fixed shift,
   $\delta k = 0.3$). Each outer iteration then solves the whole 11-group
   system, upscatter included. Outer iterations drop from about 250 to 10,
   and solve times fall 2.2 to 3.5 times on one core and on the GH200
   (Section~\ref{sec:steady}). The two-group cores keep the power
-  iteration, which is faster there.
-\item \textbf{IAEA-3D: no \garnet{} run meets the 1\% node-power target.}
-  At $r=16$ (37.5 million unknowns) its $k$ is within 10~pcm. Its worst
-  node, at the corner of the fuel next to the radial and axial reflectors,
-  is still \pending{2.6\%} off. \ffn{} meets the target in \pending{658~s}.
+  iteration: there the shift is 1.4 to 1.6 times slower on the GH200.
+\item \textbf{IAEA-3D: \garnet's node powers need fine meshes.} At $r=16$
+  (37.5 million unknowns, 1.25~cm cells) its $k$ is within 10~pcm, but its
+  node powers are still up to 2.1\% off: a smooth tilt over the core,
+  because the cells barely resolve the 2~cm thermal diffusion length. It
+  reaches 1\% at $r=24$ (127 million unknowns), and its mesh limit matches
+  \ffn's reference to 0.01~pcm and 0.05\%: both codes converge to the same
+  solution.
 \item \textbf{Transient: \garnet{} is faster on the same core.} To keep the
   power error below $10^{-3}$:
   \begin{itemize}

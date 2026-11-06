@@ -29,11 +29,14 @@ from make_figures import transient_power
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 STEADY = {   # case: (GARNET GH200 series, its refinements, FEMFFUSION case tag)
-    "iaea3d": ("gpu-iaea-r*.json", (8, 12, 16), "iaea"),
+    # IAEA: r = 8-16 are pre-asymptotic (order 1.57); r = 16-28 give order 1.98.
+    "iaea3d": ("gpu-iaea-r*.json", (16, 24, 28), "iaea"),
     "langenbuch3d": ("gpu-lmw-r*.json", (8, 12, 16), "lmw"),
     "hpmr3d": ("ref-hpmr-r*.json", (3, 6, 12), "hpmr"),
 }
 FF_LEVELS = (0, 1, 2)          # FEMFFUSION FE3 refinements of the primary series
+FF2_LEVELS = (1, 2, 3)         # FEMFFUSION FE2 refinements of the check series
+FF_K_DIGITS = 7                # FEMFFUSION prints k with 7 significant digits
 
 
 def _arr(x):
@@ -68,19 +71,28 @@ def fit_limit(h, k):
     return k3 - C * h3 ** p, p
 
 
-def series_limit(runs, levels, h_of, p_default):
-    """Three-level limit of k and node powers over ``levels`` of ``runs``."""
+def series_limit(runs, levels, h_of, p_default, k_digits=None):
+    """Three-level limit of k and node powers over ``levels`` of ``runs``.
+
+    ``k_digits``: significant digits k is printed with (FEMFFUSION: 7, so
+    0.1 pcm above k = 1). One printed digit is a floor on the uncertainty, and
+    an order fitted to a last step of at most two printed digits is rounding
+    noise, so ``p_default`` is used instead (IAEA FE3 r = 1 -> 2: 0.1 pcm)."""
     h = [h_of(l) for l in levels]
     k = [runs[l]["k"] for l in levels]
+    quantum = (0.0 if k_digits is None
+               else 10.0 ** (np.floor(np.log10(abs(k[2]))) - (k_digits - 1)))
     k_fit, p = fit_limit(h, k)
+    if abs(k[2] - k[1]) <= 2 * quantum:
+        k_fit, p = None, None
     k2 = k[2] + (k[2] - k[1]) / ((h[1] / h[2]) ** p_default - 1)
     estimates = [e for e in (k_fit, k2) if e is not None]
     k_inf = k_fit if k_fit is not None else k2
     p_use = p if p is not None else p_default
-    unc = max(0.5 * abs(k_inf - k[2]), max(estimates) - min(estimates))
+    unc = max(0.5 * abs(k_inf - k[2]), max(estimates) - min(estimates), quantum)
     fine, coarse = _arr(runs[levels[2]]["node_power"]), _arr(runs[levels[1]]["node_power"])
     node = fine + (fine - coarse) / ((h[1] / h[2]) ** p_use - 1)
-    return dict(k=k_inf, uncertainty=unc, order=p, node=node,
+    return dict(k=k_inf, uncertainty=unc, order=p, order_used=p_use, node=node,
                 levels=[dict(level=l, unknowns=runs[l]["mesh"]["unknowns"], k=runs[l]["k"])
                         for l in levels])
 
@@ -94,7 +106,9 @@ def best_femffusion(tag, top=3):
         r = json.load(open(f))
         if r.get("k") is not None and r.get("node_power") is not None:
             runs.setdefault((r["mesh"]["degree"], r["mesh"]["refinements"]), r)
-    finest = sorted(runs.values(), key=lambda r: r["mesh"]["dofs"], reverse=True)[:top]
+    # Equal DoFs (HP-MR FE2 r2 and FE4 r1): the higher degree is the finer run.
+    finest = sorted(runs.values(), key=lambda r: (r["mesh"]["dofs"], r["mesh"]["degree"]),
+                    reverse=True)[:top]
     if len(finest) < top:
         return None
     best = finest[0]
@@ -119,8 +133,11 @@ def steady_reference(case):
     garnet = (series_limit(g, glevels, lambda r: 1.0 / r, 2.0)
               if all(l in g for l in glevels) else None)
     ff = _runs(f"*ff*-{tag}-fe3-r*.json", lambda r: r["mesh"]["refinements"])
-    femff = (series_limit(ff, FF_LEVELS, lambda r: 0.5 ** r, 3.0)
+    femff = (series_limit(ff, FF_LEVELS, lambda r: 0.5 ** r, 3.0, k_digits=FF_K_DIGITS)
              if all(l in ff for l in FF_LEVELS) else None)
+    ff2 = _runs(f"ff-{tag}-fe2-r*.json", lambda r: r["mesh"]["refinements"])
+    fe2 = (series_limit(ff2, FF2_LEVELS, lambda r: 0.5 ** r, 4.0, k_digits=FF_K_DIGITS)
+           if all(l in ff2 for l in FF2_LEVELS) else None)
     if femff is None:
         femff = best_femffusion(tag)
     # Primary: the candidate with the smallest own uncertainty.
@@ -142,6 +159,12 @@ def steady_reference(case):
                                dk_pcm=1e5 * (r["k"] - primary["k"])))
             if primary is femff:
                 unc = max(unc, abs(r["k"] - primary["k"]))
+    if fe2 is not None:     # the degree-2 limit: an independent FEMFFUSION series
+        checks.append(dict(source="FEMFFUSION FE2 limit (r = 1, 2, 3)", k=fe2["k"],
+                           dk_pcm=1e5 * (fe2["k"] - primary["k"]),
+                           uncertainty_pcm=1e5 * fe2["uncertainty"], order=fe2["order"]))
+        if primary is femff:
+            unc = max(unc, abs(fe2["k"] - primary["k"]))
     if femff and garnet:
         other = garnet if primary is femff else femff
         asymptotic = (other is femff or
@@ -158,7 +181,9 @@ def steady_reference(case):
     else:
         which = "FEMFFUSION FE3, refinements 0/1/2" if primary is femff else f"GARNET GH200, r = {glevels}"
         source = (f"{which} (three-level limit"
-                  + ("" if primary["order"] is None else f", observed order {primary['order']:.2f}")
+                  + (f", observed order {primary['order']:.2f}" if primary["order"] is not None
+                     else f", nominal order {primary['order_used']:g}: last step within"
+                          " the printed digits" if "order_used" in primary else "")
                   + ")")
     return dict(case=case, k=primary["k"], uncertainty_pcm=1e5 * unc,
                 observed_order=primary["order"], node_power=_json_nodes(primary["node"]),

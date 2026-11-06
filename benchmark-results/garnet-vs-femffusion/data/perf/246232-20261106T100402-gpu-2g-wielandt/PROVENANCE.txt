@@ -1,0 +1,77 @@
+staged: 2026-11-06T10:04:09+01:00 by poncet_m on login001
+source: /data/user/poncet_m/GARNET
+commit: 4818b7377420c21e2b0e1e4b223f25437853a696 2026-11-05 14:04:00 +0100 Added Wielandt shift method to accelerate k-eigenvalue problems. Started to update the FEMFFUSION performance benchmark.
+branch: wielandt-shift
+
+# git status --short
+ M benchmark-results/garnet-vs-femffusion/data/reference/hpmr3d.json
+ M benchmark-results/garnet-vs-femffusion/data/reference/iaea3d.json
+ M benchmark-results/garnet-vs-femffusion/data/reference/langenbuch3d.json
+ M benchmark-results/garnet-vs-femffusion/data/summary.json
+ M benchmark-results/garnet-vs-femffusion/figures/pareto_hpmr3d-transient.pdf
+ M benchmark-results/garnet-vs-femffusion/figures/pareto_hpmr3d.pdf
+ M benchmark-results/garnet-vs-femffusion/figures/pareto_iaea3d.pdf
+ M benchmark-results/garnet-vs-femffusion/figures/pareto_langenbuch3d.pdf
+ M benchmark-results/garnet-vs-femffusion/garnet-vs-femffusion.pdf
+ M benchmark-results/garnet-vs-femffusion/make_reference.py
+ M benchmark-results/garnet-vs-femffusion/sections/discussion.tex
+ M benchmark-results/garnet-vs-femffusion/sections/reproduction.tex
+ M benchmark-results/garnet-vs-femffusion/sections/steady.tex
+ M benchmark-results/garnet-vs-femffusion/sections/summary.tex
+ M benchmark-results/garnet-vs-femffusion/tables/references.tex
+ M benchmark-results/garnet-vs-femffusion/tables/runs_hpmr3d-transient.tex
+ M benchmark-results/garnet-vs-femffusion/tables/runs_hpmr3d.tex
+ M benchmark-results/garnet-vs-femffusion/tables/runs_iaea3d.tex
+ M benchmark-results/garnet-vs-femffusion/tables/tta_hpmr3d.tex
+ M benchmark-results/garnet-vs-femffusion/tables/tta_iaea3d.tex
+ M benchmark-results/garnet-vs-femffusion/tables/tta_summary.tex
+ M docs/verification_validation.md
+?? benchmark-results/garnet-vs-femffusion/data/perf/10557875-20261104T104215-cpu-ref-shared/
+?? benchmark-results/garnet-vs-femffusion/data/perf/10557877-20261104T104220-cpu-one-tr-r3/
+?? benchmark-results/garnet-vs-femffusion/data/perf/10557878-20261104T104220-cpu-one-tr-r4a/
+?? benchmark-results/garnet-vs-femffusion/data/perf/10557879-20261104T104222-cpu-one-fftr-sie/
+?? benchmark-results/garnet-vs-femffusion/data/perf/246226-20261106T092935-gpu-iaea-fine/
+?? benchmark-results/garnet-vs-femffusion/plans/gpu-2g-wielandt.plan
+?? benchmark-results/garnet-vs-femffusion/plans/gpu-iaea-fine.plan
+
+# git diff --stat
+ .../data/reference/hpmr3d.json                     |  516 +-
+ .../data/reference/iaea3d.json                     | 6067 ++++++++++----------
+ .../data/reference/langenbuch3d.json               |   13 +
+ .../garnet-vs-femffusion/data/summary.json         |  420 +-
+ .../figures/pareto_hpmr3d-transient.pdf            |  Bin 21639 -> 21663 bytes
+ .../garnet-vs-femffusion/figures/pareto_hpmr3d.pdf |  Bin 24777 -> 25257 bytes
+ .../garnet-vs-femffusion/figures/pareto_iaea3d.pdf |  Bin 26416 -> 26895 bytes
+ .../figures/pareto_langenbuch3d.pdf                |  Bin 27254 -> 27254 bytes
+ .../garnet-vs-femffusion/garnet-vs-femffusion.pdf  |  Bin 396272 -> 399554 bytes
+ .../garnet-vs-femffusion/make_reference.py         |   41 +-
+ .../garnet-vs-femffusion/sections/discussion.tex   |    8 +-
+ .../garnet-vs-femffusion/sections/reproduction.tex |    4 +
+ .../garnet-vs-femffusion/sections/steady.tex       |  111 +-
+ .../garnet-vs-femffusion/sections/summary.tex      |   33 +-
+ .../garnet-vs-femffusion/tables/references.tex     |   15 +-
+ .../tables/runs_hpmr3d-transient.tex               |    3 +
+ .../garnet-vs-femffusion/tables/runs_hpmr3d.tex    |   31 +-
+ .../garnet-vs-femffusion/tables/runs_iaea3d.tex    |   47 +-
+ .../garnet-vs-femffusion/tables/tta_hpmr3d.tex     |   12 +-
+ .../garnet-vs-femffusion/tables/tta_iaea3d.tex     |    8 +-
+ .../garnet-vs-femffusion/tables/tta_summary.tex    |    4 +-
+ docs/verification_validation.md                    |    1 +
+ 22 files changed, 3798 insertions(+), 3536 deletions(-)
+
+# FEMFFUSION
+commit: 1611f90fb14f0f1c0119f327234bfefba015e806 2025-07-28 11:27:32 +0200 Rendering all fomulas with github latex rendering
+{
+  "femffusion_commit": "1611f90fb14f0f1c0119f327234bfefba015e806",
+  "binary": "/data/user/poncet_m/FEMFFUSION/build-release/femffusion.exe",
+  "petsc": "3.19.6",
+  "slepc": "3.19.2",
+  "dealii": "9.5.2",
+  "cxx": "g++ ('PSI Environment Module') 12.3.0",
+  "mpi": "mpirun (Open MPI) 5.0.8",
+  "blas": "/opt/psi/Compiler/OpenBLAS/0.3.30/gcc/12.3.0/lib64",
+  "flags": "PETSc/SLEPc -O3 -march=znver2; deal.II Release + -march=znver2; FEMFFUSION Release",
+  "build_host": "cn000",
+  "modules": "gcc/12.3.0:cuda/12.9.1:libevent/2.1.12:pmix/5.0.8:libfabric/2.2.0-oss:openmpi/5.0.8:OpenBLAS/0.3.30",
+  "ld_library_path": "/opt/psi/Compiler/OpenBLAS/0.3.30/gcc/12.3.0/lib64:/opt/psi/overlays/Alps/Compiler/openmpi/5.0.8/gcc/12.3.0/lib64:/opt/psi/overlays/Alps/Compiler/openmpi/5.0.8/gcc/12.3.0/lib:/opt/psi/overlays/Alps/Libraries/libfabric/2.2.0-oss/lib64:/opt/psi/overlays/Alps/Libraries/pmix/5.0.8/lib64:/opt/psi/overlays/Alps/Libraries/pmix/5.0.8/lib:/opt/psi/overlays/Alps/Libraries/libevent/2.1.12/lib64:/opt/psi/overlays/Alps/Libraries/libevent/2.1.12/lib:/opt/psi/Programming/cuda/12.9.1/lib64:/opt/psi/Programming/gcc/12.3.0/lib64:/opt/psi/Programming/gcc/12.3.0/lib:/usr/lib64/slurmpmi/:"
+}

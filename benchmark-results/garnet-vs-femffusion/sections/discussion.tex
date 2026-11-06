@@ -25,7 +25,8 @@ Memory per unknown & 2--3.6~kB (process) & 0.2--1.4~kB (CPU); 0.24--2.2~kB (GH20
 \item \textbf{Steady, GH200:} a \garnet{} solve there is 190--320 times
   faster than on one core from 4 million unknowns up (26--110 times at 1 to
   3 million, where the GPU is not yet full). That carries it past \ffn{} on
-  one core wherever its discretization reaches the target.
+  one core on all three steady cores at 10~pcm and 1\%, IAEA-3D included,
+  where it needs 127 million unknowns.
 \item \textbf{Transient:} time integration decides the comparison, not space.
   \garnet's second-order BDF against \ffn's first-order semi-implicit schemes is
   worth a factor of 10 on the same core at $10^{-3}$.
@@ -47,8 +48,9 @@ Memory per unknown & 2--3.6~kB (process) & 0.2--1.4~kB (CPU); 0.24--2.2~kB (GH20
   two-group cores the power iteration remains its fastest option, at 28--57
   outers against \ffn's 4--8.
 \item \textbf{\garnet's discretization.} A higher-order or nodal-like
-  discretization would close the steady gap per core. The node powers at the
-  fuel--reflector corners are where the finite volumes lose the most.
+  discretization would close the steady gap per core. The node powers are
+  where the finite volumes lose the most: on IAEA they need cells well below
+  the 2~cm thermal diffusion length before they converge at second order.
 \item \textbf{\ffn's time integration.} A working Implicit-Exponential scheme,
   or any second-order scheme, would shrink the transient gap. Its default
   scheme is first order and, on this input, does not hold equilibrium.

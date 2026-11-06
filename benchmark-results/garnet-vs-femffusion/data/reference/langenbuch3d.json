@@ -1487,6 +1487,19 @@
    "dk_pcm": 0.1622972339299089
   },
   {
+   "source": "FEMFFUSION FE4 r2",
+   "dofs": 9758210,
+   "k": 0.9994853,
+   "dk_pcm": 0.15229723393517247
+  },
+  {
+   "source": "FEMFFUSION FE2 limit (r = 1, 2, 3)",
+   "k": 0.9994829542819499,
+   "dk_pcm": -0.08227457107823355,
+   "uncertainty_pcm": 0.3119051383393412,
+   "order": 2.709322839096882
+  },
+  {
    "source": "FEMFFUSION FE3 limit",
    "k": 0.9994837770276607,
    "dk_pcm": 0.0,

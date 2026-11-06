@@ -211,6 +211,14 @@ therefore the default. At default tolerances on r2/nz30 its iteration error is
 0.003 pcm and 1.8×10⁻⁷ in node power. See
 `benchmark-results/garnet-vs-femffusion/` (Table "HP-MR steady").
 
+The two-group cores were checked on the GH200 at the meshes that decide that
+report: Langenbuch r12 (4.0 million unknowns) and IAEA r24 (127 million).
+Anderson power iteration took 0.33 s and 34.1 s. The fixed (0.3, 0.1) and
+adaptive shifts were 1.36–1.58 times slower. They halved the outers, but the
+shifted solves cost more within-group iterations (IAEA 4263 against 3197).
+Their FGMRES basis took GPU memory from 40 to 76 GB at IAEA r24 (restart 12).
+Leave the shift off for two-group cores without upscatter.
+
 ## Methods introduced by the October 2026 audit
 
 The [code audit](qa/code_audit_2026-10-28.md) fixes added the methods below.

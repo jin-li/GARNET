@@ -56,7 +56,13 @@ a CPU node to its own NUMA domain. The plans used, in order:
   the rows. The \code{tune-floor-*} runs of \code{cpu-wielandt} are the
   iteration-error check of Section~\ref{sec:method}. \code{cpu-one-hpmr-wf-r8}
   replaced the power-iteration plan \code{cpu-one-hpmr-r8}, cancelled
-  before it ran.
+  before it ran. \code{gpu-2g-wielandt} (\code{gpu-hourly}) checks the two
+  two-group cores at Langenbuch $r=12$ and IAEA $r=24$ (tag \code{tune-},
+  not rows).
+\item IAEA-3D fine meshes: \code{gpu-iaea-fine} (\code{gpu-hourly}),
+  $r$ = 20, 24, 28, with an $r=16$ control (tag \code{tune-}, not a row)
+  that reproduces the \code{gpu-steady} $r=16$ run bit for bit on the
+  current code.
 \end{itemize}
 
 \paragraph{4. Report.}

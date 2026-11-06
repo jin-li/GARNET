@@ -6,10 +6,13 @@ how it was obtained, and the independent solutions that check it. The
 primary reference is the candidate with the smallest own uncertainty:
 \begin{itemize}
 \item Langenbuch: the three-level limit of \ffn's degree-3 refinements (observed
-  order 3.3), confirmed by degree 4 and 5 to \pending{0.34~pcm};
-\item HP-MR: \ffn's finest run, where FE2 $r=2$ and FE3 $r=1$ agree to the
-  printed digit; \garnet's mesh limit (order 2.2) is \pending{0.9~pcm} away;
-\item IAEA-3D: see the paragraph on IAEA below.
+  order 3.3), confirmed by degree 4 and 5 to 0.34~pcm;
+\item HP-MR: \ffn's finest run, FE4 $r=1$ (9.6 million unknowns). FE2 $r=2$
+  (the same unknowns) and FE3 $r=1$ are 0.4~pcm below it and within 0.01\% in
+  every node, and degree 4 and 5 at $r=0$ are within 0.6~pcm; \garnet's mesh
+  limit (order 2.2) is 0.5~pcm away;
+\item IAEA-3D: the same degree-3 limit, confirmed by \ffn's degree-2 limit
+  to 0.07~pcm (see the paragraph on IAEA below).
 \end{itemize}
 Where \garnet's sequence is not yet asymptotic, its limit is listed but not
 used. On Langenbuch it shows an order of 0.9 against a nominal 2: the error
@@ -34,8 +37,7 @@ Tables~\ref{tab:runs-iaea}--\ref{tab:runs-hpmr} list them all.
 \caption{Time to accuracy (solve time, s): the cheapest run of each platform
 that meets the target ($|\Delta k|$ and the largest node-power error; for the
 transient, the largest power error over the run), and the ratio of \ffn's
-better degree to \garnet. ``--'': no measured run meets the target.
-\pending{The IAEA-3D rows use the provisional reference.}}
+better degree to \garnet. ``--'': no measured run meets the target.}
 \label{tab:tta}
 \end{table}
 
@@ -49,20 +51,32 @@ better degree to \garnet. ``--'': no measured run meets the target.
   \garnet's cost per unknown is lower (Section~\ref{sec:discussion}), but its
   second-order finite volumes need far more unknowns for the same error,
   above all for the node powers.
-\item \textbf{\garnet's node powers converge slowly at the fuel--reflector
-  corners.} On IAEA the largest node-power error falls roughly as
-  \pending{$h^{1.6}$}, and at $r=16$ (37.5 million unknowns) it is still
-  \pending{2.6\%}, while $k$ is within 10~pcm. The worst nodes are at the edge of the top fuel layer, where four
-  of the eight surrounding nodes are radial or axial reflector, at a quarter
-  of the average power. That is the corner of the fuel region, where a
-  cell-centred scheme with harmonic-mean coefficients loses order. On
-  Langenbuch the worst node, in the same position, is 0.56\% off at $r=16$.
-\item \textbf{On the GH200, \garnet{} reaches the 10~pcm, 1\% target first}
-  wherever it reaches it at all: 2.4~s on the HP-MR (37 times faster than \ffn{}
-  on one core) and 0.35~s on Langenbuch (130 times). Its 1~pcm, 0.1\% target
-  is out of reach of the meshes that fit (HP-MR $r=12$, 84 million unknowns,
-  is 1.1~pcm and 0.16\% off). That target is close to the references' own
-  resolution (0.3 to 0.4~pcm), so it separates the codes only coarsely.
+\item \textbf{\garnet's node powers converge slowly on IAEA.} At $r=16$
+  (37.5 million unknowns) $k$ is within 10~pcm, but the largest node-power
+  error is still 2.1\%. The error is a smooth tilt over the whole core, not
+  a local defect: the power is up to 0.9\% high at the centre and 1.4\% low
+  at the radial edge. The worst node, at the edge of the top fuel layer and
+  a sixth of the average power, is where the tilt is most negative. Every
+  node converges at the same rate, $h^{1.8}$ from $r=8$ to 16 (local order
+  1.6, 1.75, 1.85 with refinement). Extrapolated at that rate, \garnet's
+  $r=8$ and 16 agree with the reference to 0.06\% in every node, so the two
+  codes solve the same problem; the cause is resolution. The thermal
+  diffusion length is 2.2~cm in the fuel and 1.8~cm in the rodded fuel, so
+  the thermal flux changes on a 2~cm scale at every fuel--reflector and rod
+  interface. The $r=16$ cells are 1.25~cm, and second-order finite volumes
+  are not yet asymptotic there; \ffn's cubic elements resolve those
+  gradients within each element. The finer GH200 runs confirm it: from
+  $r=16$ to 28 the local order reaches 2 (1.99, 1.90, 2.00), and $r=24$
+  (0.83~cm cells, 127 million unknowns) is the first mesh within 1\%
+  (0.95\%; $r=28$: 0.70\%). On Langenbuch the worst node, in the same
+  position, is 0.56\% off at $r=16$.
+\item \textbf{On the GH200, \garnet{} reaches the 10~pcm, 1\% target first on
+  all three cores:} 2.4~s on the HP-MR (37 times faster than \ffn{} on one
+  core), 0.35~s on Langenbuch (130 times) and 33.5~s on IAEA (20 times). Its
+  1~pcm, 0.1\% target is out of reach of the meshes that fit (HP-MR $r=12$,
+  84 million unknowns, is 1.5~pcm and 0.15\% off; IAEA $r=28$, 201 million,
+  1.7~pcm and 0.70\%). That target is close to the references' own
+  resolution (0.1 to 0.6~pcm), so it separates the codes only coarsely.
 \end{itemize}
 
 \paragraph{HP-MR: Wielandt-shifted iteration.} \garnet's HP-MR rows use its
@@ -82,10 +96,18 @@ tolerances and preconditioners as the power iteration they replace:
 \end{itemize}
 The fixed shift is 9--25\% faster on every mesh, CPU and GH200, and is the
 one used in the comparison rows. It is 2.2--3.5 times faster than the power
-iteration, and moves $k$ by at most 0.005~pcm. On the two-group cores the
-power iteration with Anderson acceleration stays faster (44 outers on IAEA
-$r=4$, against about ten shifted solves of ten sweeps each), so their rows
-are unchanged.
+iteration, and moves $k$ by at most 0.005~pcm.
+
+On the two-group cores the power iteration with Anderson acceleration stays
+faster, so their rows are unchanged. Measured on the GH200 at the meshes
+that decide Table~\ref{tab:tta} (best of three), it takes 0.33~s on
+Langenbuch $r=12$. The fixed shift takes 0.45~s, $\delta k = 0.1$ 0.47~s and
+the adaptive shift 0.53~s. On IAEA $r=24$ the times are 34.1~s against 47.0,
+52.6 and 50.8~s: the shift is 1.4--1.6 times slower on both. It halves the
+outers (51 to 27 on IAEA), but its shifted solves need more within-group
+iterations than the outers save (4263 against 3197). Its FGMRES basis also
+nearly doubles the GPU memory (76 against 40~GB at IAEA $r=24$). Without
+upscatter, the coupled solve has little to resolve that Anderson does not.
 
 \begin{table}[h]
 \tablefile{wielandt_hpmr3d}
@@ -96,35 +118,44 @@ shift; $|\Delta k|$: fixed shift against power iteration.}
 \label{tab:wielandt}
 \end{table}
 
-\paragraph{IAEA-3D.} \pending{Until \ffn{} FE3 $r=2$ is in, the reference
-is provisional: \garnet's GH200 mesh limit ($r$ = 8, 12, 16, observed order
-1.57), uncertain to 3.2~pcm, with the node powers extrapolated at the same
-order. Its $k$ holds: \ffn's FE2 series ($r$ = 1, 2, 3, observed order 4.1)
-converges 1.3~pcm below it. Its node powers are good to about 0.5\% only.
-\ffn's finest run, FE2 $r=3$ (38 million unknowns, 3.0~h on one core),
-differs from it by a smooth tilt, up to 0.47\% low at the core edge and
-0.2\% high at the centre. That tilt has the shape of FE2's own refinement
-steps, which shrink eightfold per refinement (order 3), so FE2 $r=3$ is
-the more accurate of the two. FE2 $r=2$'s 0.09\% agreement with the
-reference is a coincidence of two similar errors. With FE3 $r=2$, \ffn's
-degree-3 series becomes the reference, as on Langenbuch.}
+\paragraph{IAEA-3D.} The reference is \ffn's degree-3 limit, as on
+Langenbuch: FE3 $r$ = 0, 1, 2 (16.1 million unknowns at $r=2$, 4.9~h on a
+shared node). Its $k$ steps are 6.4 and 0.1~pcm. The second is one printed
+digit, since \ffn{} prints $k$ to 0.1~pcm here, so no order can be fitted.
+The limit is taken at the nominal order 3, and its uncertainty is one
+printed digit, 0.1~pcm. The node powers converge cleanly: each
+refinement shrinks the step about 12-fold (0.34\% at most from $r=1$ to 2),
+and the extrapolation moves no node by more than 0.05\%. \ffn's FE2 series
+($r$ = 1, 2, 3, observed order 4.1) is an independent check: its limit is
+0.07~pcm away, and FE2 $r=3$ is within 0.08\% in every node.
+
+\garnet's GH200 mesh limit is a second independent check. From $r$ = 16,
+24, 28 (observed order 1.98) it is 0.01~pcm from the reference and within
+0.05\% in every node: the two codes converge to the same solution. From
+$r$ = 8, 12, 16 (order 1.57), the provisional reference before FE3 $r=2$
+was in, it was 1.4~pcm off and up to 0.54\% in the node powers, because
+those meshes are not yet asymptotic.
 \begin{itemize}
-\item \ffn{} meets 10~pcm and 1\% at FE3 $r=1$ (2.0 million unknowns,
-  \pending{665~s}) and at FE2 $r=2$ (4.8 million, \pending{658~s}).
-\item No \garnet{} run meets it, on either platform. At $r=16$ (37.5 million
-  unknowns) $k$ is \pending{6.5~pcm} off, but the largest node-power error is
-  still \pending{2.6\%}. The GH200 solves that mesh in 7.6~s, one core in
-  2120~s. The small $\Delta k$ at $r=2$ ($-2.9$~pcm) is a cancellation of
-  errors: its node powers are 31\% off.
-\item \pending{The 1~pcm, 0.1\% target lies below the provisional
-  reference's uncertainty, so the IAEA row for it in Table~\ref{tab:tta} is
-  not yet meaningful: FE2 $r=2$ appears to meet it only because its
-  node-power error matches the reference's.}
+\item \ffn{} meets 10~pcm and 1\% at FE2 $r=2$ (4.8 million unknowns,
+  658~s) and at FE3 $r=1$ (2.0 million, 665~s).
+\item \garnet{} meets it on the GH200 at $r=24$ (127 million unknowns,
+  40~GB): 2.3~pcm and 0.95\% in 33.5~s, 20 times faster than \ffn. No
+  one-core run meets it. The finest, $r=16$ (2120~s), is 5.1~pcm and 2.1\%
+  off; $r=24$ would take about 2.6~h on one core (the CPU runs take about
+  280 times the GH200 time at $r$ = 12 and 16). The small $\Delta k$ at
+  $r=2$ ($-1.5$~pcm) is a cancellation of errors: its node powers are 31\%
+  off.
+\item At 1~pcm and 0.1\%, only FE2 $r=3$ qualifies (38 million unknowns,
+  10,822~s on one core: 0.11~pcm and 0.08\%). FE2 $r=2$ and FE3 $r=1$
+  meet the $k$ part but miss the node powers (0.55 and 0.39\%). FE3 $r=2$
+  is part of the reference and is not a comparison row. \garnet's finest,
+  $r=28$ on the GH200 (201 million unknowns, 63~GB, 64~s), is 1.7~pcm and
+  0.70\% off.
 \end{itemize}
 
 \begin{figure}[h]
 \figfile{pareto_iaea3d}{0.95}
-\caption{IAEA-3D (\pending{provisional reference}): $|\Delta k|$ and the largest node-power error against solve
+\caption{IAEA-3D: $|\Delta k|$ and the largest node-power error against solve
 time. Faint: every run; line: each platform's Pareto front; dashed: the
 targets; grey: below the reference's uncertainty (hollow markers sit there).}
 \label{fig:iaea}
