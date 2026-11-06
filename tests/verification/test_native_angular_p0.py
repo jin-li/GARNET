@@ -217,6 +217,8 @@ def test_budget_failures_before_factor_and_after_retained_factor_measurement():
 
 @pytest.mark.parametrize('storage', ['superlu', 'packed'])
 def test_post_setup_reservation_preserves_constructor_peak_and_nonfactor_allowances(storage):
+    if storage == 'packed':
+        _require_packed_backend()
     from dataclasses import FrozenInstanceError
 
     stream, bc = bound()
@@ -254,6 +256,7 @@ def test_post_setup_reservation_preserves_constructor_peak_and_nonfactor_allowan
 
 
 def test_packed_P0_preflight_still_rejects_before_factorization():
+    _require_packed_backend()
     stream, bc = bound()
     base = NativeMeshTransport(stream, bc)
     with patch.object(module, 'spilu') as factor:
@@ -322,3 +325,11 @@ def test_invalid_projection_fields():
     for field in (np.zeros((2, 2)), np.full(stream.shape, np.inf)):
         with pytest.raises(ValueError):
             op.restrict(field)
+
+
+def _require_packed_backend():
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))

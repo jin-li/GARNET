@@ -205,6 +205,8 @@ def test_factor_failure_known_solve_failure_and_bad_application_fail_closed():
 
 @pytest.mark.parametrize('storage', ['superlu', 'packed'])
 def test_phase_maximum_and_unique_retained_charges(storage):
+    if storage == 'packed':
+        _require_packed_backend()
     stream, bc = bound()
     op = StreamingBlockP0Transport(stream, bc, factor_storage=storage)
     config = op._sweep_provenance
@@ -238,6 +240,7 @@ def test_phase_maximum_and_unique_retained_charges(storage):
 
 
 def test_packed_constructor_peak_is_not_reserved_again_and_payloads_are_unchanged():
+    _require_packed_backend()
     stream, bc = bound()
     # A large advisory P0 fill allowance on a two-cell matrix makes its
     # constructor peak dominate. No larger matrix or factor is constructed.
@@ -265,6 +268,7 @@ def test_packed_constructor_peak_is_not_reserved_again_and_payloads_are_unchange
 
 
 def test_packed_streaming_phase_still_rejects_oversized_workspace():
+    _require_packed_backend()
     stream, bc = bound()
     p0 = P0GalerkinTransport(stream, bc, factor_storage='packed')
     cap = p0.memory_estimate_bytes+1
@@ -287,3 +291,11 @@ def test_packed_streaming_phase_still_rejects_oversized_workspace():
 def test_invalid_or_singular_blocks_rejected(matrix):
     with pytest.raises(ValueError):
         factor_streaming_block(matrix)
+
+
+def _require_packed_backend():
+    from garnet.packed_superlu import _check_backend
+    try:
+        _check_backend()
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
