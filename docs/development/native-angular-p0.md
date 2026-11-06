@@ -1,5 +1,9 @@
 # Fixed native P0 Galerkin angular preconditioner
 
+Experimental one-energy-group operator primitives are documented separately in
+[native-grouped-angular.md](native-grouped-angular.md). They do not select a
+solver or replace the preconditioners described here.
+
 `garnet.native_angular_p0.P0GalerkinTransport` is an explicit alternative to the
 default `NativeMeshTransport` diagonal preconditioner. The default solver keeps
 the same diagonal arithmetic and provenance. The subclass changes only the
