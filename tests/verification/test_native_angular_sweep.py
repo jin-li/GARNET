@@ -203,6 +203,84 @@ def test_factor_failure_known_solve_failure_and_bad_application_fail_closed():
         block.solve(np.ones(matrix.shape[0]))
 
 
+@pytest.mark.parametrize('storage', ['superlu', 'packed'])
+def test_phase_maximum_and_unique_retained_charges(storage):
+    stream, bc = bound()
+    op = StreamingBlockP0Transport(stream, bc, factor_storage=storage)
+    config = op._sweep_provenance
+    base = config['base_p0_post_setup_reservation_bytes']
+    angular = config['angular_workspace_estimate_bytes']
+    assert config['base_p0_memory_estimate_bytes'] == op._p0_provenance['constructor_peak_estimate_bytes']
+    assert base == op._post_setup_reservation_bytes
+    if storage == 'superlu':
+        assert base == config['base_p0_memory_estimate_bytes']
+    factors = op._streaming_blocks
+    assert len(factors) < config['required_block_count']
+    assert config['retained_unique_charge_bytes'] == sum(
+        block.provenance['retained_charge_bytes'] for block in factors)
+    retained = 0
+    seen = set()
+    assembly_peaks = []
+    for row in op._streaming_block_map:
+        for index in row:
+            reserved = base+angular+retained
+            assembly_peaks.append(reserved+module._assembly_workspace(stream))
+            if index not in seen:
+                block = factors[index]
+                assert block.provenance['reserved_bytes'] == reserved
+                retained += block.provenance['retained_charge_bytes']
+                seen.add(index)
+    assert config['streaming_assembly_peak_estimate_bytes'] == max(assembly_peaks)
+    assert op.memory_estimate_bytes == max(
+        config['base_p0_memory_estimate_bytes'], max(assembly_peaks),
+        *(block.provenance['peak_estimate_bytes'] for block in factors),
+        base+angular+retained)
+
+
+def test_packed_constructor_peak_is_not_reserved_again_and_payloads_are_unchanged():
+    stream, bc = bound()
+    # A large advisory P0 fill allowance on a two-cell matrix makes its
+    # constructor peak dominate. No larger matrix or factor is constructed.
+    settings = dict(factor_storage='packed', ilu_fill_factor=20_000., streaming_fill_estimate=1.)
+    reference = StreamingBlockP0Transport(stream, bc, **settings)
+    cap = reference.memory_estimate_bytes
+    assert cap == reference._p0_provenance['constructor_peak_estimate_bytes']
+    op = StreamingBlockP0Transport(stream, bc, max_bytes=cap, **settings)
+    config = op._sweep_provenance
+    assert config['base_p0_memory_estimate_bytes']+config['angular_workspace_estimate_bytes'] > cap
+    assert op._p0_provenance['coarse_csr_sha256'] == reference._p0_provenance['coarse_csr_sha256']
+    assert op._p0_provenance['packed_payload_sha256'] == reference._p0_provenance['packed_payload_sha256']
+    assert op._streaming_block_map == reference._streaming_block_map
+    for block, original in zip(op._streaming_blocks, reference._streaming_blocks):
+        assert block.provenance['matrix_csc_sha256'] == original.provenance['matrix_csc_sha256']
+        assert block.provenance['packed_payload_sha256'] == original.provenance['packed_payload_sha256']
+        assert block.provenance['retained_charge_bytes'] == (
+            block.provenance['matrix_array_bytes']+block._factor.payload_nbytes)
+    legacy = StreamingBlockP0Transport(stream, bc, ilu_fill_factor=20_000., streaming_fill_estimate=1.)
+    rhs = np.random.default_rng(840).normal(size=stream.shape)
+    np.testing.assert_array_equal(op.action(rhs), legacy.action(rhs))
+    np.testing.assert_array_equal(op.fission(rhs), legacy.fission(rhs))
+    np.testing.assert_allclose(op.precondition(rhs), legacy.precondition(rhs), rtol=1e-12, atol=1e-13)
+    np.testing.assert_array_equal(op.precondition(rhs), reference.precondition(rhs))
+
+
+def test_packed_streaming_phase_still_rejects_oversized_workspace():
+    stream, bc = bound()
+    p0 = P0GalerkinTransport(stream, bc, factor_storage='packed')
+    cap = p0.memory_estimate_bytes+1
+    with patch.object(module, '_assembly_workspace', return_value=cap), \
+            patch.object(module, 'build_streaming_block') as build:
+        with pytest.raises(ValueError, match='allocation estimate'):
+            StreamingBlockP0Transport(stream, bc, factor_storage='packed', max_bytes=cap)
+        build.assert_not_called()
+    # The factor preflight must also reject after successful block assembly.
+    with patch.object(module, 'splu') as factor:
+        with pytest.raises(ValueError, match='allocation estimate'):
+            StreamingBlockP0Transport(stream, bc, factor_storage='packed',
+                                      max_bytes=cap, streaming_fill_estimate=1e100)
+        factor.assert_not_called()
+
+
 @pytest.mark.parametrize('matrix', [csc_matrix([[0., 0.], [0., 0.]]),
                                    csc_matrix([[np.nan, 0.], [0., 1.]]),
                                    csc_matrix(np.ones((2, 3)))])

@@ -201,10 +201,35 @@ no reference to the original SuperLU object, but private triangular-solve and
 allocator overhead still require an external process memory limit. Successful
 small tests do not establish that a complete assembly setup fits or converges.
 
+### Packed P0 workspace lifetimes
+
+`P0GalerkinTransport.memory_estimate_bytes` remains the conservative peak for
+its construction, including ILU fill and packing workspaces. After that
+constructor returns, the original factor and its temporary triplets, L/U views,
+and packing arrays have been released. The retained packed P0 reservation is
+then the base transport estimate, all original nonfactor allowances, the owned
+packed payload, and the retained coarse CSR payload. Krylov, angular action,
+and coarse solve allowances are preserved.
+
+The streaming-block constructor uses this post-setup reservation only after
+P0 construction returns. Its final estimate is the maximum of the original P0
+construction peak, every streaming assembly/factor/packing phase, and the
+post-setup reservation plus angular workspace and all distinct retained blocks.
+Provenance records these components under `memory_accounting_version` and
+`base_p0_post_setup_reservation_bytes`; `base_p0_memory_estimate_bytes` retains
+its meaning as the P0 construction peak. The default opaque SuperLU storage
+keeps its previous reservation.
+
+This accounts for allocation lifetimes; it does not infer memory needs from
+measured RSS or alter a job's budget. Allocator arenas and native workspaces
+may remain resident, so an external hard memory limit is still required.
+
 Memory accounting retains the inherited Krylov/coarse estimates and reserves
 additional angular vectors, sparse assembly/conversion workspace and existing
 unique factors before every new block. The measured retained charge includes
-matrix arrays, twice the materialized L/U arrays, and row/column permutations.
+matrix arrays, twice the materialized L/U arrays, and row/column permutations
+for opaque SuperLU storage. Packed storage charges the matrix and its owned
+packed payload, while guarding conversion as a separate temporary peak.
 `streaming_fill_estimate` defaults to 20 and is only a preflight allowance;
 it does not cap SuperLU fill or opaque workspace. Enforce an external job
 memory limit throughout setup and solves. A failed setup is not permission to
