@@ -1,4 +1,4 @@
-"""Conservative 2D upwind streaming plus native total collision; no solve."""
+"""Conservative 2D/3D upwind streaming plus native total collision; no solve."""
 from dataclasses import dataclass, field, InitVar
 
 import numpy as np
@@ -12,8 +12,8 @@ from .native_angular_source import NativeAngularSource, _budget, _integer, _read
 class NativeMeshStreaming:
     """Frozen geometry bound to one NativeAngularSource's angular/energy layout.
 
-    Equation arrays are cell-integrated [cell, angle, group]. Physical 3D
-    direction x/y components are used unchanged on the 2D mesh. Geometry must
+    Equation arrays are cell-integrated [cell, angle, group]. Physical direction
+    components are used unchanged in the mesh dimension. Geometry must
     explicitly supply face centers and outward/left-to-right unit normals.
     """
     mesh: InitVar[Mesh]
@@ -30,6 +30,7 @@ class NativeMeshStreaming:
     boundary_normals: np.ndarray = field(init=False, repr=False, compare=False)
     boundary_centers: np.ndarray = field(init=False, repr=False, compare=False)
     total: np.ndarray = field(init=False, repr=False, compare=False)
+    dimension: int = field(init=False)
 
     def __post_init__(self, mesh):
         if not isinstance(mesh, Mesh) or not isinstance(self.source, NativeAngularSource):
@@ -38,8 +39,22 @@ class NativeMeshStreaming:
         if nc == 0 or nc != self.source.cell_material_ids.size:
             raise ValueError('mesh/source cell count mismatch')
         ng = self.source.n_groups
+        # Inspect shape without constructing a numeric geometry copy. Reject a
+        # malformed dimension before dimension-dependent allocation estimates.
+        shape = getattr(mesh.centroid, 'shape', None)
+        if shape is None:
+            try:
+                shape = (len(mesh.centroid), len(mesh.centroid[0]))
+            except (TypeError, IndexError):
+                shape = ()
+        if len(shape) != 2 or shape[0] != nc or shape[1] not in (2, 3):
+            raise ValueError('cell centroids must have shape (n_cells, 2 or 3)')
+        dim = shape[1]
+        if dim == 3 and (self.quadrature.n_polar < 2 or self.quadrature.n_azimuth < 4):
+            raise ValueError('3D streaming requires n_polar >= 2 and n_azimuth >= 4')
         # Guard before geometry/total copies. Includes parser and closure workspace.
-        _budget(8*(12*nc + 24*nf + 20*nb + 3*len(self.source.materials)*ng), self.max_bytes)
+        _budget(8*((8+2*dim)*nc + (16+4*dim)*nf + (12+4*dim)*nb
+                   + 3*len(self.source.materials)*ng), self.max_bytes)
 
         def geometry(value, shape, name):
             array = np.asarray(value)
@@ -47,14 +62,14 @@ class NativeMeshStreaming:
                 raise ValueError(f'{name} must be finite real shape {shape}')
             return _readonly(array)
 
-        area = geometry(mesh.area, (nc,), 'cell areas')
-        centroid = geometry(mesh.centroid, (nc, 2), '2D cell centroids')
+        area = geometry(mesh.area, (nc,), 'cell measures')
+        centroid = geometry(mesh.centroid, (nc, dim), 'cell centroids')
         if np.any(area <= 0):
-            raise ValueError('cell areas must be positive')
-        normals = geometry(mesh.face_normals, (nf, 2), 'interior normals')
-        centers = geometry(mesh.face_centers, (nf, 2), 'interior centers')
-        bnormals = geometry(mesh.bface_normals, (nb, 2), 'boundary normals')
-        bcenters = geometry(mesh.bface_centers, (nb, 2), 'boundary centers')
+            raise ValueError('cell measures must be positive')
+        normals = geometry(mesh.face_normals, (nf, dim), 'interior normals')
+        centers = geometry(mesh.face_centers, (nf, dim), 'interior centers')
+        bnormals = geometry(mesh.bface_normals, (nb, dim), 'boundary normals')
+        bcenters = geometry(mesh.bface_centers, (nb, dim), 'boundary centers')
 
         def parse(entries, interior):
             owners, measures = [], []
@@ -79,7 +94,7 @@ class NativeMeshStreaming:
         owners, measures = parse(mesh.faces, True)
         bowners, bmeasures = parse(mesh.bfaces, False)
         bowners = _readonly(bowners[:, 0], np.int64)
-        closure = np.zeros((nc, 2))
+        closure = np.zeros((nc, dim))
         scale = np.zeros(nc)
         for ids, measure, normal, center in zip(owners, measures, normals, centers):
             left, right = ids
@@ -113,6 +128,7 @@ class NativeMeshStreaming:
                             ('boundary_normals', bnormals), ('boundary_centers', bcenters),
                             ('total', _readonly(np.stack(totals)))):
             object.__setattr__(self, name, value)
+        object.__setattr__(self, 'dimension', dim)
 
     @property
     def quadrature(self):
@@ -156,7 +172,7 @@ class NativeMeshStreaming:
         """L psi = V Sigma_t psi + interior upwind flux + boundary outflow."""
         flux = self._flux(angular_flux)
         result = np.empty(self.shape)
-        directions = self.quadrature.directions[:, :2]
+        directions = self.quadrature.directions[:, :self.dimension]
         for cell, material in enumerate(self.source.cell_material_ids):
             result[cell] = self.area[cell]*self.total[material]*flux[cell]
         for (left, right), area, normal in zip(self.owners, self.measures, self.normals):
@@ -176,7 +192,7 @@ class NativeMeshStreaming:
         if incoming is not None:
             for face, (owner, area, normal) in enumerate(zip(
                     self.boundary_owners, self.boundary_measures, self.boundary_normals)):
-                speed = self.quadrature.directions[:, :2] @ normal
+                speed = self.quadrature.directions[:, :self.dimension] @ normal
                 indices = np.flatnonzero(speed < 0)
                 value = np.asarray(incoming[face, indices], dtype=float)
                 self._finite(value)
@@ -207,15 +223,15 @@ class NativeMeshStreaming:
         # Deliberately independent scalar row construction, not action's vector face accumulation.
         for face in range(nf):
             left, right = self.owners[face]
-            nx, ny = self.normals[face]
-            coefficient = self.measures[face]*(omega[0]*nx + omega[1]*ny)
+            coefficient = self.measures[face]*sum(
+                omega[axis]*self.normals[face, axis] for axis in range(self.dimension))
             upstream = left if coefficient >= 0 else right
             rows.extend((left, right))
             columns.extend((upstream, upstream))
             values.extend((coefficient, -coefficient))
         for face in range(nb):
-            nx, ny = self.boundary_normals[face]
-            coefficient = self.boundary_measures[face]*(omega[0]*nx + omega[1]*ny)
+            coefficient = self.boundary_measures[face]*sum(
+                omega[axis]*self.boundary_normals[face, axis] for axis in range(self.dimension))
             if coefficient > 0:
                 owner = self.boundary_owners[face]
                 rows.append(owner)
@@ -238,11 +254,11 @@ class NativeMeshStreaming:
         interior = np.empty((nf, self.shape[2]))
         boundary = np.empty((nb, self.shape[2]))
         for face, ((left, right), area, normal) in enumerate(zip(self.owners, self.measures, self.normals)):
-            speed = self.quadrature.directions[:, :2] @ normal
+            speed = self.quadrature.directions[:, :self.dimension] @ normal
             trace = np.where(speed[:, None] >= 0, flux[left], flux[right])
             interior[face] = area*np.einsum('n,ng->g', self.quadrature.weights*speed, trace)
         for face, (owner, area, normal) in enumerate(zip(self.boundary_owners, self.boundary_measures, self.boundary_normals)):
-            speed = self.quadrature.directions[:, :2] @ normal
+            speed = self.quadrature.directions[:, :self.dimension] @ normal
             trace = np.zeros((self.shape[1], self.shape[2]))
             outgoing = speed > 0
             trace[outgoing] = flux[owner, outgoing]

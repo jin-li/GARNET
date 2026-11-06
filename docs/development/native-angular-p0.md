@@ -48,11 +48,18 @@ Add `+T_face` to both neighboring same-group diagonals and `-T_face` to their
 same-group off-diagonal couplings. A vacuum face adds `T_face` to its owner's
 diagonal; a specular face adds zero. The sum over negative normal velocities
 must match the positive half range within floating-point tolerance scaled by
-the face measure and quadrature's in-plane speed integral. This includes
+the face measure and quadrature's speed integral in the mesh dimension. This includes
 oblique interior/vacuum faces and numerical tangencies. No planar direction
 renormalization, continuum `face_measure/4` substitution, diffusion coefficient,
 Marshak boundary term, SPD assumption, or material removal reconstruction is
 used. Reflection retains the base solver's Cartesian-axis restriction.
+
+The same construction supports 3D face normals and includes axial interior
+and vacuum faces. A reflective axial face adds no coarse leakage. Use the
+3D directional-coverage requirements of `NativeMeshStreaming`; a quadrature
+with all axial direction components zero cannot represent axial leakage.
+Coarse and streaming-block corrections are checked against their own 3D
+discrete equations, rather than assumed equal to a scaled 2D preconditioner.
 
 The constructor calls `scipy.sparse.linalg.spilu` once with defaults
 `drop_tol=1e-6`, `fill_factor=20`, `drop_rule='basic,area'`, `permc_spec='COLAMD'`,

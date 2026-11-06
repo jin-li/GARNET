@@ -78,11 +78,12 @@ def _pack_factor(factor, *, reserved_bytes, max_bytes, source_array_bytes):
 
 
 def _half_range(quadrature, area, normal):
-    speed = quadrature.directions[:, :2] @ normal
+    directions = quadrature.directions[:, :len(normal)]
+    speed = directions @ normal
     positive = float(area*np.dot(quadrature.weights, np.maximum(speed, 0))/(4*np.pi))
     negative = float(area*np.dot(quadrature.weights, np.maximum(-speed, 0))/(4*np.pi))
     reference = float(area*np.dot(quadrature.weights,
-                                  np.linalg.norm(quadrature.directions[:, :2], axis=1))/(4*np.pi))
+                                  np.linalg.norm(directions, axis=1))/(4*np.pi))
     if (not np.all(np.isfinite([positive, negative, reference])) or
             abs(positive-negative) > 128*np.finfo(float).eps*reference):
         raise ValueError('discrete weighted positive/negative face half ranges differ')
