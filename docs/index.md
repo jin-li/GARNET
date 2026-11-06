@@ -55,6 +55,7 @@ development/native-angular-source
 development/native-mesh-streaming
 development/native-mesh-transport
 development/native-angular-p0
+development/native-grouped-angular
 development/native-nem-p0
 ```
 

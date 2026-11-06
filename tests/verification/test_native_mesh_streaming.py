@@ -250,15 +250,20 @@ def old_scalar_coo(op, angle, group):
         values.append(op.area[cell]*op.total[op.source.cell_material_ids[cell], group])
     for face in range(len(op.owners)):
         left, right = op.owners[face]
-        nx, ny = op.normals[face]
-        coefficient = op.measures[face]*(omega[0]*nx + omega[1]*ny)
+        speed = omega[0]*op.normals[face, 0] + omega[1]*op.normals[face, 1]
+        if op.dimension == 3:
+            speed = speed + omega[2]*op.normals[face, 2]
+        coefficient = op.measures[face]*speed
         upstream = left if coefficient >= 0 else right
         rows.extend((left, right))
         columns.extend((upstream, upstream))
         values.extend((coefficient, -coefficient))
     for face in range(len(op.boundary_owners)):
-        nx, ny = op.boundary_normals[face]
-        coefficient = op.boundary_measures[face]*(omega[0]*nx + omega[1]*ny)
+        speed = (omega[0]*op.boundary_normals[face, 0]
+                 + omega[1]*op.boundary_normals[face, 1])
+        if op.dimension == 3:
+            speed = speed + omega[2]*op.boundary_normals[face, 2]
+        coefficient = op.boundary_measures[face]*speed
         if coefficient > 0:
             owner = op.boundary_owners[face]
             rows.append(owner)
@@ -277,7 +282,7 @@ def manufactured_assembly_storage():
     directions = np.array([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.],
                            [.6, .8, 0.], [-.6, -.8, 0.], [0., 0., 1.]])
     return SimpleNamespace(
-        area=np.array([2., 3., 5.]),
+        dimension=2, area=np.array([2., 3., 5.]),
         total=np.array([[0., .25, 4.], [2., .5, 8.]]),
         source=SimpleNamespace(cell_material_ids=np.array([1, 0, 1], dtype=np.int64)),
         owners=np.array([[0, 1], [2, 1], [0, 2], [1, 0]], dtype=np.int64),
@@ -412,3 +417,14 @@ def test_assembled_nonfinite_intermediates_rejected(field, index):
         op.quadrature.directions[0, 0] = 2.
     with pytest.raises(ValueError, match='nonfinite'):
         NativeMeshStreaming.assembled(op, 0, 0)
+
+
+def test_assembled_three_axis_coo_arithmetic_and_order(monkeypatch):
+    op = manufactured_assembly_storage()
+    op.dimension = 3
+    op.normals = np.column_stack((op.normals, [.3, -.6, .8, -1.]))
+    op.boundary_normals = np.column_stack((op.boundary_normals, [.5, -.5, .8, -.8, 1.]))
+    op.quadrature.directions[:, 2] = [1., -1., .3, -.4, .6, 1.]
+    for angle in range(op.shape[1]):
+        for group in range(op.shape[2]):
+            assert_old_coo_equivalence(op, angle, group, monkeypatch)

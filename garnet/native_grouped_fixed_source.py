@@ -1,4 +1,4 @@
-"""Opt-in 2D group Gauss--Seidel fixed-source pilot; no eigenvalue solve."""
+"""Opt-in 2D/3D group Gauss--Seidel fixed-source pilot; no eigenvalue solve."""
 from dataclasses import dataclass, field
 import hashlib
 import inspect

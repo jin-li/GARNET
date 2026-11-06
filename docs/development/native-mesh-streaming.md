@@ -40,7 +40,7 @@ inconsistent consumed geometry is rejected. These checks validate the consumed
 finite-volume geometry; they do not establish arbitrary polygon topology or
 mesh convergence. The read-only `dimension` attribute records the spatial
 dimension. In 3D, `Mesh.area` stores cell volumes and face measures are areas.
-Use `assemble_mesh_3d` or the existing Gmsh loader for conforming tetrahedra,
+Use `assemble_mesh_3d(..., normal_distances=True)` or the existing Gmsh loader for conforming tetrahedra,
 triangular prisms, or hexahedra; the polygon builder remains a 2D utility.
 
 A 3D source requires `ProductQuadrature` with at least two polar nodes and
@@ -84,8 +84,8 @@ for incoming directions. These currents use full-sphere weights summing to
 `4*pi`; interior contributions cancel exactly between neighboring equations
 up to floating-point summation. No surface-average division is applied.
 
-`assembled(angle,group)` builds only one sparse cell-by-cell matrix. Its scalar
-row construction is independent of the vectorized face accumulation used by
+`assembled(angle,group)` builds only one sparse cell-by-cell matrix. Its numeric COO
+construction is independent of the vectorized face accumulation used by
 `action`, so their comparison can detect implementation discrepancies. Sparse
 matrices have nonnegative diagonals and nonpositive off-diagonals for admitted
 totals; no claim of strict diagonal dominance, nonsingularity, or transport

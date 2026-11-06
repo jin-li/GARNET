@@ -40,7 +40,7 @@ def prisms(two=True):
     levels = [0., .7, 2.3] if two else [0., .7]
     points = np.array([[x, y, z] for z in levels for x, y in [(0., 0.), (2., 0.), (0., 1.)]])
     cells = [tuple(range(3*c, 3*c+6)) for c in range(len(levels)-1)]
-    return assemble_mesh_3d(points, cells, np.arange(len(cells)))
+    return assemble_mesh_3d(points, cells, np.arange(len(cells)), normal_distances=True)
 
 
 def independent_faces(s, flux, incoming=None):
@@ -127,7 +127,7 @@ def test_nonzero_z_gradient_sign_and_interior_cancellation():
 
 def test_tetrahedron_oblique_xyz_face_checked_measures():
     mesh = assemble_mesh_3d(np.array([[0., 0., 0.], [2., 0., 0.],
-                                     [0., 3., 0.], [0., 0., 4.]]), [(0, 1, 2, 3)], [0])
+                                     [0., 3., 0.], [0., 0., 4.]]), [(0, 1, 2, 3)], [0], normal_distances=True)
     s = bind(mesh)
     np.testing.assert_allclose(s.area, [4.], atol=2e-15)
     np.testing.assert_allclose(s.centroid, [[.5, .75, 1.]], atol=2e-15)
@@ -194,7 +194,7 @@ def extrusion(height=2.7):
     planar = assemble_mesh(points, cells, [0, 1])
     xyz = np.vstack((np.column_stack((points, np.zeros(6))),
                      np.column_stack((points, np.full(6, height)))))
-    spatial = assemble_mesh_3d(xyz, [c+tuple(i+6 for i in c) for c in cells], [0, 1])
+    spatial = assemble_mesh_3d(xyz, [c+tuple(i+6 for i in c) for c in cells], [0, 1], normal_distances=True)
     return bind(planar), bind(spatial)
 
 
@@ -333,7 +333,7 @@ def test_homogeneous_axial_vacuum_leakage_reduces_converged_k():
     # One homogeneous hex, with identical side conditions and only caps varied.
     points = np.array([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.],
                        [0., 0., 2.7], [1., 0., 2.7], [1., 1., 2.7], [0., 1., 2.7]])
-    s = bind(assemble_mesh_3d(points, [tuple(range(8))], [0]))
+    s = bind(assemble_mesh_3d(points, [tuple(range(8))], [0], normal_distances=True))
     reflected = NativeMeshTransport(s, ('reflective',)*len(s.boundary_owners))
     bc = tuple('vacuum' if abs(n[2]) > .9 else 'reflective' for n in s.boundary_normals)
     leaking = NativeMeshTransport(s, bc)
@@ -427,3 +427,55 @@ def test_dimension_aware_geometry_preflight_before_copy():
     with pytest.raises(ValueError, match='allocation estimate'):
         bind(mesh, max_bytes=required-1)
     assert bind(mesh, max_bytes=required).dimension == 3
+
+
+@pytest.mark.parametrize('kind', ['vacuum', 'reflective', 'mixed'])
+def test_grouped_3d_actions_and_fixed_source_against_dense_faces(kind):
+    from garnet.native_grouped_angular import GroupAngularOperators
+    from garnet.native_grouped_fixed_source import GroupedFixedSource
+
+    _, s = extrusion()
+    bc = tuple('vacuum' if kind == 'vacuum' or (kind == 'mixed' and n[2] > .9)
+               else 'reflective' for n in s.boundary_normals)
+    grouped = GroupAngularOperators(s, bc)
+    reference = NativeMeshTransport(s, bc)
+    rng = np.random.default_rng(319)
+    flux = rng.normal(size=s.shape)
+    moments = s.source.moments(flux)
+    rebuilt = np.empty(s.shape)
+    for g in range(s.shape[2]):
+        rebuilt[:, :, g] = (grouped.streaming_group_action(flux[:, :, g], g)
+                            - grouped.scatter_to_group(moments, g))
+        np.testing.assert_allclose(grouped.diagonal_group(g), reference.diagonal[:, :, g], atol=3e-15)
+    matrix, _, _, _ = dense_a_f_r_p(s, bc)
+    np.testing.assert_allclose(rebuilt, reference.action(flux), atol=5e-14)
+    np.testing.assert_allclose(rebuilt.ravel(), matrix @ flux.ravel(), atol=5e-14)
+    if kind == 'reflective':
+        assert {int(np.argmax(np.abs(n))) for n in s.boundary_normals} == {0, 1, 2}
+        for f, permutation in enumerate(grouped.reflection_permutations):
+            np.testing.assert_array_equal(permutation, reference.reflection_permutations[f])
+    source = rng.normal(size=s.shape)
+    solver = GroupedFixedSource(s, bc, inner_tolerance=1e-11, full_tolerance=1e-9,
+                                restart=100, max_inner=200, max_sweeps=100)
+    result = solver.solve(source)
+    assert result.converged, result.reason
+    expected = np.linalg.solve(matrix, source.ravel()).reshape(s.shape)
+    np.testing.assert_allclose(result.angular_flux, expected, atol=3e-9, rtol=3e-9)
+    assert not result.provenance['physical_admission']
+
+
+def test_grouped_3d_oblique_reflection_fails_closed():
+    from garnet.native_grouped_angular import GroupAngularOperators
+
+    s = bind(prisms())
+    with pytest.raises(ValueError, match='Cartesian'):
+        GroupAngularOperators(s, ('reflective',)*len(s.boundary_owners))
+
+
+def test_legacy_3d_mesh_without_geometry_is_rejected():
+    mesh = assemble_mesh_3d(np.array([[0., 0., 0.], [1., 0., 0.],
+                                     [0., 1., 0.], [0., 0., 1.]]), [(0, 1, 2, 3)], [0])
+    assert mesh.face_normals is None
+    assert mesh.bface_normals is None
+    with pytest.raises(ValueError, match='interior normals must be finite real shape'):
+        bind(mesh)

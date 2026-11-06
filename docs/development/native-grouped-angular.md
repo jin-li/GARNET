@@ -1,8 +1,8 @@
 # Experimental grouped angular transport
 
 `garnet.native_grouped_angular.GroupAngularOperators` exposes the group blocks
-of the existing two-dimensional native angular equations. It provides operator
-primitives only. The separate opt-in `GroupedFixedSource` prototype described
+of the existing two- and three-dimensional native angular equations. It provides
+operator primitives only. The separate opt-in `GroupedFixedSource` prototype described
 below adds a multigroup fixed-source sweep. Neither interface provides fission
 power iteration or automatic solver selection.
 
@@ -28,16 +28,16 @@ production matrices and physical quadrature remain shared and unchanged.
 the existing real spherical-harmonic basis, whose zeroth component is one.
 Scattering uses all available orders, canonical `[to,from]` coefficients and
 the original `1/(4*pi)` normalization. Scattering outputs are cell-integrated:
-cell area is included exactly once. Excluding the target group removes its
-same-group scattering term; it does not remove a physical energy group or
+cell measure (area in 2D, volume in 3D) is included exactly once. Excluding the
+target group removes its same-group scattering term; it does not remove a physical energy group or
 discard upscatter. Exclusion occurs before the moment contraction, using a
 temporary coefficient vector, so subtracting a dominant same-group term does
 not round away weak intergroup sources. The stored raw matrices remain unchanged.
 
 `streaming_group_action` includes total collision, conservative interior
 upwinding, vacuum outflow and reflected incoming coupling. Specular boundaries
-retain their angular index permutations; all angles remain coupled within the
-group. `group_action` subtracts only same-group scattering. Its result equals
+support Cartesian x/y/z faces and retain their angular index permutations; all
+angles remain coupled within the group. `group_action` subtracts only same-group scattering. Its result equals
 the target group of the coupled loss operator applied to a field with only
 that incident energy group active. Intergroup scattering belongs on the right
 side of the group equation. `diagonal_group` returns the streaming and
@@ -64,12 +64,15 @@ scattering, streamed loss, exact reflection and diagonals with the existing
 coupled implementation, including both XS orientations, heterogeneous cells,
 upscatter, signed P7 data and mixed boundaries. Operator agreement does not
 establish convergence of group iteration. These primitives have no physical-array,
-core or three-dimensional qualification.
+core or physical three-dimensional qualification. Tiny 3D manufactured checks
+cover x/y/z specular reflection, group actions, diagonals and fixed-source
+solutions against independent dense face equations. They use explicit
+`assemble_mesh_3d(..., normal_distances=True)` geometry.
 
 ## Opt-in multigroup fixed-source prototype
 
 `garnet.native_grouped_fixed_source.GroupedFixedSource` solves the supplied
-cell-integrated equation `A psi = rhs` on the same 2D reference geometry.
+cell-integrated equation `A psi = rhs` on the same 2D/3D reference geometry.
 It is a separate explicit entry point; existing transport solvers and physical
 runs do not select it automatically.
 

@@ -62,7 +62,7 @@ scattering-production moments through P7. Each regional fission source uses
 the supplied cross-group `chi[to]*nuSigmaF[from]` without spectrum normalization.
 
 The streaming mesh may be 2D or 3D. The existing Gmsh loader and
-`assemble_mesh_3d` accept conforming tetrahedra, triangular prisms and hexahedra.
+`assemble_mesh_3d(..., normal_distances=True)` accept conforming tetrahedra, triangular prisms and hexahedra.
 Cell measures are volumes in 3D; each face must have its area, center and unit
 normal. Boundary conditions are explicit per face: vacuum or Cartesian-axis
 specular reflection, including z faces. Oblique specular reflection is unsupported.

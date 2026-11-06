@@ -1,4 +1,4 @@
-"""Opt-in one-energy-group angular operators on the reference 2D geometry.
+"""Opt-in one-energy-group angular operators on the reference 2D/3D geometry.
 
 No solve, fission, eigeniteration, or automatic operator selection is provided.
 The source's canonical signed SP0..SPL, quadrature and energy grid are shared.
@@ -41,7 +41,7 @@ class GroupAngularOperators:
         bc = self.boundary_conditions
         if len(bc) != len(s.boundary_owners) or any(v not in ('vacuum', 'reflective') for v in bc):
             raise ValueError('one vacuum/reflective boundary condition per boundary face required')
-        # At most two shared axis permutations; allow reflection construction,
+        # At most three shared axis permutations; allow reflection construction,
         # immutable backing copies, validation vectors and boolean temporaries.
         _budget(8*(100*s.shape[1]+1), self.max_bytes)
         axes, permutations = {}, []
@@ -50,20 +50,19 @@ class GroupAngularOperators:
             if spec == 'vacuum':
                 permutations.append(None)
                 continue
-            if abs(abs(normal[0])-1) <= 2e-13 and abs(normal[1]) <= 2e-13:
-                axis, tangent = 'x', 1
-            elif abs(abs(normal[1])-1) <= 2e-13 and abs(normal[0]) <= 2e-13:
-                axis, tangent = 'y', 0
-            else:
-                raise ValueError('reflective normal must align with Cartesian x or y axis')
+            axis_index = int(np.argmax(np.abs(normal)))
+            if (abs(abs(normal[axis_index])-1) > 2e-13 or
+                    np.any(np.abs(np.delete(normal, axis_index)) > 2e-13)):
+                raise ValueError('reflective normal must align with a Cartesian axis')
+            axis = 'xyz'[axis_index]
+            tangents = [i for i in range(3) if i != axis_index]
             if axis not in axes:
                 axes[axis] = s.quadrature.reflection(axis)
             permutation = axes[axis]
-            speed = directions[:, :2] @ normal
+            speed = directions[:, :s.dimension] @ normal
             if (not np.array_equal(permutation[permutation], np.arange(s.shape[1])) or
                     not np.array_equal(weights[permutation], weights) or
-                    not np.allclose(directions[permutation, tangent], directions[:, tangent], atol=2e-13, rtol=0) or
-                    not np.allclose(directions[permutation, 2], directions[:, 2], atol=2e-13, rtol=0) or
+                    not np.allclose(directions[permutation][:, tangents], directions[:, tangents], atol=2e-13, rtol=0) or
                     not np.allclose(speed[permutation], -speed, atol=2e-13, rtol=0)):
                 raise ValueError('quadrature does not provide exact specular index reflection')
             permutations.append(permutation)
@@ -185,7 +184,7 @@ class GroupAngularOperators:
         result = np.empty(self.shape)
         for cell, mid in enumerate(s.source.cell_material_ids):
             result[cell] = s.area[cell]*s.total[mid, g]*np.asarray(flux[cell], dtype=np.float64)
-        directions = s.quadrature.directions[:, :2]
+        directions = s.quadrature.directions[:, :s.dimension]
         for (left, right), area, normal in zip(s.owners, s.measures, s.normals):
             speed = directions @ normal
             trace = np.where(speed >= 0, flux[left], flux[right])
@@ -220,7 +219,7 @@ class GroupAngularOperators:
         result = np.empty(self.shape)
         for cell, mid in enumerate(s.source.cell_material_ids):
             result[cell] = s.area[cell]*s.total[mid, g]
-        directions = s.quadrature.directions[:, :2]
+        directions = s.quadrature.directions[:, :s.dimension]
         for (left, right), area, normal in zip(s.owners, s.measures, s.normals):
             coefficient = area*(directions @ normal)
             result[left] += np.maximum(coefficient, 0)
