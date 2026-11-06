@@ -1,0 +1,71 @@
+\section*{Summary}
+
+This report times \garnet{} against \ffn{} on the same multigroup diffusion
+problems, solved to the same accuracy:
+\begin{itemize}
+\item IAEA-3D;
+\item the 3-D Langenbuch core at $t=0$;
+\item the 11-group hex-homogenized HP-MR;
+\item a $+0.5$\,\$ reactivity insertion in the HP-MR.
+\end{itemize}
+Both codes run on one core of the same AMD EPYC 7742 node, and \garnet{}
+also on one GH200 GPU. Every run is scored against a common reference. For
+each accuracy target, the comparison takes each platform's cheapest
+measured run that meets it (Table~\ref{tab:tta}).
+
+\paragraph{Findings.}
+\begin{itemize}
+\item \textbf{Steady state, one core: \ffn{} is faster.} At 10~pcm in $k$
+  and 1\% in every node power, its degree-3 elements need 8 to 60 times
+  fewer unknowns than \garnet's second-order finite volumes.
+  \begin{itemize}
+  \item HP-MR: 89~s for \ffn{} against 667~s for \garnet.
+  \item Langenbuch: 45~s against 66~s.
+  \item IAEA-3D: 658~s; \garnet{} needs $r=24$ (127 million unknowns), an
+    estimated 2.6~h on one core, which was not run.
+  \item 1~pcm and 0.1\%: only \ffn{} reaches it (Langenbuch 434~s,
+    HP-MR 124~s, IAEA-3D 10,822~s).
+  \end{itemize}
+\item \textbf{Steady state, GH200: \garnet{} is fastest on all three
+  cores.} HP-MR in 2.4~s, 37 times faster than \ffn{} on one core;
+  Langenbuch in 0.35~s, 130 times; IAEA-3D in 33.5~s, 20 times.
+\item \textbf{HP-MR: \garnet's Wielandt shift.} Its HP-MR rows use the new
+  Wielandt-shifted eigenvalue iteration (classic fixed shift,
+  $\delta k = 0.3$). Each outer iteration then solves the whole 11-group
+  system, upscatter included. Outer iterations drop from about 250 to 10,
+  and solve times fall 2.2 to 3.5 times on one core and on the GH200
+  (Section~\ref{sec:steady}). The two-group cores keep the power
+  iteration: there the shift is 1.4 to 1.6 times slower on the GH200.
+\item \textbf{IAEA-3D: \garnet's node powers need fine meshes.} At $r=16$
+  (37.5 million unknowns, 1.25~cm cells) its $k$ is within 10~pcm, but its
+  node powers are still up to 2.1\% off: a smooth tilt over the core,
+  because the cells barely resolve the 2~cm thermal diffusion length. It
+  reaches 1\% at $r=24$ (127 million unknowns), and its mesh limit matches
+  \ffn's reference to 0.01~pcm and 0.05\%: both codes converge to the same
+  solution.
+\item \textbf{Transient: \garnet{} is faster on the same core.} To keep the
+  power error below $10^{-3}$:
+  \begin{itemize}
+  \item \ffn{}: 1262~s on one core;
+  \item \garnet{}: 127~s on one core (10 times faster) and 17~s on the
+    GH200 (76 times).
+  \end{itemize}
+  At $10^{-2}$ the two codes are even on one core (107 and 100~s).
+\item \textbf{Why the transient differs: time integration.} \garnet's BDF2
+  is second order; \ffn's two usable schemes are first order. \ffn's default
+  scheme, Implicit-Exponential, does not hold the unperturbed state on this
+  input.
+\end{itemize}
+
+\paragraph{Scope.}
+\begin{itemize}
+\item \ffn{} runs on one core only: its MPI path does not work yet
+  (Section~\ref{sec:codes}). The GH200 figures are therefore against one
+  core, not node against node.
+\item The transient reference is \garnet's extrapolated GH200 solution.
+  \ffn's own runs converge onto it independently.
+\item The HP-MR drums are withdrawn. A smeared B$_4$C drum is black to
+  thermal neutrons, and neither code resolves it.
+\item Posing the problems identically in both codes uncovered five \ffn{}
+  issues, listed in Section~\ref{sec:discussion}.
+\end{itemize}

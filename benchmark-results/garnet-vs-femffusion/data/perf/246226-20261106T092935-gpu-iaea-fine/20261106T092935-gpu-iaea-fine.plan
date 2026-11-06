@@ -1,0 +1,4 @@
+gpu tune-iaea-r16-control assess_garnet_vs_femffusion.py iaea3d --mesh 16 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r20 assess_garnet_vs_femffusion.py iaea3d --mesh 20 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r24 assess_garnet_vs_femffusion.py iaea3d --mesh 24 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@
+gpu gpu-iaea-r28 assess_garnet_vs_femffusion.py iaea3d --mesh 28 --precond-degree 2 --anderson-depth 4 --tol-k 1e-7 --tol-source 1e-6 --repeats 3 --device gpu --output @OUT@

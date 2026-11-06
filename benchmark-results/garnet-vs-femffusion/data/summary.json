@@ -1,0 +1,4199 @@
+{
+ "iaea3d": {
+  "reference": {
+   "source": "FEMFFUSION FE3, refinements 0/1/2 (three-level limit, nominal order 3: last step within the printed digits)",
+   "k": 1.0290728571428571
+  },
+  "rows": [
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r1",
+    "unknowns": 9158,
+    "k": 1.032296654651682,
+    "counters": {
+     "outers": 50,
+     "inners": 152
+    },
+    "memory": {
+     "max_rss_bytes": 89075712
+    },
+    "dk_pcm": 322.3797508824955,
+    "power_max": 0.3346643226860406,
+    "power_rms": 0.10690891131235226,
+    "solve": 0.05223153799306601,
+    "wall": 0.0662124059163034,
+    "setup": 0.0013258629478514194,
+    "assembly": null,
+    "warmup": 0.4698358899913728
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r12",
+    "unknowns": 15825024,
+    "k": 1.028985368145815,
+    "counters": {
+     "outers": 48,
+     "inners": 1292
+    },
+    "memory": {
+     "max_rss_bytes": 4057817088
+    },
+    "dk_pcm": -8.748899704213997,
+    "power_max": 0.035971535451910175,
+    "power_rms": 0.01309542846454243,
+    "solve": 652.2935593789443,
+    "wall": 654.23706282489,
+    "setup": 1.8946030479855835,
+    "assembly": null,
+    "warmup": 42.683521914994344
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r16",
+    "unknowns": 37511168,
+    "k": 1.0290220481160388,
+    "counters": {
+     "outers": 52,
+     "inners": 1883
+    },
+    "memory": {
+     "max_rss_bytes": 9503522816
+    },
+    "dk_pcm": -5.080902681831034,
+    "power_max": 0.020822709954644487,
+    "power_rms": 0.007598741870651201,
+    "solve": 2120.242530770949,
+    "wall": 2124.620501080877,
+    "setup": 4.310390093945898,
+    "assembly": null,
+    "warmup": 124.70497866603546
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2",
+    "unknowns": 73264,
+    "k": 1.0290582857760031,
+    "counters": {
+     "outers": 57,
+     "inners": 274
+    },
+    "memory": {
+     "max_rss_bytes": 106225664
+    },
+    "dk_pcm": -1.4571366854010392,
+    "power_max": 0.31023589175901733,
+    "power_rms": 0.11976323779526392,
+    "solve": 0.3456966549856588,
+    "wall": 0.3528859840007499,
+    "setup": 0.005552324000746012,
+    "assembly": null,
+    "warmup": 0.03137172001879662
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3",
+    "unknowns": 247266,
+    "k": 1.0286553830612728,
+    "counters": {
+     "outers": 51,
+     "inners": 342
+    },
+    "memory": {
+     "max_rss_bytes": 155422720
+    },
+    "dk_pcm": -41.747408158432364,
+    "power_max": 0.2501127884119859,
+    "power_rms": 0.09482585336463113,
+    "solve": 1.2891274800058454,
+    "wall": 1.3066524399910122,
+    "setup": 0.015344543964602053,
+    "assembly": null,
+    "warmup": 0.13602159603033215
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4",
+    "unknowns": 586112,
+    "k": 1.028661763026949,
+    "counters": {
+     "outers": 52,
+     "inners": 450
+    },
+    "memory": {
+     "max_rss_bytes": 247246848
+    },
+    "dk_pcm": -41.10941159081172,
+    "power_max": 0.19168993703508355,
+    "power_rms": 0.07170674422059915,
+    "solve": 4.247494909912348,
+    "wall": 4.283890322898515,
+    "setup": 0.03300050902180374,
+    "assembly": null,
+    "warmup": 0.4421234530163929
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r6",
+    "unknowns": 1978128,
+    "k": 1.0287990203692943,
+    "counters": {
+     "outers": 52,
+     "inners": 680
+    },
+    "memory": {
+     "max_rss_bytes": 621907968
+    },
+    "dk_pcm": -27.38367735628522,
+    "power_max": 0.11445644776521419,
+    "power_rms": 0.042166380455365735,
+    "solve": 36.18795300205238,
+    "wall": 36.35668064909987,
+    "setup": 0.16169361805077642,
+    "assembly": null,
+    "warmup": 2.754890934913419
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r8",
+    "unknowns": 4688896,
+    "k": 1.0288948615269238,
+    "counters": {
+     "outers": 55,
+     "inners": 937
+    },
+    "memory": {
+     "max_rss_bytes": 1357238272
+    },
+    "dk_pcm": -17.799561593334623,
+    "power_max": 0.07304913623773748,
+    "power_rms": 0.026772598118208913,
+    "solve": 119.86989093595184,
+    "wall": 120.32334155810531,
+    "setup": 0.4405364760896191,
+    "assembly": null,
+    "warmup": 7.761596695985645
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 80574,
+    "k": 1.030339,
+    "counters": {
+     "outers": 4,
+     "inners": 648,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 305885184,
+     "femffusion_max_memory_mb": 305.885
+    },
+    "dk_pcm": 126.61428571427713,
+    "power_max": 0.26322476094532166,
+    "power_rms": 0.09385345769112728,
+    "solve": 3.021407,
+    "wall": 6.44,
+    "setup": null,
+    "assembly": 0.619193,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 614922,
+    "k": 1.0292,
+    "counters": {
+     "outers": 4,
+     "inners": 1170,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 1336070144,
+     "femffusion_max_memory_mb": 1336.07
+    },
+    "dk_pcm": 12.714285714277018,
+    "power_max": 0.045519624946821775,
+    "power_rms": 0.016401252558405677,
+    "solve": 41.60683,
+    "wall": 49.49,
+    "setup": null,
+    "assembly": 4.889837,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 263552,
+    "k": 1.029138,
+    "counters": {
+     "outers": 4,
+     "inners": 1049,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 1072328704,
+     "femffusion_max_memory_mb": 1072.33
+    },
+    "dk_pcm": 6.514285714298573,
+    "power_max": 0.05330926758032991,
+    "power_rms": 0.018273858954575818,
+    "solve": 42.64414,
+    "wall": 51.95,
+    "setup": null,
+    "assembly": 6.172883000000001,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r2",
+    "unknowns": 4803282,
+    "k": 1.029081,
+    "counters": {
+     "outers": 4,
+     "inners": 2349,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 9336561664,
+     "femffusion_max_memory_mb": 9336.56
+    },
+    "dk_pcm": 0.814285714278995,
+    "power_max": 0.005507220279333762,
+    "power_rms": 0.0020133955244022875,
+    "solve": 658.4429,
+    "wall": 717.74,
+    "setup": null,
+    "assembly": 38.117613999999996,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r1",
+    "unknowns": 2042630,
+    "k": 1.029074,
+    "counters": {
+     "outers": 4,
+     "inners": 2086,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 7326531584,
+     "femffusion_max_memory_mb": 7326.53
+    },
+    "dk_pcm": 0.11428571429217271,
+    "power_max": 0.0038636629293704347,
+    "power_rms": 0.0014303674183517954,
+    "solve": 664.5771,
+    "wall": 717.2,
+    "setup": null,
+    "assembly": 48.139162999999996,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r3",
+    "unknowns": 37967010,
+    "k": 1.029074,
+    "counters": {
+     "outers": 4,
+     "inners": 4836,
+     "matvecs": 40,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 72985030656,
+     "femffusion_max_memory_mb": 72381.1
+    },
+    "dk_pcm": 0.11428571429217271,
+    "power_max": 0.0007570157231810964,
+    "power_rms": 0.00027800805958303886,
+    "solve": 10821.6,
+    "wall": 12722.0,
+    "setup": null,
+    "assembly": 300.23336,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r1",
+    "unknowns": 9158,
+    "k": 1.032296727363882,
+    "counters": {
+     "outers": 54,
+     "inners": 146
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 2787840
+    },
+    "dk_pcm": 322.38702210247715,
+    "power_max": 0.33456091674886135,
+    "power_rms": 0.10687047605311543,
+    "solve": 0.1377248180215247,
+    "wall": 0.3789079730049707,
+    "setup": 0.007798828009981662,
+    "assembly": null,
+    "warmup": 0.23235789500176907
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r12",
+    "unknowns": 15825024,
+    "k": 1.0289852870714067,
+    "counters": {
+     "outers": 53,
+     "inners": 1584
+    },
+    "memory": {
+     "max_rss_bytes": 956301312,
+     "gpu_pool_bytes": 4947788288
+    },
+    "dk_pcm": -8.757007145043794,
+    "power_max": 0.035883629190636805,
+    "power_rms": 0.01308149365098249,
+    "solve": 2.4573703059577383,
+    "wall": 2.7585185029311106,
+    "setup": 0.02248800196684897,
+    "assembly": null,
+    "warmup": 0.26127094600815326
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r16",
+    "unknowns": 37511168,
+    "k": 1.0290222131787021,
+    "counters": {
+     "outers": 55,
+     "inners": 2270
+    },
+    "memory": {
+     "max_rss_bytes": 1715011584,
+     "gpu_pool_bytes": 11371261952
+    },
+    "dk_pcm": -5.064396415499495,
+    "power_max": 0.021059229925503537,
+    "power_rms": 0.007604227107719464,
+    "solve": 7.634395303961355,
+    "wall": 8.403214015939739,
+    "setup": 0.04615542199462652,
+    "assembly": null,
+    "warmup": 0.6838558620074764
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2",
+    "unknowns": 73264,
+    "k": 1.0290585862713477,
+    "counters": {
+     "outers": 55,
+     "inners": 244
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 21451264
+    },
+    "dk_pcm": -1.4270871509403094,
+    "power_max": 0.31020705708446183,
+    "power_rms": 0.11978669969890267,
+    "solve": 0.1771772819920443,
+    "wall": 0.22134454193292186,
+    "setup": 0.00831836397992447,
+    "assembly": null,
+    "warmup": 0.034722498967312276
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3",
+    "unknowns": 247266,
+    "k": 1.0286555515568343,
+    "counters": {
+     "outers": 48,
+     "inners": 301
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 72377344
+    },
+    "dk_pcm": -41.73055860228203,
+    "power_max": 0.2502370582215034,
+    "power_rms": 0.09483280702109496,
+    "solve": 0.18474885396426544,
+    "wall": 0.23071893793530762,
+    "setup": 0.007974214968271554,
+    "assembly": null,
+    "warmup": 0.036651942995376885
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4",
+    "unknowns": 586112,
+    "k": 1.028661543010499,
+    "counters": {
+     "outers": 46,
+     "inners": 404
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 177286656
+    },
+    "dk_pcm": -41.13141323580649,
+    "power_max": 0.19161101153543206,
+    "power_rms": 0.07169262127508574,
+    "solve": 0.23037664499133825,
+    "wall": 0.2862366289482452,
+    "setup": 0.008918088977225125,
+    "assembly": null,
+    "warmup": 0.045223483990412205
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6",
+    "unknowns": 1978128,
+    "k": 1.0287989568764475,
+    "counters": {
+     "outers": 48,
+     "inners": 675
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 608476672
+    },
+    "dk_pcm": -27.39002664096102,
+    "power_max": 0.11442243896905387,
+    "power_rms": 0.04216736632930894,
+    "solve": 0.3339811520418152,
+    "wall": 0.3988407590659335,
+    "setup": 0.008966248016804457,
+    "assembly": null,
+    "warmup": 0.05238245998043567
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r8",
+    "unknowns": 4688896,
+    "k": 1.0288948410690597,
+    "counters": {
+     "outers": 48,
+     "inners": 934
+    },
+    "memory": {
+     "max_rss_bytes": 490733568,
+     "gpu_pool_bytes": 1420283392
+    },
+    "dk_pcm": -17.80160737974157,
+    "power_max": 0.07302027789552769,
+    "power_rms": 0.026771812010826807,
+    "solve": 0.5558276359806769,
+    "wall": 0.6573065799893811,
+    "setup": 0.010327326017431915,
+    "assembly": null,
+    "warmup": 0.08484359097201377
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r20",
+    "unknowns": 73264000,
+    "k": 1.0290401199723531,
+    "counters": {
+     "outers": 50,
+     "inners": 2598,
+     "multigroup": 0
+    },
+    "memory": {
+     "max_rss_bytes": 3048669184,
+     "gpu_pool_bytes": 22915937792
+    },
+    "dk_pcm": -3.273717050400471,
+    "power_max": 0.013500045303524433,
+    "power_rms": 0.004919098382470362,
+    "solve": 16.166326845996082,
+    "wall": 17.804690353106707,
+    "setup": 0.08495347201824188,
+    "assembly": null,
+    "warmup": 1.4815299480687827
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r24",
+    "unknowns": 126600192,
+    "k": 1.0290502236686407,
+    "counters": {
+     "outers": 51,
+     "inners": 3197,
+     "multigroup": 0
+    },
+    "memory": {
+     "max_rss_bytes": 5201395712,
+     "gpu_pool_bytes": 39602886144
+    },
+    "dk_pcm": -2.263347421638251,
+    "power_max": 0.009546141212844111,
+    "power_rms": 0.0034230815815109884,
+    "solve": 33.48381048196461,
+    "wall": 36.50291093881242,
+    "setup": 0.143003394943662,
+    "assembly": null,
+    "warmup": 2.7554889869643375
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r28",
+    "unknowns": 201036416,
+    "k": 1.0290562002385923,
+    "counters": {
+     "outers": 53,
+     "inners": 3878,
+     "multigroup": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7525302272,
+     "gpu_pool_bytes": 62892639744
+    },
+    "dk_pcm": -1.665690426477795,
+    "power_max": 0.007013314696699637,
+    "power_rms": 0.0024955952035772945,
+    "solve": 63.74120295105968,
+    "wall": 69.08379455015529,
+    "setup": 0.22460323595441878,
+    "assembly": null,
+    "warmup": 4.929519499070011
+   }
+  ],
+  "tta_rows": {
+   "10 pcm, 1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r2",
+     "solve": 658.4429,
+     "wall": 717.74
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 664.5771,
+     "wall": 717.2
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": {
+     "mesh": "r24",
+     "solve": 33.48381048196461,
+     "wall": 36.50291093881242
+    }
+   },
+   "1 pcm, 0.1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r3",
+     "solve": 10821.6,
+     "wall": 12722.0
+    },
+    "FEMFFUSION FE3": null,
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  },
+  "time_to_accuracy": {
+   "(10.0, 0.01)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r2",
+     "solve": 658.4429,
+     "wall": 717.74
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 664.5771,
+     "wall": 717.2
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": {
+     "mesh": "r24",
+     "solve": 33.48381048196461,
+     "wall": 36.50291093881242
+    }
+   },
+   "(1.0, 0.001)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r3",
+     "solve": 10821.6,
+     "wall": 12722.0
+    },
+    "FEMFFUSION FE3": null,
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  }
+ },
+ "langenbuch3d": {
+  "reference": {
+   "source": "FEMFFUSION FE3, refinements 0/1/2 (three-level limit, observed order 3.30)",
+   "k": 0.9994837770276607
+  },
+  "rows": [
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r1",
+    "unknowns": 2340,
+    "k": 1.0053464949209,
+    "counters": {
+     "outers": 36,
+     "inners": 140
+    },
+    "memory": {
+     "max_rss_bytes": 86298624
+    },
+    "dk_pcm": 586.2717893239222,
+    "power_max": 0.3990982975300141,
+    "power_rms": 0.1658503281699778,
+    "solve": 0.020200832979753613,
+    "wall": 0.03303751104976982,
+    "setup": 0.000744209042750299,
+    "assembly": null,
+    "warmup": 0.2386231719283387
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r12",
+    "unknowns": 4043520,
+    "k": 0.9994124798158665,
+    "counters": {
+     "outers": 32,
+     "inners": 1238
+    },
+    "memory": {
+     "max_rss_bytes": 993726464
+    },
+    "dk_pcm": -7.1297211794218995,
+    "power_max": 0.009224164503320817,
+    "power_rms": 0.0033192477973582432,
+    "solve": 66.11781983904075,
+    "wall": 66.38054995704442,
+    "setup": 0.24900493398308754,
+    "assembly": null,
+    "warmup": 6.523154153022915
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r16",
+    "unknowns": 9584640,
+    "k": 0.9994402225927854,
+    "counters": {
+     "outers": 32,
+     "inners": 1696
+    },
+    "memory": {
+     "max_rss_bytes": 2080112640
+    },
+    "dk_pcm": -4.355443487524813,
+    "power_max": 0.005556055039328446,
+    "power_rms": 0.0019995732899226524,
+    "solve": 269.00890023703687,
+    "wall": 269.8670441240538,
+    "setup": 0.8307353029958904,
+    "assembly": null,
+    "warmup": 27.887269687023945
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2",
+    "unknowns": 18720,
+    "k": 1.0005438014530692,
+    "counters": {
+     "outers": 32,
+     "inners": 194
+    },
+    "memory": {
+     "max_rss_bytes": 88924160
+    },
+    "dk_pcm": 106.00244254085345,
+    "power_max": 0.04125968488705704,
+    "power_rms": 0.02202361345049198,
+    "solve": 0.047822233056649566,
+    "wall": 0.05030008312314749,
+    "setup": 0.0014695710269734263,
+    "assembly": null,
+    "warmup": 0.004210649989545345
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3",
+    "unknowns": 63180,
+    "k": 0.9996334582853478,
+    "counters": {
+     "outers": 33,
+     "inners": 294
+    },
+    "memory": {
+     "max_rss_bytes": 95981568
+    },
+    "dk_pcm": 14.96812576871065,
+    "power_max": 0.015380092796397286,
+    "power_rms": 0.004782140236508881,
+    "solve": 0.15174424194265157,
+    "wall": 0.15638978395145386,
+    "setup": 0.003281294018961489,
+    "assembly": null,
+    "warmup": 0.015273037017323077
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4",
+    "unknowns": 149760,
+    "k": 0.9993944979349425,
+    "counters": {
+     "outers": 29,
+     "inners": 346
+    },
+    "memory": {
+     "max_rss_bytes": 117710848
+    },
+    "dk_pcm": -8.927909271816414,
+    "power_max": 0.026237013632938223,
+    "power_rms": 0.00878217920741807,
+    "solve": 0.38368279195856303,
+    "wall": 0.3925412689568475,
+    "setup": 0.007353506982326508,
+    "assembly": null,
+    "warmup": 0.041872731992043555
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r6",
+    "unknowns": 505440,
+    "k": 0.9993303771808117,
+    "counters": {
+     "outers": 29,
+     "inners": 540
+    },
+    "memory": {
+     "max_rss_bytes": 196530176
+    },
+    "dk_pcm": -15.339984684892283,
+    "power_max": 0.02319698264113667,
+    "power_rms": 0.008200066035713683,
+    "solve": 1.999103736015968,
+    "wall": 2.023833635961637,
+    "setup": 0.021676807897165418,
+    "assembly": null,
+    "warmup": 0.23802827298641205
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r8",
+    "unknowns": 1198080,
+    "k": 0.9993591113729128,
+    "counters": {
+     "outers": 32,
+     "inners": 799
+    },
+    "memory": {
+     "max_rss_bytes": 355180544
+    },
+    "dk_pcm": -12.466565474789082,
+    "power_max": 0.01698687554125755,
+    "power_rms": 0.0060648693619114276,
+    "solve": 9.03379711008165,
+    "wall": 9.099703495157883,
+    "setup": 0.059543102979660034,
+    "assembly": null,
+    "warmup": 0.9023514179280028
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 21546,
+    "k": 1.000228,
+    "counters": {
+     "outers": 8,
+     "inners": null,
+     "matvecs": 41,
+     "precond_applications": 32
+    },
+    "memory": {
+     "max_rss_bytes": 193945600,
+     "femffusion_max_memory_mb": 193.946
+    },
+    "dk_pcm": 74.42229723392258,
+    "power_max": 0.07797630009985106,
+    "power_rms": 0.029024038421614932,
+    "solve": 0.694877,
+    "wall": 3.65,
+    "setup": null,
+    "assembly": 0.166377,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 160802,
+    "k": 0.9996945,
+    "counters": {
+     "outers": 6,
+     "inners": null,
+     "matvecs": 31,
+     "precond_applications": 24
+    },
+    "memory": {
+     "max_rss_bytes": 479686656,
+     "femffusion_max_memory_mb": 479.687
+    },
+    "dk_pcm": 21.07229723393722,
+    "power_max": 0.02154291725577945,
+    "power_rms": 0.008047418556139578,
+    "solve": 4.6911000000000005,
+    "wall": 10.05,
+    "setup": null,
+    "assembly": 1.271811,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r2",
+    "unknowns": 1241730,
+    "k": 0.9995153,
+    "counters": {
+     "outers": 5,
+     "inners": null,
+     "matvecs": 26,
+     "precond_applications": 20
+    },
+    "memory": {
+     "max_rss_bytes": 2690469888,
+     "femffusion_max_memory_mb": 2690.47
+    },
+    "dk_pcm": 3.1522972339326216,
+    "power_max": 0.0032598465733262895,
+    "power_rms": 0.0012076286025736347,
+    "solve": 44.8956,
+    "wall": 58.55,
+    "setup": null,
+    "assembly": 9.950768,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 69440,
+    "k": 0.999748,
+    "counters": {
+     "outers": 7,
+     "inners": null,
+     "matvecs": 36,
+     "precond_applications": 28
+    },
+    "memory": {
+     "max_rss_bytes": 401571840,
+     "femffusion_max_memory_mb": 401.572
+    },
+    "dk_pcm": 26.42229723393008,
+    "power_max": 0.027007120353257207,
+    "power_rms": 0.010157033904846922,
+    "solve": 4.389150000000001,
+    "wall": 8.7,
+    "setup": null,
+    "assembly": 1.573714,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r1",
+    "unknowns": 530090,
+    "k": 0.9995106,
+    "counters": {
+     "outers": 6,
+     "inners": null,
+     "matvecs": 31,
+     "precond_applications": 24
+    },
+    "memory": {
+     "max_rss_bytes": 2032246784,
+     "femffusion_max_memory_mb": 2032.25
+    },
+    "dk_pcm": 2.68229723393576,
+    "power_max": 0.0028046281097786536,
+    "power_rms": 0.0010300737556708088,
+    "solve": 46.2586,
+    "wall": 61.61,
+    "setup": null,
+    "assembly": 12.347762000000001,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r3",
+    "unknowns": 9758210,
+    "k": 0.9994879,
+    "counters": {
+     "outers": 4,
+     "inners": null,
+     "matvecs": 21,
+     "precond_applications": 16
+    },
+    "memory": {
+     "max_rss_bytes": 19979218944,
+     "femffusion_max_memory_mb": 19826.0
+    },
+    "dk_pcm": 0.4122972339315467,
+    "power_max": 0.0004965751379810528,
+    "power_rms": 0.0001666705834670889,
+    "solve": 472.4633,
+    "wall": 576.45,
+    "setup": null,
+    "assembly": 77.40654500000001,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r2",
+    "unknowns": 4141346,
+    "k": 0.9994865,
+    "counters": {
+     "outers": 4,
+     "inners": null,
+     "matvecs": 21,
+     "precond_applications": 16
+    },
+    "memory": {
+     "max_rss_bytes": 14821511168,
+     "femffusion_max_memory_mb": 14821.5
+    },
+    "dk_pcm": 0.27229723393862315,
+    "power_max": 0.0002847158274878545,
+    "power_rms": 0.00010456940822090637,
+    "solve": 434.3435,
+    "wall": 551.45,
+    "setup": null,
+    "assembly": 97.082247,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r1",
+    "unknowns": 2340,
+    "k": 1.0053465011120588,
+    "counters": {
+     "outers": 34,
+     "inners": 85
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 582144
+    },
+    "dk_pcm": 586.2724084398141,
+    "power_max": 0.39907466118626456,
+    "power_rms": 0.16584796494078757,
+    "solve": 0.09016665699891746,
+    "wall": 0.12730642600217834,
+    "setup": 0.007511604984756559,
+    "assembly": null,
+    "warmup": 0.028843804029747844
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r12",
+    "unknowns": 4043520,
+    "k": 0.9994125452884643,
+    "counters": {
+     "outers": 32,
+     "inners": 714
+    },
+    "memory": {
+     "max_rss_bytes": 415236096,
+     "gpu_pool_bytes": 1040024064
+    },
+    "dk_pcm": -7.12317391963202,
+    "power_max": 0.009216434394758008,
+    "power_rms": 0.003319650155683059,
+    "solve": 0.34989515296183527,
+    "wall": 0.4493695189594291,
+    "setup": 0.008653650002088398,
+    "assembly": null,
+    "warmup": 0.08492246799869463
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r16",
+    "unknowns": 9584640,
+    "k": 0.9994402917832943,
+    "counters": {
+     "outers": 32,
+     "inners": 966
+    },
+    "memory": {
+     "max_rss_bytes": 641728512,
+     "gpu_pool_bytes": 2386636800
+    },
+    "dk_pcm": -4.348524436637025,
+    "power_max": 0.005572010016779623,
+    "power_rms": 0.002001775275449662,
+    "solve": 0.8503691909718327,
+    "wall": 1.0359236529329792,
+    "setup": 0.012264224991668016,
+    "assembly": null,
+    "warmup": 0.16111743298824877
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2",
+    "unknowns": 18720,
+    "k": 1.000543672713777,
+    "counters": {
+     "outers": 31,
+     "inners": 104
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 4667392
+    },
+    "dk_pcm": 105.98956861164189,
+    "power_max": 0.04127755246309942,
+    "power_rms": 0.02202738810493026,
+    "solve": 0.0988095230422914,
+    "wall": 0.13734924799064174,
+    "setup": 0.007437655993271619,
+    "assembly": null,
+    "warmup": 0.030193009006325155
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3",
+    "unknowns": 63180,
+    "k": 0.9996334023504141,
+    "counters": {
+     "outers": 32,
+     "inners": 164
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 15428608
+    },
+    "dk_pcm": 14.962532275342166,
+    "power_max": 0.01537116542752247,
+    "power_rms": 0.004781669499221035,
+    "solve": 0.11894278199179098,
+    "wall": 0.1553961070603691,
+    "setup": 0.007280956022441387,
+    "assembly": null,
+    "warmup": 0.027942167012952268
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4",
+    "unknowns": 149760,
+    "k": 0.9993944234941388,
+    "counters": {
+     "outers": 31,
+     "inners": 207
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 35991040
+    },
+    "dk_pcm": -8.935353352190756,
+    "power_max": 0.026245996475921563,
+    "power_rms": 0.008781165645584645,
+    "solve": 0.13077268499182537,
+    "wall": 0.17772843601414934,
+    "setup": 0.007219966966658831,
+    "assembly": null,
+    "warmup": 0.038709992018993944
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6",
+    "unknowns": 505440,
+    "k": 0.9993302609196701,
+    "counters": {
+     "outers": 32,
+     "inners": 329
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 125706240
+    },
+    "dk_pcm": -15.351610799052562,
+    "power_max": 0.023181091689967404,
+    "power_rms": 0.008198177658898938,
+    "solve": 0.1783797739772126,
+    "wall": 0.23784530896227807,
+    "setup": 0.007596754003316164,
+    "assembly": null,
+    "warmup": 0.049744942982215434
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r8",
+    "unknowns": 1198080,
+    "k": 0.999359158252093,
+    "counters": {
+     "outers": 28,
+     "inners": 405
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 288170496
+    },
+    "dk_pcm": -12.461877556768641,
+    "power_max": 0.01693900296966489,
+    "power_rms": 0.006064882853767661,
+    "solve": 0.20742337900446728,
+    "wall": 0.27722151996567845,
+    "setup": 0.00752069300506264,
+    "assembly": null,
+    "warmup": 0.05934665899258107
+   }
+  ],
+  "tta_rows": {
+   "10 pcm, 1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r2",
+     "solve": 44.8956,
+     "wall": 58.55
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 46.2586,
+     "wall": 61.61
+    },
+    "GARNET CPU": {
+     "mesh": "r12",
+     "solve": 66.11781983904075,
+     "wall": 66.38054995704442
+    },
+    "GARNET GH200": {
+     "mesh": "r12",
+     "solve": 0.34989515296183527,
+     "wall": 0.4493695189594291
+    }
+   },
+   "1 pcm, 0.1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r3",
+     "solve": 472.4633,
+     "wall": 576.45
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r2",
+     "solve": 434.3435,
+     "wall": 551.45
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  },
+  "time_to_accuracy": {
+   "(10.0, 0.01)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r2",
+     "solve": 44.8956,
+     "wall": 58.55
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 46.2586,
+     "wall": 61.61
+    },
+    "GARNET CPU": {
+     "mesh": "r12",
+     "solve": 66.11781983904075,
+     "wall": 66.38054995704442
+    },
+    "GARNET GH200": {
+     "mesh": "r12",
+     "solve": 0.34989515296183527,
+     "wall": 0.4493695189594291
+    }
+   },
+   "(1.0, 0.001)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r3",
+     "solve": 472.4633,
+     "wall": 576.45
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r2",
+     "solve": 434.3435,
+     "wall": 551.45
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  }
+ },
+ "hpmr3d": {
+  "reference": {
+   "source": "FEMFFUSION finest run, FE4 r1 (9,602,307 DoFs) (spread of the three finest FEMFFUSION runs)",
+   "k": 1.11864
+  },
+  "rows": [
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "outers": 45,
+     "inners": null,
+     "matvecs": 46,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 555536384,
+     "femffusion_max_memory_mb": 555.536
+    },
+    "dk_pcm": 21.999999999988695,
+    "power_max": 0.005767866682220323,
+    "power_rms": 0.003648481058185672,
+    "solve": 17.542875,
+    "wall": 21.31,
+    "setup": null,
+    "assembly": 0.722893,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "outers": 33,
+     "inners": null,
+     "matvecs": 35,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 3257589760,
+     "femffusion_max_memory_mb": 3257.59
+    },
+    "dk_pcm": -0.8000000000008001,
+    "power_max": 0.0009425750078262344,
+    "power_rms": 0.00045024605442552275,
+    "solve": 123.50897000000002,
+    "wall": 132.46,
+    "setup": null,
+    "assembly": 4.712936,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "outers": 11,
+     "inners": null,
+     "matvecs": 56,
+     "precond_applications": 44
+    },
+    "memory": {
+     "max_rss_bytes": 1806389248,
+     "femffusion_max_memory_mb": 1806.39
+    },
+    "dk_pcm": -3.4000000000089514,
+    "power_max": 0.0013970430742361979,
+    "power_rms": 0.00076128568400948,
+    "solve": 89.26077,
+    "wall": 97.49000000000001,
+    "setup": null,
+    "assembly": 4.877416,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r2",
+    "unknowns": 9602307,
+    "k": 1.118636,
+    "counters": {
+     "outers": 20,
+     "inners": null,
+     "matvecs": 24,
+     "precond_applications": null
+    },
+    "memory": {
+     "max_rss_bytes": 24449953792,
+     "femffusion_max_memory_mb": 24450.0
+    },
+    "dk_pcm": -0.40000000001150227,
+    "power_max": 9.915108795984497e-05,
+    "power_rms": 4.012582543865538e-05,
+    "solve": 967.4949,
+    "wall": 1025.4,
+    "setup": null,
+    "assembly": 35.359122,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r1",
+    "unknowns": 4095113,
+    "k": 1.118636,
+    "counters": {
+     "outers": 7,
+     "inners": null,
+     "matvecs": 36,
+     "precond_applications": 28
+    },
+    "memory": {
+     "max_rss_bytes": 13175599104,
+     "femffusion_max_memory_mb": 13175.6
+    },
+    "dk_pcm": -0.40000000001150227,
+    "power_max": 8.425714770837261e-05,
+    "power_rms": 3.37794947644166e-05,
+    "solve": 675.2116,
+    "wall": 730.49,
+    "setup": null,
+    "assembly": 35.512724999999996,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.117823372497517,
+    "counters": {
+     "outers": 10,
+     "inners": 3194,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 709754880
+    },
+    "dk_pcm": -81.66275024830139,
+    "power_max": 0.03805708933673321,
+    "power_rms": 0.018989071210364212,
+    "solve": 8.270070006023161,
+    "wall": 8.412578682997264,
+    "setup": 0.08072403399273753,
+    "assembly": null,
+    "warmup": 1.903593858005479
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242764424705,
+    "counters": {
+     "outers": 10,
+     "inners": 4556,
+     "multigroup": 59
+    },
+    "memory": {
+     "max_rss_bytes": 1862144000
+    },
+    "dk_pcm": -39.72355752950296,
+    "power_max": 0.02169191749399896,
+    "power_rms": 0.01090558343878444,
+    "solve": 30.954933113069274,
+    "wall": 31.28384424711112,
+    "setup": 0.2232787610264495,
+    "assembly": null,
+    "warmup": 7.434742743032984
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068903163622,
+    "counters": {
+     "outers": 10,
+     "inners": 6225,
+     "multigroup": 60
+    },
+    "memory": {
+     "max_rss_bytes": 3879776256
+    },
+    "dk_pcm": -23.310968363787765,
+    "power_max": 0.01397617889823917,
+    "power_rms": 0.007087777405591527,
+    "solve": 94.70221018104348,
+    "wall": 95.318388258107,
+    "setup": 0.4664529870497063,
+    "assembly": null,
+    "warmup": 23.93778277502861
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.118556447387056,
+    "counters": {
+     "outers": 10,
+     "inners": 9837,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 12302893056
+    },
+    "dk_pcm": -8.355261294412664,
+    "power_max": 0.00585683291264171,
+    "power_rms": 0.0029354230155611183,
+    "solve": 667.4603413490113,
+    "wall": 670.399731681915,
+    "setup": 2.6294398709433153,
+    "assembly": null,
+    "warmup": 150.95099834399298
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r8 z100",
+    "unknowns": 23232000,
+    "k": 1.118592077801128,
+    "counters": {
+     "outers": 10,
+     "inners": 13335,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 23560736768
+    },
+    "dk_pcm": -4.79221988720635,
+    "power_max": 0.003684452200426526,
+    "power_rms": 0.0018703314129468874,
+    "solve": 1835.354487505043,
+    "wall": 1842.5032488910947,
+    "setup": 6.5895522580249235,
+    "assembly": null,
+    "warmup": 476.05195085390005
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r12 z160",
+    "unknowns": 83635200,
+    "k": 1.1186254366304622,
+    "counters": {
+     "outers": 10,
+     "inners": 10481,
+     "multigroup": 61
+    },
+    "memory": {
+     "max_rss_bytes": 3638427648,
+     "gpu_pool_bytes": 85329952768
+    },
+    "dk_pcm": -1.4563369537867743,
+    "power_max": 0.0014909462037586442,
+    "power_rms": 0.0007509496941150371,
+    "solve": 23.233667689026333,
+    "wall": 30.592616718262434,
+    "setup": 0.1374108900781721,
+    "assembly": null,
+    "warmup": 6.774427417083643
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233904202437,
+    "counters": {
+     "outers": 10,
+     "inners": 1793,
+     "multigroup": 58
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1056898560
+    },
+    "dk_pcm": -81.66095797563777,
+    "power_max": 0.03805709780632926,
+    "power_rms": 0.01898910766091973,
+    "solve": 0.9766138100530952,
+    "wall": 1.3557993291178718,
+    "setup": 0.038746878039091825,
+    "assembly": null,
+    "warmup": 0.31246434105560184
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242753429662,
+    "counters": {
+     "outers": 10,
+     "inners": 2392,
+     "multigroup": 57
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 2645135872
+    },
+    "dk_pcm": -39.72465703381278,
+    "power_max": 0.02169159149245024,
+    "power_rms": 0.010905449218610218,
+    "solve": 1.174858964048326,
+    "wall": 1.6286374210612848,
+    "setup": 0.03993788699153811,
+    "assembly": null,
+    "warmup": 0.3724793290020898
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068873062636,
+    "counters": {
+     "outers": 10,
+     "inners": 3127,
+     "multigroup": 57
+    },
+    "memory": {
+     "max_rss_bytes": 641728512,
+     "gpu_pool_bytes": 5725463552
+    },
+    "dk_pcm": -23.311269373649246,
+    "power_max": 0.013976214193914661,
+    "power_rms": 0.007087823208616969,
+    "solve": 1.3576885260408744,
+    "wall": 1.8861236020457,
+    "setup": 0.04032210202421993,
+    "assembly": null,
+    "warmup": 0.4285941650159657
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.11855644156281,
+    "counters": {
+     "outers": 10,
+     "inners": 4900,
+     "multigroup": 59
+    },
+    "memory": {
+     "max_rss_bytes": 943718400,
+     "gpu_pool_bytes": 20078084608
+    },
+    "dk_pcm": -8.355843719010103,
+    "power_max": 0.005856382617899253,
+    "power_rms": 0.0029352224999104276,
+    "solve": 2.3842058799928054,
+    "wall": 3.2836332839215174,
+    "setup": 0.04365615698043257,
+    "assembly": null,
+    "warmup": 0.7371065779589117
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r8 z100",
+    "unknowns": 23232000,
+    "k": 1.1185920757048762,
+    "counters": {
+     "outers": 10,
+     "inners": 6613,
+     "multigroup": 60
+    },
+    "memory": {
+     "max_rss_bytes": 1472200704,
+     "gpu_pool_bytes": 50106895360
+    },
+    "dk_pcm": -4.792429512390228,
+    "power_max": 0.0036844309282825574,
+    "power_rms": 0.0018703352682181975,
+    "solve": 5.232325212913565,
+    "wall": 7.001987318973988,
+    "setup": 0.05016312003135681,
+    "assembly": null,
+    "warmup": 1.5199055790435523
+   }
+  ],
+  "tta_rows": {
+   "10 pcm, 1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r1",
+     "solve": 123.50897000000002,
+     "wall": 132.46
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r0",
+     "solve": 89.26077,
+     "wall": 97.49000000000001
+    },
+    "GARNET CPU": {
+     "mesh": "r6 z80",
+     "solve": 667.4603413490113,
+     "wall": 670.399731681915
+    },
+    "GARNET GH200": {
+     "mesh": "r6 z80",
+     "solve": 2.3842058799928054,
+     "wall": 3.2836332839215174
+    }
+   },
+   "1 pcm, 0.1\\%": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r1",
+     "solve": 123.50897000000002,
+     "wall": 132.46
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 675.2116,
+     "wall": 730.49
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  },
+  "time_to_accuracy": {
+   "(10.0, 0.01)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r1",
+     "solve": 123.50897000000002,
+     "wall": 132.46
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r0",
+     "solve": 89.26077,
+     "wall": 97.49000000000001
+    },
+    "GARNET CPU": {
+     "mesh": "r6 z80",
+     "solve": 667.4603413490113,
+     "wall": 670.399731681915
+    },
+    "GARNET GH200": {
+     "mesh": "r6 z80",
+     "solve": 2.3842058799928054,
+     "wall": 3.2836332839215174
+    }
+   },
+   "(1.0, 0.001)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r1",
+     "solve": 123.50897000000002,
+     "wall": 132.46
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r1",
+     "solve": 675.2116,
+     "wall": 730.49
+    },
+    "GARNET CPU": null,
+    "GARNET GH200": null
+   }
+  }
+ },
+ "hpmr3d-transient": {
+  "reference": {
+   "source": "GARNET GH200, BDF2 dt = 0.025/0.0125 s extrapolated in time, then in space over (r, nz) = ((4, 50), (6, 80), (8, 100))",
+   "k": 1.1185920540415473
+  },
+  "rows": [
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 160,
+     "inners": 193,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1592983552,
+     "femffusion_max_memory_mb": 560.173
+    },
+    "scheme": "SI-Exp",
+    "step": "0.0125",
+    "power_max": 0.0023136451475487263,
+    "power_end": 0.0023136451475487263,
+    "dk_pcm": 26.794595845269775,
+    "solve": 338.704658,
+    "wall": 381.4,
+    "setup": null,
+    "assembly": 0.732343,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 80,
+     "inners": 121,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1593974784,
+     "femffusion_max_memory_mb": 560.771
+    },
+    "scheme": "SI-Exp",
+    "step": "0.025",
+    "power_max": 0.00478231562562248,
+    "power_end": 0.00478231562562248,
+    "dk_pcm": 26.794595845269775,
+    "solve": 184.981833,
+    "wall": 200.71,
+    "setup": null,
+    "assembly": 0.7278749999999999,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 40,
+     "inners": 85,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1593139200,
+     "femffusion_max_memory_mb": 560.329
+    },
+    "scheme": "SI-Exp",
+    "step": "0.05",
+    "power_max": 0.00966952990993164,
+    "power_end": 0.00966952990993164,
+    "dk_pcm": 26.794595845269775,
+    "solve": 107.317361,
+    "wall": 117.42,
+    "setup": null,
+    "assembly": 0.720097,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 20,
+     "inners": 65,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1598189568,
+     "femffusion_max_memory_mb": 560.66
+    },
+    "scheme": "SI-Exp",
+    "step": "0.1",
+    "power_max": 0.019238805753391208,
+    "power_end": 0.019238805753391208,
+    "dk_pcm": 26.794595845269775,
+    "solve": 68.262844,
+    "wall": 75.61,
+    "setup": null,
+    "assembly": 0.72077,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 10,
+     "inners": 51,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1592262656,
+     "femffusion_max_memory_mb": 559.583
+    },
+    "scheme": "SI-Exp",
+    "step": "0.2",
+    "power_max": 0.03753116984486515,
+    "power_end": 0.03753116984486515,
+    "dk_pcm": 26.794595845269775,
+    "solve": 48.196086,
+    "wall": 69.95,
+    "setup": null,
+    "assembly": 0.737247,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 160,
+     "inners": 193,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1866113024,
+     "femffusion_max_memory_mb": 560.73
+    },
+    "scheme": "SI-Euler",
+    "step": "0.0125",
+    "power_max": 0.0032597018064268735,
+    "power_end": 0.0032597018064268735,
+    "dk_pcm": 26.794595845269775,
+    "solve": 415.907422,
+    "wall": 459.15,
+    "setup": null,
+    "assembly": 0.7242080000000001,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 80,
+     "inners": 122,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1864122368,
+     "femffusion_max_memory_mb": 560.837
+    },
+    "scheme": "SI-Euler",
+    "step": "0.025",
+    "power_max": 0.006628694198778207,
+    "power_end": 0.006628694198778207,
+    "dk_pcm": 26.794595845269775,
+    "solve": 224.297466,
+    "wall": 240.42,
+    "setup": null,
+    "assembly": 0.729768,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 40,
+     "inners": 84,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1861115904,
+     "femffusion_max_memory_mb": 559.923
+    },
+    "scheme": "SI-Euler",
+    "step": "0.05",
+    "power_max": 0.01318518742363417,
+    "power_end": 0.01318518742363417,
+    "dk_pcm": 26.794595845269775,
+    "solve": 127.244816,
+    "wall": 138.0,
+    "setup": null,
+    "assembly": 0.720392,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 20,
+     "inners": 63,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1861320704,
+     "femffusion_max_memory_mb": 562.524
+    },
+    "scheme": "SI-Euler",
+    "step": "0.1",
+    "power_max": 0.02561575278258066,
+    "power_end": 0.02561575278258066,
+    "dk_pcm": 26.794595845269775,
+    "solve": 78.279461,
+    "wall": 85.88,
+    "setup": null,
+    "assembly": 0.730522,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 10,
+     "inners": 51,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1861361664,
+     "femffusion_max_memory_mb": 560.173
+    },
+    "scheme": "SI-Euler",
+    "step": "0.2",
+    "power_max": 0.0480341135346104,
+    "power_end": 0.0480341135346104,
+    "dk_pcm": 26.794595845269775,
+    "solve": 53.865295,
+    "wall": 76.12,
+    "setup": null,
+    "assembly": 0.734771,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 40,
+     "inners": 86,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7491457024,
+     "femffusion_max_memory_mb": 1807.67
+    },
+    "scheme": "SI-Exp",
+    "step": "0.05",
+    "power_max": 0.009865184335165367,
+    "power_end": 0.009865184335165367,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 597.941887,
+    "wall": 632.64,
+    "setup": null,
+    "assembly": 4.901748,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 20,
+     "inners": 63,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7452258304,
+     "femffusion_max_memory_mb": 1811.7
+    },
+    "scheme": "SI-Exp",
+    "step": "0.1",
+    "power_max": 0.019423483197205438,
+    "power_end": 0.019423483197205438,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 383.24534200000005,
+    "wall": 396.68,
+    "setup": null,
+    "assembly": 4.907373000000001,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 10,
+     "inners": 52,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7461699584,
+     "femffusion_max_memory_mb": 1809.51
+    },
+    "scheme": "SI-Exp",
+    "step": "0.2",
+    "power_max": 0.037696539924101935,
+    "power_end": 0.037696539924101935,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 276.788613,
+    "wall": 304.13,
+    "setup": null,
+    "assembly": 4.909076,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 40,
+     "inners": 86,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 9149779968,
+     "femffusion_max_memory_mb": 1808.63
+    },
+    "scheme": "SI-Euler",
+    "step": "0.05",
+    "power_max": 0.013377304415526425,
+    "power_end": 0.013377304415526425,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 733.59679,
+    "wall": 773.19,
+    "setup": null,
+    "assembly": 4.943679,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 20,
+     "inners": 63,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 9151717376,
+     "femffusion_max_memory_mb": 1810.78
+    },
+    "scheme": "SI-Euler",
+    "step": "0.1",
+    "power_max": 0.025795424188699845,
+    "power_end": 0.025795424188699845,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 459.015804,
+    "wall": 476.98,
+    "setup": null,
+    "assembly": 4.895821,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 10,
+     "inners": 50,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 9146273792,
+     "femffusion_max_memory_mb": 1809.53
+    },
+    "scheme": "SI-Euler",
+    "step": "0.2",
+    "power_max": 0.048193003536490364,
+    "power_end": 0.048193003536490364,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 314.5884,
+    "wall": 345.02,
+    "setup": null,
+    "assembly": 4.883305,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 33,
+     "inners": 148333,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 1413701632
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.5e-4--0.14",
+    "power_max": 0.0003342274180282434,
+    "power_end": 0.000322091604888497,
+    "dk_pcm": -76.87142355976562,
+    "solve": 304.26219536201097,
+    "wall": 304.32593771698885,
+    "setup": 2.6501016691327095e-05,
+    "assembly": null,
+    "warmup": 32.21603573590983
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 65,
+     "inners": 274183,
+     "rejected": 10
+    },
+    "memory": {
+     "max_rss_bytes": 1399869440
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.7e-5--0.061",
+    "power_max": 0.0004458021367665932,
+    "power_end": 0.0004458021367665932,
+    "dk_pcm": -76.87142355976562,
+    "solve": 559.9063994050957,
+    "wall": 559.9899163710652,
+    "setup": 3.461702726781368e-05,
+    "assembly": null,
+    "warmup": 33.13029668596573
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 80,
+     "inners": 246730,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 846393344
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0005816906316680193,
+    "power_end": 0.0005153534163959694,
+    "dk_pcm": -76.87142355976562,
+    "solve": 469.5729419250274,
+    "wall": 469.6559128690278,
+    "setup": 3.44360014423728e-05,
+    "assembly": null,
+    "warmup": 32.863507459987886
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 40,
+     "inners": 120496,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 841076736
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008501523886612627,
+    "power_end": 0.00021218405443967914,
+    "dk_pcm": -76.87142355976562,
+    "solve": 244.19536532799248,
+    "wall": 244.2592864879407,
+    "setup": 3.303401172161102e-05,
+    "assembly": null,
+    "warmup": 33.125127236009575
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 20,
+     "inners": 54912,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 834977792
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0009739325350639483,
+    "power_end": 0.0009426833776486898,
+    "dk_pcm": -76.87142355976562,
+    "solve": 126.53448765305802,
+    "wall": 126.59935729706194,
+    "setup": 3.383599687367678e-05,
+    "assembly": null,
+    "warmup": 33.78524895210285
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 10,
+     "inners": 36921,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 831655936
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005227196121078137,
+    "power_end": 0.005227196121078137,
+    "dk_pcm": -76.87142355976562,
+    "solve": 99.91774945298675,
+    "wall": 100.00045099691488,
+    "setup": 3.73409129679203e-05,
+    "assembly": null,
+    "warmup": 33.963218839024194
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 33,
+     "inners": 219191,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 3828105216
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.6e-4--0.15",
+    "power_max": 0.0006415681750688851,
+    "power_end": 0.0006253777140683425,
+    "dk_pcm": -34.931107368851855,
+    "solve": 1309.8334931159625,
+    "wall": 1309.942028786987,
+    "setup": 3.528699744492769e-05,
+    "assembly": null,
+    "warmup": 156.9839118680684
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 40,
+     "inners": 173070,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 2197704704
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008689873291356509,
+    "power_end": 6.629676699820841e-05,
+    "dk_pcm": -34.931107368851855,
+    "solve": 986.7833271940472,
+    "wall": 986.8994363350794,
+    "setup": 3.611005377024412e-05,
+    "assembly": null,
+    "warmup": 166.0915691970149
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 20,
+     "inners": 81887,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 2199052288
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0012222335954450436,
+    "power_end": 0.0012222335954450436,
+    "dk_pcm": -34.931107368851855,
+    "solve": 514.7615161830327,
+    "wall": 514.8580984839937,
+    "setup": 3.498699516057968e-05,
+    "assembly": null,
+    "warmup": 167.6815956699429
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 10,
+     "inners": 53960,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 2174717952
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005507460350720361,
+    "power_end": 0.005507460350720361,
+    "dk_pcm": -34.931107368851855,
+    "solve": 372.93825624894816,
+    "wall": 373.03706791298464,
+    "setup": 3.40150436386466e-05,
+    "assembly": null,
+    "warmup": 174.09515302092768
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799150335,
+    "counters": {
+     "steps": 10,
+     "inners": 72796,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 4611252224
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.0056309217185139815,
+    "power_end": 0.0056309217185139815,
+    "dk_pcm": -18.51741265137541,
+    "solve": 1175.0128803770058,
+    "wall": 1175.1841594730504,
+    "setup": 4.3272972106933594e-05,
+    "assembly": null,
+    "warmup": 512.9444502510596
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 640,
+     "inners": 664,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1607311360,
+     "femffusion_max_memory_mb": 557.72
+    },
+    "scheme": "SI-Exp",
+    "step": "0.003125",
+    "power_max": 0.0004513649658771657,
+    "power_end": 0.0004513649658771657,
+    "dk_pcm": 26.794595845269775,
+    "solve": 1262.2041330000002,
+    "wall": 1366.84,
+    "setup": null,
+    "assembly": 0.750083,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 320,
+     "inners": 349,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1598021632,
+     "femffusion_max_memory_mb": 558.834
+    },
+    "scheme": "SI-Exp",
+    "step": "0.00625",
+    "power_max": 0.001073108420445723,
+    "power_end": 0.001073108420445723,
+    "dk_pcm": 26.794595845269775,
+    "solve": 648.418867,
+    "wall": 710.59,
+    "setup": null,
+    "assembly": 0.73038,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 640,
+     "inners": 664,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1893670912,
+     "femffusion_max_memory_mb": 558.928
+    },
+    "scheme": "SI-Euler",
+    "step": "0.003125",
+    "power_max": 0.0006932351009593107,
+    "power_end": 0.0006932351009593107,
+    "dk_pcm": 26.794595845269775,
+    "solve": 1566.8404540000001,
+    "wall": 1680.62,
+    "setup": null,
+    "assembly": 0.713638,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r0",
+    "unknowns": 165165,
+    "k": 1.11886,
+    "counters": {
+     "steps": 320,
+     "inners": 349,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 1873051648,
+     "femffusion_max_memory_mb": 557.478
+    },
+    "scheme": "SI-Euler",
+    "step": "0.00625",
+    "power_max": 0.0015520570500274777,
+    "power_end": 0.0015520570500274777,
+    "dk_pcm": 26.794595845269775,
+    "solve": 803.2855790000001,
+    "wall": 865.11,
+    "setup": null,
+    "assembly": 0.712451,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233398059496,
+    "counters": {
+     "steps": 160,
+     "inners": 500208,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 855724032
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.000593383418165172,
+    "power_end": 0.000593383418165172,
+    "dk_pcm": -76.87142355976562,
+    "solve": 910.9036429099506,
+    "wall": 910.9889258608455,
+    "setup": 1.4276942238211632e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 64,
+     "inners": 395570,
+     "rejected": 9
+    },
+    "memory": {
+     "max_rss_bytes": 3794440192
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.8e-5--0.061",
+    "power_max": 0.00026738425557015777,
+    "power_end": 0.00016681845345634105,
+    "dk_pcm": -34.931107368851855,
+    "solve": 2317.34643633198,
+    "wall": 2317.4601221659686,
+    "setup": 1.4767982065677643e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 80,
+     "inners": 367015,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 2218233856
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0005935777656966845,
+    "power_end": 0.000235428074814914,
+    "dk_pcm": -34.931107368851855,
+    "solve": 1968.5271497159265,
+    "wall": 1968.642846554867,
+    "setup": 1.5740981325507164e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799150335,
+    "counters": {
+     "steps": 20,
+     "inners": 109755,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 4617416704
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0013453698656842317,
+    "power_end": 0.0013453698656842317,
+    "dk_pcm": -18.51741265137541,
+    "solve": 1636.2601534569403,
+    "wall": 1636.4273727248656,
+    "setup": 1.5890924260020256e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 20,
+     "inners": 69,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 11391975424,
+     "femffusion_max_memory_mb": 3251.99
+    },
+    "scheme": "SI-Exp",
+    "step": "0.1",
+    "power_max": 0.019395741543837164,
+    "power_end": 0.019395741543837164,
+    "dk_pcm": 3.99459584528028,
+    "solve": 543.850291,
+    "wall": 558.9,
+    "setup": null,
+    "assembly": 4.8039250000000004,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 10,
+     "inners": 57,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 11378151424,
+     "femffusion_max_memory_mb": 3243.36
+    },
+    "scheme": "SI-Exp",
+    "step": "0.2",
+    "power_max": 0.03767019141555583,
+    "power_end": 0.03767019141555583,
+    "dk_pcm": 3.99459584528028,
+    "solve": 389.416779,
+    "wall": 412.7,
+    "setup": null,
+    "assembly": 4.75941,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 20,
+     "inners": 68,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 13472899072,
+     "femffusion_max_memory_mb": 3252.11
+    },
+    "scheme": "SI-Euler",
+    "step": "0.1",
+    "power_max": 0.025768378651494173,
+    "power_end": 0.025768378651494173,
+    "dk_pcm": 3.99459584528028,
+    "solve": 632.336951,
+    "wall": 651.37,
+    "setup": null,
+    "assembly": 4.7715309999999995,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 10,
+     "inners": 57,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 13470326784,
+     "femffusion_max_memory_mb": 3247.44
+    },
+    "scheme": "SI-Euler",
+    "step": "0.2",
+    "power_max": 0.04816780945562582,
+    "power_end": 0.04816780945562582,
+    "dk_pcm": 3.99459584528028,
+    "solve": 438.80535399999997,
+    "wall": 466.1,
+    "setup": null,
+    "assembly": 4.812263,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 80,
+     "inners": 119,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7448985600,
+     "femffusion_max_memory_mb": 1806.05
+    },
+    "scheme": "SI-Exp",
+    "step": "0.025",
+    "power_max": 0.004983907113171426,
+    "power_end": 0.004983907113171426,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 1001.784383,
+    "wall": 1040.42,
+    "setup": null,
+    "assembly": 4.9452549999999995,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 80,
+     "inners": 120,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 9143799808,
+     "femffusion_max_memory_mb": 1808.55
+    },
+    "scheme": "SI-Euler",
+    "step": "0.025",
+    "power_max": 0.006827612109894909,
+    "power_end": 0.006827612109894909,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 1296.369661,
+    "wall": 1343.15,
+    "setup": null,
+    "assembly": 4.949472,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799150335,
+    "counters": {
+     "steps": 40,
+     "inners": 231712,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 4665450496
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.000877710172839663,
+    "power_end": 0.0001890048696291391,
+    "dk_pcm": -18.51741265137541,
+    "solve": 3145.750507903984,
+    "wall": 3145.9416936109774,
+    "setup": 1.5659956261515617e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 80,
+     "inners": 127,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 11385741312,
+     "femffusion_max_memory_mb": 3250.73
+    },
+    "scheme": "SI-Exp",
+    "step": "0.025",
+    "power_max": 0.004955062092277918,
+    "power_end": 0.004955062092277918,
+    "dk_pcm": 3.99459584528028,
+    "solve": 1429.5090109999999,
+    "wall": 1469.94,
+    "setup": null,
+    "assembly": 4.725818,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 40,
+     "inners": 92,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 11363663872,
+     "femffusion_max_memory_mb": 3249.75
+    },
+    "scheme": "SI-Exp",
+    "step": "0.05",
+    "power_max": 0.00983662996439194,
+    "power_end": 0.00983662996439194,
+    "dk_pcm": 3.99459584528028,
+    "solve": 838.886482,
+    "wall": 870.71,
+    "setup": null,
+    "assembly": 4.753525,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 80,
+     "inners": 130,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 13471293440,
+     "femffusion_max_memory_mb": 3248.4
+    },
+    "scheme": "SI-Euler",
+    "step": "0.025",
+    "power_max": 0.006799559969516089,
+    "power_end": 0.006799559969516089,
+    "dk_pcm": 3.99459584528028,
+    "solve": 1770.8713169999999,
+    "wall": 1820.91,
+    "setup": null,
+    "assembly": 4.740242,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 40,
+     "inners": 92,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 13471059968,
+     "femffusion_max_memory_mb": 3251.25
+    },
+    "scheme": "SI-Euler",
+    "step": "0.05",
+    "power_max": 0.013349559548581968,
+    "power_end": 0.013349559548581968,
+    "dk_pcm": 3.99459584528028,
+    "solve": 1017.216233,
+    "wall": 1056.34,
+    "setup": null,
+    "assembly": 4.730546,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 160,
+     "inners": 193,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 7451328512,
+     "femffusion_max_memory_mb": 1807.64
+    },
+    "scheme": "SI-Exp",
+    "step": "0.0125",
+    "power_max": 0.002518263823940603,
+    "power_end": 0.002518263823940603,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 1828.1734159999999,
+    "wall": 1885.74,
+    "setup": null,
+    "assembly": 4.910848,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE3",
+    "mesh": "FE3 r0",
+    "unknowns": 534347,
+    "k": 1.118606,
+    "counters": {
+     "steps": 160,
+     "inners": 193,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 9146781696,
+     "femffusion_max_memory_mb": 1805.36
+    },
+    "scheme": "SI-Euler",
+    "step": "0.0125",
+    "power_max": 0.0034628381116629248,
+    "power_end": 0.0034628381116629248,
+    "dk_pcm": 1.3945958452721285,
+    "solve": 2360.297388,
+    "wall": 2433.16,
+    "setup": null,
+    "assembly": 4.9179960000000005,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.1182427429678587,
+    "counters": {
+     "steps": 160,
+     "inners": 740862,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 2229501952
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.00031404848848826106,
+    "power_end": 0.00031404848848826106,
+    "dk_pcm": -34.931107368851855,
+    "solve": 3812.08690749004,
+    "wall": 3813.00990384107,
+    "setup": 1.661200076341629e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "GARNET CPU",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799150335,
+    "counters": {
+     "steps": 33,
+     "inners": 291318,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 8159920128
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.6e-4--0.15",
+    "power_max": 0.0007634444316348965,
+    "power_end": 0.0007488787369926975,
+    "dk_pcm": -18.51741265137541,
+    "solve": 4049.850961570046,
+    "wall": 4050.009067335981,
+    "setup": 1.5909899957478046e-05,
+    "assembly": null,
+    "warmup": 0.0
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 160,
+     "inners": 204,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 13469921280,
+     "femffusion_max_memory_mb": 3242.89
+    },
+    "scheme": "SI-Euler",
+    "step": "0.0125",
+    "power_max": 0.0034347572474665578,
+    "power_end": 0.0034347572474665578,
+    "dk_pcm": 3.99459584528028,
+    "solve": 3279.534513,
+    "wall": 3352.26,
+    "setup": null,
+    "assembly": 4.7542729999999995,
+    "warmup": null
+   },
+   {
+    "platform": "FEMFFUSION FE2",
+    "mesh": "FE2 r1",
+    "unknowns": 1239799,
+    "k": 1.118632,
+    "counters": {
+     "steps": 160,
+     "inners": 203,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 11390414848,
+     "femffusion_max_memory_mb": 3249.75
+    },
+    "scheme": "SI-Exp",
+    "step": "0.0125",
+    "power_max": 0.0024892641943222715,
+    "power_end": 0.0024892641943222715,
+    "dk_pcm": 3.99459584528028,
+    "solve": 2603.067575,
+    "wall": 2660.84,
+    "setup": null,
+    "assembly": 4.656833,
+    "warmup": null
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 160,
+     "inners": 298838,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 1078670848
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.00059214118261397,
+    "power_end": 0.00059214118261397,
+    "dk_pcm": -76.87171499137779,
+    "solve": 113.84116432600422,
+    "wall": 118.43942547502229,
+    "setup": 0.0017059630481526256,
+    "assembly": null,
+    "warmup": 4.571385763003491
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 80,
+     "inners": 146770,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 1078670848
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0005819418936554577,
+    "power_end": 0.0005141073982142252,
+    "dk_pcm": -76.87171499137779,
+    "solve": 57.504457950999495,
+    "wall": 62.212100357050076,
+    "setup": 0.0017196270055137575,
+    "assembly": null,
+    "warmup": 4.680363065039273
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 40,
+     "inners": 71728,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 990330880
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008504656374679342,
+    "power_end": 0.0002109295865714289,
+    "dk_pcm": -76.87171499137779,
+    "solve": 30.18662478600163,
+    "wall": 35.313214143912774,
+    "setup": 0.001742185966577381,
+    "assembly": null,
+    "warmup": 5.099038953951094
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 20,
+     "inners": 32902,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 990330880
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0009742979143640973,
+    "power_end": 0.0009439938488191579,
+    "dk_pcm": -76.87171499137779,
+    "solve": 16.695966886996757,
+    "wall": 21.964956470939796,
+    "setup": 0.0017315939767286181,
+    "assembly": null,
+    "warmup": 5.240056630980689
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 10,
+     "inners": 22561,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 990330880
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005228465879584254,
+    "power_end": 0.005228465879584254,
+    "dk_pcm": -76.87171499137779,
+    "solve": 12.065256959002,
+    "wall": 18.98950024403166,
+    "setup": 0.00172941799974069,
+    "assembly": null,
+    "warmup": 6.845244663010817
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 160,
+     "inners": 417393,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 3075321344
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.00031405763510117257,
+    "power_end": 0.00031405763510117257,
+    "dk_pcm": -34.93109794243665,
+    "solve": 144.37526783999056,
+    "wall": 150.44515986100305,
+    "setup": 0.001990369986742735,
+    "assembly": null,
+    "warmup": 6.025553660001606
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 80,
+     "inners": 206263,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 3075321344
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0005935764483913086,
+    "power_end": 0.00023545365519062056,
+    "dk_pcm": -34.93109794243665,
+    "solve": 72.68969536200166,
+    "wall": 78.99082130001625,
+    "setup": 0.0014921139809302986,
+    "assembly": null,
+    "warmup": 6.2597182700410485
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 40,
+     "inners": 97443,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 2823718400
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008689844210039155,
+    "power_end": 6.627263266878458e-05,
+    "dk_pcm": -34.93109794243665,
+    "solve": 36.10840730200289,
+    "wall": 42.47645041398937,
+    "setup": 0.0019773459644056857,
+    "assembly": null,
+    "warmup": 6.325805647007655
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 20,
+     "inners": 46216,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 2823718400
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0012222636250209806,
+    "power_end": 0.0012222636250209806,
+    "dk_pcm": -34.93109794243665,
+    "solve": 19.223065784026403,
+    "wall": 25.715615153079852,
+    "setup": 0.001976642000954598,
+    "assembly": null,
+    "warmup": 6.450323072029278
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 10,
+     "inners": 30530,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 2823718400
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005507469832962464,
+    "power_end": 0.005507469832962464,
+    "dk_pcm": -34.93109794243665,
+    "solve": 13.339388253982179,
+    "wall": 19.787990131007973,
+    "setup": 0.001954851031769067,
+    "assembly": null,
+    "warmup": 6.4068889080081135
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 160,
+     "inners": 543348,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 6118905856
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.00019113078733157263,
+    "power_end": 0.00019113078733157263,
+    "dk_pcm": -18.517408504359345,
+    "solve": 184.1154627109645,
+    "wall": 192.05124105594587,
+    "setup": 0.0012676400365307927,
+    "assembly": null,
+    "warmup": 7.8736239319550805
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 80,
+     "inners": 266513,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 6118905856
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0005990831897937365,
+    "power_end": 0.00011245673754400887,
+    "dk_pcm": -18.517408504359345,
+    "solve": 88.01215058896923,
+    "wall": 95.95232684497023,
+    "setup": 0.0019574739853851497,
+    "assembly": null,
+    "warmup": 7.878692317986861
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 40,
+     "inners": 125912,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 6118905856
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008777136287196896,
+    "power_end": 0.00018903000612358056,
+    "dk_pcm": -18.517408504359345,
+    "solve": 47.52903882198734,
+    "wall": 56.28221545292763,
+    "setup": 0.0016812599496915936,
+    "assembly": null,
+    "warmup": 8.690657972008921
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 20,
+     "inners": 59474,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 6118905856
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0013453861747110274,
+    "power_end": 0.0013453861747110274,
+    "dk_pcm": -18.517408504359345,
+    "solve": 24.790317694016267,
+    "wall": 33.405976821959484,
+    "setup": 0.0020859509822912514,
+    "assembly": null,
+    "warmup": 8.554547944979277
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 10,
+     "inners": 39472,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 339738624,
+     "gpu_pool_bytes": 6118905856
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005630932859338245,
+    "power_end": 0.005630932859338245,
+    "dk_pcm": -18.517408504359345,
+    "solve": 17.42987670202274,
+    "wall": 25.971751346078236,
+    "setup": 0.001707179006189108,
+    "assembly": null,
+    "warmup": 8.481243383022957
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 160,
+     "inners": 810694,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 21468149760
+    },
+    "scheme": "BDF2",
+    "step": "0.0125",
+    "power_max": 0.00014868773299925309,
+    "power_end": 8.431850983636746e-05,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 315.17458151397295,
+    "wall": 328.7987301829853,
+    "setup": 0.0020108179887756705,
+    "assembly": null,
+    "warmup": 13.506309129996225
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 80,
+     "inners": 397409,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 21468149760
+    },
+    "scheme": "BDF2",
+    "step": "0.025",
+    "power_max": 0.0006039329203175736,
+    "power_end": 5.858891569787694e-06,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 158.70085493801162,
+    "wall": 172.8645260410267,
+    "setup": 0.0019759380375035107,
+    "assembly": null,
+    "warmup": 14.045390376006253
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 40,
+     "inners": 186315,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 21468149760
+    },
+    "scheme": "BDF2",
+    "step": "0.05",
+    "power_max": 0.0008852911246408635,
+    "power_end": 0.00029536955305675683,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 79.79288012499455,
+    "wall": 94.45441707898863,
+    "setup": 0.0017353700241073966,
+    "assembly": null,
+    "warmup": 14.538887209957466
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 20,
+     "inners": 88332,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 21468149760
+    },
+    "scheme": "BDF2",
+    "step": "0.1",
+    "power_max": 0.0014520130259523256,
+    "power_end": 0.0014520130259523256,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 42.91408290097024,
+    "wall": 57.677177070931066,
+    "setup": 0.0020284159691073,
+    "assembly": null,
+    "warmup": 14.641283952980302
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 10,
+     "inners": 61933,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 377487360,
+     "gpu_pool_bytes": 21468149760
+    },
+    "scheme": "BDF2",
+    "step": "0.2",
+    "power_max": 0.005737214577156813,
+    "power_end": 0.005737214577156813,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 31.6869245749549,
+    "wall": 46.61418040993158,
+    "setup": 0.001792039955034852,
+    "assembly": null,
+    "warmup": 14.805271446995903
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 33,
+     "inners": 84776,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1599195648
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.5e-4--0.14",
+    "power_max": 0.0003346153071321911,
+    "power_end": 0.00032086981664392056,
+    "dk_pcm": -76.87171499137779,
+    "solve": 31.469634107023012,
+    "wall": 38.267248885007575,
+    "setup": 0.0018469259957782924,
+    "assembly": null,
+    "warmup": 6.7582671730197035
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 65,
+     "inners": 157225,
+     "rejected": 10
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1598489600
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.6e-5--0.061",
+    "power_max": 0.0004445819865115386,
+    "power_end": 0.0004445819865115386,
+    "dk_pcm": -76.87171499137779,
+    "solve": 55.83638868998969,
+    "wall": 60.36745787697146,
+    "setup": 0.002001193002797663,
+    "assembly": null,
+    "warmup": 4.502579368010629
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 134,
+     "inners": 292497,
+     "rejected": 14
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1598489600
+    },
+    "scheme": "aBDF2 ($10^{-5}$)",
+    "step": "1.2e-6--0.028",
+    "power_max": 0.0005782094380075709,
+    "power_end": 0.0005782094380075709,
+    "dk_pcm": -76.87171499137779,
+    "solve": 100.63823071803199,
+    "wall": 105.1290863409522,
+    "setup": 0.001721041975542903,
+    "assembly": null,
+    "warmup": 4.46332718495978
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 26,
+     "inners": 67247,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1599195648
+    },
+    "scheme": "aBDF4 ($10^{-3}$)",
+    "step": "1.5e-4--0.21",
+    "power_max": 0.0003257922328609997,
+    "power_end": 0.00025593379964861107,
+    "dk_pcm": -76.87171499137779,
+    "solve": 25.360137751034927,
+    "wall": 29.90083931805566,
+    "setup": 0.0017006580019369721,
+    "assembly": null,
+    "warmup": 4.512295329011977
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 42,
+     "inners": 102393,
+     "rejected": 11
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1598489600
+    },
+    "scheme": "aBDF4 ($10^{-4}$)",
+    "step": "1.6e-5--0.13",
+    "power_max": 0.0005891725876892018,
+    "power_end": 0.0005891725876892018,
+    "dk_pcm": -76.87171499137779,
+    "solve": 37.685987689998,
+    "wall": 42.22232745407382,
+    "setup": 0.0017630240181460977,
+    "assembly": null,
+    "warmup": 4.50881481502438
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r2 z30",
+    "unknowns": 435600,
+    "k": 1.1178233368916335,
+    "counters": {
+     "steps": 64,
+     "inners": 139013,
+     "rejected": 14
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 1598489600
+    },
+    "scheme": "aBDF4 ($10^{-5}$)",
+    "step": "1.2e-6--0.091",
+    "power_max": 0.0006111175253777912,
+    "power_end": 0.0006111175253777912,
+    "dk_pcm": -76.87171499137779,
+    "solve": 49.54584111797158,
+    "wall": 53.95195900701219,
+    "setup": 0.002001130022108555,
+    "assembly": null,
+    "warmup": 4.378678601002321
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 33,
+     "inners": 119349,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.6e-4--0.15",
+    "power_max": 0.0006415651764406505,
+    "power_end": 0.000625375864210298,
+    "dk_pcm": -34.93109794243665,
+    "solve": 40.47949322097702,
+    "wall": 46.4429103420116,
+    "setup": 0.0014240220189094543,
+    "assembly": null,
+    "warmup": 5.9216303220018744
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 64,
+     "inners": 215738,
+     "rejected": 9
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.8e-5--0.061",
+    "power_max": 0.0002673844937839398,
+    "power_end": 0.00016682349969032728,
+    "dk_pcm": -34.93109794243665,
+    "solve": 68.57615624502068,
+    "wall": 74.42346619302407,
+    "setup": 0.0019969010027125478,
+    "assembly": null,
+    "warmup": 5.8053617820260115
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 133,
+     "inners": 409449,
+     "rejected": 13
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF2 ($10^{-5}$)",
+    "step": "2.0e-6--0.028",
+    "power_max": 0.0003002604915413043,
+    "power_end": 0.0003002604915413043,
+    "dk_pcm": -34.93109794243665,
+    "solve": 129.02483300497988,
+    "wall": 134.84353979997104,
+    "setup": 0.0020220840233378112,
+    "assembly": null,
+    "warmup": 5.777291157981381
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 26,
+     "inners": 94192,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF4 ($10^{-3}$)",
+    "step": "1.6e-4--0.21",
+    "power_max": 0.00032086889320714906,
+    "power_end": 2.920001866035804e-05,
+    "dk_pcm": -34.93109794243665,
+    "solve": 32.07043279404752,
+    "wall": 37.830336020095274,
+    "setup": 0.001978244981728494,
+    "assembly": null,
+    "warmup": 5.719579044030979
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 41,
+     "inners": 141453,
+     "rejected": 11
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF4 ($10^{-4}$)",
+    "step": "1.8e-5--0.14",
+    "power_max": 0.0003109363017612665,
+    "power_end": 0.0003109363017612665,
+    "dk_pcm": -34.93109794243665,
+    "solve": 46.94958139100345,
+    "wall": 52.827494143974036,
+    "setup": 0.0020405480172485113,
+    "assembly": null,
+    "warmup": 5.83599786600098
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r3 z40",
+    "unknowns": 1306800,
+    "k": 1.118242743062123,
+    "counters": {
+     "steps": 63,
+     "inners": 193602,
+     "rejected": 14
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 4562060800
+    },
+    "scheme": "aBDF4 ($10^{-5}$)",
+    "step": "2.0e-6--0.089",
+    "power_max": 0.00033344598785045587,
+    "power_end": 0.00033344598785045587,
+    "dk_pcm": -34.93109794243665,
+    "solve": 63.86969800601946,
+    "wall": 69.76311583601637,
+    "setup": 0.0017455799970775843,
+    "assembly": null,
+    "warmup": 5.851828693994321
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 33,
+     "inners": 155460,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.6e-4--0.15",
+    "power_max": 0.0007634653806543046,
+    "power_end": 0.0007489019633999394,
+    "dk_pcm": -18.517408504359345,
+    "solve": 49.50725493498612,
+    "wall": 56.867345794977155,
+    "setup": 0.002019300009123981,
+    "assembly": null,
+    "warmup": 7.297910269990098
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 65,
+     "inners": 284749,
+     "rejected": 10
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.8e-5--0.06",
+    "power_max": 0.00023533826488186804,
+    "power_end": 4.235159078624928e-05,
+    "dk_pcm": -18.517408504359345,
+    "solve": 90.04976273799548,
+    "wall": 97.66428974096198,
+    "setup": 0.0017499959794804454,
+    "assembly": null,
+    "warmup": 7.552933755971026
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 133,
+     "inners": 533385,
+     "rejected": 13
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF2 ($10^{-5}$)",
+    "step": "2.1e-6--0.028",
+    "power_max": 0.000274128187083722,
+    "power_end": 0.0001772995901287988,
+    "dk_pcm": -18.517408504359345,
+    "solve": 160.46653328899993,
+    "wall": 167.87110436696094,
+    "setup": 0.0017014209879562259,
+    "assembly": null,
+    "warmup": 7.342017283954192
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 26,
+     "inners": 123144,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF4 ($10^{-3}$)",
+    "step": "1.6e-4--0.22",
+    "power_max": 0.00031726662232334224,
+    "power_end": 0.00018174515633107013,
+    "dk_pcm": -18.517408504359345,
+    "solve": 41.43250066798646,
+    "wall": 49.041192803997546,
+    "setup": 0.0020410590223036706,
+    "assembly": null,
+    "warmup": 7.545242752006743
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 41,
+     "inners": 185466,
+     "rejected": 11
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF4 ($10^{-4}$)",
+    "step": "1.8e-5--0.13",
+    "power_max": 0.00026567289498780067,
+    "power_end": 0.00019162654876625496,
+    "dk_pcm": -18.517408504359345,
+    "solve": 60.69252844603034,
+    "wall": 68.28143953706603,
+    "setup": 0.0020551710040308535,
+    "assembly": null,
+    "warmup": 7.522064367018174
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 63,
+     "inners": 257575,
+     "rejected": 15
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9880902144
+    },
+    "scheme": "aBDF4 ($10^{-5}$)",
+    "step": "2.1e-6--0.092",
+    "power_max": 0.0002717402704807137,
+    "power_end": 0.00021020234866886423,
+    "dk_pcm": -18.517408504359345,
+    "solve": 81.42245808901498,
+    "wall": 88.91817066009389,
+    "setup": 0.0017406840343028307,
+    "assembly": null,
+    "warmup": 7.427864022029098
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 80,
+     "inners": 346419,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9336401920
+    },
+    "scheme": "BDF2 mono",
+    "step": "0.025",
+    "power_max": 0.0005995464874986034,
+    "power_end": 0.00010992779747964754,
+    "dk_pcm": -18.517408504359345,
+    "solve": 105.31155699904775,
+    "wall": 113.07773928111419,
+    "setup": 0.002016834041569382,
+    "assembly": null,
+    "warmup": 7.70424404804362
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r4 z50",
+    "unknowns": 2904000,
+    "k": 1.1184068799565037,
+    "counters": {
+     "steps": 20,
+     "inners": 94211,
+     "rejected": 0
+    },
+    "memory": {
+     "max_rss_bytes": 566231040,
+     "gpu_pool_bytes": 9336401920
+    },
+    "scheme": "BDF2 mono",
+    "step": "0.1",
+    "power_max": 0.0013464558249034475,
+    "power_end": 0.0013464558249034475,
+    "dk_pcm": -18.517408504359345,
+    "solve": 31.090600021998398,
+    "wall": 38.69371586589841,
+    "setup": 0.002044800959993154,
+    "assembly": null,
+    "warmup": 7.540468991966918
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 33,
+     "inners": 230345,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF2 ($10^{-3}$)",
+    "step": "1.6e-4--0.15",
+    "power_max": 0.000868884870937725,
+    "power_end": 0.0008555574425628265,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 92.96857157896738,
+    "wall": 106.87724674801575,
+    "setup": 0.0020120360422879457,
+    "assembly": null,
+    "warmup": 13.783650105004199
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 65,
+     "inners": 422465,
+     "rejected": 10
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF2 ($10^{-4}$)",
+    "step": "1.9e-5--0.06",
+    "power_max": 0.00023292823198817203,
+    "power_end": 6.455052378862014e-05,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 163.38493226398714,
+    "wall": 176.87274349702056,
+    "setup": 0.0017725540092214942,
+    "assembly": null,
+    "warmup": 13.365244739979971
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 133,
+     "inners": 796438,
+     "rejected": 13
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF2 ($10^{-5}$)",
+    "step": "2.1e-6--0.028",
+    "power_max": 0.000272139878579547,
+    "power_end": 7.073733466256282e-05,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 303.002449808002,
+    "wall": 316.56640053598676,
+    "setup": 0.0019801949965767562,
+    "assembly": null,
+    "warmup": 13.441124595992733
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 26,
+     "inners": 182028,
+     "rejected": 6
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF4 ($10^{-3}$)",
+    "step": "1.6e-4--0.22",
+    "power_max": 0.00031410798161368714,
+    "power_end": 0.0002889456323784678,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 75.62546284496784,
+    "wall": 89.16382350696949,
+    "setup": 0.0019890270195901394,
+    "assembly": null,
+    "warmup": 13.409603510983288
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 41,
+     "inners": 275637,
+     "rejected": 11
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF4 ($10^{-4}$)",
+    "step": "1.9e-5--0.13",
+    "power_max": 0.00026345843262420843,
+    "power_end": 8.516267785352305e-05,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 110.73439189000055,
+    "wall": 124.27016121003544,
+    "setup": 0.002003587025683373,
+    "assembly": null,
+    "warmup": 13.414253546041436
+   },
+   {
+    "platform": "GARNET GH200",
+    "mesh": "r6 z80",
+    "unknowns": 10454400,
+    "k": 1.1185564271879023,
+    "counters": {
+     "steps": 63,
+     "inners": 384542,
+     "rejected": 15
+    },
+    "memory": {
+     "max_rss_bytes": 603979776,
+     "gpu_pool_bytes": 34652604416
+    },
+    "scheme": "aBDF4 ($10^{-5}$)",
+    "step": "2.1e-6--0.092",
+    "power_max": 0.00026973442121280833,
+    "power_end": 0.00010362878957370647,
+    "dk_pcm": -3.5626853644998846,
+    "solve": 153.17027296603192,
+    "wall": 166.90292282408336,
+    "setup": 0.002013858000282198,
+    "assembly": null,
+    "warmup": 13.611640726041514
+   }
+  ],
+  "tta_rows": {
+   "0.01": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r0",
+     "solve": 107.317361,
+     "wall": 117.42
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r0",
+     "solve": 597.941887,
+     "wall": 632.64
+    },
+    "GARNET CPU": {
+     "mesh": "r2 z30",
+     "solve": 99.91774945298675,
+     "wall": 100.00045099691488
+    },
+    "GARNET GH200": {
+     "mesh": "r2 z30",
+     "solve": 12.065256959002,
+     "wall": 18.98950024403166
+    }
+   },
+   "0.001": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r0",
+     "solve": 1262.2041330000002,
+     "wall": 1366.84
+    },
+    "FEMFFUSION FE3": null,
+    "GARNET CPU": {
+     "mesh": "r2 z30",
+     "solve": 126.53448765305802,
+     "wall": 126.59935729706194
+    },
+    "GARNET GH200": {
+     "mesh": "r2 z30",
+     "solve": 16.695966886996757,
+     "wall": 21.964956470939796
+    }
+   }
+  },
+  "time_to_accuracy": {
+   "(0.01,)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r0",
+     "solve": 107.317361,
+     "wall": 117.42
+    },
+    "FEMFFUSION FE3": {
+     "mesh": "FE3 r0",
+     "solve": 597.941887,
+     "wall": 632.64
+    },
+    "GARNET CPU": {
+     "mesh": "r2 z30",
+     "solve": 99.91774945298675,
+     "wall": 100.00045099691488
+    },
+    "GARNET GH200": {
+     "mesh": "r2 z30",
+     "solve": 12.065256959002,
+     "wall": 18.98950024403166
+    }
+   },
+   "(0.001,)": {
+    "FEMFFUSION FE2": {
+     "mesh": "FE2 r0",
+     "solve": 1262.2041330000002,
+     "wall": 1366.84
+    },
+    "FEMFFUSION FE3": null,
+    "GARNET CPU": {
+     "mesh": "r2 z30",
+     "solve": 126.53448765305802,
+     "wall": 126.59935729706194
+    },
+    "GARNET GH200": {
+     "mesh": "r2 z30",
+     "solve": 16.695966886996757,
+     "wall": 21.964956470939796
+    }
+   }
+  }
+ }
+}

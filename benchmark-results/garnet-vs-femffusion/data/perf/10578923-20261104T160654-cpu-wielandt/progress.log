@@ -1,0 +1,13 @@
+DONE tune-floor-hpmr-r2z30-plain RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178233 counters={'outers': 253, 'inners': 11057, 'multigroup': 0} setup=0.170s solve=18.116s warmup=0.842s wall=19.5s
+DONE cpu-hpmr-wa-r2z30 RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 12, 'inners': 3600, 'multigroup': 68} setup=0.083s solve=9.373s warmup=2.145s wall=31.0s
+DONE tune-floor-hpmr-r2z30-plain-tight RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 403, 'inners': 16395, 'multigroup': 0} setup=0.166s solve=27.582s warmup=0.254s wall=28.3s
+DONE cpu-hpmr-wf-r2z30 RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 10, 'inners': 3194, 'multigroup': 61} setup=0.081s solve=8.270s warmup=1.904s wall=27.4s
+DONE tune-floor-hpmr-r2z30-wa RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 12, 'inners': 3600, 'multigroup': 68} setup=0.160s solve=9.453s warmup=1.971s wall=11.9s
+DONE tune-floor-hpmr-r2z30-wf RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 10, 'inners': 3194, 'multigroup': 61} setup=0.160s solve=8.351s warmup=1.953s wall=10.8s
+DONE tune-floor-hpmr-r2z30-wa-tight RESULT hpmr3d mesh=2 nz=30 device=cpu (numpy) unknowns=435600 k=1.1178234 counters={'outers': 17, 'inners': 4840, 'multigroup': 92} setup=0.159s solve=12.700s warmup=1.956s wall=15.1s
+DONE cpu-hpmr-wa-r3z40 RESULT hpmr3d mesh=3 nz=40 device=cpu (numpy) unknowns=1306800 k=1.1182428 counters={'outers': 12, 'inners': 5331, 'multigroup': 68} setup=0.224s solve=36.115s warmup=7.459s wall=118.0s
+DONE cpu-hpmr-wf-r3z40 RESULT hpmr3d mesh=3 nz=40 device=cpu (numpy) unknowns=1306800 k=1.1182428 counters={'outers': 10, 'inners': 4556, 'multigroup': 59} setup=0.223s solve=30.955s warmup=7.435s wall=102.7s
+DONE cpu-hpmr-wa-r4z50 RESULT hpmr3d mesh=4 nz=50 device=cpu (numpy) unknowns=2904000 k=1.1184069 counters={'outers': 12, 'inners': 7249, 'multigroup': 69} setup=0.489s solve=110.426s warmup=23.813s wall=360.1s
+DONE cpu-hpmr-wf-r4z50 RESULT hpmr3d mesh=4 nz=50 device=cpu (numpy) unknowns=2904000 k=1.1184069 counters={'outers': 10, 'inners': 6225, 'multigroup': 60} setup=0.466s solve=94.702s warmup=23.938s wall=314.3s
+DONE cpu-hpmr-wf-r6z80 RESULT hpmr3d mesh=6 nz=80 device=cpu (numpy) unknowns=10454400 k=1.1185564 counters={'outers': 10, 'inners': 9837, 'multigroup': 61} setup=2.629s solve=667.460s warmup=150.951s wall=824.7s
+DONE cpu-hpmr-wa-r6z80 RESULT hpmr3d mesh=6 nz=80 device=cpu (numpy) unknowns=10454400 k=1.1185564 counters={'outers': 12, 'inners': 11342, 'multigroup': 70} setup=2.632s solve=770.253s warmup=151.185s wall=927.8s

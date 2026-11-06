@@ -1,0 +1,1 @@
+c0 cputr-r3z40-bdf2-dt0.0125 assess_garnet_vs_femffusion.py hpmr3d-transient --mesh 3 --nz 40 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --time-scheme bdf2 --dt 0.0125 --tol-step 1e-7 --repeats 1 --output @OUT@

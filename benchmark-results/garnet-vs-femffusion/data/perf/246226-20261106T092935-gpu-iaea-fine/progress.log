@@ -1,0 +1,4 @@
+DONE tune-iaea-r16-control RESULT iaea3d mesh=16 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=37511168 k=1.0290222 counters={'outers': 55, 'inners': 2270, 'multigroup': 0} setup=0.046s solve=7.417s warmup=1.225s wall=26.4s
+DONE gpu-iaea-r20 RESULT iaea3d mesh=20 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=73264000 k=1.0290401 counters={'outers': 50, 'inners': 2598, 'multigroup': 0} setup=0.085s solve=16.166s warmup=1.482s wall=52.0s
+DONE gpu-iaea-r24 RESULT iaea3d mesh=24 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=126600192 k=1.0290502 counters={'outers': 51, 'inners': 3197, 'multigroup': 0} setup=0.143s solve=33.484s warmup=2.755s wall=106.3s
+DONE gpu-iaea-r28 RESULT iaea3d mesh=28 nz=None device=cuda (cupy): NVIDIA GH200 120GB unknowns=201036416 k=1.0290562 counters={'outers': 53, 'inners': 3878, 'multigroup': 0} setup=0.225s solve=63.741s warmup=4.930s wall=200.9s

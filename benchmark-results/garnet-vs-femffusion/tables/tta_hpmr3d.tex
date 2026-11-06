@@ -1,0 +1,15 @@
+\begin{tabular}{llrrrrrr}
+\hline
+Target & Platform & Mesh & Unknowns & $|\Delta k|$ (pcm) & max $\Delta P$ & Solve (s) & Wall (s) \\
+\hline
+10 pcm, 1\% & FEMFFUSION FE2 & FE2 r1 & 1,239,799 & 0.80 & 0.09\% & 124 & 132 \\
+ & FEMFFUSION FE3 & FE3 r0 & 534,347 & 3.40 & 0.14\% & 89.3 & 97.5 \\
+ & GARNET CPU & r6 z80 & 10,454,400 & 8.36 & 0.59\% & 667 & 670 \\
+ & GARNET GH200 & r6 z80 & 10,454,400 & 8.36 & 0.59\% & 2.38 & 3.28 \\
+\hline
+1 pcm, 0.1\% & FEMFFUSION FE2 & FE2 r1 & 1,239,799 & 0.80 & 0.09\% & 124 & 132 \\
+ & FEMFFUSION FE3 & FE3 r1 & 4,095,113 & 0.40 & 0.01\% & 675 & 730 \\
+ & GARNET CPU & -- & -- & -- & -- & -- & -- \\
+ & GARNET GH200 & -- & -- & -- & -- & -- & -- \\
+\hline
+\end{tabular}

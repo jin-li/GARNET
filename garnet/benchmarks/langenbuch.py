@@ -19,8 +19,10 @@ its base material; the cell containing a rod tip gets a volume-weighted mix
 (fraction of the cell height covered). Data transcribed from the FEMFFUSION
 repository (examples/3D_Langenbuch, https://github.com/Zonni/FEMFFUSION).
 The four excised corner cells of the octagonal plant map are filled with
-reflector (the reference excludes them; the difference sits deep in the
-reflector next to a zero-flux boundary).
+reflector by default (the reference excludes them; the difference sits deep in
+the reflector next to a zero-flux boundary). ``excise_corners=True`` removes
+them instead, giving FEMFFUSION's geometry exactly: pass the problem's
+``active`` and ``mask_bc`` (zero flux on the staircase faces) to the solver.
 """
 
 from __future__ import annotations
@@ -43,16 +45,17 @@ LANGENBUCH_KINETICS = Kinetics(
 PEAK_REFERENCE = (21.0, 1.6)
 
 # (sigma_tr, sigma_a, nu_sigma_f) per group; sigma_12 is the downscatter.
+# All digits as in FEMFFUSION's examples/3D_Langenbuch/3D_Langenbuch.xsec.
 _XS = {
-    "reflector":       dict(tr=[0.20397003, 1.26261670], sa=[0.00266057, 0.04936351],
+    "reflector":       dict(tr=[0.203970032, 1.262616697], sa=[0.002660573, 0.049363510],
                             nsf=[0.0, 0.0], s12=0.02759693),
-    "fuel 2":          dict(tr=[0.23381787, 0.95082160], sa=[0.01099263, 0.09925634],
-                            nsf=[0.00750328, 0.1378004], s12=0.01717768),
-    "fuel 1":          dict(tr=[0.23409670, 0.93552546], sa=[0.01040206, 0.08766217],
-                            nsf=[0.00647769, 0.1127328], s12=0.01755550),
-    "fuel 1 rodded":   dict(tr=[0.23409670, 0.93552546], sa=[0.01095206, 0.09146217],
-                            nsf=[0.00647769, 0.1127328], s12=0.01755550),
-    "reflector rodded": dict(tr=[0.20397003, 1.26261670], sa=[0.00321050, 0.05316351],
+    "fuel 2":          dict(tr=[0.233817874, 0.950821605], sa=[0.01099263, 0.09925634],
+                            nsf=[0.007503284, 0.1378004], s12=0.01717768),
+    "fuel 1":          dict(tr=[0.234096699, 0.935525457], sa=[0.01040206, 0.08766217],
+                            nsf=[0.006477691, 0.1127328], s12=0.01755550),
+    "fuel 1 rodded":   dict(tr=[0.234096699, 0.935525457], sa=[0.01095206, 0.09146217],
+                            nsf=[0.006477691, 0.1127328], s12=0.01755550),
+    "reflector rodded": dict(tr=[0.203970032, 1.262616697], sa=[0.00321050, 0.05316351],
                              nsf=[0.0, 0.0], s12=0.02759693),
 }
 # indices in the material list
@@ -91,10 +94,17 @@ class LangenbuchProblem:
     kinetics: Kinetics
     bc: str
     problem_at: object  # callable t -> (materials, material_map)
+    active: np.ndarray | None = None   # set by excise_corners=True
+    mask_bc: str = "zero-flux"
 
 
-def build_langenbuch(refine: int = 1) -> LangenbuchProblem:
-    """Assemble the 3D Langenbuch core at 20/refine cm resolution."""
+def build_langenbuch(refine: int = 1, excise_corners: bool = False) -> LangenbuchProblem:
+    """Assemble the 3D Langenbuch core at 20/refine cm resolution.
+
+    excise_corners : drop the four corner columns (inactive cells, zero flux on
+                     the faces they expose), as FEMFFUSION's input does,
+                     instead of filling them with reflector.
+    """
     r = refine
     grid = Grid(shape=(11 * r, 11 * r, 10 * r), size=(220.0, 220.0, 200.0))
     base_mats = [_material(k, v) for k, v in _XS.items()]
@@ -147,5 +157,11 @@ def build_langenbuch(refine: int = 1) -> LangenbuchProblem:
         cache[tips] = (mats, mmap)
         return cache[tips]
 
+    active = None
+    if excise_corners:
+        active = np.ones(grid.shape, dtype=bool)
+        for i in (0, 10):
+            for j in (0, 10):
+                active[i * r:(i + 1) * r, j * r:(j + 1) * r, :] = False
     return LangenbuchProblem(grid=grid, kinetics=LANGENBUCH_KINETICS,
-                             bc="zero-flux", problem_at=problem_at)
+                             bc="zero-flux", problem_at=problem_at, active=active)

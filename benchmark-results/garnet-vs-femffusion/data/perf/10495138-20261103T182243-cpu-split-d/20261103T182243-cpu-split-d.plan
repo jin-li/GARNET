@@ -1,0 +1,1 @@
+c0 ff-iaea-fe2-r3 run_femffusion.py iaea3d --prm /data/user/poncet_m/FEMFFUSION/examples/3D_IAEA/IAEA_FE3.prm --fe-degree 2 --refinements 3 --set Solver_Type=slepc_2g --set Matrix_Free_Type=non_diagonal --set EPS_Tolerance=1e-6 --repeats 1 --workdir @WORK@ --output @OUT@

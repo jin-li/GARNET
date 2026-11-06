@@ -1,0 +1,1 @@
+DONE cputr-r3z40-bdf2-dt0.0125 RESULT hpmr3d-transient mesh=3 nz=40 device=cpu (numpy) unknowns=1306800 k=1.1182427 counters={'steps': 160, 'inners': 740862, 'sweeps': 2358, 'rejected': 0} setup=0.000s solve=3812.087s warmup=0.000s wall=3814.0s

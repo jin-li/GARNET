@@ -1,0 +1,93 @@
+\section{Method}
+\label{sec:method}
+
+\paragraph{Time to accuracy.} Each code runs a ladder of discretizations:
+\begin{itemize}
+\item \ffn{}: degree 2 and degree 3 elements, each at successive uniform
+  refinements;
+\item \garnet{}: successive cell refinements $r$ (and, for the HP-MR, axial
+  layers $n_z$ that keep the prisms roughly isotropic).
+\end{itemize}
+Every run is scored against the same reference. A table entry is the
+cheapest \emph{measured} run that meets a target; nothing is interpolated
+between runs. The steady targets are $|\Delta k| \le 10$~pcm with every node
+power within 1\%, and $|\Delta k| \le 1$~pcm with 0.1\%. The transient targets
+are a maximum $|P/P_\mathrm{ref} - 1|$ of $10^{-2}$ and of $10^{-3}$.
+
+\paragraph{Tolerances.} Each code uses the loosest iteration tolerance whose
+iteration error stays below 0.1~pcm in $k$ and $10^{-4}$ in node power. That
+threshold is well below the discretization errors being compared:
+\begin{itemize}
+\item \garnet{}: \code{tol\_k} = $10^{-7}$ and \code{tol\_source} = $10^{-6}$,
+  measured against $10^{-11}/10^{-10}$ on IAEA, Langenbuch and the first,
+  smeared-drum HP-MR (at most 0.007~pcm and $6.6 \times 10^{-5}$). On the
+  drums-withdrawn HP-MR compared here ($r=2$, $n_z=30$) the power iteration
+  is 0.006~pcm and $2.4 \times 10^{-6}$ off, and the Wielandt shift
+  0.003~pcm and $1.8 \times 10^{-7}$;
+\item \ffn{}: \code{EPS\_Tolerance} = $10^{-6}$ for \code{slepc\_2g},
+  \code{gd} and \code{bifpam}, measured against $10^{-10}$ or $10^{-11}$
+  (below 0.05~pcm and $1.7 \times 10^{-5}$).
+\end{itemize}
+For the transients, \ffn's linear tolerance \code{KSP\_Tolerance} =
+$10^{-6}$ changes $P(2\,\mathrm{s})$ by $5 \times 10^{-6}$ relative to
+$10^{-9}$. \garnet's within-step tolerance is $10^{-7}$ for fixed steps and
+$10^{-8}$ for adaptive steps.
+
+\paragraph{Configuration.} Both codes were tuned on mid-size meshes, on the
+same hardware as the production runs. The full sweeps are in
+\code{data/perf/*tune*}; the chosen settings are:
+\begin{itemize}
+\item \ffn{}, steady: \code{non\_diagonal} storage with \code{P\_Init} on;
+  \code{slepc\_2g} for IAEA, \code{bifpam} for Langenbuch, and for the HP-MR
+  \code{gd} at degree 2 and \code{bifpam} at degree 3.
+\item \ffn{}, transient: \code{KSP\_Tolerance} $10^{-6}$ and bad-Broyden
+  preconditioner updates; three to four times faster than the fixed
+  preconditioner.
+\item \garnet{}, CPU: Neumann preconditioner of degree 1/0/0 and Anderson
+  depth 4/4/8 for IAEA/Langenbuch/HP-MR.
+\item \garnet{}, GH200: degree 2/2/1 and depth 4/4/8.
+\item \garnet{}, HP-MR steady: the fixed Wielandt shift $\delta k = 0.3$
+  (Section~\ref{sec:steady}) with the defaults of its multigroup solve. Only
+  the GH200 run at $r=12$ shortens the FGMRES restart from 20 to 8, so that
+  the basis fits in the 96~GB.
+\item \garnet{} transients: BDF2 with the fixed-point step for fixed steps;
+  the monolithic step for adaptive BDF, which supports only that.
+\end{itemize}
+Two \ffn{} options were excluded for errors, not for speed:
+\begin{itemize}
+\item \code{full\_matrixfree} with \code{gd} or \code{slepc\_2g} crashes
+  (signal 11);
+\item \code{full\_allocated} with \code{gd} or \code{bifpam} on the refined
+  Langenbuch core returns a wrong eigenvalue ($k = 1.702$ at FE2 $r=1$ and
+  1.380 at FE3 $r=1$, against 0.9995).
+\end{itemize}
+\code{power\_it} was dropped because it exceeds 300~s where the others take
+seconds.
+
+\paragraph{Cost.} Two times are reported per run.
+\begin{itemize}
+\item \emph{Solve} is each code's own timed computation. For \garnet{} it is
+  the device-synchronized \code{solve\_seconds}; for a transient that is the
+  initial eigen-solve plus the march. For \ffn{} it is the process CPU time
+  from ``Matrices assembled'' to the eigenvalue, which includes the degree-1
+  \code{P\_Init} pre-solve; for a transient, its transient CPU time is added.
+  \ffn{} runs single-threaded, so its CPU time is its wall time.
+\item \emph{Wall} is time to solution from a cold start. For \ffn{} it is the
+  whole process. For \garnet{} it is the builder, the solver construction and
+  the solve, plus, on the GPU only, one warm-up run. That is an upper bound
+  on the CuPy kernel compilation, since the warm-up also does two outer
+  iterations or time steps. NumPy compiles nothing.
+\end{itemize}
+Steady runs under a few minutes are the best of three; longer ones are single.
+The concurrency control re-times runs alone on an otherwise idle node: within
+6\% of the concurrent runs.
+
+\paragraph{Power.} \ffn's node and total powers are $\Sigma_f$-weighted.
+\garnet's records use the same weight: $\kappa\Sigma_f$, written to \ffn{} as
+$\Sigma_f = \kappa\Sigma_f / (200~\mathrm{MeV})$. Node powers are normalized
+to the core-volume average power density, as \ffn{} does. \garnet's
+\code{TransientResult.power} is the $\nu\Sigma_f$-weighted fission source,
+which carries the inserted $1+\varepsilon(t)$. The comparison therefore
+converts it to the $\kappa\Sigma_f$-weighted rate. The spectral part of that
+conversion, the ratio of $\kappa$- to $\nu$-weighted rates, moves by less than
+$4 \times 10^{-8}$ over the transient.

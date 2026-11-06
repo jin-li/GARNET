@@ -1,0 +1,54 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\renewcommand{\UrlBreaks}{\do\/\do\_\do\.}
+
+% The node's TeX installation has no geometry/booktabs/caption packages.
+\setlength{\textwidth}{6.4in}
+\setlength{\oddsidemargin}{-0.07in}
+\setlength{\evensidemargin}{-0.07in}
+\setlength{\topmargin}{-0.55in}
+\setlength{\textheight}{9.6in}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\renewcommand{\arraystretch}{1.12}
+\graphicspath{{figures/}}
+
+\newcommand{\garnet}{\texttt{GARNET}}
+\newcommand{\ffn}{\texttt{FEMFFUSION}}
+\newcommand{\code}[1]{\texttt{#1}}
+% Text that depends on runs still in the queue (preview only): coloured.
+% For the final report, \renewcommand{\pending}[1]{#1} or remove the marks.
+\definecolor{pendingcolor}{rgb}{0.80,0.33,0.0}
+\newcommand{\pending}[1]{{\color{pendingcolor}#1}}
+\newcommand{\tablefile}[1]{\IfFileExists{tables/#1.tex}{\begin{center}\resizebox{\ifdim\width>\textwidth\textwidth\else\width\fi}{!}{\input{tables/#1}}\end{center}}{\begin{center}\emph{[table #1 not generated]}\end{center}}}
+\newcommand{\figfile}[2]{\IfFileExists{figures/#1.pdf}{\begin{center}\includegraphics[width=#2\textwidth]{#1}\end{center}}{\begin{center}\emph{[figure #1 not generated]}\end{center}}}
+
+\title{\textbf{\garnet{} versus \ffn{}: time to accuracy}\\
+\large IAEA-3D, 3-D Langenbuch and the hex-homogenized HP-MR, steady and transient}
+\author{\garnet{} performance report}
+\date{November 2026}
+
+\sloppy
+\begin{document}
+\maketitle
+
+\input{sections/summary}
+\input{sections/codes}
+\input{sections/problems}
+\input{sections/method}
+\input{sections/steady}
+\input{sections/transient}
+\input{sections/discussion}
+
+\appendix
+\input{sections/reproduction}
+\input{sections/runs}
+
+\end{document}

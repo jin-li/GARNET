@@ -1,0 +1,44 @@
+staged: 2026-11-03T13:15:36+01:00 by poncet_m on cn000
+source: /data/user/poncet_m/GARNET
+commit: c81ee749a26418b964720dbfd8b40d518f59a20d 2026-11-02 15:12:35 +0100 Completed post-audit corrections and testing.
+branch: femffusion-perf-report
+
+# git status --short
+ M garnet/benchmarks/hpmr.py
+ M garnet/benchmarks/langenbuch.py
+ M garnet/femffusion.py
+ M tests/validation/test_hpmr.py
+ M tests/verification/test_femffusion_io.py
+?? benchmark-results/garnet-vs-femffusion/
+?? slurm/build_femffusion.sh
+?? slurm/run_perf_plan.sh
+?? slurm/stage_and_submit_femffusion_cmp.sh
+?? tests/validation/test_femffusion_equivalence.py
+?? tools/assess_garnet_vs_femffusion.py
+?? tools/export_femffusion.py
+?? tools/run_femffusion.py
+
+# git diff --stat
+ garnet/benchmarks/hpmr.py                | 50 +++++++++++++++++--
+ garnet/benchmarks/langenbuch.py          | 42 +++++++++++-----
+ garnet/femffusion.py                     | 82 +++++++++++++++++++++++++++++++-
+ tests/validation/test_hpmr.py            | 37 ++++++++++++++
+ tests/verification/test_femffusion_io.py | 73 +++++++++++++++++++++++++++-
+ 5 files changed, 263 insertions(+), 21 deletions(-)
+
+# FEMFFUSION
+commit: 1611f90fb14f0f1c0119f327234bfefba015e806 2025-07-28 11:27:32 +0200 Rendering all fomulas with github latex rendering
+{
+  "femffusion_commit": "1611f90fb14f0f1c0119f327234bfefba015e806",
+  "binary": "/data/user/poncet_m/FEMFFUSION/build-release/femffusion.exe",
+  "petsc": "3.19.6",
+  "slepc": "3.19.2",
+  "dealii": "9.5.2",
+  "cxx": "g++ ('PSI Environment Module') 12.3.0",
+  "mpi": "mpirun (Open MPI) 5.0.8",
+  "blas": "/opt/psi/Compiler/OpenBLAS/0.3.30/gcc/12.3.0/lib64",
+  "flags": "PETSc/SLEPc -O3 -march=znver2; deal.II Release + -march=znver2; FEMFFUSION Release",
+  "build_host": "cn000",
+  "modules": "gcc/12.3.0:cuda/12.9.1:libevent/2.1.12:pmix/5.0.8:libfabric/2.2.0-oss:openmpi/5.0.8:OpenBLAS/0.3.30",
+  "ld_library_path": "/opt/psi/Compiler/OpenBLAS/0.3.30/gcc/12.3.0/lib64:/opt/psi/overlays/Alps/Compiler/openmpi/5.0.8/gcc/12.3.0/lib64:/opt/psi/overlays/Alps/Compiler/openmpi/5.0.8/gcc/12.3.0/lib:/opt/psi/overlays/Alps/Libraries/libfabric/2.2.0-oss/lib64:/opt/psi/overlays/Alps/Libraries/pmix/5.0.8/lib64:/opt/psi/overlays/Alps/Libraries/pmix/5.0.8/lib:/opt/psi/overlays/Alps/Libraries/libevent/2.1.12/lib64:/opt/psi/overlays/Alps/Libraries/libevent/2.1.12/lib:/opt/psi/Programming/cuda/12.9.1/lib64:/opt/psi/Programming/gcc/12.3.0/lib64:/opt/psi/Programming/gcc/12.3.0/lib:/usr/lib64/slurmpmi/:"
+}
