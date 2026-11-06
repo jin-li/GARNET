@@ -42,6 +42,7 @@ when a required file is missing.
 | `test_sdpn_symmetric.py` | symmetrized SDPN blocks are self-adjoint and leave k unchanged; CG/GMRES/BiCGStab auto-selection, steady and transient; a transient `linear_solver` swap leaves the power history unchanged |
 | `test_sdpn_adjoint.py` | SP3/SPN/SDPN adjoint k and importance vs an independently assembled dense transpose, Cartesian and r-z |
 | `test_solver_convergence.py` | default and BiCGStab SDP3 converge on BIBLIS; power iteration stops on an error bound; excised cells carry no source |
+| `test_wielandt.py` | Wielandt-shifted outer iteration (fixed and adaptive) leaves the eigenpair unchanged: diffusion, SP3/SP5/SDP3, triangular prisms, r-z, forward and adjoint; converges on an upscatter core where plain power iteration stops early |
 | `test_boundary_conditions.py` | bc spec forms; symmetry-plane invariant |
 | `test_hex_lattice.py` | hex topology, k = k∞ invariant, BC ordering |
 | `test_tri_boundaries.py` | unmasked tri/hex outer edges take `bc`; axial active/inactive faces are mask boundaries; discontinuity-factor adjoint = dense left eigenvector |
@@ -97,6 +98,7 @@ there is a single source of truth for every published number.
 | `test_brantley_larsen_2d.py` | Brantley–Larsen 2D, SPN/SDPN | Carreño et al. 2024 Table 6 |
 | `test_biblis_iaea.py` | BIBLIS 2D, IAEA 3D | published k's, FEMFFUSION |
 | `test_vver440.py` | VVER-440 2D (tri + Gmsh mesh; the mesh cases need a FEMFFUSION checkout) | FEMFFUSION k = 1.00349 |
+| `test_femffusion_equivalence.py` | IAEA-3D and Langenbuch builders as FEMFFUSION's example inputs (needs a FEMFFUSION checkout) | node-by-node material map, cross sections, boundary conditions |
 | `test_twigl_langenbuch.py` | TWIGL 2D, Langenbuch/LMW 3D kinetics | published power histories |
 | `test_lra2d.py` | LRA-2D (ANL-7416) with adiabatic feedback | ANL specification and static `k`'s; adiabatic/Doppler laws; coupled adaptive run with the thermal startup predictor |
 | `test_anl7416_8a1.py` | ANL-7416 Problem 8-A1 (r-z kinetics) | book k's + Exhibit A power trace |

@@ -367,7 +367,9 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
 
     apply_A  : callable, x -> A x (A symmetric positive definite)
     b        : right-hand side (any shape; treated as a flat vector)
-    x0       : initial guess (warm start), not modified
+    x0       : initial guess (warm start), not modified; None means a zero
+               guess and skips the initial operator application (the inexact
+               group solves of a block preconditioner start from zero)
     inv_diag : elementwise inverse of diag(A) (the Jacobi preconditioner)
     precond  : optional callable r -> z applying a custom SPD preconditioner
                (e.g. neumann_preconditioner); default is Jacobi via inv_diag
@@ -430,9 +432,12 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
         xp.copyto(out, precond(source))
         return out
 
+    zero_start = x0 is None
+    if zero_start:
+        x0 = xp.zeros_like(b)
     if workspace is None:
         x = x0.copy()
-        r = b - apply_A(x)
+        r = b.copy() if zero_start else b - apply_A(x)
         z_buf = p_buf = ap_buf = None
     else:
         workspace.validate(x0)
@@ -440,11 +445,14 @@ def pcg(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
         z_buf, p_buf, ap_buf = workspace.z, workspace.p, workspace.ap
         if x0 is not x:
             xp.copyto(x, x0)
-        if workspace.operator_out:
-            apply_A(x, out=ap_buf)
+        if zero_start:
+            xp.copyto(r, b)
         else:
-            xp.copyto(ap_buf, apply_A(x))
-        xp.subtract(b, ap_buf, out=r)
+            if workspace.operator_out:
+                apply_A(x, out=ap_buf)
+            else:
+                xp.copyto(ap_buf, apply_A(x))
+            xp.subtract(b, ap_buf, out=r)
 
     def retry_with_fallback(iterations):
         if fallback_precond is None:
@@ -754,10 +762,11 @@ def gmres(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
 
     b_norm = norm(b)
     if b_norm == 0.0:
-        return xp.zeros_like(x0), 0       # A x = 0: exact solution
-    x = x0.copy()
+        return xp.zeros_like(b), 0        # A x = 0: exact solution
+    # x0 None: zero initial guess, without the initial operator application.
+    x = xp.zeros_like(b) if x0 is None else x0.copy()
     residual_tolerance = max(rtol * b_norm, atol)
-    r = b - apply_A(x)
+    r = b.copy() if x0 is None else b - apply_A(x)
     residual_norm = norm(r)
     if residual_norm <= residual_tolerance:
         return x, 0
@@ -1127,9 +1136,10 @@ def bicgstab(apply_A, b, x0, inv_diag, xp, rtol=1e-6, atol=0.0, maxiter=5000,
 
     b_norm2 = norm2(b)
     if b_norm2 == 0.0:
-        return xp.zeros_like(x0), 0       # A x = 0: exact solution
-    x = x0.copy()
-    r = b - apply_A(x)
+        return xp.zeros_like(b), 0        # A x = 0: exact solution
+    # x0 None: zero initial guess, without the initial operator application.
+    x = xp.zeros_like(b) if x0 is None else x0.copy()
+    r = b.copy() if x0 is None else b - apply_A(x)
     stop2 = max(rtol * b_norm2 ** 0.5, atol) ** 2
     if norm2(r) <= stop2:
         return x, 0

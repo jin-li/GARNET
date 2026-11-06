@@ -1,0 +1,1 @@
+DONE cputr-r4z50-abdf2-rt1e-3 RESULT hpmr3d-transient mesh=4 nz=50 device=cpu (numpy) unknowns=2904000 k=1.1184069 counters={'steps': 33, 'inners': 291318, 'sweeps': 811, 'rejected': 6} setup=0.000s solve=4049.851s warmup=0.000s wall=4050.1s

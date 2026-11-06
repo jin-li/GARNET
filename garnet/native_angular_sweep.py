@@ -213,7 +213,8 @@ class StreamingBlockP0Transport(P0GalerkinTransport):
             raise ValueError('streaming_fill_estimate must be >= 1')
         object.__setattr__(self, 'streaming_fill_estimate', fill)
         nc, na, ng = self.streaming.shape
-        base = self.memory_estimate_bytes
+        p0_constructor_peak = self.memory_estimate_bytes
+        base = self._post_setup_reservation_bytes
         # Additional correction, action, residual, output and packing/validation
         # vectors plus bounded block-map/cache metadata. Keep all GMRES and P0
         # allowances from the superclass, including its coarse retained factors.
@@ -221,12 +222,14 @@ class StreamingBlockP0Transport(P0GalerkinTransport):
         _budget(base+angular_workspace+_assembly_workspace(self.streaming), self.max_bytes)
         unique, block_map, candidates = [], [], {}
         retained = 0
-        peak = base+angular_workspace
+        assembly_peak = base+angular_workspace+_assembly_workspace(self.streaming)
+        peak = max(p0_constructor_peak, base+angular_workspace)
         for angle in range(na):
             groups = []
             for group in range(ng):
                 reserved = base+angular_workspace+retained
-                peak = max(peak, reserved+_assembly_workspace(self.streaming))
+                assembly_peak = max(assembly_peak, reserved+_assembly_workspace(self.streaming))
+                peak = max(peak, assembly_peak)
                 matrix = build_streaming_block(self.streaming, angle, group, max_bytes=self.max_bytes,
                                                reserved_bytes=reserved)
                 key = _matrix_sha256(matrix)
@@ -257,7 +260,11 @@ class StreamingBlockP0Transport(P0GalerkinTransport):
             scattering_in_L0=False, fission_in_L0=False, reflected_coupling_retained_in_A=True,
             angle_group_layout='flux[cell,angle,group]; block_map[angle][group]',
             block_map=tuple(block_map), required_block_count=na*ng, unique_factor_count=len(unique),
-            exact_csc_identity_required_for_reuse=True, base_p0_memory_estimate_bytes=base,
+            exact_csc_identity_required_for_reuse=True,
+            memory_accounting_version='p0_phase_liveness_v1',
+            base_p0_memory_estimate_bytes=p0_constructor_peak,
+            base_p0_post_setup_reservation_bytes=base,
+            streaming_assembly_peak_estimate_bytes=assembly_peak,
             angular_workspace_estimate_bytes=angular_workspace, retained_unique_charge_bytes=retained,
             memory_estimate_bytes=self.memory_estimate_bytes,
             factors=tuple(block.provenance for block in unique),

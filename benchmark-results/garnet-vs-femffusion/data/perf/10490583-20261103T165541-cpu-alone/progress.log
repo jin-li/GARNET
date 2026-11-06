@@ -1,0 +1,2 @@
+DONE cpu-hpmr-r3z40-alone RESULT hpmr3d mesh=3 nz=40 device=cpu (numpy) unknowns=1306800 k=1.1182427 counters={'outers': 252, 'inners': 16162} setup=0.223s solve=77.304s warmup=1.884s wall=237.8s
+DONE ff-iaea-fe3-r0-alone RESULT iaea3d FE3 r0 dofs=263552 k=1.029138 counters={'outers': 4, 'inners': 1049, 'matvecs': 40, 'precond_applications': None} assembly=6.255943 solve=42.836310000000005 wall=52.27

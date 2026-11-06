@@ -112,3 +112,16 @@ libraries on several arrangements. Read the reference-refinement results before
 interpreting an ADF improvement; these are diffusion comparisons, not a new
 qualification of transport-derived factors. The GH200 staging scripts prepare
 separate optional GPU campaigns and do not launch from the normal test suite.
+
+## Optional shifted eigenvalue iteration
+
+Standard low-level eigen solvers accept `solve(wielandt_shift=0.3)`; the
+triangular reactor builder forwards the same option through `core.steady`.
+Use `wielandt_mode="fixed"` or `"adaptive"` and select the FGMRES restart
+through `multigroup_kwargs`. The source-ratio startup estimate has a
+conditional mathematical scope; the true shifted residual and final physical
+balance and positivity checks still determine acceptance. Inspect
+`converged`, failure details and `multigroup_iterations`. Compare execution
+time and memory with an unshifted calculation at the same accuracy; upstream
+benchmark speedups do not establish the speedup for this fork's stricter solve.
+See the [algorithm and controls](../numerical_implementation_notes.md#wielandt-shifted-eigenvalue-iteration).

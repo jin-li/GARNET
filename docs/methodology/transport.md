@@ -38,6 +38,33 @@ for source-major input. The native SP3/SDP1 operator uses cell-major `(N,2,G)` s
 
 `CoupledMomentEigenSolver` uses a CPU full coupled loss solve. `CoupledMomentGPUEigenSolver` transfers the assembled CSR operator once and performs matvec/Arnoldi work on a real GPU; fission, normalization, reconstruction and independent residuals remain on the host. Its reviewed CuPy API/version and explicit device requirements are refusal conditions, not fallback suggestions. Neither path fits factors or silently regularizes the imported moments.
 
+## Native angular finite volume
+
+The separate native angular FV path uses full-sphere harmonics for scattering
+and conservative first-order upwind streaming on fitted 2D or 3D cells.
+Each face contributes its measure times $\Omega\cdot n$ using all spatial
+components, with equal and opposite interior contributions. Collision,
+scattering and fission sources are multiplied once by cell area in 2D or
+volume in 3D. The regional fission matrix is the supplied outer product
+$\chi_g\nu\Sigma_{f,g'}$, including its off-diagonal energy couplings and
+without normalizing $\chi$. The general homogenized full-fission-matrix input
+of the cuboid NEM solver is a separate interface.
+
+Specular Cartesian reflection uses an exact quadrature permutation, including
+polar reversal at z faces. A constant axial extrusion of height $h$ recovers
+the scaled 2D physical operator for z-even angular fields and reflective caps;
+z-odd fields require matched prescribed cap inflow instead. Auxiliary streaming
+diagonals and block preconditioners retain cap outflow and need not equal
+their scaled 2D counterparts. Their coarse operator is checked as $A_c=RAP$
+using discrete weighted half ranges, rather than a continuum face-area rule.
+
+Analytic prism/tetrahedron fluxes, P1/P7 reflection parity, tiny dense eigenpairs,
+axial vacuum leakage and existing 2D regressions verify this software path.
+Spatial/angular refinement and physical 3D reactor validation remain separate.
+Details are in the [streaming](../development/native-mesh-streaming.md),
+[transport](../development/native-mesh-transport.md) and
+[P0 correction](../development/native-angular-p0.md) contracts.
+
 ## Homogeneous hierarchy condensation
 
 The opt-in CPU `condense_moment_hierarchy` uses an exhaustive disjoint fine-group partition and native orders 0 through 3. At homogeneous $B\to0$ it constructs leading hierarchy weights:

@@ -104,6 +104,48 @@ external process memory/time ceiling for physical calculations. The
 `external_memory_cap=True` argument declares that the caller did so; it does
 not install or verify a ceiling. Large states require this declaration.
 
+`estimate_memory(mesh, coefficients, method=..., preconditioner=..., restart=...,
+batch_cells=..., max_outer_iterations=...)` exposes the same pre-build estimate
+without constructing FV operators or factors. Constructor diagnostics retain
+the complete breakdown in `memory_estimate`. The internal `max_bytes` and
+external process ceilings are unchanged by this accounting.
+
+The estimate separates storage by lifetime:
+
+- Each corrected group retains its host CSR matrix, three padded row gathers
+  (cell loss, interior currents, boundary currents), gradient dictionaries with
+  small NumPy vectors, scalar diagonals, and its TPFA basis. TPFA retains ELL
+  indices/weights and diagonals. These costs scale with the group count.
+- Gradient support is bounded by the owner and face neighbors. A corrected
+  cell row includes those supports from its face neighbors too. The estimator
+  derives row and face width allowances from this topology, including padded
+  gather widths. It does not allocate cell-by-group-by-group matrices.
+- Temporary row/current dictionaries, reconstruction equations, CSR-building
+  Python lists and copied gradients belong to one group under construction.
+  Their byte allowances are counted once, alongside all retained groups.
+  They are not multiplied by ILU fill or by the group count.
+- CPU ILU retains SuperLU sparse factor arrays and permutation/bookkeeping
+  data. The planning allowance uses up to `20*matrix_nnz + 2*N` factor entries,
+  capped at `2*N*N`, with 24 bytes per entry plus per-row bookkeeping.
+  This uses the fixed helper's fill factor of 20; it is not a promise that
+  SuperLU numerical pivoting or internal allocation obeys that entry count.
+  Ordering/factorization workspace receives three factor-size allowances plus
+  sparse conversion and per-row space. Only one group's factorization workspace
+  overlaps retained factors. The setup transient is the larger of this workspace
+  and the one-group Python construction allowance.
+- Shared input buffers, mesh records, Krylov/state vectors, bounded regional
+  batches, action gather temporaries, and 16 KiB per permitted outer-history
+  entry are counted separately. History storage therefore participates in
+  admission before the solver runs.
+
+Python dictionary/object costs and native workspace are conservative planning
+allowances, not allocator guarantees. Topology with a high-degree cell can
+force nearly dense corrected gathers and is rejected if the estimate exceeds
+`max_bytes`. A source change to retained operator fields or the fixed ILU helper
+requires reviewing this estimate. Traced setup measurements and an actual
+externally enforced process cap remain necessary; neither an estimate below
+the cap nor a small synthetic mesh establishes a physical memory qualification.
+
 Start with a small matched pin case. Measure setup, factor storage and peak
 process memory before admitting a large assembly. Use an immutable source/data
 snapshot and run physical comparisons without competing timed calculations.

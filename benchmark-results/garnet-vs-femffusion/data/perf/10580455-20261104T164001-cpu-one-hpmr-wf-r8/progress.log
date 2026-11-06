@@ -1,0 +1,1 @@
+DONE cpu-hpmr-wf-r8z100 RESULT hpmr3d mesh=8 nz=100 device=cpu (numpy) unknowns=23232000 k=1.1185921 counters={'outers': 10, 'inners': 13335, 'multigroup': 61} setup=6.590s solve=1835.354s warmup=476.052s wall=2325.9s

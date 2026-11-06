@@ -121,18 +121,17 @@ class NativeMeshTransport:
             if spec == 'vacuum':
                 permutations.append(None)
                 continue
-            if abs(abs(normal[0])-1) <= 2e-13 and abs(normal[1]) <= 2e-13:
-                axis, tangent = 'x', 1
-            elif abs(abs(normal[1])-1) <= 2e-13 and abs(normal[0]) <= 2e-13:
-                axis, tangent = 'y', 0
-            else:
-                raise ValueError('reflective normal must align with Cartesian x or y axis')
+            axis_index = int(np.argmax(np.abs(normal)))
+            if (abs(abs(normal[axis_index])-1) > 2e-13 or
+                    np.any(np.abs(np.delete(normal, axis_index)) > 2e-13)):
+                raise ValueError('reflective normal must align with a Cartesian axis')
+            axis = 'xyz'[axis_index]
+            tangents = [i for i in range(3) if i != axis_index]
             permutation = s.quadrature.reflection(axis)
-            speed = directions[:, :2] @ normal
+            speed = directions[:, :s.dimension] @ normal
             if (not np.array_equal(permutation[permutation], np.arange(na)) or
                     not np.array_equal(s.quadrature.weights[permutation], s.quadrature.weights) or
-                    not np.allclose(directions[permutation, tangent], directions[:, tangent], atol=2e-13, rtol=0) or
-                    not np.allclose(directions[permutation, 2], directions[:, 2], atol=2e-13, rtol=0) or
+                    not np.allclose(directions[permutation][:, tangents], directions[:, tangents], atol=2e-13, rtol=0) or
                     not np.allclose(speed[permutation], -speed, atol=2e-13, rtol=0)):
                 raise ValueError('quadrature does not provide exact specular index reflection')
             permutations.append(permutation)
@@ -148,11 +147,11 @@ class NativeMeshTransport:
         for cell, material in enumerate(s.source.cell_material_ids):
             diagonal[cell] = s.area[cell]*s.total[material]
         for (left, right), area, normal in zip(s.owners, s.measures, s.normals):
-            coefficient = area*(directions[:, :2] @ normal)
+            coefficient = area*(directions[:, :s.dimension] @ normal)
             diagonal[left] += np.maximum(coefficient, 0)[:, None]
             diagonal[right] += np.maximum(-coefficient, 0)[:, None]
         for owner, area, normal in zip(s.boundary_owners, s.boundary_measures, s.boundary_normals):
-            diagonal[owner] += np.maximum(area*(directions[:, :2] @ normal), 0)[:, None]
+            diagonal[owner] += np.maximum(area*(directions[:, :s.dimension] @ normal), 0)[:, None]
         for name, value in (('boundary_conditions', bc), ('reflection_permutations', tuple(permutations)),
                             ('chi', _readonly(np.stack(chi))), ('nu_sigma_f', _readonly(np.stack(nsf))),
                             ('kappa_fission', _readonly(np.stack(kappa))),
@@ -180,7 +179,7 @@ class NativeMeshTransport:
         for face, permutation in enumerate(self.reflection_permutations):
             if permutation is not None:
                 owner = s.boundary_owners[face]
-                speed = s.quadrature.directions[:, :2] @ s.boundary_normals[face]
+                speed = s.quadrature.directions[:, :s.dimension] @ s.boundary_normals[face]
                 indices = np.flatnonzero(speed < 0)
                 incoming[face, indices] = flux[owner, permutation[indices]]
         return incoming
@@ -193,7 +192,7 @@ class NativeMeshTransport:
         for face, permutation in enumerate(self.reflection_permutations):
             if permutation is not None:
                 owner = s.boundary_owners[face]
-                speed = s.quadrature.directions[:, :2] @ s.boundary_normals[face]
+                speed = s.quadrature.directions[:, :s.dimension] @ s.boundary_normals[face]
                 indices = np.flatnonzero(speed < 0)
                 result[owner, indices] += (s.boundary_measures[face]*speed[indices, None]
                                            * flux[owner, permutation[indices]])

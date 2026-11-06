@@ -41,7 +41,8 @@ from .backend import asnumpy, device_name, get_backend, synchronize
 from .blend import MaterialBlend
 from .grid import Grid
 from . import kernels
-from .linalg import bicgstab, fgmres, get_linear_solver, neumann_preconditioner, pcg
+from .linalg import (FGMRESWorkspace, bicgstab, fgmres, get_linear_solver,
+                     gmres, neumann_preconditioner, pcg)
 from .materials import Material
 from .mesh import Mesh, MeshGrid, MeshGroupOperator
 from .sp3 import SP3GroupOperator
@@ -118,6 +119,9 @@ class Result:
     scalar_flux_min: float = float('nan')
     scalar_flux_scale: float = float('nan')
     scalar_flux_negative_tolerance: float = float('nan')
+    # Wielandt-shifted solves only: FGMRES applications of the shifted
+    # multigroup operator, summed over the outers (0 on the plain path).
+    multigroup_iterations: int = 0
 
     @property
     def flux_numpy(self) -> np.ndarray:
@@ -125,9 +129,11 @@ class Result:
 
     def __repr__(self):
         status = "converged" if self.converged else "NOT CONVERGED"
+        mg = (f" / {self.multigroup_iterations} multigroup"
+              if self.multigroup_iterations else "")
         return (
             f"Result(k_eff={self.k_eff:.6f}, {status}, "
-            f"{self.outer_iterations} outers / {self.inner_iterations} inners, "
+            f"{self.outer_iterations} outers{mg} / {self.inner_iterations} inners, "
             f"{self.solve_seconds:.2f} s on {self.device})"
         )
 
@@ -281,6 +287,208 @@ class Fields:
         for g in range(1, self.n_groups):
             src += self.nu_sigma_f[g] * phi_by_group[g]
         return src
+
+
+# Adaptive Wielandt shift (wielandt_mode="adaptive"): the offset delta of
+# k_s = max(k, k_anchor) + delta is steered so each shifted solve costs this many
+# FGMRES iterations -- a solve cheaper than that affords a smaller shift (a
+# faster outer contraction), a dearer one asks for a larger one. delta stays
+# within [max(_ADAPTIVE_SHIFT_FLOOR, _ADAPTIVE_DK_MARGIN * |dk|),
+# _ADAPTIVE_SHIFT_CEILING * wielandt_shift]; the |dk| margin keeps k_s above
+# the converging estimate.
+_ADAPTIVE_TARGET_ITERATIONS = 6.0
+_ADAPTIVE_SHIFT_FLOOR = 1e-4
+_ADAPTIVE_SHIFT_CEILING = 10.0
+_ADAPTIVE_DK_MARGIN = 10.0
+WIELANDT_MODES = ("fixed", "adaptive")
+
+_MULTIGROUP_DEFAULTS = dict(scatter_sweeps=None, inner_rtol=0.1, inner_maxiter=200,
+                            restart=20, maxiter=200, rtol_cap=0.1)
+
+
+class _ShiftedMultigroupSystem:
+    r"""The Wielandt-shifted multigroup system of one outer iteration.
+
+    .. math::
+
+       (M - \lambda_s F)\,\Psi = b, \qquad \lambda_s = 1/k_s,
+
+    over every group at once: ``M`` is the within-group operators minus the
+    in-scatter coupling, ``F`` the fission coupling (rank one in energy per
+    cell). The group state ``Psi`` is whatever the angular approximation
+    keeps -- the scalar flux for diffusion, the moment stack for SP3/SPN/SDPN
+    -- stacked to ``(G, *state)``; the scalar source enters a group's rows
+    through the solver's ``_rhs`` (and cylindrical ``rhs_weight``) and the
+    scalar flux is read back through ``_phi``, exactly as in the plain group
+    sweep, so every subclass is covered by the same code, forward and adjoint.
+
+    It is solved by flexible GMRES, right-preconditioned by ``scatter_sweeps``
+    Gauss--Seidel sweeps over the groups of ``M`` alone (no fission), each
+    within-group system solved inexactly (``inner_rtol``) by the solver's own
+    Krylov method and preconditioner. Fission is left to FGMRES: near the
+    shift, ``(M - lambda_s F) M^{-1}`` has one isolated eigenvalue close to
+    ``1 - k/k_s`` and the rest near 1, which Krylov resolves in a few
+    iterations, whereas a fission-lagged sweep would converge only at the
+    rate ``k/k_s``. The same design is used by the monolithic transient step
+    (:mod:`garnet.multigroup`). FGMRES stores every preconditioned vector, so
+    the variable inner iteration counts are admissible.
+    """
+
+    def __init__(self, solver, adjoint, production_weights, emission_spectrum,
+                 batch, options):
+        unknown = set(options) - set(_MULTIGROUP_DEFAULTS)
+        if unknown:
+            raise ValueError(f"unknown multigroup_kwargs {sorted(unknown)}; "
+                             f"use {sorted(_MULTIGROUP_DEFAULTS)}")
+        opts = dict(_MULTIGROUP_DEFAULTS, **options)
+        G = solver.n_groups
+        # Sweep in the order the scattering mostly flows: fast to thermal for
+        # the forward problem, the reverse for the adjoint (transposed
+        # downscatter). One sweep then inverts the in-scatter exactly unless
+        # there is upscatter, which gets a second sweep by default.
+        self.order = tuple(range(G - 1, -1, -1) if adjoint else range(G))
+        upscatter = any(solver.sigma_s[h][g] is not None
+                        for g in range(G) for h in range(g + 1, G))
+        if opts["scatter_sweeps"] is None:
+            opts["scatter_sweeps"] = 2 if upscatter else 1
+        self.scatter_sweeps = int(opts["scatter_sweeps"])
+        self.inner_rtol = float(opts["inner_rtol"])
+        self.inner_maxiter = int(opts["inner_maxiter"])
+        self.restart = int(opts["restart"])
+        self.maxiter = int(opts["maxiter"])
+        self.rtol_cap = float(opts["rtol_cap"])
+        if self.scatter_sweeps < 1:
+            raise ValueError("scatter_sweeps must be positive")
+        if not np.isfinite(self.rtol_cap) or not 0.0 < self.rtol_cap < 1.0:
+            raise ValueError("rtol_cap must lie in (0, 1)")
+        if not 0.0 < self.inner_rtol < 1.0:
+            raise ValueError("inner_rtol must lie in (0, 1)")
+        if min(self.inner_maxiter, self.restart, self.maxiter) < 1:
+            raise ValueError("inner_maxiter, restart and maxiter must be positive")
+        self.solver = solver
+        self.xp = solver.xp
+        self.groups = solver.n_groups
+        self.adjoint = bool(adjoint)
+        self.production = production_weights
+        self.emission = emission_spectrum
+        self.batch = batch
+        self.components = [solver._linear_components(g, adjoint)
+                           for g in range(self.groups)]
+        # The first sweep starts every group solve from zero; the built-in
+        # Krylov solvers then skip the initial operator application.
+        self.zero_start = solver._linsolve in (pcg, gmres, bicgstab)
+        self.lam_s = 0.0
+        self.inner_iterations = 0
+        self.workspace = None
+
+    # -- couplings ------------------------------------------------------------
+    def _phis(self, X):
+        s = self.solver
+        return self.xp.stack([s._phi(X[g], self.adjoint) for g in range(self.groups)])
+
+    def _in_scatter(self, g, phi):
+        """Sum over g' != g of Sigma_s(g' -> g) phi_g' (transposed for the
+        adjoint), or None when group g receives nothing."""
+        xp = self.xp
+        if self.batch is not None:
+            q = xp.zeros_like(phi[0])
+            kernels.group_accumulate(xp, q, self.batch["scatter_to_from"][g], phi)
+            return q
+        s, q = self.solver, None
+        for h in range(self.groups):
+            sig = s.sigma_s[g][h] if self.adjoint else s.sigma_s[h][g]
+            if h != g and sig is not None:
+                term = sig * phi[h]
+                q = term if q is None else q + term
+        return q
+
+    def _production(self, phi):
+        xp = self.xp
+        if self.batch is not None:
+            out = xp.zeros_like(phi[0])
+            return kernels.group_accumulate(xp, out, self.batch["production_weights"], phi)
+        out = self.production[0] * phi[0]
+        for h in range(1, self.groups):
+            out = out + self.production[h] * phi[h]
+        return out
+
+    def _into_rows(self, g, q):
+        """Group g's block right-hand side for the isotropic source q."""
+        s = self.solver
+        if s._src_weight is not None:
+            q = q * s._src_weight
+        return s._rhs(g, _as_dtype(self.xp, q, s.dtype), self.adjoint)
+
+    # -- operator and preconditioner -----------------------------------------
+    def apply(self, X):
+        phi = self._phis(X)
+        fission = self._production(phi) if self.lam_s else None
+        out = self.xp.empty_like(X)
+        for g in range(self.groups):
+            q = self._in_scatter(g, phi)
+            if fission is not None:
+                term = (self.lam_s * self.emission[g]) * fission
+                q = term if q is None else q + term
+            out[g] = self.components[g][0](X[g])
+            if q is not None:
+                out[g] -= self._into_rows(g, q)
+        return out
+
+    def precondition(self, R):
+        """Approximate M^{-1} R: Gauss--Seidel sweeps over the groups, the
+        in-scatter from the freshest group values, fission omitted."""
+        xp, s = self.xp, self.solver
+        Z = xp.zeros_like(R)
+        phi = xp.zeros((self.groups,) + tuple(s._phi(R[0], self.adjoint).shape),
+                       dtype=R.dtype)
+        for sweep in range(self.scatter_sweeps):
+            for g in self.order:
+                rhs = R[g]
+                q = self._in_scatter(g, phi)
+                if q is not None:
+                    rhs = rhs + self._into_rows(g, q)
+                if not bool(xp.any(rhs)):
+                    Z[g] = 0
+                    phi[g] = 0
+                    continue
+                apply_A, precond = self.components[g]
+                x0 = None if (sweep == 0 and self.zero_start) else Z[g]
+                Z[g], n_it = s._linsolve(
+                    apply_A, rhs, x0, s.ops[g].inv_diag, xp,
+                    rtol=self.inner_rtol, maxiter=self.inner_maxiter,
+                    precond=precond, raise_on_fail=False)
+                phi[g] = s._phi(Z[g], self.adjoint)
+                self.inner_iterations += n_it
+        return Z
+
+    def solve(self, state, fission_source, coefficient, lam_s, rtol):
+        """New group state for (M - lam_s F) Psi = coefficient * chi (x) source.
+
+        ``state`` (the current iterate) is the initial guess. Returns the new
+        per-group state list and the FGMRES iteration count.
+        """
+        xp = self.xp
+        self.lam_s = float(lam_s)
+        X0 = xp.stack(state)
+        b = xp.stack([self._into_rows(g, coefficient * self.emission[g] * fission_source)
+                      for g in range(self.groups)])
+        if self.workspace is None:
+            self.workspace = FGMRESWorkspace.like(X0, restart=self.restart)
+        # rtol is relative to ||b||. A tolerance relative to the unshifted
+        # source (looser by lambda / (lambda - lambda_s)) was tried: the
+        # noisier solves cost Anderson more outers than they saved (HP-MR
+        # r2/nz20, shift 0.1: 3670 -> 11777 inner iterations).
+        X, n_mg = fgmres(self.apply, b, X0, None, xp, precond=self.precondition,
+                         rtol=rtol, restart=self.restart, maxiter=self.maxiter,
+                         raise_on_fail=False, workspace=self.workspace)
+        X = X.copy()                     # X is the workspace's; free it for the next solve
+        return [X[g] for g in range(self.groups)], n_mg
+
+
+def _as_dtype(xp, value, dtype):
+    """``value`` as ``dtype`` without a copy when it already is (keeps an
+    FP32 solve FP32 against float64 host scalars)."""
+    return xp.asarray(value, dtype=dtype)
 
 
 class _PowerIterationSolver:
@@ -474,7 +682,9 @@ class _PowerIterationSolver:
               k_guess: float = 1.0, verbose: bool = False,
               adjoint: bool = False, anderson_depth: int = 8,
               state0=None, tol_balance: float | None = None,
-              tol_fixed_source: float | None = None, max_group_sweeps: int = 100) -> Result:
+              tol_fixed_source: float | None = None, max_group_sweeps: int = 100,
+              wielandt_shift: float | None = None, wielandt_mode: str = "fixed",
+              multigroup_kwargs: dict | None = None) -> Result:
         """Run power iteration until |dk| < tol_k and the relative L2 change of
         the normalized fission source < tol_source, with the full current-state
         group equation residual < tol_balance (default: tol_source).
@@ -530,6 +740,53 @@ class _PowerIterationSolver:
         operator, and the block solvers exchange their source and scalar-flux
         moment weights; for them the returned flux is the scalar importance
         src_weights . U*.
+
+        wielandt_shift : None (default) for the plain power iteration above, or
+        a positive ``delta_k`` for the Wielandt-shifted iteration. Each outer
+        after the first then solves, with ``lambda = 1/k`` and a shift
+        ``k_s > k``,
+
+            (M - lambda_s F) Psi_new = (lambda - lambda_s) F Psi,
+
+        and updates ``lambda_new = lambda_s + (lambda - lambda_s) S/S_new`` from
+        the fission-source totals S. The error of the fundamental mode then
+        contracts per outer by ``(lambda_0 - lambda_s)/(lambda_1 - lambda_s)``
+        instead of the dominance ratio ``k_1/k_0``: a smaller shift means
+        fewer outers but a shifted system closer to singular, hence more
+        FGMRES iterations per outer. The shifted system couples all groups
+        through fission and scattering (upscatter included) and is solved by
+        FGMRES preconditioned with the group sweep (see
+        :class:`_ShiftedMultigroupSystem`). Its residual must satisfy
+        ``tol_fixed_source`` before k or Anderson history advances. The first
+        outer settles the plain fixed-source problem to supply the first k
+        estimate. The eigenpair is the same,
+        and Anderson acceleration (``anderson_depth``) may be combined with it.
+        Upstream benchmarks reported benefits for strong upscatter and
+        adjoints; those timings used upstream's looser inner-solve policy and
+        do not establish a speedup with this solver's settled-source gates.
+
+        wielandt_mode : how ``k_s`` follows the iteration.
+        ``k_anchor`` is the largest component ratio of settled output to input
+        source; after a shifted solve it is mapped back to the k scale. This
+        is a Collatz upper bound for exact entrywise nonnegative source maps;
+        for moment discretizations and inexact solves it is an anchor estimate,
+        still subject to the residual and physical-flux checks. Negative source
+        entries (including admitted roundoff) decline ratio updates. Expanding
+        zero source support delays shifting until a finite estimate exists.
+        ``"fixed"`` (default): ``k_s = max(k, k_anchor) + wielandt_shift``
+        frozen after startup (re-anchored only if k climbs past half the offset).
+        ``"adaptive"``: ``k_s = max(k, k_anchor) + delta`` at every outer, with
+        ``delta`` starting at ``wielandt_shift`` and steered so a shifted solve
+        costs about ``_ADAPTIVE_TARGET_ITERATIONS`` FGMRES iterations (cheap
+        solves afford a smaller shift), kept above ten times the latest |dk|.
+
+        multigroup_kwargs : tunes the shifted solve: ``scatter_sweeps`` (2 with
+        upscatter, else 1), ``inner_rtol`` (0.1), ``inner_maxiter`` (200),
+        ``restart`` (20), ``maxiter`` (200) and ``rtol_cap`` (0.1, an upper
+        bound on the FGMRES tolerance, further limited by the fixed-source
+        precision requirement).
+        FGMRES keeps ``2*restart + 4`` copies of the multigroup state, which
+        on the largest GPU meshes calls for a shorter ``restart``.
         """
         xp, G = self.xp, self.n_groups
         dtype_eps = np.finfo(self.dtype).eps
@@ -551,6 +808,14 @@ class _PowerIterationSolver:
         def integral(field):
             return xp.sum(field if weights is None else weights * field)
         norm_measure = self.grid.n_cells if weights is None else xp.sum(weights)
+        if wielandt_mode not in WIELANDT_MODES:
+            raise ValueError(f"wielandt_mode must be one of {WIELANDT_MODES}")
+        if wielandt_shift is not None:
+            wielandt_shift = float(wielandt_shift)
+            if not (np.isfinite(wielandt_shift) and wielandt_shift > 0.0):
+                raise ValueError("wielandt_shift must be a positive, finite delta_k")
+        elif multigroup_kwargs:
+            raise ValueError("multigroup_kwargs applies only with wielandt_shift")
         synchronize(xp)
         t0 = time.perf_counter()
 
@@ -576,6 +841,12 @@ class _PowerIterationSolver:
             self.xp.asarray(s, dtype=self.dtype).copy() for s in state0]
         batch = self._make_group_batch(state, adjoint, production_weights)
         linear_components = [self._linear_components(g, adjoint) for g in range(G)]
+        k_s = delta = n_mg = None              # Wielandt shift state
+        k_anchor = float("inf")
+        shifted = (None if wielandt_shift is None else _ShiftedMultigroupSystem(
+            self, adjoint, production_weights, emission_spectrum, batch,
+            dict(multigroup_kwargs or {})))
+        mg_total = 0
 
         def fission_source():
             """Sum production_weights[g] * phi0_g with optional group batching."""
@@ -702,71 +973,134 @@ class _PowerIterationSolver:
 
         for outer in range(1, max_outer + 1):
             fsrc_in = fsrc                       # this iteration's input (for Anderson)
-            # Anderson's map is P L^-1 E S, not one group sweep with hidden
-            # intergroup state. Settle scattering from the FIRST outer and do
-            # not use k to scale this fixed-source solve: its production ratio
-            # determines the next k after all group equations have balanced.
-            scattering_settled = False
-            for group_sweep in range(max_group_sweeps):
-                for g in range(G):
-                    # Keep the FP32 RHS and the batched scalar flux current.
-                    rhs = group_rhs(g, fsrc, 1.)
-                    if not bool(xp.any(rhs)):
-                        # The exact homogeneous solution avoids a Krylov
-                        # relative-to-zero stopping target in empty groups.
-                        state[g], n_it = xp.zeros_like(state[g]), 0
-                    else:
-                        state[g], n_it = self._linsolve(
-                            linear_components[g][0], rhs, state[g],
-                            self.ops[g].inv_diag, xp, rtol=rtol,
-                            precond=linear_components[g][1])
-                    if batch is not None:
-                        batch["phi"][g] = self._phi(state[g], adjoint)
-                    inner_total += n_it
-                fixed_source_error = current_balance(fsrc)
-                if fixed_source_error <= tol_fixed_source:
-                    scattering_settled = True
-                    break
-                krylov_restart = (_fixed_source_krylov_restart(
-                    xp, state, max_group_sweeps - 1)
-                    if G >= 3 and group_sweep == 0 else 0)
-                if krylov_restart:
-                    # Many-group upscatter can have a dominance ratio near
-                    # one. Krylov acceleration solves the same fixed-source
-                    # equations; each preconditioner application is one group
-                    # sweep and consumes the remaining declared sweep budget.
-                    rows = []
-                    for g in range(G):
-                        source = xp.asarray(emission_spectrum[g] * fsrc, dtype=self.dtype)
-                        if self._src_weight is not None:
-                            source = source * self._src_weight
-                        rows.append(self._rhs(g, source, adjoint))
-                    values, _ = fgmres(
-                        coupled_loss, xp.stack(rows), xp.stack(state), None,
-                        xp, rtol=.1 * tol_fixed_source,
-                        maxiter=max_group_sweeps - 1,
-                        restart=krylov_restart,
-                        precond=scattering_preconditioner,
-                        raise_on_fail=False)
-                    state = [values[g] for g in range(G)]
-                    if batch is not None:
-                        for g in range(G):
-                            batch["phi"][g] = self._phi(state[g], adjoint)
-                    fixed_source_error = current_balance(fsrc)
-                    scattering_settled = fixed_source_error <= tol_fixed_source
-                    break
-            if not scattering_settled:
-                hist = []
-                failure_reason = 'fixed-source group budget exhausted before requested balance'
-                break
 
-            fsrc_new = fission_source()
-            if not physical_source(fsrc_new):
-                hist = []
-                failure_reason = 'nonphysical fixed-source iterate'
-                break
-            total_new = integral(fsrc_new)
-            k_new = float(total_new / total)
+            if shifted is not None and outer > 1 and np.isfinite(k_anchor):
+                lam = 1.0 / k
+                if wielandt_mode == "fixed":
+                    # Anchor above the component-ratio estimate, then hold
+                    # the shift fixed unless the k estimate approaches it.
+                    if k_s is None or k > k_s - 0.5 * wielandt_shift:
+                        k_s = max(k, k_anchor) + wielandt_shift
+                else:
+                    # Adaptive: delta is steered by the cost of
+                    # the previous shifted solve (see _ADAPTIVE_TARGET_ITERATIONS).
+                    if delta is None:
+                        delta = wielandt_shift
+                    else:
+                        ratio = max(n_mg, 1) / _ADAPTIVE_TARGET_ITERATIONS
+                        delta = min(_ADAPTIVE_SHIFT_CEILING * wielandt_shift,
+                                    max(_ADAPTIVE_SHIFT_FLOOR, _ADAPTIVE_DK_MARGIN * dk,
+                                        delta * ratio ** 0.5))
+                    k_s = max(k, k_anchor) + delta
+                lam_s = 1.0 / k_s
+                if mg_total == 0:
+                    hist = []                    # the map changed: fresh Anderson history
+                state, n_mg = shifted.solve(state, fsrc, lam - lam_s, lam_s, min(shifted.rtol_cap, rtol))
+                mg_total += n_mg
+                if verbose:
+                    print(f"  outer {outer:4d}  shifted solve: k_s = {k_s:.6f}, "
+                          f"{n_mg} FGMRES iterations, rtol {rtol:.1e}")
+                if batch is not None:
+                    batch["phi"][...] = xp.stack([self._phi(state[g], adjoint)
+                                                  for g in range(G)])
+                fsrc_new = fission_source()
+                # Require the actual shifted equations to settle before updating
+                # k or Anderson history, just as on the plain fixed-source path.
+                fixed_source_error = current_balance(
+                    lam_s * fsrc_new + (lam - lam_s) * fsrc)
+                if fixed_source_error > tol_fixed_source:
+                    hist = []
+                    failure_reason = 'shifted multigroup budget exhausted before requested balance'
+                    break
+                if not physical_source(fsrc_new):
+                    hist = []
+                    failure_reason = 'nonphysical shifted iterate'
+                    break
+                total_new = integral(fsrc_new)
+                k_new = 1.0 / (lam_s + (lam - lam_s) * float(total / total_new))
+                positive = fsrc > 0
+                if (bool(xp.all(fsrc >= 0)) and bool(xp.all(fsrc_new >= 0))
+                        and not bool(xp.any((~positive) & (fsrc_new > 0)))):
+                    ratio_max = float(xp.max(fsrc_new[positive] / fsrc[positive]))
+                    if ratio_max > 0:
+                        k_anchor = 1.0 / (lam_s + (lam - lam_s) / ratio_max)
+            else:
+                # Anderson's map is P L^-1 E S, not one group sweep with hidden
+                # intergroup state. Settle scattering from the FIRST outer and do
+                # not use k to scale this fixed-source solve: its production ratio
+                # determines the next k after all group equations have balanced.
+                scattering_settled = False
+                for group_sweep in range(max_group_sweeps):
+                    for g in range(G):
+                        # Keep the FP32 RHS and the batched scalar flux current.
+                        rhs = group_rhs(g, fsrc, 1.)
+                        if not bool(xp.any(rhs)):
+                            # The exact homogeneous solution avoids a Krylov
+                            # relative-to-zero stopping target in empty groups.
+                            state[g], n_it = xp.zeros_like(state[g]), 0
+                        else:
+                            state[g], n_it = self._linsolve(
+                                linear_components[g][0], rhs, state[g],
+                                self.ops[g].inv_diag, xp, rtol=rtol,
+                                precond=linear_components[g][1])
+                        if batch is not None:
+                            batch["phi"][g] = self._phi(state[g], adjoint)
+                        inner_total += n_it
+                    fixed_source_error = current_balance(fsrc)
+                    if fixed_source_error <= tol_fixed_source:
+                        scattering_settled = True
+                        break
+                    krylov_restart = (_fixed_source_krylov_restart(
+                        xp, state, max_group_sweeps - 1)
+                        if G >= 3 and group_sweep == 0 else 0)
+                    if krylov_restart:
+                        # Many-group upscatter can have a dominance ratio near
+                        # one. Krylov acceleration solves the same fixed-source
+                        # equations; each preconditioner application is one group
+                        # sweep and consumes the remaining declared sweep budget.
+                        rows = []
+                        for g in range(G):
+                            source = xp.asarray(emission_spectrum[g] * fsrc, dtype=self.dtype)
+                            if self._src_weight is not None:
+                                source = source * self._src_weight
+                            rows.append(self._rhs(g, source, adjoint))
+                        values, _ = fgmres(
+                            coupled_loss, xp.stack(rows), xp.stack(state), None,
+                            xp, rtol=.1 * tol_fixed_source,
+                            maxiter=max_group_sweeps - 1,
+                            restart=krylov_restart,
+                            precond=scattering_preconditioner,
+                            raise_on_fail=False)
+                        state = [values[g] for g in range(G)]
+                        if batch is not None:
+                            for g in range(G):
+                                batch["phi"][g] = self._phi(state[g], adjoint)
+                        fixed_source_error = current_balance(fsrc)
+                        scattering_settled = fixed_source_error <= tol_fixed_source
+                        break
+                if not scattering_settled:
+                    hist = []
+                    failure_reason = 'fixed-source group budget exhausted before requested balance'
+                    break
+
+                fsrc_new = fission_source()
+                if not physical_source(fsrc_new):
+                    hist = []
+                    failure_reason = 'nonphysical fixed-source iterate'
+                    break
+                total_new = integral(fsrc_new)
+                k_new = float(total_new / total)
+                # For a nonnegative source map this component ratio bounds k.
+                # For moment discretizations it is a startup estimate, still
+                # subject to the shifted residual and physical-flux gates.
+                # The first adjoint k estimate can be far below the dominant
+                # eigenvalue; k + delta alone could cross the dominant pole.
+                if shifted is not None:
+                    positive = fsrc > 0
+                    valid_ratio = (bool(xp.all(fsrc >= 0)) and bool(xp.all(fsrc_new >= 0))
+                                   and not bool(xp.any((~positive) & (fsrc_new > 0))))
+                    k_anchor = (float(xp.max(fsrc_new[positive] / fsrc[positive]))
+                                if valid_ratio else float('inf'))
 
             diff = fsrc_new / total_new - fsrc / total
             src_err = float(xp.sqrt(integral(diff * diff) / integral((fsrc_new / total_new) ** 2)))
@@ -850,6 +1184,8 @@ class _PowerIterationSolver:
         if not converged:
             balance_error = current_balance()
         physical_scalar_flux()
+        if shifted is not None:
+            inner_total += shifted.inner_iterations
         # Retain the converged per-group state (moment vectors for the block
         # solvers) so a transient can start from the exact steady moments.
         self.state = state
@@ -871,6 +1207,7 @@ class _PowerIterationSolver:
             scalar_flux_min=scalar_min,
             scalar_flux_scale=scalar_scale,
             scalar_flux_negative_tolerance=scalar_negative_tolerance,
+            multigroup_iterations=mg_total,
         )
 
 

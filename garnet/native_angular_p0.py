@@ -78,11 +78,12 @@ def _pack_factor(factor, *, reserved_bytes, max_bytes, source_array_bytes):
 
 
 def _half_range(quadrature, area, normal):
-    speed = quadrature.directions[:, :2] @ normal
+    directions = quadrature.directions[:, :len(normal)]
+    speed = directions @ normal
     positive = float(area*np.dot(quadrature.weights, np.maximum(speed, 0))/(4*np.pi))
     negative = float(area*np.dot(quadrature.weights, np.maximum(-speed, 0))/(4*np.pi))
     reference = float(area*np.dot(quadrature.weights,
-                                  np.linalg.norm(quadrature.directions[:, :2], axis=1))/(4*np.pi))
+                                  np.linalg.norm(directions, axis=1))/(4*np.pi))
     if (not np.all(np.isfinite([positive, negative, reference])) or
             abs(positive-negative) > 128*np.finfo(float).eps*reference):
         raise ValueError('discrete weighted positive/negative face half ranges differ')
@@ -104,6 +105,7 @@ class P0GalerkinTransport(NativeMeshTransport):
     factor_storage: str = field(default='superlu', kw_only=True)
     _coarse: object = field(init=False, repr=False, compare=False)
     _factor: object = field(init=False, repr=False, compare=False)
+    _post_setup_reservation_bytes: int = field(init=False, repr=False, compare=False)
     _p0_provenance: object = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
@@ -191,6 +193,17 @@ class P0GalerkinTransport(NativeMeshTransport):
         object.__setattr__(self, 'memory_estimate_bytes', total_estimate)
         object.__setattr__(self, '_coarse', _freeze_sparse(coarse))
         object.__setattr__(self, '_factor', factor)
+        # Only after this constructor returns may a subclass release the P0
+        # fill/packing peak reservation. Keep every nonfactor allowance (including
+        # angular/coarse solve and builder workspace), and count the actual
+        # immutable CSR and owned packed payload once. Legacy SuperLU retains
+        # its original conservative reservation because its capacity is opaque.
+        retained_coarse_bytes = _sparse_bytes(self._coarse)
+        post_setup_reservation = total_estimate
+        if self.factor_storage == 'packed':
+            post_setup_reservation = (base_estimate+other_extra
+                                      +factor.payload_nbytes+retained_coarse_bytes)
+        object.__setattr__(self, '_post_setup_reservation_bytes', post_setup_reservation)
         implementations = []
         for name in ('native_angular_p0.py', 'native_mesh_transport.py', 'native_mesh_streaming.py',
                      'native_angular_source.py', 'moment_materials.py'):
@@ -208,6 +221,17 @@ class P0GalerkinTransport(NativeMeshTransport):
                                                      +coarse.indptr.tobytes()).hexdigest(),
                       base_memory_estimate_bytes=base_estimate, extra_nonfactor_estimate_bytes=other_extra,
                       factor_preflight_estimate_bytes=factor_estimate, memory_estimate_bytes=total_estimate,
+                      memory_accounting_version='p0_phase_liveness_v1',
+                      constructor_peak_estimate_bytes=total_estimate,
+                      post_setup_reservation_bytes=post_setup_reservation,
+                      post_setup_base_transport_estimate_bytes=base_estimate,
+                      post_setup_nonfactor_allowance_bytes=other_extra,
+                      post_setup_coarse_csr_array_bytes=retained_coarse_bytes,
+                      post_setup_factor_array_bytes=int(actual_bytes),
+                      post_setup_reservation_rule=('base_plus_nonfactor_plus_packed_payload_plus_coarse_csr'
+                                                   if self.factor_storage == 'packed' else 'legacy_constructor_peak'),
+                      retained_p0_ownership=('coarse_csr_and_owned_packed_arrays'
+                                             if self.factor_storage == 'packed' else 'coarse_csr_and_opaque_superlu'),
                       fill_factor_is_not_memory_bound=True, opaque_superlu_overhead_included=False,
                       scipy_version=scipy.__version__, numpy_version=np.__version__,
                       implementation_sha256=tuple(implementations), physical_admission=False,

@@ -1,0 +1,41 @@
+Traceback (most recent call last):
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/tools/assess_garnet_vs_femffusion.py", line 378, in <module>
+    main()
+    ~~~~^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/tools/assess_garnet_vs_femffusion.py", line 361, in main
+    out.update(run(args, prob, layout))
+               ~~~^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/tools/assess_garnet_vs_femffusion.py", line 237, in run_transient
+    s.solve(t_end=2 * args.dt, **{**kw, "adaptive_bdf": None})
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/garnet/transient.py", line 1615, in solve
+    setup_count) = self._step_operators(fields, time_diagonal, G)
+                   ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/garnet/transient.py", line 511, in _step_operators
+    ops = [self.group_operator(
+           ~~~~~~~~~~~~~~~~~~~^
+        xp, self.grid, fields.diffusion[g],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        fields.removal[g] + inv_vdt[g], bc=self.bc,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        active=self.active, mask_bc=self.mask_bc, **self._op_kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/garnet/tri.py", line 300, in __init__
+    robin_face_term(xp, D[lo], dz, alpha_edge), 0.0)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/scratch/shared/poncet_m/garnet-femffusion-stage/20261103T131528/repo/garnet/stencil.py", line 136, in robin_face_term
+    return 2.0 * Dface * alpha / (d * (d * alpha + 2.0 * Dface))
+                                       ~~~~~~~~~~^~~~~~~~~~~~~
+  File "cupy/_core/core.pyx", line 1371, in cupy._core.core._ndarray_base.__add__
+  File "cupy/_core/_kernel.pyx", line 1349, in cupy._core._kernel.ufunc.__call__
+  File "cupy/_core/_kernel.pyx", line 645, in cupy._core._kernel._get_out_args_from_optionals
+  File "cupy/_core/core.pyx", line 2999, in cupy._core.core._ndarray_init
+  File "cupy/_core/core.pyx", line 272, in cupy._core.core._ndarray_base._init_fast
+  File "cupy/cuda/memory.pyx", line 875, in cupy.cuda.memory.alloc
+  File "cupy/cuda/memory.pyx", line 1579, in cupy.cuda.memory.MemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1600, in cupy.cuda.memory.MemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1271, in cupy.cuda.memory.SingleDeviceMemoryPool.malloc
+  File "cupy/cuda/memory.pyx", line 1292, in cupy.cuda.memory.SingleDeviceMemoryPool._malloc
+  File "cupy/cuda/memory.pyx", line 1537, in cupy.cuda.memory.SingleDeviceMemoryPool._try_malloc
+  File "cupy/cuda/memory.pyx", line 1540, in cupy.cuda.memory.SingleDeviceMemoryPool._try_malloc
+cupy.cuda.memory.OutOfMemoryError: Out of memory allocating 122,013,184 bytes (allocated so far: 100,142,442,496 bytes).

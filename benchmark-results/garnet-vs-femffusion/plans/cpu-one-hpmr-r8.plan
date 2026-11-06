@@ -1,0 +1,1 @@
+c0 cpu-hpmr-r8z100 assess_garnet_vs_femffusion.py hpmr3d --mesh 8 --nz 100 --precond-degree 0 --anderson-depth 8 --tol-k 1e-7 --tol-source 1e-6 --repeats 1 --output @OUT@

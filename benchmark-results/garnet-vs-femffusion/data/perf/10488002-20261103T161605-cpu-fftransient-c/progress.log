@@ -1,0 +1,4 @@
+DONE fftr-fe2-r0-sexp-dt0.00625 RESULT hpmr3d-transient FE2 r0 dofs=165165 k=1.11886 counters={'outers': 45, 'inners': None, 'matvecs': 46, 'precond_applications': None} assembly=0.73038 solve=17.575776 wall=710.59
+DONE fftr-fe2-r0-sie-dt0.00625 RESULT hpmr3d-transient FE2 r0 dofs=165165 k=1.11886 counters={'outers': 45, 'inners': None, 'matvecs': 46, 'precond_applications': None} assembly=0.712451 solve=17.547348000000003 wall=865.11
+DONE fftr-fe2-r0-sexp-dt0.003125 RESULT hpmr3d-transient FE2 r0 dofs=165165 k=1.11886 counters={'outers': 45, 'inners': None, 'matvecs': 46, 'precond_applications': None} assembly=0.750083 solve=17.527932999999997 wall=1366.84
+DONE fftr-fe2-r0-sie-dt0.003125 RESULT hpmr3d-transient FE2 r0 dofs=165165 k=1.11886 counters={'outers': 45, 'inners': None, 'matvecs': 46, 'precond_applications': None} assembly=0.713638 solve=17.559844000000002 wall=1680.62

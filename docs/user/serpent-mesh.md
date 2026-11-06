@@ -53,6 +53,31 @@ source-only, streaming and bounded transport APIs, and explains optional
 compact/coarse/packed controls. None of these choices automatically qualifies
 native data or transfers earlier GPU evidence to a new CPU path.
 
+## Native angular finite volume in 2D and 3D
+
+For explicit material regions, bind a `NativeAngularSource` to
+`NativeMeshStreaming`, then use `NativeMeshTransport` or its documented fixed
+preconditioners. This CPU research path retains the supplied total and native
+scattering-production moments through P7. Each regional fission source uses
+the supplied cross-group `chi[to]*nuSigmaF[from]` without spectrum normalization.
+
+The streaming mesh may be 2D or 3D. The existing Gmsh loader and
+`assemble_mesh_3d(..., normal_distances=True)` accept conforming tetrahedra, triangular prisms and hexahedra.
+Cell measures are volumes in 3D; each face must have its area, center and unit
+normal. Boundary conditions are explicit per face: vacuum or Cartesian-axis
+specular reflection, including z faces. Oblique specular reflection is unsupported.
+
+In 3D choose at least two polar and four azimuthal quadrature nodes explicitly
+for P0; its default quadrature cannot carry axial leakage. The default P7
+quadrature already meets this coverage requirement. Coverage alone does not
+establish angular convergence. Start with a small mesh and budget the full
+cell-by-angle-by-group fields and sparse preconditioner before extending it.
+Software verification does not establish physical 3D reactor accuracy.
+
+See the [streaming contract](../development/native-mesh-streaming.md),
+[iteration controls](../development/native-mesh-transport.md) and
+[preconditioners](../development/native-angular-p0.md).
+
 ## Build a nonuniform masked mesh
 
 The following example needs no external data:
