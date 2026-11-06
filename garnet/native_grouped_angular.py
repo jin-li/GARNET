@@ -143,9 +143,14 @@ class GroupAngularOperators:
                     if self_only:
                         transformed[:, block] = rows[:, block]*production[order, group, group]
                     else:
-                        transformed[:, block] = rows[:, block, :] @ production[order, group, :]
+                        couplings = production[order, group, :]
                         if exclude_self:
-                            transformed[:, block] -= rows[:, block, group]*production[order, group, group]
+                            # Exclude before contraction: subtracting a large
+                            # self term afterward can erase small cross sources.
+                            # Mask only a temporary vector; raw XS stay immutable.
+                            couplings = couplings.copy()
+                            couplings[group] = 0.
+                        transformed[:, block] = rows[:, block, :] @ couplings
                 angular = transformed @ q.harmonics.T
                 angular *= s.area[start:stop][selected, None]/(4*np.pi)
                 result[start+selected] = angular

@@ -29,7 +29,9 @@ Scattering uses all available orders, canonical `[to,from]` coefficients and
 the original `1/(4*pi)` normalization. Scattering outputs are cell-integrated:
 cell area is included exactly once. Excluding the target group removes its
 same-group scattering term; it does not remove a physical energy group or
-discard upscatter.
+discard upscatter. Exclusion occurs before the moment contraction, using a
+temporary coefficient vector, so subtracting a dominant same-group term does
+not round away weak intergroup sources. The stored raw matrices remain unchanged.
 
 `streaming_group_action` includes total collision, conservative interior
 upwinding, vacuum outflow and reflected incoming coupling. Specular boundaries

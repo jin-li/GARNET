@@ -109,6 +109,24 @@ def test_independent_p0_p1_closed_form(lmax):
     np.testing.assert_allclose(op.project_group(represented), 4*np.pi*coefficients, atol=2e-14)
 
 
+@pytest.mark.parametrize('orientation', ['to-major', 'from-major'])
+@pytest.mark.parametrize('group', range(3))
+def test_cross_group_source_preserves_small_terms_beside_large_self_source(orientation, group):
+    s = manufactured(0, orientation, cells=1)
+    op = GroupAngularOperators(s, boundary(s, 'vacuum'))
+    values = np.array([1., 2., 3.])
+    values[group] = 1e18
+    moments = values.reshape(1, 1, 3).copy()
+    before = moments.copy()
+    coefficients = s.source.production[0][0, group]
+    off_source = sum(coefficients[h]*values[h] for h in range(3) if h != group)
+    expected = np.full(op.shape, s.area[0]*off_source/(4*np.pi))
+    # Summing the enormous self term and then subtracting it loses this source.
+    np.testing.assert_allclose(op.scatter_to_group(moments, group, exclude_self=True),
+                               expected, rtol=2e-15, atol=0.)
+    np.testing.assert_array_equal(moments, before)
+
+
 @pytest.mark.parametrize('kind', ['vacuum', 'reflective', 'mixed'])
 def test_boundary_incoming_and_conservative_current_balance(kind):
     s = manufactured(1)
